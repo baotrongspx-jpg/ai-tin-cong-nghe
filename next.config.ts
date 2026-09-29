@@ -1,9 +1,9 @@
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
-  // Font vẽ ảnh được đọc bằng readFile, phải đóng gói kèm route ảnh khi deploy
+  // Font vẽ ảnh được đọc bằng readFile, phải đóng gói kèm khi deploy (route ảnh, lịch tự đăng, nút Đăng)
   outputFileTracingIncludes: {
-    '/anh/[id]': ['./assets/fonts/**'],
+    '/**': ['./assets/fonts/**'],
   },
 }
 

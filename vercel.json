@@ -4,8 +4,16 @@
   ],
   "crons": [
     {
-      "path": "/api/cron",
+      "path": "/api/cron?so_bai=2&lich=6h",
       "schedule": "0 23 * * *"
+    },
+    {
+      "path": "/api/cron?so_bai=2&lich=12h",
+      "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron?so_bai=2&lich=18h",
+      "schedule": "0 11 * * *"
     }
   ]
 }

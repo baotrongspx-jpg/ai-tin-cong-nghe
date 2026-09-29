@@ -1,9 +1,9 @@
 # AI tổng hợp tin công nghệ → bài đăng Facebook
 
-Mỗi sáng 6h (giờ VN) hệ thống tự:
+Mỗi ngày lúc 6h, 12h, 18h (giờ VN), mỗi lần tối đa 2 bài, hệ thống tự:
 
 1. Đọc RSS tin công nghệ / AI trong 24 giờ qua (VnExpress, Tuổi Trẻ, Thanh Niên, Dân trí, GenK, The Verge, TechCrunch — sửa ở `lib/nguonTin.ts`)
-2. Bỏ tin đã soạn trước đó, AI (Gemini hoặc Claude) chọn 3 tin đáng đăng nhất (gộp tin trùng giữa các báo)
+2. Bỏ tin đã soạn trước đó, AI (Gemini hoặc Claude) chọn các tin đáng đăng nhất (gộp tin trùng giữa các báo)
 3. Đọc bài gốc, AI cô đọng thành bài đăng Facebook tiếng Việt + tiêu đề ảnh + hashtag
 4. Vẽ ảnh minh họa 1080×1080 (tiêu đề lớn, nhãn chủ đề, nguồn, ngày — `lib/anh.tsx`)
 5. Đăng thẳng lên Fanpage (`TU_DONG_DANG=1`, mặc định). Đặt `TU_DONG_DANG=0` thì chỉ lưu **bài nháp**, vào trang web duyệt rồi bấm **Đăng lên Facebook**
@@ -26,7 +26,7 @@ npm run dev
 Mở http://localhost:3000, đăng nhập bằng `ADMIN_PASSWORD`, bấm **Tổng hợp ngay**.
 
 ### 4. Deploy lên Vercel
-Đẩy lên GitHub → Import vào Vercel → khai báo các biến môi trường như `.env.local`. Lịch chạy tự động nằm trong `vercel.json` (`0 23 * * *` = 6h sáng VN; gói Vercel miễn phí có thể chạy trễ trong vòng 1 giờ).
+Đẩy lên GitHub → Import vào Vercel → khai báo các biến môi trường như `.env.local`. Lịch chạy tự động nằm trong `vercel.json` (3 lịch `0 23`, `0 5`, `0 11` giờ UTC = 6h, 12h, 18h VN, `?so_bai=2` = số bài mỗi lần; gói Vercel miễn phí có thể chạy trễ trong vòng 1 giờ).
 
 ## Lấy token Facebook Fanpage
 

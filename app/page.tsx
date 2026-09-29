@@ -1,69 +1,87 @@
-import Image from "next/image";
+import Link from 'next/link'
+import { redirect } from 'next/navigation'
+import { db, type BaiViet, type TrangThai } from '@/lib/db'
+import { daDangNhap } from '@/lib/xacThuc'
+import { coFacebook } from '@/lib/facebook'
+import { dangXuatAction } from './actions'
+import NutTongHop from './NutTongHop'
+import TheBai from './TheBai'
 
-export default function Home() {
+// Nút "Tổng hợp ngay" chạy AI trong Server Action, cần thời gian dài
+export const maxDuration = 300
+
+const THE: { ma: TrangThai; ten: string }[] = [
+  { ma: 'nhap', ten: 'Chờ duyệt' },
+  { ma: 'da_dang', ten: 'Đã đăng' },
+  { ma: 'bo_qua', ten: 'Bỏ qua' },
+  { ma: 'loi', ten: 'Lỗi' },
+]
+
+export default async function TrangChu({ searchParams }: PageProps<'/'>) {
+  if (!(await daDangNhap())) redirect('/dang-nhap')
+
+  const tt = (await searchParams).tt
+  const dangXem: TrangThai = THE.some((t) => t.ma === tt) ? (tt as TrangThai) : 'nhap'
+
+  const [{ data, error }, ...dem] = await Promise.all([
+    db().from('bai_viet').select('*').eq('trang_thai', dangXem).order('tao_luc', { ascending: false }).limit(50),
+    ...THE.map((t) => db().from('bai_viet').select('id', { count: 'exact', head: true }).eq('trang_thai', t.ma)),
+  ])
+  const dsBai = (data ?? []) as BaiViet[]
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <main className="mx-auto max-w-5xl p-4 sm:p-6">
+      <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold">Duyệt bài tin công nghệ</h1>
+          <p className="text-sm text-slate-500">
+            AI tự tổng hợp mỗi sáng. Sửa nếu cần, rồi bấm Đăng lên Facebook.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+        <div className="flex items-start gap-2">
+          <NutTongHop />
+          <form action={dangXuatAction}>
+            <button className="btn bg-white text-slate-600 hover:bg-slate-50">Đăng xuất</button>
+          </form>
         </div>
-      </main>
-    </div>
-  );
+      </header>
+
+      {!coFacebook() && (
+        <p className="mb-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
+          Chưa cấu hình Facebook (FB_PAGE_ID, FB_PAGE_TOKEN): vẫn soạn và tải ảnh được, nhưng chưa đăng thẳng lên Fanpage được.
+        </p>
+      )}
+      {error && (
+        <p className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+          Lỗi đọc dữ liệu: {error.message}. Đã chạy file supabase/schema.sql chưa?
+        </p>
+      )}
+
+      <nav className="mb-5 flex gap-1 overflow-x-auto rounded-xl bg-white p-1">
+        {THE.map((t, i) => (
+          <Link
+            key={t.ma}
+            href={t.ma === 'nhap' ? '/' : `/?tt=${t.ma}`}
+            className={`whitespace-nowrap rounded-lg px-4 py-2 text-sm font-semibold ${
+              t.ma === dangXem ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            {t.ten} <span className="opacity-70">({dem[i].count ?? 0})</span>
+          </Link>
+        ))}
+      </nav>
+
+      {dsBai.length === 0 ? (
+        <p className="rounded-xl bg-white p-10 text-center text-slate-500">
+          {dangXem === 'nhap' ? 'Chưa có bài chờ duyệt. Bấm "Tổng hợp ngay" để AI soạn bài.' : 'Không có bài nào.'}
+        </p>
+      ) : (
+        <div className="space-y-5">
+          {dsBai.map((b) => (
+            <TheBai key={`${b.id}-${b.trang_thai}`} bai={b} />
+          ))}
+        </div>
+      )}
+    </main>
+  )
 }

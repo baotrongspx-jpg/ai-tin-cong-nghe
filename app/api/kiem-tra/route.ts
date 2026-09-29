@@ -14,5 +14,6 @@ export async function GET() {
   return Response.json({
     bien: Object.fromEntries(BIEN.map((k) => [k, !!process.env[k]])),
     font,
+    phien_ban: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? null,
   })
 }

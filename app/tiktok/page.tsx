@@ -3,7 +3,10 @@ import { redirect } from 'next/navigation'
 import { db, type BaiViet } from '@/lib/db'
 import { daDangNhap } from '@/lib/xacThuc'
 import { coTikTok, daKetNoiTikTok, layTaiKhoanTikTok, type TaiKhoanTikTok } from '@/lib/tiktok'
+import { layHashtagXuHuong } from '@/lib/xuHuong'
+import { SO_TAG_XU_HUONG } from '@/lib/chuThich'
 import DauTrang from '../DauTrang'
+import XuHuong from './XuHuong'
 import TheTikTok from './TheTikTok'
 
 // Nút "Tổng hợp ngay" ở đầu trang chạy AI trong Server Action, cần thời gian dài
@@ -36,13 +39,14 @@ export default async function TrangTikTok({ searchParams }: PageProps<'/tiktok'>
     }
   }
 
-  const [ds, demChua, demDa] = await Promise.all([
+  const [ds, demChua, demDa, xuHuong] = await Promise.all([
     (dangXem === 'da'
       ? locDa().order('tiktok_dang_luc', { ascending: false })
       : locChua().order('tao_luc', { ascending: false })
     ).limit(50),
     locChua().limit(0),
     locDa().limit(0),
+    layHashtagXuHuong(),
   ])
   const dsBai = (ds.data ?? []) as BaiViet[]
   const dem = { chua: demChua.count ?? 0, da: demDa.count ?? 0 }
@@ -91,6 +95,8 @@ export default async function TrangTikTok({ searchParams }: PageProps<'/tiktok'>
         </p>
       )}
 
+      <XuHuong ds={xuHuong.ds} luc={xuHuong.luc} soThem={SO_TAG_XU_HUONG} />
+
       <nav className="mb-5 flex gap-1 overflow-x-auto rounded-xl bg-white p-1">
         {THE.map((t) => (
           <Link
@@ -115,6 +121,7 @@ export default async function TrangTikTok({ searchParams }: PageProps<'/tiktok'>
             <TheTikTok
               key={`${b.id}-${b.tiktok_publish_id}`}
               bai={b}
+              xuHuong={xuHuong.ds}
               taiKhoan={
                 taiKhoan && {
                   khoaBinhLuan: taiKhoan.comment_disabled,

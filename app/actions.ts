@@ -9,6 +9,7 @@ import { coFacebook } from '@/lib/facebook'
 import { coTikTok, type TuyChonDang } from '@/lib/tiktok'
 import { dangLenFacebook, dangLenTikTok } from '@/lib/dangBai'
 import { tachHashtag } from '@/lib/chuThich'
+import { layHashtagXuHuong } from '@/lib/xuHuong'
 
 type KetQua = { ok: boolean; loi?: string }
 
@@ -142,4 +143,12 @@ export async function dangCaHai(id: string, sua: SuaBai, tuyChon: TuyChonDang): 
   await chay('TikTok', !!bai.tiktok_publish_id, () => dangLenTikTok(bai, tuyChon))
   refresh()
   return loi.length ? { ok: false, loi: loi.join(' · ') } : { ok: true }
+}
+
+// Nút "Tìm lại" trên trang TikTok: tìm hashtag xu hướng mới ngay, không chờ hết 24 giờ
+export async function timLaiXuHuong(): Promise<KetQua> {
+  await chanChuaDangNhap()
+  await layHashtagXuHuong(true)
+  refresh()
+  return { ok: true }
 }

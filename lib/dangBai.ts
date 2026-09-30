@@ -4,6 +4,7 @@ import { veAnhBai } from './anh'
 import { taoChuThich, taoChuThichTikTok } from './chuThich'
 import { dangAnhLenPage } from './facebook'
 import { dangAnhLenTikTok, urlWeb, type TuyChonDang } from './tiktok'
+import { layHashtagXuHuong } from './xuHuong'
 
 // Vẽ ảnh, đăng lên Fanpage rồi đánh dấu bài đã đăng. Lỗi thì ghi vào cột `loi` và ném lỗi ra.
 export async function dangLenFacebook(bai: BaiViet) {
@@ -27,7 +28,8 @@ export async function dangLenTikTok(bai: BaiViet, tuyChon?: TuyChonDang) {
   try {
     // ?v= để TikTok không lấy phải ảnh cũ còn trong bộ nhớ đệm khi vừa sửa tiêu đề
     const urlAnh = `${urlWeb()}/anh/${bai.id}.jpg?v=${Date.now()}`
-    const publishId = await dangAnhLenTikTok(urlAnh, bai.tieu_de_anh, taoChuThichTikTok(bai), tuyChon)
+    const { ds: xuHuong } = await layHashtagXuHuong()
+    const publishId = await dangAnhLenTikTok(urlAnh, bai.tieu_de_anh, taoChuThichTikTok(bai, xuHuong), tuyChon)
     const luc = new Date().toISOString()
     await db()
       .from('bai_viet')

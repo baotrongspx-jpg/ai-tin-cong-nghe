@@ -12,9 +12,11 @@ const gio = (s: string) =>
 // `taiKhoan`: null khi chưa kết nối TikTok → chỉ xem trước, không đăng được
 export default function TheTikTok({
   bai,
+  xuHuong,
   taiKhoan,
 }: {
   bai: BaiViet
+  xuHuong: string[]
   taiKhoan: { khoaBinhLuan: boolean } | null
 }) {
   const [choBinhLuan, setChoBinhLuan] = useState(true)
@@ -24,7 +26,7 @@ export default function TheTikTok({
   )
 
   const daDang = !!bai.tiktok_publish_id
-  const moTa = taoChuThichTikTok(bai)
+  const moTa = taoChuThichTikTok(bai, xuHuong)
   const urlAnh = `/anh/${bai.id}?v=${encodeURIComponent(`${bai.tieu_de_anh}|${bai.chu_de}|${bai.mau_anh}`)}`
 
   const chay = (viec: () => Promise<{ ok: boolean; loi?: string }>, xong: string) =>

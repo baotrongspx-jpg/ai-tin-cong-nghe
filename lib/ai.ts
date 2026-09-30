@@ -198,3 +198,29 @@ export async function vietBai(tin: TinRss, noiDungBao: string): Promise<BaiAi | 
     hashtag: bai.hashtag.map((h) => h.replace(/[#\s]/g, '')).filter(Boolean).slice(0, 5),
   }
 }
+
+// ---------- Hashtag TikTok đang thịnh hành ----------
+
+// Nhờ Gemini tìm trên Google các hashtag công nghệ đang thịnh hành trên TikTok Việt Nam.
+// TikTok không có API công khai cho việc này nên chỉ là ước lượng. Không có Gemini thì trả mảng rỗng.
+export async function timHashtagXuHuong(): Promise<string[]> {
+  if (!process.env.GEMINI_API_KEY) return []
+  const hoi =
+    'Tìm trên Google các hashtag TikTok về công nghệ, AI, điện thoại đang thịnh hành ở Việt Nam trong tuần này. ' +
+    'Chỉ trả về 10 đến 15 hashtag, mỗi hashtag một dòng, bắt đầu bằng #, không giải thích, không đánh số. ' +
+    'Chỉ lấy hashtag liên quan tới công nghệ, bỏ các hashtag chung chung không liên quan như #fyp.'
+  for (const model of MODEL_GEMINI) {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': process.env.GEMINI_API_KEY },
+      body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: hoi }] }], tools: [{ google_search: {} }] }),
+      signal: AbortSignal.timeout(60_000),
+    }).catch(() => null)
+    if (!res?.ok) continue
+    const data = (await res.json().catch(() => ({}))) as { candidates?: { content?: { parts?: { text?: string }[] } }[] }
+    const text = (data.candidates?.[0]?.content?.parts ?? []).map((p) => p.text ?? '').join('\n')
+    const tag = [...text.matchAll(/#([\p{L}\p{N}_]{2,30})/gu)].map((m) => m[1])
+    if (tag.length) return tag
+  }
+  return []
+}

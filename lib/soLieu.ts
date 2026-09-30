@@ -20,7 +20,7 @@ async function docBanGhi(): Promise<BanGhi> {
 // - bai_da_xoa_fb: đã bị xóa trên Facebook (tự phát hiện khi lấy số liệu)
 const KHOA_XOA = 'bai_da_xoa_fb'
 
-async function dsBoQua(): Promise<Set<string>> {
+export async function dsBoQua(): Promise<Set<string>> {
   const { data } = await db().from('cai_dat').select('khoa, gia_tri').in('khoa', ['bai_an_thong_ke', KHOA_XOA])
   return new Set((data ?? []).flatMap((r) => (r.gia_tri as string[] | null) ?? []))
 }

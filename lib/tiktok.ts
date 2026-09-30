@@ -1,5 +1,6 @@
 import 'server-only'
 import { db } from './db'
+import { dichLoiTikTok } from './loiTikTok'
 
 const API = 'https://open.tiktokapis.com/v2'
 const KHOA_TOKEN = 'tiktok_token'
@@ -84,7 +85,8 @@ async function goiApi<T>(duongDan: string, token: string, body: unknown): Promis
   })
   const kq = (await res.json()) as { data?: T; error?: { code: string; message: string } }
   if (!res.ok || (kq.error && kq.error.code !== 'ok')) {
-    throw new Error(`TikTok: ${kq.error?.message || kq.error?.code || res.status}`)
+    // Ghép mã lỗi vào để dịch được cả khi TikTok đổi câu chữ
+    throw new Error(`TikTok: ${dichLoiTikTok(`${kq.error?.code ?? ''} ${kq.error?.message ?? res.status}`.trim())}`)
   }
   return kq.data as T
 }

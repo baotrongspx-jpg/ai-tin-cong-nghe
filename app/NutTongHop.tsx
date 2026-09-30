@@ -1,33 +1,37 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useTransition } from 'react'
 import { tongHopNgay } from './actions'
+import { thongBao } from './ThongBao'
+import { IconSao, Xoay } from './BieuTuong'
 
 export default function NutTongHop() {
   const [dangChay, startTransition] = useTransition()
-  const [thongBao, setThongBao] = useState<string | null>(null)
 
   const chay = () =>
     startTransition(async () => {
-      setThongBao(null)
       const kq = await tongHopNgay()
-      if ('loi' in kq && typeof kq.loi === 'string') setThongBao(`Lỗi: ${kq.loi}`)
-      else if ('daViet' in kq)
-        setThongBao(
-          kq.soTin === 0
-            ? 'Không có tin mới trong 24 giờ qua.'
-            : `Đã soạn ${kq.daViet}/${kq.daChon} bài từ ${kq.soTin} tin mới.` +
-                (kq.daDang || kq.daDangTikTok ? ` Đã đăng ${kq.daDang} Facebook, ${kq.daDangTikTok} TikTok.` : '') +
-                (kq.loi.length ? ` ${kq.loi.length} lỗi.` : ''),
-        )
+      if ('loi' in kq && typeof kq.loi === 'string') return thongBao('loi', `Tổng hợp lỗi: ${kq.loi}`)
+      if (!('daViet' in kq)) return
+      if (kq.soTin === 0) return thongBao('ok', 'Không có tin mới trong 24 giờ qua.')
+      thongBao(
+        kq.loi.length && !kq.daViet ? 'loi' : 'ok',
+        `Đã soạn ${kq.daViet}/${kq.daChon} bài từ ${kq.soTin} tin mới.` +
+          (kq.daDang || kq.daDangTikTok ? ` Đã đăng ${kq.daDang} Facebook, ${kq.daDangTikTok} TikTok.` : '') +
+          (kq.loi.length ? ` ${kq.loi.length} lỗi.` : ''),
+      )
     })
 
   return (
-    <div className="flex flex-col items-end">
-      <button onClick={chay} disabled={dangChay} className="btn bg-blue-600 text-white hover:bg-blue-700">
-        {dangChay ? 'AI đang đọc tin… (1–3 phút)' : '✨ Tổng hợp ngay'}
-      </button>
-      {thongBao && <p className="mt-1 max-w-xs text-right text-xs text-slate-600">{thongBao}</p>}
-    </div>
+    <button
+      onClick={chay}
+      disabled={dangChay}
+      title="AI đọc tin mới và soạn bài chờ duyệt"
+      className="btn bg-gradient-to-r from-violet-600 to-blue-600 text-white shadow-md shadow-violet-600/25 hover:brightness-110"
+    >
+      {dangChay ? <Xoay /> : <IconSao />}
+      <span className="hidden sm:inline">{dangChay ? 'AI đang soạn… (1–3 phút)' : 'Tổng hợp ngay'}</span>
+      <span className="sm:hidden">{dangChay ? 'Đang soạn…' : 'Tổng hợp'}</span>
+    </button>
   )
 }

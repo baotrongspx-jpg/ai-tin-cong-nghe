@@ -1,41 +1,44 @@
 'use client'
 
 import { useTransition } from 'react'
+import { gio } from '@/lib/thoiGian'
 import { timLaiXuHuong } from '../actions'
+import { thongBao } from '../ThongBao'
+import { IconLai, Xoay } from '../BieuTuong'
 
-const gio = (s: string) =>
-  new Date(s).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', dateStyle: 'short', timeStyle: 'short' })
-
-// Dải hashtag xu hướng trên trang TikTok. `luc` null nghĩa là đang dùng bộ dự phòng.
+// Khung hashtag xu hướng cuối trang TikTok. `luc` null nghĩa là đang dùng bộ dự phòng.
 export default function XuHuong({ ds, luc, soThem }: { ds: string[]; luc: string | null; soThem: number }) {
   const [dangTim, startTransition] = useTransition()
 
+  const timLai = () =>
+    startTransition(async () => {
+      await timLaiXuHuong()
+      thongBao('ok', 'Đã tìm lại hashtag xu hướng')
+    })
+
   return (
-    <section className="rounded-xl bg-white p-4 shadow-sm">
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-sm font-bold">🔥 Hashtag xu hướng công nghệ trên TikTok</h2>
+    <section className="the overflow-hidden">
+      <div className="flex flex-wrap items-center justify-between gap-2 bg-gradient-to-r from-pink-50 to-violet-50 px-4 py-3">
+        <h2 className="flex items-center gap-2 text-sm font-extrabold">🔥 Hashtag xu hướng công nghệ trên TikTok</h2>
         <div className="flex items-center gap-2 text-xs text-slate-500">
-          {luc ? `Tìm lúc ${gio(luc)}` : 'Chưa tìm được, đang dùng bộ mặc định'}
-          <button
-            disabled={dangTim}
-            onClick={() => startTransition(async () => void (await timLaiXuHuong()))}
-            className="btn bg-slate-100 px-3 py-1 text-slate-700 hover:bg-slate-200"
-          >
+          <span suppressHydrationWarning>{luc ? `Tìm lúc ${gio(luc)}` : 'Chưa tìm được, đang dùng bộ mặc định'}</span>
+          <button disabled={dangTim} onClick={timLai} className="btn btn-sm btn-phu">
+            {dangTim ? <Xoay className="h-3.5 w-3.5" /> : <IconLai className="h-3.5 w-3.5" />}
             {dangTim ? 'Đang tìm…' : 'Tìm lại'}
           </button>
         </div>
       </div>
-      <div className="flex flex-wrap gap-1.5">
-        {ds.map((h) => (
-          <span key={h} className="rounded-full bg-pink-50 px-2.5 py-1 text-xs font-semibold text-pink-700">
-            #{h}
-          </span>
-        ))}
+      <div className="p-4">
+        <div className="flex flex-wrap gap-1.5">
+          {ds.map((h) => (
+            <span key={h} className="chip bg-pink-50 text-pink-700">#{h}</span>
+          ))}
+        </div>
+        <p className="mt-3 text-xs text-slate-400">
+          Mỗi bài tự thêm {soThem} hashtag đầu danh sách (bỏ cái trùng với hashtag của bài). Gemini tìm trên Google mỗi
+          ngày một lần, chỉ là ước lượng vì TikTok không công bố danh sách chính thức.
+        </p>
       </div>
-      <p className="mt-2 text-xs text-slate-400">
-        Mỗi bài tự thêm {soThem} hashtag đầu danh sách (bỏ cái trùng với hashtag của bài). Gemini tìm trên
-        Google mỗi ngày một lần, chỉ là ước lượng vì TikTok không công bố danh sách chính thức.
-      </p>
     </section>
   )
 }

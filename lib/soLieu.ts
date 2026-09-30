@@ -15,12 +15,18 @@ async function docBanGhi(): Promise<BanGhi> {
   return (data?.gia_tri as BanGhi | undefined) ?? { bai: {}, luc: null }
 }
 
-// Bài bỏ khỏi thống kê: đăng qua app Facebook cũ chưa xuất bản nên người theo dõi không thấy,
-// số liệu gần như bằng 0 sẽ làm lệch xếp hạng và giờ vàng
+// Bài bỏ khỏi thống kê:
+// - bai_an_thong_ke: đăng qua app Facebook cũ chưa xuất bản, người theo dõi không thấy (số liệu gần như 0, làm lệch xếp hạng)
+// - bai_da_xoa_fb: đã bị xóa trên Facebook (tự phát hiện khi lấy số liệu)
+const KHOA_XOA = 'bai_da_xoa_fb'
+
 async function dsBoQua(): Promise<Set<string>> {
-  const { data } = await db().from('cai_dat').select('gia_tri').eq('khoa', 'bai_an_thong_ke').maybeSingle()
-  return new Set((data?.gia_tri as string[] | undefined) ?? [])
+  const { data } = await db().from('cai_dat').select('khoa, gia_tri').in('khoa', ['bai_an_thong_ke', KHOA_XOA])
+  return new Set((data ?? []).flatMap((r) => (r.gia_tri as string[] | null) ?? []))
 }
+
+// Facebook báo bài không còn (đã xóa) bằng mã lỗi 10 giống lỗi thiếu quyền, chỉ khác câu chữ
+export const laBaiDaXoa = (loi: string) => /object does not exist/i.test(loi)
 
 // Lấy lại số liệu Facebook cho các bài đăng trong `ngay` ngày gần đây (gọi 4 bài một lúc)
 export async function capNhatSoLieu(ngay = 7) {
@@ -37,6 +43,7 @@ export async function capNhatSoLieu(ngay = 7) {
 
   const luc = new Date().toISOString()
   const moi: Record<string, SoLieuLuu> = {}
+  const daXoa: string[] = []
   let loi: string | null = null
   for (let i = 0; i < ds.length; i += 4) {
     await Promise.all(
@@ -44,17 +51,28 @@ export async function capNhatSoLieu(ngay = 7) {
         try {
           moi[b.id] = { ...(await laySoLieuBai(b.fb_post_id!)), luc }
         } catch (e) {
-          loi ??= e instanceof Error ? e.message : String(e) // bài đã bị xóa trên Facebook...
+          const tb = e instanceof Error ? e.message : String(e)
+          if (laBaiDaXoa(tb)) daXoa.push(b.id)
+          else loi ??= tb
         }
       }),
     )
+  }
+
+  // Chỉ tin là bài đã bị xóa khi các bài khác vẫn đọc được (token còn tốt), tránh bỏ nhầm cả loạt
+  if (daXoa.length && Object.keys(moi).length) {
+    const { data: r } = await db().from('cai_dat').select('gia_tri').eq('khoa', KHOA_XOA).maybeSingle()
+    const cuXoa = (r?.gia_tri as string[] | undefined) ?? []
+    await db()
+      .from('cai_dat')
+      .upsert({ khoa: KHOA_XOA, gia_tri: [...new Set([...cuXoa, ...daXoa])], cap_nhat_luc: luc })
   }
 
   const cu = await docBanGhi()
   await db()
     .from('cai_dat')
     .upsert({ khoa: KHOA, gia_tri: { bai: { ...cu.bai, ...moi }, luc } satisfies BanGhi, cap_nhat_luc: luc })
-  return { soBai: Object.keys(moi).length, loi }
+  return { soBai: Object.keys(moi).length, daXoa: daXoa.length, loi }
 }
 
 // Điểm tương tác: bình luận và chia sẻ khó có hơn cảm xúc nên nặng điểm hơn.

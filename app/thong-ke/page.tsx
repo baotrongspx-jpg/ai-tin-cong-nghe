@@ -59,7 +59,7 @@ export default async function TrangThongKe({ searchParams }: PageProps<'/thong-k
 
         {soBoQua > 0 && (
           <p className="mb-4 text-xs text-slate-500">
-            Không tính {soBoQua} bài đăng qua app Facebook cũ (chưa xuất bản, người theo dõi không thấy).
+            Không tính {soBoQua} bài: đăng qua app Facebook cũ (người theo dõi không thấy) hoặc đã xóa trên Facebook.
           </p>
         )}
 

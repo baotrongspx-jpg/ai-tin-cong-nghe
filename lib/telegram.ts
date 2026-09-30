@@ -41,5 +41,7 @@ export async function baoLoiToken(loi: string) {
   await db().from('cai_dat').upsert({ khoa: 'bao_loi_token', gia_tri: loi.slice(0, 300), cap_nhat_luc: new Date().toISOString() })
 }
 
-// Lỗi Facebook do token hết hạn / thiếu quyền (mã #10, #190, #200)
-export const laLoiToken = (loi: string) => /\(#(10|190|200)\)|access token|session has expired/i.test(loi)
+// Lỗi Facebook do token hết hạn / thiếu quyền (mã #10, #190, #200).
+// "Object does not exist" cũng mã 10 nhưng là bài đã bị xóa, không phải lỗi token.
+export const laLoiToken = (loi: string) =>
+  !/object does not exist/i.test(loi) && /\(#(10|190|200)\)|access token|session has expired/i.test(loi)

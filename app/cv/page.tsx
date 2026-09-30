@@ -1,279 +1,429 @@
 import type { Metadata } from 'next'
+import Image from 'next/image'
+import { Dancing_Script } from 'next/font/google'
 import type { ReactNode } from 'react'
-import NutIn from './NutIn'
+import { DIEN_THOAI, DU_AN, EMAIL, KINH_NGHIEM } from './duLieu'
+import FormLienHe from './FormLienHe'
+import HienDan from './HienDan'
 
-// Trang CV cá nhân công khai (không cần đăng nhập) để gửi link cho nhà tuyển dụng.
-// Không cho Google lập chỉ mục vì có số điện thoại, email. Bấm "Lưu PDF" in ra đúng 1 trang A4.
+const viTay = Dancing_Script({ subsets: ['vietnamese'], weight: ['600', '700'] })
+
 export const metadata: Metadata = {
-  title: 'CV – Nông Bảo Trọng · Ứng tuyển Trợ lý',
-  description: 'Trợ lý Giám đốc, 2 năm vận hành cụm 12 kho SPX Express, tự xây công cụ báo cáo và kênh Fanpage, TikTok.',
+  title: 'Nông Bảo Trọng – CV cá nhân',
+  description: 'Trợ lý Giám đốc · gần 2 năm vận hành cụm 12 kho SPX Express · Ứng tuyển Trợ lý tại Buôn Ma Thuột.',
   robots: { index: false, follow: false },
-  // Link ảnh xem trước (og:image) cần tên miền đầy đủ
   metadataBase: new URL(process.env.SITE_URL ?? 'https://ai-tin-cong-nghe-wpy7.vercel.app'),
 }
 
-const DIEN_THOAI = '0856 984 948'
-const EMAIL = 'baotrongspx@gmail.com'
+const NGAY_SINH = '03/04/2001'
+const DIA_CHI = 'TP. Buôn Ma Thuột, Đắk Lắk'
 
-const KINH_NGHIEM = [
-  {
-    chucDanh: 'Trợ lý Giám đốc (Phát triển vùng trồng & Ngoại giao)',
-    noi: 'Công ty TNHH Trái Cây 001 · Krông Pắk, Đắk Lắk',
-    thoiGian: '07/2026 – nay',
-    viec: [
-      'Theo dõi số liệu từng công đoạn tại Kho lột múi 001, tính tỷ lệ hao hụt và báo cáo định kỳ cho Giám đốc.',
-      'Soạn thảo hợp đồng mua bán, vận chuyển, dịch vụ và văn bản pháp lý; làm việc với hợp tác xã, đối tác.',
-      'Tự xây Durian Frozen System đối chiếu nguyên liệu đầu vào với thành phẩm, thay sổ sách thủ công.',
-    ],
-  },
-  {
-    chucDanh: 'Nhân viên Vận hành',
-    noi: 'SPX Express · Cụm kho Đắk Lắk (12 kho)',
-    thoiGian: '08/2024 – 06/2026',
-    viec: [
-      'Đối soát số liệu cuối ngày cho toàn cụm 12 kho.',
-      'Phân bổ nhân lực theo khối lượng hàng, theo dõi tiến độ trong ngày, dự báo nhu cầu lao động ngày kế tiếp.',
-      'Cảnh báo nhân sự dưới chỉ tiêu, báo cáo kèm đề xuất cho quản lý cụm.',
-    ],
-  },
-  {
-    chucDanh: 'Nhân viên Vận hành',
-    noi: 'Giao Hàng Tiết Kiệm (GHTK)',
-    thoiGian: '2024',
-    viec: ['Điều phối nhân sự, xử lý sự cố phát sinh để giữ chất lượng dịch vụ cho khách hàng.'],
-  },
-  {
-    chucDanh: 'Nhân viên Kiểm tra Chất lượng (QC)',
-    noi: 'Thaco Trường Hải',
-    thoiGian: '2023 – 2024',
-    viec: ['Kiểm tra chất lượng xe theo quy trình và tiêu chuẩn nhà máy: cẩn thận, tư duy checklist.'],
-  },
+const MENU = [
+  ['Trang chủ', '#trang-chu'],
+  ['Giới thiệu', '#gioi-thieu'],
+  ['Kinh nghiệm', '#kinh-nghiem'],
+  ['Học vấn', '#hoc-van'],
+  ['Kỹ năng', '#ky-nang'],
+  ['Mục tiêu', '#muc-tieu'],
+  ['Liên hệ', '#lien-he'],
 ]
 
-const DU_AN: { ten: string; link?: string; moTa: string; nhan: string }[] = [
-  {
-    ten: 'Fanpage & TikTok Công Nghệ 24H',
-    link: 'https://www.facebook.com/102093421307437',
-    moTa: 'Tự xây kênh tin công nghệ: 3 lượt bài mỗi ngày, hẹn giờ theo giờ vàng, thống kê tương tác, trả lời bình luận.',
-    nhan: 'Mạng xã hội',
-  },
-  {
-    ten: 'Daily Report Hub',
-    moTa: 'Báo cáo ngày tự động; được chọn dự thi AI Innovator Awards của SPX.',
-    nhan: 'Báo cáo',
-  },
-  {
-    ten: 'SPX Command Center',
-    moTa: 'Điều hành cụm 12 kho: dashboard, đối soát dữ liệu, cảnh báo nhân sự dưới chỉ tiêu.',
-    nhan: 'Vận hành',
-  },
-  {
-    ten: 'Durian Frozen System',
-    moTa: 'Quản lý kho cấp đông, sản lượng, tỷ lệ thu hồi; đang dùng thực tế.',
-    nhan: 'Đối soát',
-  },
+const KY_NANG_MUC: [string, number][] = [
+  ['Đối soát, báo cáo số liệu', 90],
+  ['Excel / Google Sheets', 90],
+  ['Điều phối, theo dõi tiến độ', 85],
+  ['Giao tiếp, chăm sóc khách hàng', 85],
+  ['Soạn hợp đồng, văn bản', 80],
+  ['Vận hành Fanpage, TikTok', 80],
 ]
 
-const KY_NANG = [
-  'Theo dõi tiến độ, nhắc việc',
-  'Báo cáo kèm đề xuất',
-  'Đối soát số liệu',
-  'Soạn hợp đồng, văn bản',
-  'Chăm sóc khách hàng',
-  'Vận hành Fanpage, TikTok',
+const LOGO: Record<string, string> = { 'Công ty TNHH Trái Cây 001': '001', 'SPX Express': 'SPX', 'Giao Hàng Tiết Kiệm': 'GHTK', 'Thaco Trường Hải': 'THACO' }
+const logoCua = (noi: string) => Object.entries(LOGO).find(([k]) => noi.startsWith(k))?.[1] ?? noi.slice(0, 3)
+
+const HANH_TRINH = [
+  { nam: '2022', viec: 'Tốt nghiệp Cao đẳng Công nghệ Ô tô' },
+  { nam: '2023', viec: 'QC – Thaco Trường Hải' },
+  { nam: '2024', viec: 'Vận hành – GHTK, rồi SPX Express (cụm 12 kho)' },
+  { nam: '2026', viec: 'Trợ lý Giám đốc – Công ty TNHH Trái Cây 001' },
+  { nam: 'Tiếp theo', viec: 'Trợ lý chuyên nghiệp, gắn bó lâu dài tại Buôn Ma Thuột', moi: true },
 ]
-const CONG_CU = ['Excel / Sheets', 'Google Workspace', 'Word', 'Apps Script', 'AI (Gemini, Claude)', 'Next.js', 'Supabase']
-const SAN_SANG = [
-  'T2 – sáng T7, 8h–17h tại Buôn Ma Thuột',
-  'Học nhanh CapCut, quay chụp nội dung',
-  'Học ghi sổ thu – chi theo quy trình công ty',
-  'Tăng ca khi công việc cần',
-]
+
+// Biểu tượng nét mảnh (kiểu Lucide), vẽ bằng SVG để không phải cài thêm thư viện
+const BT = {
+  lich: <><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M16 3v4M8 3v4M3 10h18" /></>,
+  ghim: <><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></>,
+  dt: <path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z" />,
+  thu: <><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 7 9 6 9-6" /></>,
+  nguoi: <><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></>,
+  cap: <><rect x="3" y="7" width="18" height="13" rx="2" /><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 13h18" /></>,
+  mu: <><path d="m2 9 10-5 10 5-10 5z" /><path d="M6 11v5c0 1.5 3 3 6 3s6-1.5 6-3v-5M22 9v6" /></>,
+  bia: <><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="5" /><circle cx="12" cy="12" r="1.5" /></>,
+  sao: <path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z" />,
+  bieuDo: <><path d="M3 3v18h18" /><path d="m7 15 4-4 3 3 6-6" /></>,
+  tim: <path d="M12 20s-8-4.6-8-10.5A4.5 4.5 0 0 1 12 7a4.5 4.5 0 0 1 8 2.5C20 15.4 12 20 12 20z" />,
+  duLich: <><path d="M2 16 22 8M6 12l-2-4 3-1 4 3M13 9l3-6 3 1-2 7" /><path d="M3 21h18" /></>,
+  theThao: <><circle cx="12" cy="12" r="9" /><path d="M12 3v18M3 12h18M5.6 5.6c3.5 3.5 3.5 9.3 0 12.8M18.4 5.6c-3.5 3.5-3.5 9.3 0 12.8" /></>,
+  mayTinh: <><rect x="3" y="4" width="18" height="12" rx="2" /><path d="M8 20h8M12 16v4" /></>,
+  nhac: <><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></>,
+  tai: <path d="M12 3v12m0 0-4-4m4 4 4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />,
+  guiThu: <path d="m22 2-9.5 9.5M22 2l-7 20-3.5-8.5L3 10z" />,
+  dung: <path d="m5 12 5 5L20 7" />,
+  ngoac: <path d="M7 7h4v4c0 3-1.5 5-4 6M15 7h4v4c0 3-1.5 5-4 6" />,
+}
+
+function Icon({ ten, className = 'h-5 w-5' }: { ten: keyof typeof BT; className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden>
+      {BT[ten]}
+    </svg>
+  )
+}
+
+function The({ id, icon, tieuDe, children, tre = 0 }: { id?: string; icon: keyof typeof BT; tieuDe: string; children: ReactNode; tre?: number }) {
+  return (
+    <HienDan tre={tre}>
+      <section id={id} className="scroll-mt-24 rounded-2xl bg-white p-6 shadow-[0_2px_20px_-6px_rgba(15,27,61,0.15)] ring-1 ring-slate-200/70">
+        <h2 className="mb-5 flex items-center gap-3 text-lg font-extrabold uppercase tracking-wide text-[#0f1b3d]">
+          <span className="grid h-9 w-9 place-items-center rounded-full bg-blue-50 text-blue-600">
+            <Icon ten={icon} className="h-[18px] w-[18px]" />
+          </span>
+          {tieuDe}
+        </h2>
+        {children}
+      </section>
+    </HienDan>
+  )
+}
 
 export default function TrangCV() {
-  return (
-    <main className="min-h-screen bg-slate-200/70 px-3 py-6 print:bg-white print:p-0 sm:px-6 sm:py-10">
-      {/* Nút hành động (ẩn khi in) */}
-      <div className="mx-auto mb-4 flex max-w-5xl flex-wrap justify-end gap-2 print:hidden">
-        <a href={`tel:${DIEN_THOAI.replace(/\s/g, '')}`} className="btn btn-phu">📞 Gọi</a>
-        <a href={`https://zalo.me/${DIEN_THOAI.replace(/\s/g, '')}`} target="_blank" rel="noreferrer" className="btn btn-phu">
-          💬 Zalo
-        </a>
-        <NutIn />
-      </div>
+  const thongTin: [keyof typeof BT, string, string, string?][] = [
+    ['lich', 'Ngày sinh', NGAY_SINH],
+    ['ghim', 'Địa chỉ', DIA_CHI],
+    ['dt', 'Điện thoại', DIEN_THOAI, `tel:${DIEN_THOAI.replace(/\s/g, '')}`],
+    ['thu', 'Email', EMAIL, `mailto:${EMAIL}`],
+  ]
 
-      <article className="mx-auto grid max-w-5xl overflow-hidden rounded-3xl bg-white shadow-xl ring-1 ring-slate-900/5 print:min-h-[297mm] print:max-w-none print:rounded-none print:shadow-none print:ring-0 md:grid-cols-[290px_1fr] print:grid-cols-[230px_1fr]">
-        {/* Cột trái */}
-        <aside className="relative bg-[#0f1b3d] px-6 py-8 text-white print:px-5 print:py-6 sm:px-7">
-          <div className="absolute inset-y-0 right-0 hidden w-1.5 bg-amber-400 md:block print:block" />
-          <div className="flex flex-col items-center text-center">
-            <div className="flex h-28 w-28 items-center justify-center rounded-full bg-gradient-to-br from-amber-300 to-amber-500 p-1 print:h-20 print:w-20">
-              <div className="flex h-full w-full items-center justify-center rounded-full bg-[#16275a] text-3xl font-black tracking-tight text-amber-300 print:text-2xl">
-                BT
+  return (
+    <div id="trang-chu" className="min-h-screen scroll-smooth bg-slate-100 text-slate-700">
+      {/* Thanh điều hướng */}
+      <header className="sticky top-0 z-30 bg-[#0b1631]/95 text-white backdrop-blur print:hidden">
+        <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3 sm:px-6">
+          <a href="#trang-chu" className="flex shrink-0 items-center gap-3">
+            <span className="grid h-10 w-10 place-items-center rounded-full border-2 border-blue-400 text-sm font-black text-blue-300">TB</span>
+            <span className="leading-tight">
+              <span className="block font-extrabold">Nông Bảo Trọng</span>
+              <span className="block text-[11px] font-semibold tracking-[0.2em] text-blue-300">CV CÁ NHÂN</span>
+            </span>
+          </a>
+          <nav className="ml-auto hidden items-center gap-1 lg:flex">
+            {MENU.map(([ten, href], i) => (
+              <a
+                key={href}
+                href={href}
+                className={`rounded-lg px-3 py-2 text-sm font-semibold transition hover:bg-white/10 hover:text-white ${i === 0 ? 'text-white' : 'text-white/70'}`}
+              >
+                {ten}
+              </a>
+            ))}
+          </nav>
+          <a
+            href="/cv/ban-in"
+            className="ml-auto flex shrink-0 items-center gap-2 rounded-lg border border-blue-400 px-3.5 py-2 text-sm font-bold text-blue-200 transition hover:bg-blue-500 hover:text-white lg:ml-2"
+          >
+            <Icon ten="tai" className="h-4 w-4" /> Tải CV PDF
+          </a>
+        </div>
+        {/* Điện thoại: menu cuộn ngang */}
+        <nav className="flex gap-1 overflow-x-auto border-t border-white/10 px-3 py-1.5 lg:hidden">
+          {MENU.map(([ten, href]) => (
+            <a key={href} href={href} className="shrink-0 rounded-md px-3 py-1.5 text-[13px] font-semibold text-white/75 hover:text-white">
+              {ten}
+            </a>
+          ))}
+        </nav>
+      </header>
+
+      {/* Phần mở đầu */}
+      <section className="relative overflow-hidden bg-[#0b1631] text-white">
+        <Image src="/cv/nen.jpg" alt="" fill priority sizes="100vw" className="object-cover object-right opacity-70" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0b1631] via-[#0b1631]/85 to-[#0b1631]/10" />
+        <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#0b1631]/70 to-transparent" />
+
+        <div className="relative mx-auto grid max-w-7xl items-center gap-8 px-4 pb-14 pt-10 sm:px-6 md:grid-cols-[300px_1fr] lg:grid-cols-[340px_1fr_220px] lg:pb-16 lg:pt-12">
+          <HienDan className="mx-auto w-full max-w-[300px] md:max-w-none">
+            <div className="relative">
+              <div className="absolute -inset-2 rounded-[28px] bg-gradient-to-br from-blue-500/60 to-amber-400/40 blur-md" />
+              <Image
+                src="/cv/chan-dung.jpg"
+                alt="Ảnh chân dung Nông Bảo Trọng"
+                width={255}
+                height={390}
+                priority
+                className="relative aspect-[4/5] w-full rounded-3xl object-cover object-top ring-2 ring-white/20"
+              />
+            </div>
+            <p className={`${viTay.className} mt-4 text-center text-2xl leading-snug text-blue-300`}>
+              Không ngừng học hỏi
+              <br />
+              Không ngừng phát triển
+            </p>
+          </HienDan>
+
+          <HienDan tre={120}>
+            <p className="text-lg font-semibold text-blue-300">Xin chào, tôi là</p>
+            <h1 className="mt-1 text-4xl font-black tracking-tight sm:text-6xl">
+              NÔNG BẢO <span className="text-blue-400">TRỌNG</span>
+            </h1>
+            <p className="mt-3 inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-sm font-bold text-amber-300 ring-1 ring-white/15 sm:text-base">
+              Trợ lý Giám đốc · Vận hành & Báo cáo số liệu
+            </p>
+            <p className="mt-5 max-w-2xl text-[15px] leading-relaxed text-white/80 sm:text-base">
+              Đang làm Trợ lý Giám đốc tại Công ty TNHH Trái Cây 001: kiểm soát sản lượng, báo cáo định kỳ, soạn hợp đồng với đối tác.
+              Gần 2 năm vận hành cụm 12 kho SPX Express. Cẩn thận với số liệu, chủ động nhắc việc, luôn đi kèm đề xuất khi báo cáo.
+            </p>
+
+            <ul className="mt-6 grid max-w-2xl gap-3 sm:grid-cols-2">
+              {thongTin.map(([icon, nhan, giaTri, href]) => (
+                <li key={nhan} className="flex items-center gap-3">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-blue-500/20 text-blue-300 ring-1 ring-blue-400/30">
+                    <Icon ten={icon} className="h-[18px] w-[18px]" />
+                  </span>
+                  <span className="min-w-0 leading-tight">
+                    <span className="block text-xs text-white/50">{nhan}</span>
+                    {href ? (
+                      <a href={href} className="block break-all text-sm font-semibold hover:text-blue-300">
+                        {giaTri}
+                      </a>
+                    ) : (
+                      <span className="block text-sm font-semibold">{giaTri}</span>
+                    )}
+                  </span>
+                </li>
+              ))}
+            </ul>
+
+            <div className="mt-8 flex flex-wrap gap-3">
+              <a href="/cv/ban-in" className="flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-bold shadow-lg shadow-blue-900/40 transition hover:bg-blue-500">
+                <Icon ten="tai" className="h-5 w-5" /> Tải CV PDF
+              </a>
+              <a href="#lien-he" className="flex items-center gap-2 rounded-xl border border-white/40 px-6 py-3 font-bold transition hover:bg-white hover:text-[#0b1631]">
+                <Icon ten="guiThu" className="h-5 w-5" /> Liên hệ ngay
+              </a>
+            </div>
+          </HienDan>
+
+          <HienDan tre={240} className="hidden self-start pt-6 lg:block">
+            <p className={`${viTay.className} text-right text-3xl leading-snug text-amber-200 drop-shadow`}>
+              “Kỹ năng hôm nay
+              <br />
+              là giá trị ngày mai”
+            </p>
+          </HienDan>
+        </div>
+      </section>
+
+      {/* Lưới thông tin 3 cột */}
+      <main className="relative mx-auto -mt-6 grid max-w-7xl gap-6 px-4 pb-12 sm:px-6 lg:grid-cols-3">
+        {/* Cột 1 */}
+        <div className="space-y-6">
+          <The id="gioi-thieu" icon="nguoi" tieuDe="Thông tin cá nhân">
+            <ul className="space-y-3.5 text-sm">
+              {[...thongTin, ['cap', 'Vị trí ứng tuyển', 'Trợ lý – Buôn Ma Thuột'] as const].map(([icon, nhan, giaTri]) => (
+                <li key={nhan} className="flex items-start gap-3">
+                  <Icon ten={icon} className="mt-0.5 h-[18px] w-[18px] shrink-0 text-blue-600" />
+                  <span className="w-24 shrink-0 text-slate-500">{nhan}</span>
+                  <span className="min-w-0 break-words font-semibold text-slate-800">{giaTri}</span>
+                </li>
+              ))}
+            </ul>
+          </The>
+
+          <The id="ky-nang" icon="sao" tieuDe="Kỹ năng" tre={80}>
+            <ul className="space-y-4">
+              {KY_NANG_MUC.map(([ten, pt]) => (
+                <li key={ten}>
+                  <div className="mb-1.5 flex justify-between text-sm">
+                    <span className="font-semibold text-slate-800">{ten}</span>
+                    <span className="font-bold text-blue-600">{pt}%</span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                    <div className="h-full rounded-full bg-gradient-to-r from-blue-600 to-sky-400" style={{ width: `${pt}%` }} />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </The>
+
+          <The icon="tim" tieuDe="Sở thích" tre={160}>
+            <ul className="grid grid-cols-4 gap-2 text-center text-xs font-semibold text-slate-600">
+              {(
+                [
+                  ['duLich', 'Du lịch'],
+                  ['theThao', 'Thể thao'],
+                  ['mayTinh', 'Công nghệ'],
+                  ['nhac', 'Âm nhạc'],
+                ] as const
+              ).map(([icon, ten]) => (
+                <li key={ten} className="flex flex-col items-center gap-2">
+                  <span className="grid h-12 w-12 place-items-center rounded-2xl bg-blue-50 text-blue-600">
+                    <Icon ten={icon} className="h-6 w-6" />
+                  </span>
+                  {ten}
+                </li>
+              ))}
+            </ul>
+            <p className="mt-5 rounded-xl bg-slate-50 px-4 py-3 text-center text-sm italic text-slate-600">
+              “Luôn cố gắng mỗi ngày để trở thành phiên bản tốt hơn của chính mình.”
+            </p>
+          </The>
+        </div>
+
+        {/* Cột 2 */}
+        <div className="space-y-6">
+          <The id="kinh-nghiem" icon="cap" tieuDe="Kinh nghiệm làm việc" tre={60}>
+            <ol className="space-y-5">
+              {KINH_NGHIEM.map((k) => (
+                <li key={k.chucDanh + k.noi} className="flex gap-4">
+                  <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-[#0f1b3d] text-[11px] font-black tracking-tight text-amber-300">
+                    {logoCua(k.noi)}
+                  </span>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-baseline justify-between gap-x-2">
+                      <h3 className="font-extrabold text-[#0f1b3d]">{k.noi.split(' · ')[0]}</h3>
+                      <span className="text-xs font-bold text-blue-600">{k.thoiGian}</span>
+                    </div>
+                    <p className="text-sm font-semibold text-slate-500">{k.chucDanh}</p>
+                    <ul className="mt-1.5 space-y-1 text-sm leading-relaxed">
+                      {k.viec.map((v) => (
+                        <li key={v} className="flex gap-2">
+                          <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-500" />
+                          {v}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </The>
+
+          <The id="hoc-van" icon="mu" tieuDe="Học vấn" tre={140}>
+            <div className="flex gap-4">
+              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-600">
+                <Icon ten="mu" className="h-6 w-6" />
+              </span>
+              <div>
+                <h3 className="font-extrabold text-[#0f1b3d]">Trường Cao đẳng Phương Đông, Đà Nẵng</h3>
+                <p className="text-sm font-semibold text-slate-500">Cao đẳng Công nghệ Ô tô · Tốt nghiệp 2022</p>
               </div>
             </div>
-            <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.3em] text-amber-300/90">Curriculum Vitae</p>
-          </div>
+          </The>
 
-          <Muc tieuDe="Liên hệ">
-            <dl className="space-y-3 text-sm print:space-y-1.5 print:text-[11px]">
-              <DongLienHe nhan="Điện thoại">
-                <a href={`tel:${DIEN_THOAI.replace(/\s/g, '')}`} className="hover:text-amber-300">{DIEN_THOAI}</a>
-              </DongLienHe>
-              <DongLienHe nhan="Email">
-                <a href={`mailto:${EMAIL}`} className="break-all hover:text-amber-300">{EMAIL}</a>
-              </DongLienHe>
-              <DongLienHe nhan="Nơi ở">TP. Buôn Ma Thuột, Đắk Lắk</DongLienHe>
-              <DongLienHe nhan="Ngày sinh">03/04/2001</DongLienHe>
-            </dl>
-          </Muc>
-
-          <Muc tieuDe="Kỹ năng">
-            <ul className="space-y-1.5 text-sm print:space-y-0.5 print:text-[11px]">
-              {KY_NANG.map((k) => (
-                <li key={k} className="flex gap-2">
-                  <span className="text-amber-400">◆</span>
-                  {k}
-                </li>
-              ))}
-            </ul>
-          </Muc>
-
-          <Muc tieuDe="Công cụ">
-            <div className="flex flex-wrap gap-1.5">
-              {CONG_CU.map((c) => (
-                <span key={c} className="rounded-full border border-white/25 px-2.5 py-1 text-xs print:py-0.5 print:text-[10px]">
-                  {c}
-                </span>
-              ))}
-            </div>
-          </Muc>
-
-          <Muc tieuDe="Học vấn">
-            <p className="text-sm font-bold print:text-[11px]">Cao đẳng Công nghệ Ô tô</p>
-            <p className="text-sm text-white/70 print:text-[11px]">Trường Cao đẳng Phương Đông, Đà Nẵng · 2022</p>
-            <p className="mt-2 text-sm text-white/70 print:mt-1 print:text-[11px]">Tự học lập trình, xây công cụ quản trị vận hành</p>
-          </Muc>
-
-          <Muc tieuDe="Sẵn sàng">
-            <ul className="space-y-1.5 text-sm print:space-y-0.5 print:text-[11px]">
-              {SAN_SANG.map((s) => (
-                <li key={s} className="flex gap-2">
-                  <span className="text-amber-400">◆</span>
-                  {s}
-                </li>
-              ))}
-            </ul>
-          </Muc>
-        </aside>
-
-        {/* Cột phải */}
-        {/* Điện thoại: phần này (tên, kinh nghiệm) lên trước cột liên hệ */}
-        <div className="order-first px-6 py-8 md:order-none print:order-none print:px-7 print:py-6 sm:px-10">
-          <h1 className="text-4xl font-black tracking-tight text-[#0f1b3d] print:text-3xl sm:text-5xl">NÔNG BẢO TRỌNG</h1>
-          <p className="mt-3 inline-block border-l-4 border-amber-400 bg-amber-50 px-4 py-1.5 text-base font-bold text-amber-700 print:mt-2 print:py-1 print:text-sm">
-            Ứng tuyển: Trợ lý – Buôn Ma Thuột
-          </p>
-          <p className="mt-5 text-[15px] leading-relaxed text-slate-700 print:mt-3 print:text-[11.5px] print:leading-snug">
-            <b className="text-slate-900">Đang làm Trợ lý Giám đốc</b> tại Công ty TNHH Trái Cây 001, phụ trách kiểm soát sản lượng, báo
-            cáo định kỳ và soạn hợp đồng với đối tác. Gần 2 năm vận hành <b className="text-slate-900">cụm 12 kho SPX Express</b>: điều phối
-            nhân sự, đối soát số liệu cuối ngày, báo cáo kèm đề xuất cho quản lý.
-          </p>
-
-          <TieuDe so="01">Kinh nghiệm làm việc</TieuDe>
-          <ol className="relative space-y-5 border-l-2 border-slate-200 pl-6 print:space-y-2.5 print:pl-5">
-            {KINH_NGHIEM.map((k) => (
-              <li key={k.chucDanh + k.noi} className="relative">
-                <span className="absolute -left-[31px] top-1 h-3.5 w-3.5 rounded-full border-2 border-amber-400 bg-white print:-left-[27px] print:h-3 print:w-3" />
-                <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-                  <h3 className="font-extrabold text-[#0f1b3d] print:text-[12.5px]">{k.chucDanh}</h3>
-                  <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-700 print:text-[10px]">
-                    {k.thoiGian}
+          <The id="muc-tieu" icon="bia" tieuDe="Mục tiêu nghề nghiệp" tre={220}>
+            <ul className="space-y-2.5 text-sm">
+              {[
+                ['Ngắn hạn', 'Nắm nhanh quy trình công ty, hỗ trợ Giám đốc theo dõi tiến độ, báo cáo và giấy tờ chính xác, đúng hạn.'],
+                ['Trung hạn', 'Học thêm quay dựng video (CapCut) và ghi sổ thu – chi để hỗ trợ được nhiều việc hơn.'],
+                ['Dài hạn', 'Trở thành trợ lý đáng tin cậy, gắn bó lâu dài và cùng công ty phát triển tại Buôn Ma Thuột.'],
+              ].map(([moc, noiDung]) => (
+                <li key={moc} className="flex gap-3">
+                  <Icon ten="dung" className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
+                  <span>
+                    <b className="text-slate-800">{moc}:</b> {noiDung}
                   </span>
-                </div>
-                <p className="text-sm font-semibold text-amber-600 print:text-[11px]">{k.noi}</p>
-                <ul className="mt-1.5 space-y-1 text-sm leading-relaxed text-slate-700 print:mt-0.5 print:space-y-0 print:text-[11px] print:leading-snug">
-                  {k.viec.map((v) => (
-                    <li key={v} className="flex gap-2">
-                      <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500 print:mt-1.5 print:h-1 print:w-1" />
-                      {v}
-                    </li>
-                  ))}
-                </ul>
-              </li>
-            ))}
-          </ol>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-4 rounded-xl border-l-4 border-blue-500 bg-blue-50 px-4 py-3 text-sm font-medium text-blue-900">
+              Sẵn sàng làm T2 – sáng T7, 8h–17h tại Buôn Ma Thuột và tăng ca khi công việc cần.
+            </p>
+          </The>
+        </div>
 
-          <TieuDe so="02">Dự án tự xây dựng</TieuDe>
-          <div className="grid gap-3 sm:grid-cols-2 print:grid-cols-2 print:gap-2">
-            {DU_AN.map((d) => (
-              <div key={d.ten} className="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200/70 print:rounded-lg print:p-2.5">
-                <div className="flex items-start justify-between gap-2">
-                  <h3 className="font-extrabold text-[#0f1b3d] print:text-[12px]">
+        {/* Cột 3 */}
+        <div className="space-y-6">
+          <The icon="bieuDo" tieuDe="Quá trình & mục tiêu" tre={120}>
+            <ol className="relative space-y-5 border-l-2 border-dashed border-blue-200 pl-6">
+              {HANH_TRINH.map((m) => (
+                <li key={m.nam} className="relative">
+                  <span
+                    className={`absolute -left-[33px] top-0.5 h-4 w-4 rounded-full border-4 ${
+                      m.moi ? 'border-amber-300 bg-amber-500' : 'border-blue-100 bg-blue-600'
+                    }`}
+                  />
+                  <p className={`text-sm font-black ${m.moi ? 'text-amber-600' : 'text-blue-600'}`}>{m.nam}</p>
+                  <p className="text-sm font-semibold text-slate-700">{m.viec}</p>
+                </li>
+              ))}
+            </ol>
+          </The>
+
+          <The icon="sao" tieuDe="Dự án nổi bật" tre={200}>
+            <ul className="space-y-3.5">
+              {DU_AN.map((d) => (
+                <li key={d.ten} className="flex gap-3 text-sm">
+                  <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-emerald-500 text-white">
+                    <Icon ten="dung" className="h-3 w-3" />
+                  </span>
+                  <span>
                     {d.link ? (
-                      <a href={d.link} target="_blank" rel="noreferrer" className="underline decoration-amber-400 decoration-2 underline-offset-2 hover:text-amber-700">
+                      <a href={d.link} target="_blank" rel="noreferrer" className="font-bold text-[#0f1b3d] underline decoration-blue-400 underline-offset-2 hover:text-blue-600">
                         {d.ten}
                       </a>
                     ) : (
-                      d.ten
+                      <b className="text-[#0f1b3d]">{d.ten}</b>
                     )}
-                  </h3>
-                  <span className="shrink-0 rounded-full bg-[#0f1b3d] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-300 print:text-[8.5px]">
-                    {d.nhan}
+                    <span className="block text-slate-600">{d.moTa}</span>
                   </span>
-                </div>
-                <p className="mt-1.5 text-sm leading-relaxed text-slate-600 print:mt-1 print:text-[10.5px] print:leading-snug">{d.moTa}</p>
-              </div>
-            ))}
-          </div>
+                </li>
+              ))}
+            </ul>
+          </The>
 
-          <TieuDe so="03">Phong cách làm việc</TieuDe>
-          <div className="flex flex-wrap gap-2 print:gap-1.5">
-            {['Cẩn thận, làm việc có số liệu', 'Chủ động báo cáo kèm đề xuất', 'Kỷ luật, tư duy quy trình', 'Giao tiếp rõ ràng với đối tác, khách hàng'].map(
-              (p) => (
-                <span key={p} className="rounded-full bg-amber-50 px-3 py-1.5 text-sm font-semibold text-amber-800 ring-1 ring-amber-200 print:py-0.5 print:text-[10.5px]">
-                  {p}
-                </span>
-              ),
-            )}
-          </div>
-
-          <p className="mt-8 text-right text-sm italic text-slate-500 print:mt-4 print:text-[10.5px]">
-            Tôi cam đoan những thông tin trên là đúng sự thật. <b className="not-italic text-slate-800">Nông Bảo Trọng</b>
-          </p>
+          <HienDan tre={280}>
+            <figure className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0f1b3d] to-[#1e3a8a] p-6 text-white shadow-lg">
+              <Icon ten="ngoac" className="h-10 w-10 text-blue-300/60" />
+              <blockquote className="mt-2 text-lg font-semibold leading-relaxed">
+                Mỗi trải nghiệm là một bài học, mỗi thử thách là một cơ hội để phát triển.
+              </blockquote>
+              <figcaption className={`${viTay.className} mt-4 text-right text-3xl text-amber-300`}>Nông Bảo Trọng</figcaption>
+            </figure>
+          </HienDan>
         </div>
-      </article>
-    </main>
-  )
-}
+      </main>
 
-function Muc({ tieuDe, children }: { tieuDe: string; children: ReactNode }) {
-  return (
-    <section className="mt-8 print:mt-4">
-      <h2 className="mb-3 flex items-center gap-3 text-sm font-extrabold uppercase tracking-[0.2em] text-amber-400 print:mb-1.5 print:text-[11px]">
-        {tieuDe}
-        <span className="h-0.5 flex-1 bg-amber-400/60" />
-      </h2>
-      {children}
-    </section>
-  )
-}
-
-function DongLienHe({ nhan, children }: { nhan: string; children: ReactNode }) {
-  return (
-    <div>
-      <dt className="text-[10px] font-semibold uppercase tracking-widest text-white/50">{nhan}</dt>
-      <dd className="font-medium">{children}</dd>
+      {/* Liên hệ */}
+      <section id="lien-he" className="scroll-mt-20 bg-[#0b1631] text-white">
+        <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 lg:grid-cols-2">
+          <HienDan>
+            <p className="text-sm font-bold uppercase tracking-[0.2em] text-blue-300">Liên hệ</p>
+            <h2 className="mt-2 text-3xl font-black sm:text-4xl">Rất mong được trao đổi cùng anh/chị</h2>
+            <p className="mt-4 max-w-md leading-relaxed text-white/70">
+              Gọi điện, nhắn Zalo hoặc để lại lời nhắn bên cạnh, tôi sẽ phản hồi trong ngày.
+            </p>
+            <ul className="mt-8 space-y-4">
+              {thongTin.slice(1).map(([icon, nhan, giaTri, href]) => (
+                <li key={nhan} className="flex items-center gap-4">
+                  <span className="grid h-11 w-11 place-items-center rounded-full bg-blue-500/20 text-blue-300 ring-1 ring-blue-400/30">
+                    <Icon ten={icon} />
+                  </span>
+                  {href ? (
+                    <a href={href} className="font-semibold hover:text-blue-300">
+                      {giaTri}
+                    </a>
+                  ) : (
+                    <span className="font-semibold">{giaTri}</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </HienDan>
+          <HienDan tre={150}>
+            <FormLienHe />
+          </HienDan>
+        </div>
+        <footer className="border-t border-white/10 py-5 text-center text-sm text-white/50">© 2026 Nông Bảo Trọng · CV cá nhân</footer>
+      </section>
     </div>
-  )
-}
-
-function TieuDe({ so, children }: { so: string; children: ReactNode }) {
-  return (
-    <h2 className="mb-4 mt-8 flex items-center gap-3 text-lg font-black uppercase tracking-wide text-[#0f1b3d] print:mb-2 print:mt-4 print:text-[13px]">
-      <span className="rounded-md bg-[#0f1b3d] px-2 py-0.5 text-xs text-amber-300 print:text-[10px]">{so}</span>
-      {children}
-      <span className="h-px flex-1 bg-slate-200" />
-    </h2>
   )
 }

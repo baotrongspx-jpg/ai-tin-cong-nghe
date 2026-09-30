@@ -156,8 +156,8 @@ export default function TrangCV() {
               <Image
                 src="/cv/chan-dung.jpg"
                 alt="Ảnh chân dung Nông Bảo Trọng"
-                width={255}
-                height={390}
+                width={512}
+                height={640}
                 priority
                 className="relative aspect-[4/5] w-full rounded-3xl object-cover object-top ring-2 ring-white/20"
               />

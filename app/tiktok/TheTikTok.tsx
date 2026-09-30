@@ -4,7 +4,6 @@ import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import type { BaiViet } from '@/lib/db'
 import { taoChuThichTikTok } from '@/lib/chuThich'
-import { TEN_CHE_DO } from '@/lib/cheDoTikTok'
 import { boDanhDauTikTok, dangCaHai, dangTikTok } from '../actions'
 
 const gio = (s: string) =>
@@ -16,10 +15,8 @@ export default function TheTikTok({
   taiKhoan,
 }: {
   bai: BaiViet
-  taiKhoan: { cheDo: string[]; khoaBinhLuan: boolean } | null
+  taiKhoan: { khoaBinhLuan: boolean } | null
 }) {
-  // Không chọn sẵn "Ai có thể xem": TikTok yêu cầu người đăng tự chọn
-  const [cheDo, setCheDo] = useState('')
   const [choBinhLuan, setChoBinhLuan] = useState(true)
   const [dangLam, startTransition] = useTransition()
   const [thongBao, setThongBao] = useState<{ loai: 'ok' | 'loi'; chu: string } | null>(
@@ -75,34 +72,17 @@ export default function TheTikTok({
         </div>
 
         {!daDang && taiKhoan && (
-          <div className="grid gap-3 rounded-lg border border-slate-200 p-3 sm:grid-cols-2">
-            <div>
-              <label className="label" htmlFor={`che-do-${bai.id}`}>Ai có thể xem</label>
-              <select
-                id={`che-do-${bai.id}`}
-                className="input"
-                value={cheDo}
-                onChange={(e) => setCheDo(e.target.value)}
-                disabled={dangLam}
-              >
-                <option value="" disabled>Chọn…</option>
-                {taiKhoan.cheDo.map((c) => (
-                  <option key={c} value={c}>{TEN_CHE_DO[c] ?? c}</option>
-                ))}
-              </select>
-            </div>
-            <div className="flex flex-col justify-end gap-1 text-sm">
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={choBinhLuan && !taiKhoan.khoaBinhLuan}
-                  disabled={taiKhoan.khoaBinhLuan || dangLam}
-                  onChange={(e) => setChoBinhLuan(e.target.checked)}
-                />
-                Cho phép bình luận
-              </label>
-              <span className="text-xs text-slate-500">🎵 TikTok tự thêm nhạc phù hợp</span>
-            </div>
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm">
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={choBinhLuan && !taiKhoan.khoaBinhLuan}
+                disabled={taiKhoan.khoaBinhLuan || dangLam}
+                onChange={(e) => setChoBinhLuan(e.target.checked)}
+              />
+              Cho phép bình luận
+            </label>
+            <span className="text-xs text-slate-500">🎵 TikTok tự thêm nhạc phù hợp</span>
           </div>
         )}
 
@@ -115,9 +95,9 @@ export default function TheTikTok({
         {!daDang && taiKhoan && (
           <div className="space-y-2">
             <button
-              disabled={dangLam || !cheDo}
+              disabled={dangLam}
               onClick={() =>
-                chay(() => dangTikTok(bai.id, { privacy: cheDo, tatBinhLuan: !choBinhLuan }), 'Đã gửi lên TikTok')
+                chay(() => dangTikTok(bai.id, { tatBinhLuan: !choBinhLuan }), 'Đã gửi lên TikTok')
               }
               className="btn bg-slate-900 text-white hover:bg-black"
             >
@@ -126,7 +106,7 @@ export default function TheTikTok({
             {/* Bài chờ duyệt chưa lên Facebook: đăng luôn cả hai nơi */}
             {bai.trang_thai === 'nhap' && !bai.fb_post_id && (
               <button
-                disabled={dangLam || !cheDo}
+                disabled={dangLam}
                 onClick={() => {
                   if (confirm('Đăng bài này lên cả Facebook và TikTok?'))
                     chay(
@@ -134,7 +114,7 @@ export default function TheTikTok({
                         dangCaHai(
                           bai.id,
                           { tieu_de_anh: bai.tieu_de_anh, chu_de: bai.chu_de, noi_dung: bai.noi_dung, hashtag: bai.hashtag.join(' ') },
-                          { privacy: cheDo, tatBinhLuan: !choBinhLuan },
+                          { tatBinhLuan: !choBinhLuan },
                         ),
                       'Đã đăng lên Facebook và TikTok',
                     )

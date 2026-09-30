@@ -91,11 +91,10 @@ export async function dangBai(id: string, sua: SuaBai): Promise<KetQua> {
   }
 }
 
-// Đăng từ trang TikTok: người dùng tự chọn ai được xem và có cho bình luận không (theo quy định của TikTok)
+// Đăng từ trang TikTok. Ai được xem lấy theo TIKTOK_CHE_DO (như lịch tự đăng).
 export async function dangTikTok(id: string, tuyChon: TuyChonDang): Promise<KetQua> {
   await chanChuaDangNhap()
   if (!coTikTok()) return { ok: false, loi: 'Chưa cấu hình TIKTOK_CLIENT_KEY / TIKTOK_CLIENT_SECRET' }
-  if (!tuyChon.privacy) return { ok: false, loi: 'Chọn "Ai có thể xem" trước khi đăng' }
 
   const { data: bai } = await db().from('bai_viet').select('*').eq('id', id).single<BaiViet>()
   if (!bai) return { ok: false, loi: 'Không tìm thấy bài' }
@@ -128,7 +127,6 @@ export async function dangCaHai(id: string, sua: SuaBai, tuyChon: TuyChonDang): 
   await chanChuaDangNhap()
   if (!coFacebook()) return { ok: false, loi: 'Chưa cấu hình FB_PAGE_ID / FB_PAGE_TOKEN' }
   if (!coTikTok()) return { ok: false, loi: 'Chưa cấu hình TIKTOK_CLIENT_KEY / TIKTOK_CLIENT_SECRET' }
-  if (!tuyChon.privacy) return { ok: false, loi: 'Chọn "TikTok: Ai có thể xem" trước khi đăng' }
 
   const luu = await luuBai(id, sua)
   if (!luu.ok) return luu

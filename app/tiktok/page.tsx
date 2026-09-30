@@ -117,7 +117,6 @@ export default async function TrangTikTok({ searchParams }: PageProps<'/tiktok'>
               bai={b}
               taiKhoan={
                 taiKhoan && {
-                  cheDo: taiKhoan.privacy_level_options,
                   khoaBinhLuan: taiKhoan.comment_disabled,
                 }
               }

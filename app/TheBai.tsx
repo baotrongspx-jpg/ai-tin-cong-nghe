@@ -4,21 +4,18 @@ import { useState, useTransition } from 'react'
 import type { BaiViet } from '@/lib/db'
 import { BANG_MAU } from '@/lib/bangMau'
 import { taoChuThich, tachHashtag } from '@/lib/chuThich'
-import { TEN_CHE_DO } from '@/lib/cheDoTikTok'
 import { dangBai, dangCaHai, doiMauAnh, doiTrangThai, luuBai } from './actions'
 
 const gio = (s: string) =>
   new Date(s).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', dateStyle: 'short', timeStyle: 'short' })
 
-// `tiktok`: các chế độ "Ai có thể xem" của tài khoản TikTok đã kết nối, null thì không hiện nút đăng cả 2
-export default function TheBai({ bai, tiktok }: { bai: BaiViet; tiktok: { cheDo: string[] } | null }) {
+// `tiktok`: đã kết nối TikTok thì hiện nút đăng cả 2 nền tảng
+export default function TheBai({ bai, tiktok }: { bai: BaiViet; tiktok: boolean }) {
   const [tieuDe, setTieuDe] = useState(bai.tieu_de_anh)
   const [chuDe, setChuDe] = useState(bai.chu_de)
   const [noiDung, setNoiDung] = useState(bai.noi_dung)
   const [hashtag, setHashtag] = useState(bai.hashtag.map((h) => `#${h}`).join(' '))
   const [dangLam, startTransition] = useTransition()
-  // TikTok yêu cầu người đăng tự chọn, không chọn sẵn
-  const [cheDoTikTok, setCheDoTikTok] = useState('')
   const [thongBao, setThongBao] = useState<{ loai: 'ok' | 'loi'; chu: string } | null>(
     bai.loi && !bai.fb_post_id ? { loai: 'loi', chu: bai.loi } : null,
   )
@@ -117,23 +114,11 @@ export default function TheBai({ bai, tiktok }: { bai: BaiViet; tiktok: { cheDo:
 
         {tiktok && choDang && !bai.fb_post_id && !bai.tiktok_publish_id && (
           <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 p-2">
-            <select
-              aria-label="TikTok: Ai có thể xem"
-              className="input w-auto"
-              value={cheDoTikTok}
-              onChange={(e) => setCheDoTikTok(e.target.value)}
-              disabled={dangLam}
-            >
-              <option value="" disabled>TikTok: Ai có thể xem…</option>
-              {tiktok.cheDo.map((c) => (
-                <option key={c} value={c}>{TEN_CHE_DO[c] ?? c}</option>
-              ))}
-            </select>
             <button
-              disabled={dangLam || !cheDoTikTok}
+              disabled={dangLam}
               onClick={() => {
                 if (confirm('Đăng bài này lên cả Facebook và TikTok?'))
-                  chay(() => dangCaHai(bai.id, sua, { privacy: cheDoTikTok }), 'Đã đăng lên Facebook và TikTok')
+                  chay(() => dangCaHai(bai.id, sua, {}), 'Đã đăng lên Facebook và TikTok')
               }}
               className="btn bg-gradient-to-r from-blue-600 to-slate-900 text-white hover:opacity-90"
             >

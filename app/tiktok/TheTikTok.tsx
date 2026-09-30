@@ -4,17 +4,11 @@ import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import type { BaiViet } from '@/lib/db'
 import { taoChuThichTikTok } from '@/lib/chuThich'
-import { boDanhDauTikTok, dangTikTok } from '../actions'
+import { TEN_CHE_DO } from '@/lib/cheDoTikTok'
+import { boDanhDauTikTok, dangCaHai, dangTikTok } from '../actions'
 
 const gio = (s: string) =>
   new Date(s).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', dateStyle: 'short', timeStyle: 'short' })
-
-const TEN_CHE_DO: Record<string, string> = {
-  PUBLIC_TO_EVERYONE: 'Mọi người',
-  MUTUAL_FOLLOW_FRIENDS: 'Bạn bè',
-  FOLLOWER_OF_CREATOR: 'Người theo dõi',
-  SELF_ONLY: 'Chỉ mình tôi',
-}
 
 // `taiKhoan`: null khi chưa kết nối TikTok → chỉ xem trước, không đăng được
 export default function TheTikTok({
@@ -129,6 +123,27 @@ export default function TheTikTok({
             >
               {dangLam ? 'Đang đăng… (khoảng 15 giây)' : 'Đăng lên TikTok'}
             </button>
+            {/* Bài chờ duyệt chưa lên Facebook: đăng luôn cả hai nơi */}
+            {bai.trang_thai === 'nhap' && !bai.fb_post_id && (
+              <button
+                disabled={dangLam || !cheDo}
+                onClick={() => {
+                  if (confirm('Đăng bài này lên cả Facebook và TikTok?'))
+                    chay(
+                      () =>
+                        dangCaHai(
+                          bai.id,
+                          { tieu_de_anh: bai.tieu_de_anh, chu_de: bai.chu_de, noi_dung: bai.noi_dung, hashtag: bai.hashtag.join(' ') },
+                          { privacy: cheDo, tatBinhLuan: !choBinhLuan },
+                        ),
+                      'Đã đăng lên Facebook và TikTok',
+                    )
+                }}
+                className="btn ml-2 bg-gradient-to-r from-blue-600 to-slate-900 text-white hover:opacity-90"
+              >
+                Đăng cả Facebook + TikTok
+              </button>
+            )}
             <p className="text-xs text-slate-400">
               Khi bấm Đăng, bạn đồng ý với{' '}
               <a

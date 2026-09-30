@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { db, type BaiViet, type TrangThai } from '@/lib/db'
 import { daDangNhap } from '@/lib/xacThuc'
 import { coFacebook } from '@/lib/facebook'
+import { coTikTok, daKetNoiTikTok, layTaiKhoanTikTok } from '@/lib/tiktok'
 import DauTrang from './DauTrang'
 import TheBai from './TheBai'
 
@@ -27,6 +28,10 @@ export default async function TrangChu({ searchParams }: PageProps<'/'>) {
     ...THE.map((t) => db().from('bai_viet').select('id', { count: 'exact', head: true }).eq('trang_thai', t.ma)),
   ])
   const dsBai = (data ?? []) as BaiViet[]
+  // Đã kết nối TikTok thì hiện nút đăng cả 2 nền tảng (chỉ cần khi đang xem bài chờ duyệt)
+  const taiKhoan =
+    dangXem === 'nhap' && coTikTok() && (await daKetNoiTikTok()) ? await layTaiKhoanTikTok().catch(() => null) : null
+  const tiktok = taiKhoan && { cheDo: taiKhoan.privacy_level_options }
 
   return (
     <main className="mx-auto max-w-5xl p-4 sm:p-6">
@@ -64,7 +69,7 @@ export default async function TrangChu({ searchParams }: PageProps<'/'>) {
       ) : (
         <div className="space-y-5">
           {dsBai.map((b) => (
-            <TheBai key={`${b.id}-${b.trang_thai}`} bai={b} />
+            <TheBai key={`${b.id}-${b.trang_thai}`} bai={b} tiktok={tiktok} />
           ))}
         </div>
       )}

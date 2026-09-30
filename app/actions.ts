@@ -121,3 +121,27 @@ export async function boDanhDauTikTok(id: string): Promise<KetQua> {
   refresh()
   return { ok: true }
 }
+
+// Đăng một lần lên cả Facebook và TikTok: lưu chỉnh sửa, đăng Facebook rồi TikTok.
+// Hai nơi độc lập: bên này lỗi vẫn thử bên kia, báo lại kết quả từng nơi.
+export async function dangCaHai(id: string, sua: SuaBai, tuyChon: TuyChonDang): Promise<KetQua> {
+  await chanChuaDangNhap()
+  if (!coFacebook()) return { ok: false, loi: 'Chưa cấu hình FB_PAGE_ID / FB_PAGE_TOKEN' }
+  if (!coTikTok()) return { ok: false, loi: 'Chưa cấu hình TIKTOK_CLIENT_KEY / TIKTOK_CLIENT_SECRET' }
+  if (!tuyChon.privacy) return { ok: false, loi: 'Chọn "TikTok: Ai có thể xem" trước khi đăng' }
+
+  const luu = await luuBai(id, sua)
+  if (!luu.ok) return luu
+  const { data: bai } = await db().from('bai_viet').select('*').eq('id', id).single<BaiViet>()
+  if (!bai) return { ok: false, loi: 'Không tìm thấy bài' }
+
+  const loi: string[] = []
+  const chay = async (ten: string, daCo: boolean, viec: () => Promise<unknown>) => {
+    if (daCo) return
+    await viec().catch((e: Error) => loi.push(`${ten}: ${e.message}`))
+  }
+  await chay('Facebook', !!bai.fb_post_id, () => dangLenFacebook(bai))
+  await chay('TikTok', !!bai.tiktok_publish_id, () => dangLenTikTok(bai, tuyChon))
+  refresh()
+  return loi.length ? { ok: false, loi: loi.join(' · ') } : { ok: true }
+}

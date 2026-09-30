@@ -14,6 +14,8 @@ import { layHashtagXuHuong } from '@/lib/xuHuong'
 import { capNhatSoLieu } from '@/lib/soLieu'
 import { goiYTraLoi } from '@/lib/ai'
 import { anTay, hienLai, traLoi } from '@/lib/binhLuan'
+import { coPixabay } from '@/lib/pixabay'
+import { datAnhNen, timAnhChoBai } from '@/lib/anhNen'
 
 type KetQua = { ok: boolean; loi?: string }
 
@@ -253,6 +255,33 @@ export async function anBinhLuanAction(
   try {
     if (an) await anTay(c)
     else await hienLai(c.id)
+    refresh()
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, loi: e instanceof Error ? e.message : String(e) }
+  }
+}
+
+// ---------- Ảnh nền Pixabay ----------
+
+export async function timAnhNenAction(
+  id: string,
+  tuKhoa?: string,
+): Promise<KetQua & { tuKhoa?: string; ds?: { id: number; xemTruoc: string; tacGia: string }[] }> {
+  await chanChuaDangNhap()
+  if (!coPixabay()) return { ok: false, loi: 'Chưa cấu hình PIXABAY_KEY trên Vercel' }
+  try {
+    const kq = await timAnhChoBai(id, tuKhoa)
+    return { ok: true, tuKhoa: kq.tuKhoa, ds: kq.ds.map(({ id, xemTruoc, tacGia }) => ({ id, xemTruoc, tacGia })) }
+  } catch (e) {
+    return { ok: false, loi: e instanceof Error ? e.message : String(e) }
+  }
+}
+
+export async function datAnhNenAction(id: string, anhNen: number): Promise<KetQua> {
+  await chanChuaDangNhap()
+  try {
+    await datAnhNen(id, anhNen)
     refresh()
     return { ok: true }
   } catch (e) {

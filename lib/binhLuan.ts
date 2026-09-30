@@ -12,7 +12,7 @@ export type BinhLuan = {
   nguoi: string
   luc: string
   daTraLoi: boolean // Fanpage đã trả lời bên dưới
-  bai: Pick<BaiViet, 'id' | 'tieu_de_anh' | 'noi_dung' | 'fb_post_id' | 'chu_de' | 'mau_anh'>
+  bai: Pick<BaiViet, 'id' | 'tieu_de_anh' | 'noi_dung' | 'fb_post_id' | 'chu_de' | 'mau_anh' | 'anh_nen'>
 }
 
 export class ThieuQuyen extends Error {}
@@ -58,7 +58,7 @@ export async function layBinhLuan(ngay = 7): Promise<BinhLuan[]> {
   if (!coBinhLuan.length) return []
   const { data } = await db()
     .from('bai_viet')
-    .select('id, tieu_de_anh, noi_dung, fb_post_id, chu_de, mau_anh')
+    .select('*')
     .in('fb_post_id', coBinhLuan.map((p) => p.id))
   const theoId = new Map(((data ?? []) as BinhLuan['bai'][]).map((b) => [b.fb_post_id, b]))
 

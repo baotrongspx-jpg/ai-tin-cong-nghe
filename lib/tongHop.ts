@@ -7,6 +7,7 @@ import { coFacebook } from './facebook'
 import { coTikTok } from './tiktok'
 import { dangLenFacebook, dangLenTikTok } from './dangBai'
 import { xepHang } from './soLieu'
+import { chonAnhTuDong, thieuCot } from './anhNen'
 
 export type KetQuaTongHop = {
   soTin: number; daChon: number; daViet: number; daDang: number; daDangTikTok: number; loi: string[]
@@ -73,13 +74,21 @@ export async function tongHopTin(
         ngay_bao: t.ngay?.toISOString() ?? null,
         mau_anh: (Date.now() + thuTu) % 5,
       }
-      const { data: moi, error } = await db()
-        .from('bai_viet')
-        .insert(bai ? { ...chung, ...bai } : { ...chung, trang_thai: 'loi', loi: 'AI không viết được bài này' })
-        .select('*')
-        .single<BaiViet>()
-      if (error) throw error
+      const them = (dong: object) => db().from('bai_viet').insert(dong).select('*').single<BaiViet>()
+      let { data: moi, error } = await them(
+        bai ? { ...chung, ...bai } : { ...chung, trang_thai: 'loi', loi: 'AI không viết được bài này' },
+      )
+      // Bảng chưa có cột tu_khoa_anh (chưa chạy SQL ảnh nền): lưu bài không kèm từ khóa
+      if (bai && thieuCot(error)) {
+        const conLai: Partial<typeof bai> = { ...bai }
+        delete conLai.tu_khoa_anh
+        ;({ data: moi, error } = await them({ ...chung, ...conLai }))
+      }
+      if (error || !moi) throw error ?? new Error('Không lưu được bài')
       if (!bai) continue
+      // Tìm ảnh nền trước khi đăng để ảnh bài có nền ảnh chụp
+      const anhNen = await chonAnhTuDong(moi)
+      if (anhNen) moi = { ...moi, anh_nen: anhNen }
       daViet++
       // Facebook và TikTok đăng độc lập: bên này lỗi không chặn bên kia
       if (dangFb) {

@@ -38,3 +38,9 @@ create table if not exists public.cai_dat (
   cap_nhat_luc  timestamptz not null default now()
 );
 alter table public.cai_dat enable row level security;
+
+-- Ảnh nền từ Pixabay (chạy thêm đoạn này nếu bảng đã tạo từ trước)
+-- anh_nen: null = chưa chọn, 0 = không dùng ảnh (nền màu), > 0 = mã ảnh Pixabay
+-- tu_khoa_anh: từ khóa tiếng Anh AI gợi ý để tìm ảnh
+alter table public.bai_viet add column if not exists anh_nen     bigint;
+alter table public.bai_viet add column if not exists tu_khoa_anh text;

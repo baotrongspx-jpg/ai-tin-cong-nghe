@@ -8,6 +8,7 @@ import { gio, truoc } from '@/lib/thoiGian'
 import { dangBai, dangCaHai, doiMauAnh, doiTrangThai, luuBai } from './actions'
 import { thongBao } from './ThongBao'
 import KhungHenGio from './KhungHenGio'
+import ChonAnhNen from './ChonAnhNen'
 import { IconBo, IconChep, IconFacebook, IconLai, IconLuu, IconMo, IconNhac, IconTai, IconTikTok, Xoay } from './BieuTuong'
 
 type Viec = 'fb' | 'ca_hai' | 'luu' | 'mau' | 'trang_thai'
@@ -133,6 +134,7 @@ export default function TheBai({
             </div>
           </div>
         )}
+        {!khoa && <ChonAnhNen baiId={bai.id} anhNen={bai.anh_nen ?? null} />}
         <a href={anhGoc} download={`anh-${bai.id.slice(0, 8)}.png`} className="btn btn-phu w-full">
           <IconTai /> Tải ảnh
         </a>

@@ -17,7 +17,7 @@ export async function GET(req: Request, ctx: RouteContext<'/anh/[id]'>) {
 
   const { data } = await db()
     .from('bai_viet')
-    .select('tieu_de_anh, chu_de, nguon_ten, ngay_bao, tao_luc, mau_anh')
+    .select('*')
     .eq('id', id)
     .maybeSingle()
   if (!data) return new Response('Không tìm thấy', { status: 404 })

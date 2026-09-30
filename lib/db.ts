@@ -22,6 +22,8 @@ export type BaiViet = {
   tiktok_publish_id: string | null
   tiktok_dang_luc: string | null
   tiktok_loi: string | null
+  anh_nen?: number | null // mã ảnh Pixabay; 0: không dùng ảnh (cột thêm sau, bảng cũ có thể chưa có)
+  tu_khoa_anh?: string | null
 }
 
 let client: SupabaseClient | null = null

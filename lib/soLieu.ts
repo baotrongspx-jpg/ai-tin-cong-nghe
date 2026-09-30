@@ -15,6 +15,13 @@ async function docBanGhi(): Promise<BanGhi> {
   return (data?.gia_tri as BanGhi | undefined) ?? { bai: {}, luc: null }
 }
 
+// Bài bỏ khỏi thống kê: đăng qua app Facebook cũ chưa xuất bản nên người theo dõi không thấy,
+// số liệu gần như bằng 0 sẽ làm lệch xếp hạng và giờ vàng
+async function dsBoQua(): Promise<Set<string>> {
+  const { data } = await db().from('cai_dat').select('gia_tri').eq('khoa', 'bai_an_thong_ke').maybeSingle()
+  return new Set((data?.gia_tri as string[] | undefined) ?? [])
+}
+
 // Lấy lại số liệu Facebook cho các bài đăng trong `ngay` ngày gần đây (gọi 4 bài một lúc)
 export async function capNhatSoLieu(ngay = 7) {
   if (!coFacebook()) return { soBai: 0, loi: 'Chưa cấu hình Facebook' }
@@ -25,7 +32,8 @@ export async function capNhatSoLieu(ngay = 7) {
     .gte('dang_luc', new Date(Date.now() - ngay * 86400_000).toISOString())
     .lte('dang_luc', new Date().toISOString())
     .limit(200)
-  const ds = (data ?? []) as Pick<BaiViet, 'id' | 'fb_post_id'>[]
+  const boQua = await dsBoQua()
+  const ds = ((data ?? []) as Pick<BaiViet, 'id' | 'fb_post_id'>[]).filter((b) => !boQua.has(b.id))
 
   const luc = new Date().toISOString()
   const moi: Record<string, SoLieuLuu> = {}
@@ -71,10 +79,15 @@ export type BaiXepHang = {
 export async function xepHang(ngay: number | null) {
   let q = db().from('bai_viet').select('*').not('fb_post_id', 'is', null).lte('dang_luc', new Date().toISOString())
   if (ngay) q = q.gte('dang_luc', new Date(Date.now() - ngay * 86400_000).toISOString())
-  const [{ data }, banGhi] = await Promise.all([q.order('dang_luc', { ascending: false }).limit(300), docBanGhi()])
+  const [{ data }, banGhi, boQua] = await Promise.all([
+    q.order('dang_luc', { ascending: false }).limit(300),
+    docBanGhi(),
+    dsBoQua(),
+  ])
+  const tatCa = (data ?? []) as BaiViet[]
 
   const bay = Date.now()
-  const ds: BaiXepHang[] = ((data ?? []) as BaiViet[]).map((bai) => {
+  const ds: BaiXepHang[] = tatCa.filter((b) => !boQua.has(b.id)).map((bai) => {
     const soLieu = banGhi.bai[bai.id] ?? null
     const d = soLieu ? diem(soLieu) : 0
     const gio = Math.max(1, (bay - new Date(bai.dang_luc ?? bai.tao_luc).getTime()) / 3600_000)
@@ -90,6 +103,7 @@ export async function xepHang(ngay: number | null) {
   }
   return {
     ds,
+    soBoQua: tatCa.length - ds.length,
     luc: banGhi.luc,
     tong: {
       soBai: ds.length,

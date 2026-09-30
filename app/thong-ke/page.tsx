@@ -24,7 +24,7 @@ export default async function TrangThongKe({ searchParams }: PageProps<'/thong-k
 
   const kyChon = (await searchParams).ky
   const ky = KY.find((k) => k.ma === kyChon) ?? KY[1]
-  const { ds, luc, tong, thieuQuyenCamXuc, thieuLuotXem } = await xepHang(ky.ngay)
+  const { ds, soBoQua, luc, tong, thieuQuyenCamXuc, thieuLuotXem } = await xepHang(ky.ngay)
   const diemCao = Math.max(1, ...ds.map((x) => x.diem))
   const soDangLen = ds.filter((x) => x.dangLen).length
 
@@ -55,6 +55,12 @@ export default async function TrangThongKe({ searchParams }: PageProps<'/thong-k
             (Graph API Explorer → thêm quyền → Generate Access Token → <code>npm run token-fb</code>), rồi thay{' '}
             <code>FB_PAGE_TOKEN</code> trên Vercel và Redeploy.
           </CanhBao>
+        )}
+
+        {soBoQua > 0 && (
+          <p className="mb-4 text-xs text-slate-500">
+            Không tính {soBoQua} bài đăng qua app Facebook cũ (chưa xuất bản, người theo dõi không thấy).
+          </p>
         )}
 
         <ThanhLoc

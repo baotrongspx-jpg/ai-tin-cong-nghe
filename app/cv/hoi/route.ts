@@ -2,11 +2,12 @@ import { after } from 'next/server'
 import { z } from 'zod'
 import { guiTelegram, thoat } from '@/lib/telegram'
 import { hoiTroLy } from '@/lib/troLyCV'
-import { DIEN_THOAI } from '../duLieu'
+import { boiCanhViTri, DIEN_THOAI, layViTri } from '../duLieu'
 
 // Robot trên trang CV: nhận câu hỏi (kèm vài lượt trước), trả lời, rồi báo câu hỏi về Telegram cho chủ trang.
 const YeuCau = z.object({
   congTy: z.string().max(80).default(''),
+  viTri: z.string().max(40).default(''),
   lichSu: z
     .array(z.object({ vai: z.enum(['nguoi', 'robot']), noiDung: z.string().trim().min(1).max(600) }))
     .min(1)
@@ -33,13 +34,14 @@ export async function POST(req: Request) {
   if (quaNhieu(ip))
     return Response.json({ traLoi: `Anh/chị hỏi hơi nhanh rồi ạ. Để trao đổi kỹ hơn, anh/chị gọi hoặc nhắn Zalo ${DIEN_THOAI} giúp nhé.` })
 
-  const { lichSu, congTy } = duLieu.data
-  const traLoi = await hoiTroLy(lichSu, congTy).catch(() => null)
+  const { lichSu, congTy, viTri } = duLieu.data
+  const vt = layViTri(viTri)
+  const traLoi = await hoiTroLy(lichSu, congTy, boiCanhViTri(vt)).catch(() => null)
   const cauHoi = lichSu[lichSu.length - 1].noiDung
 
   after(() =>
     guiTelegram(
-      `🤖 <b>Nhà tuyển dụng hỏi robot</b>${congTy ? ` (${thoat(congTy)})` : ''}\n` +
+      `🤖 <b>Nhà tuyển dụng hỏi robot</b>${congTy ? ` (${thoat(congTy)})` : ''} · CV ${thoat(vt.ten)}\n` +
         `<b>Hỏi:</b> ${thoat(cauHoi)}\n<b>Robot đáp:</b> ${thoat(traLoi ?? '(không trả lời được)')}`,
     ),
   )

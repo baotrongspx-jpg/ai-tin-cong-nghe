@@ -14,6 +14,15 @@ export function docCongTy() {
   }
 }
 
+// Mã vị trí của bản CV đang xem (?vt=quan-ly-kho), để báo Telegram
+export function docViTri() {
+  try {
+    return new URLSearchParams(location.search).get('vt')?.slice(0, 40) ?? ''
+  } catch {
+    return ''
+  }
+}
+
 const khongDoi = () => () => {}
 
 export function useCongTy() {

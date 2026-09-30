@@ -1,12 +1,14 @@
 import { after } from 'next/server'
 import { z } from 'zod'
 import { guiTelegram, thoat } from '@/lib/telegram'
+import { layViTri } from '../duLieu'
 
 // Báo về Telegram khi có người mở trang CV ("mo") và khi họ rời trang ("roi": xem bao lâu, cuộn tới đâu).
 // Trình duyệt gửi bằng sendBeacon nên thân yêu cầu là chữ, tự đọc JSON.
 const SuKien = z.object({
   loai: z.enum(['mo', 'roi']),
   congTy: z.string().max(80).default(''),
+  viTri: z.string().max(40).default(''),
   nguon: z.string().max(200).default(''),
   giay: z.number().min(0).max(86_400).default(0),
   cuon: z.number().min(0).max(100).default(0),
@@ -45,7 +47,8 @@ export async function POST(req: Request) {
   const duLieu = SuKien.safeParse(tho)
   if (!duLieu.success || MAY_TU_DONG.test(ua)) return new Response(null, { status: 204 })
 
-  const { loai, congTy, nguon, giay, cuon } = duLieu.data
+  const { loai, congTy, viTri: maViTri, nguon, giay, cuon } = duLieu.data
+  const banCV = maViTri ? ` (bản CV ${layViTri(maViTri).ten})` : ''
   const ai = congTy ? `<b>${thoat(congTy)}</b>` : 'Một người'
 
   let tin = ''
@@ -55,13 +58,13 @@ export async function POST(req: Request) {
       tuDau = nguon ? new URL(nguon).hostname.replace(/^www\./, '') : ''
     } catch {}
     tin =
-      `👀 ${ai} vừa mở CV của anh\n` +
+      `👀 ${ai} vừa mở CV của anh${banCV}\n` +
       [viTri(req.headers) && `📍 ${thoat(viTri(req.headers))}`, `📱 ${thietBi(ua)}`, tuDau && `🔗 Đến từ: ${thoat(tuDau)}`]
         .filter(Boolean)
         .join('\n')
   } else if (giay >= 15) {
     // Xem dưới 15 giây thì thôi, đỡ nhắn nhiều
-    tin = `⏱ ${ai} đã xem CV <b>${doiThoiGian(giay)}</b>, đọc tới ${Math.round(cuon)}% trang`
+    tin = `⏱ ${ai} đã xem CV${banCV} <b>${doiThoiGian(giay)}</b>, đọc tới ${Math.round(cuon)}% trang`
   }
 
   if (tin) after(() => guiTelegram(tin))

@@ -1,18 +1,23 @@
 import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
 import NutIn from './NutIn'
-import { CONG_CU, DIEN_THOAI, DU_AN, EMAIL, KINH_NGHIEM, KY_NANG, SAN_SANG } from '../duLieu'
+import { DIEN_THOAI, duAnCua, EMAIL, KINH_NGHIEM, layViTri } from '../duLieu'
 
 // Bản CV 1 trang A4 để in / lưu PDF (nút Tải CV trên website /cv mở trang này).
-export const metadata: Metadata = {
-  title: 'CV (bản in) – Nông Bảo Trọng',
-  description: 'Trợ lý Giám đốc, 2 năm vận hành cụm 12 kho SPX Express, tự xây công cụ báo cáo và kênh Fanpage, TikTok.',
-  robots: { index: false, follow: false },
-  // Link ảnh xem trước (og:image) cần tên miền đầy đủ
-  metadataBase: new URL(process.env.SITE_URL ?? 'https://ai-tin-cong-nghe-wpy7.vercel.app'),
+// Có ?vt=<mã vị trí> thì in bản CV theo vị trí đó (xem VI_TRI trong duLieu.ts)
+export async function generateMetadata({ searchParams }: PageProps<'/cv/ban-in'>): Promise<Metadata> {
+  const vt = layViTri((await searchParams).vt)
+  return {
+    title: `CV ${vt.ten} – Nông Bảo Trọng`,
+    description: `Ứng tuyển ${vt.ungTuyen}. Gần 2 năm vận hành cụm 12 kho SPX Express, tự xây công cụ quản lý và báo cáo.`,
+    robots: { index: false, follow: false },
+    // Link ảnh xem trước (og:image) cần tên miền đầy đủ
+    metadataBase: new URL(process.env.SITE_URL ?? 'https://ai-tin-cong-nghe-wpy7.vercel.app'),
+  }
 }
 
-export default function TrangCV() {
+export default async function TrangCV({ searchParams }: PageProps<'/cv/ban-in'>) {
+  const vt = layViTri((await searchParams).vt)
   return (
     <main className="min-h-screen bg-slate-200/70 px-3 py-6 print:bg-white print:p-0 sm:px-6 sm:py-10">
       {/* Nút hành động (ẩn khi in) */}
@@ -52,7 +57,7 @@ export default function TrangCV() {
 
           <Muc tieuDe="Kỹ năng">
             <ul className="space-y-1.5 text-sm print:space-y-0.5 print:text-[11px]">
-              {KY_NANG.map((k) => (
+              {vt.kyNang.map((k) => (
                 <li key={k} className="flex gap-2">
                   <span className="text-amber-400">◆</span>
                   {k}
@@ -63,7 +68,7 @@ export default function TrangCV() {
 
           <Muc tieuDe="Công cụ">
             <div className="flex flex-wrap gap-1.5">
-              {CONG_CU.map((c) => (
+              {vt.congCu.map((c) => (
                 <span key={c} className="rounded-full border border-white/25 px-2.5 py-1 text-xs print:py-0.5 print:text-[10px]">
                   {c}
                 </span>
@@ -79,7 +84,7 @@ export default function TrangCV() {
 
           <Muc tieuDe="Sẵn sàng">
             <ul className="space-y-1.5 text-sm print:space-y-0.5 print:text-[11px]">
-              {SAN_SANG.map((s) => (
+              {vt.sanSang.map((s) => (
                 <li key={s} className="flex gap-2">
                   <span className="text-amber-400">◆</span>
                   {s}
@@ -94,12 +99,10 @@ export default function TrangCV() {
         <div className="order-first px-6 py-8 md:order-none print:order-none print:px-7 print:py-6 sm:px-10">
           <h1 className="text-4xl font-black tracking-tight text-[#0f1b3d] print:text-3xl sm:text-5xl">NÔNG BẢO TRỌNG</h1>
           <p className="mt-3 inline-block border-l-4 border-amber-400 bg-amber-50 px-4 py-1.5 text-base font-bold text-amber-700 print:mt-2 print:py-1 print:text-sm">
-            Ứng tuyển: Trợ lý – Buôn Ma Thuột
+            Ứng tuyển: {vt.ungTuyen}
           </p>
           <p className="mt-5 text-[15px] leading-relaxed text-slate-700 print:mt-3 print:text-[11.5px] print:leading-snug">
-            <b className="text-slate-900">Đang làm Trợ lý Giám đốc</b> tại Công ty TNHH Trái Cây 001, phụ trách kiểm soát sản lượng, báo
-            cáo định kỳ và soạn hợp đồng với đối tác. Gần 2 năm vận hành <b className="text-slate-900">cụm 12 kho SPX Express</b>: điều phối
-            nhân sự, đối soát số liệu cuối ngày, báo cáo kèm đề xuất cho quản lý.
+            {vt.tomTat.map((d, i) => (typeof d === 'string' ? d : <b key={i} className="text-slate-900">{d.dam}</b>))}
           </p>
 
           <TieuDe so="01">Kinh nghiệm làm việc</TieuDe>
@@ -128,7 +131,7 @@ export default function TrangCV() {
 
           <TieuDe so="02">Dự án tự xây dựng</TieuDe>
           <div className="grid gap-3 sm:grid-cols-2 print:grid-cols-2 print:gap-2">
-            {DU_AN.map((d) => (
+            {duAnCua(vt).map((d) => (
               <div key={d.ten} className="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200/70 print:rounded-lg print:p-2.5">
                 <div className="flex items-start justify-between gap-2">
                   <h3 className="font-extrabold text-[#0f1b3d] print:text-[12px]">
@@ -151,7 +154,7 @@ export default function TrangCV() {
 
           <TieuDe so="03">Phong cách làm việc</TieuDe>
           <div className="flex flex-wrap gap-2 print:gap-1.5">
-            {['Cẩn thận, làm việc có số liệu', 'Chủ động báo cáo kèm đề xuất', 'Kỷ luật, tư duy quy trình', 'Giao tiếp rõ ràng với đối tác, khách hàng'].map(
+            {vt.phongCach.map(
               (p) => (
                 <span key={p} className="rounded-full bg-amber-50 px-3 py-1.5 text-sm font-semibold text-amber-800 ring-1 ring-amber-200 print:py-0.5 print:text-[10.5px]">
                   {p}

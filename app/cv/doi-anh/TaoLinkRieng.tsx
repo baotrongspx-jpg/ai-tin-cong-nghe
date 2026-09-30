@@ -1,13 +1,15 @@
 'use client'
 
 import { useEffect, useState, useSyncExternalStore } from 'react'
+import { VI_TRI } from '../duLieu'
 
 const khongDoi = () => () => {}
 
-// Tạo link CV riêng cho từng công ty (/cv?cho=Tên công ty) để trang và robot chào đúng tên.
+// Tạo link CV riêng cho từng công ty (/cv?vt=vị trí&cho=Tên công ty): đúng bản CV theo vị trí, chào đúng tên.
 // Mở trang này cũng đánh dấu máy của chủ trang: xem CV trên máy này sẽ không báo Telegram.
 export default function TaoLinkRieng() {
   const [ten, setTen] = useState('')
+  const [viTri, setViTri] = useState(VI_TRI[0].ma)
   const [daChep, setDaChep] = useState(false)
   const goc = useSyncExternalStore(khongDoi, () => location.origin, () => '')
 
@@ -17,7 +19,11 @@ export default function TaoLinkRieng() {
     } catch {}
   }, [])
 
-  const link = `${goc}/cv${ten.trim() ? `?cho=${encodeURIComponent(ten.trim()).replace(/%20/g, '+')}` : ''}`
+  const thamSo = [
+    viTri !== VI_TRI[0].ma && `vt=${viTri}`,
+    ten.trim() && `cho=${encodeURIComponent(ten.trim()).replace(/%20/g, '+')}`,
+  ].filter(Boolean)
+  const link = `${goc}/cv${thamSo.length ? `?${thamSo.join('&')}` : ''}`
 
   async function chep() {
     try {
@@ -31,6 +37,16 @@ export default function TaoLinkRieng() {
     <div className="mt-8 border-t border-slate-200 pt-6">
       <h2 className="font-extrabold text-[#0f1b3d]">Tạo link CV riêng cho công ty</h2>
       <p className="mb-3 text-sm text-slate-500">Trang CV và robot sẽ chào đúng tên công ty. Telegram cũng báo rõ công ty nào đang xem.</p>
+      <label className="label" htmlFor="vi-tri">
+        Bản CV theo vị trí
+      </label>
+      <select id="vi-tri" value={viTri} onChange={(e) => setViTri(e.target.value)} className="input mb-3">
+        {VI_TRI.map((v) => (
+          <option key={v.ma} value={v.ma}>
+            {v.ten}
+          </option>
+        ))}
+      </select>
       <label className="label" htmlFor="ten-cong-ty">
         Tên công ty / người nhận
       </label>

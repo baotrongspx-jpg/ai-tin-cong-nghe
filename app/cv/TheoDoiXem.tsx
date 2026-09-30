@@ -1,19 +1,20 @@
 'use client'
 
 import { useEffect } from 'react'
-import { docCongTy } from './congTy'
+import { docCongTy, docViTri } from './congTy'
 
 // Báo về Telegram khi có người mở CV và khi họ rời trang (xem bao lâu, cuộn tới đâu).
 // Máy của chủ trang (đã vào /cv/doi-anh) được đánh dấu để không tự báo chính mình.
 export default function TheoDoiXem() {
   useEffect(() => {
     const congTy = docCongTy()
+    const viTri = docViTri()
     try {
       if (localStorage.getItem('cv_chu_trang') === '1') return
     } catch {}
     const gui = (du: Record<string, unknown>) =>
-      navigator.sendBeacon?.('/cv/su-kien', JSON.stringify({ congTy, ...du })) ??
-      fetch('/cv/su-kien', { method: 'POST', body: JSON.stringify({ congTy, ...du }), keepalive: true })
+      navigator.sendBeacon?.('/cv/su-kien', JSON.stringify({ congTy, viTri, ...du })) ??
+      fetch('/cv/su-kien', { method: 'POST', body: JSON.stringify({ congTy, viTri, ...du }), keepalive: true })
 
     // Mỗi phiên chỉ báo "mở" một lần (tải lại trang không báo lại)
     let daBao = false

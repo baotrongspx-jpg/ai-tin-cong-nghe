@@ -3,7 +3,7 @@ import Image from 'next/image'
 import { Dancing_Script } from 'next/font/google'
 import type { ReactNode } from 'react'
 import { ANH_MAC_DINH, diaChiAnhCV } from '@/lib/anhCV'
-import { CONG_CU, DIA_CHI, DIEN_THOAI, DU_AN, EMAIL, KINH_NGHIEM, KY_NANG, MUC_TIEU, NGAY_SINH, SAN_SANG } from './duLieu'
+import { DIA_CHI, DIEN_THOAI, duAnCua, EMAIL, KINH_NGHIEM, layViTri, NGAY_SINH, type DoanChu } from './duLieu'
 import ChuChay from './ChuChay'
 import DemSo from './DemSo'
 import FormLienHe from './FormLienHe'
@@ -17,14 +17,17 @@ import './cv.css'
 
 const viTay = Dancing_Script({ subsets: ['vietnamese'], weight: ['600', '700'] })
 
-export const metadata: Metadata = {
-  title: 'Nông Bảo Trọng – CV cá nhân',
-  description: 'Trợ lý Giám đốc · gần 2 năm vận hành cụm 12 kho SPX Express · Ứng tuyển Trợ lý tại Buôn Ma Thuột.',
-  robots: { index: false, follow: false },
-  metadataBase: new URL(process.env.SITE_URL ?? 'https://ai-tin-cong-nghe-wpy7.vercel.app'),
+export async function generateMetadata({ searchParams }: PageProps<'/cv'>): Promise<Metadata> {
+  const vt = layViTri((await searchParams).vt)
+  return {
+    title: `Nông Bảo Trọng – CV ${vt.ten}`,
+    description: `Ứng tuyển ${vt.ungTuyen} · gần 2 năm vận hành cụm 12 kho SPX Express.`,
+    robots: { index: false, follow: false },
+    metadataBase: new URL(process.env.SITE_URL ?? 'https://ai-tin-cong-nghe-wpy7.vercel.app'),
+  }
 }
 
-const MENU = [
+const MENU_CHUNG = [
   ['Trang chủ', '#trang-chu'],
   ['Giới thiệu', '#gioi-thieu'],
   ['Kinh nghiệm', '#kinh-nghiem'],
@@ -32,22 +35,6 @@ const MENU = [
   ['Kỹ năng', '#ky-nang'],
   ['Mục tiêu', '#muc-tieu'],
   ['Liên hệ', '#lien-he'],
-]
-
-const SO_LIEU: [number, string, string][] = [
-  [3, '+', 'Năm đi làm thực tế'],
-  [12, '', 'Kho SPX vận hành cùng lúc'],
-  [4, '', 'Dự án tự xây, đang dùng'],
-  [3, '', 'Bài đăng Fanpage mỗi ngày'],
-]
-
-const CHUC_DANH = ['Trợ lý Giám đốc', 'Vận hành & Báo cáo số liệu', 'Đối soát · Điều phối · Soạn văn bản']
-
-// Ba điểm mạnh rút từ kinh nghiệm thật trong CV
-const THE_MANH: [keyof typeof BT, string, string][] = [
-  ['bieuDo', 'Chắc số liệu', 'Đối soát cuối ngày cho 12 kho, tính hao hụt từng công đoạn. Số nào cũng có nguồn và được đối chiếu.'],
-  ['chuong', 'Chủ động nhắc việc', 'Theo dõi tiến độ trong ngày, cảnh báo sớm khi có vấn đề thay vì chờ được hỏi.'],
-  ['bongDen', 'Báo cáo kèm đề xuất', 'Mỗi báo cáo đi kèm hướng xử lý cụ thể để cấp trên quyết định nhanh.'],
 ]
 
 const LOGO: Record<string, string> = { 'Công ty TNHH Trái Cây 001': '001', 'SPX Express': 'SPX', 'Giao Hàng Tiết Kiệm': 'GHTK', 'Thaco Trường Hải': 'THACO' }
@@ -66,6 +53,7 @@ const BT = {
   bongDen: <><path d="M9 18h6M10 22h4" /><path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2z" /></>,
   dongHo: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>,
   tim: <path d="M12 20s-8-4.6-8-10.5A4.5 4.5 0 0 1 12 7a4.5 4.5 0 0 1 8 2.5C20 15.4 12 20 12 20z" />,
+  hop: <><path d="M21 8 12 3 3 8v8l9 5 9-5z" /><path d="m3 8 9 5 9-5M12 13v8" /></>,
   congCu: <path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z" />,
   tai: <path d="M12 3v12m0 0-4-4m4 4 4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />,
   guiThu: <path d="m22 2-9.5 9.5M22 2l-7 20-3.5-8.5L3 10z" />,
@@ -118,7 +106,19 @@ function Nhan({ children, toi }: { children: ReactNode; toi?: boolean }) {
   )
 }
 
-export default async function TrangCV() {
+// Đoạn tóm tắt có chỗ in đậm
+function DoanVan({ doan, dam }: { doan: DoanChu[]; dam: string }) {
+  return doan.map((d, i) => (typeof d === 'string' ? d : <b key={i} className={dam}>{d.dam}</b>))
+}
+
+export default async function TrangCV({ searchParams }: PageProps<'/cv'>) {
+  // CV theo vị trí: /cv?vt=quan-ly-kho. Không có → bản chung (Trợ lý)
+  const vt = layViTri((await searchParams).vt)
+  const hrefIn = vt.ma === 'tro-ly' ? '/cv/ban-in' : `/cv/ban-in?vt=${vt.ma}`
+  const menu = vt.phuHop ? [MENU_CHUNG[0], ['Phù hợp', '#phu-hop'], ...MENU_CHUNG.slice(1)] : MENU_CHUNG
+  // Số thứ tự các mục lớn, tự tăng (có mục "Phù hợp" thì các mục sau lùi một số)
+  let dem = 0
+  const so = () => String(++dem).padStart(2, '0')
   // Ảnh đổi ở /cv/doi-anh (lưu trong cơ sở dữ liệu); đổi xong trang được làm mới ngay
   const anhDaiDien = await diaChiAnhCV()
   const thongTin: [keyof typeof BT, string, string, string?][] = [
@@ -131,7 +131,7 @@ export default async function TrangCV() {
   return (
     <div id="trang-chu" className="min-h-screen bg-white text-slate-700">
       <MenuCV
-        menu={MENU}
+        menu={menu}
         logo={
           <a href="#trang-chu" className="flex shrink-0 items-center gap-3">
             <span className="grid h-10 w-10 place-items-center rounded-full bg-gradient-to-br from-blue-500 to-sky-400 text-sm font-black text-white shadow-md shadow-blue-900/50">
@@ -145,7 +145,7 @@ export default async function TrangCV() {
         }
         nut={
           <a
-            href="/cv/ban-in"
+            href={hrefIn}
             className="ml-auto flex shrink-0 items-center gap-2 rounded-lg border border-blue-400 px-3.5 py-2 text-sm font-bold text-blue-200 transition hover:bg-blue-500 hover:text-white lg:ml-2"
           >
             <Icon ten="tai" className="h-4 w-4" /> Tải CV PDF
@@ -190,7 +190,7 @@ export default async function TrangCV() {
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75 motion-reduce:hidden" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
               </span>
-              Sẵn sàng nhận việc tại Buôn Ma Thuột
+              {vt.nhanSanSang}
             </p>
             <p className="text-lg font-semibold text-blue-300">Xin chào, tôi là</p>
             <h1 className="mt-1 text-4xl font-black tracking-tight sm:text-6xl">
@@ -198,11 +198,10 @@ export default async function TrangCV() {
               <span className="bg-gradient-to-r from-blue-400 via-sky-300 to-blue-400 bg-clip-text text-transparent">TRỌNG</span>
             </h1>
             <p className="mt-4 inline-flex min-h-[2.25rem] items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-sm font-bold text-amber-300 ring-1 ring-white/15 sm:text-base">
-              <ChuChay cau={CHUC_DANH} />
+              <ChuChay cau={vt.chucDanh} />
             </p>
             <p className="mt-5 max-w-2xl text-[15px] leading-relaxed text-white/80 sm:text-base">
-              Đang làm Trợ lý Giám đốc tại Công ty TNHH Trái Cây 001: kiểm soát sản lượng, báo cáo định kỳ, soạn hợp đồng với đối tác.
-              Gần 2 năm vận hành cụm 12 kho SPX Express. Cẩn thận với số liệu, chủ động nhắc việc, luôn đi kèm đề xuất khi báo cáo.
+              <DoanVan doan={vt.tomTat} dam="font-semibold text-white" />
             </p>
 
             <ul className="mt-6 grid max-w-2xl gap-3 sm:grid-cols-2">
@@ -226,7 +225,7 @@ export default async function TrangCV() {
             </ul>
 
             <div className="mt-8 flex flex-wrap gap-3">
-              <a href="/cv/ban-in" className="flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-bold shadow-lg shadow-blue-900/40 transition hover:bg-blue-500">
+              <a href={hrefIn} className="flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-bold shadow-lg shadow-blue-900/40 transition hover:bg-blue-500">
                 <Icon ten="tai" className="h-5 w-5" /> Tải CV PDF
               </a>
               <a href="#lien-he" className="flex items-center gap-2 rounded-xl border border-white/40 px-6 py-3 font-bold transition hover:bg-white hover:text-[#0b1631]">
@@ -247,7 +246,7 @@ export default async function TrangCV() {
       <div className="relative z-10 mx-auto -mt-12 max-w-6xl px-4 sm:px-6">
         <HienDan>
           <ul className="grid grid-cols-2 overflow-hidden rounded-2xl bg-white shadow-[0_20px_50px_-20px_rgba(15,27,61,0.35)] ring-1 ring-slate-200/70 lg:grid-cols-4">
-            {SO_LIEU.map(([so, sau, nhan], i) => (
+            {vt.soLieu.map(([so, sau, nhan], i) => (
               <li
                 key={nhan}
                 className={`border-slate-100 px-5 py-6 text-center sm:py-7 ${i % 2 ? 'border-l' : ''} ${i > 1 ? 'border-t lg:border-t-0' : ''} ${i === 2 ? 'lg:border-l' : ''}`}
@@ -263,17 +262,33 @@ export default async function TrangCV() {
       </div>
 
       <main>
-        {/* ——— 01 Giới thiệu ——— */}
-        <Muc
-          id="gioi-thieu"
-          so="01"
-          nhan="Giới thiệu"
-          tieuDe="Người trợ lý giúp Giám đốc nắm việc bằng số liệu"
-          moTa="Từ kiểm tra chất lượng ở nhà máy, điều hành cụm 12 kho, đến trợ lý Giám đốc: mỗi công việc đều xoay quanh số liệu chính xác và tiến độ rõ ràng."
-        >
+        {/* ——— Đối chiếu với yêu cầu (chỉ bản CV theo vị trí) ——— */}
+        {vt.phuHop && (
+          <Muc id="phu-hop" so={so()} nhan="Phù hợp" tieuDe={vt.phuHop.tieuDe} moTa={vt.phuHop.moTa}>
+            <ul className="grid gap-4 md:grid-cols-2">
+              {vt.phuHop.ds.map(([yeuCau, dapUng], i) => (
+                <HienDan key={yeuCau} tre={(i % 2) * 90}>
+                  <li className={`${THE} flex h-full gap-4 p-5 sm:p-6`}>
+                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-emerald-500 text-white shadow-md shadow-emerald-500/30">
+                      <Icon ten="dung" className="h-4 w-4" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Yêu cầu</p>
+                      <h3 className="font-extrabold text-[#0f1b3d]">{yeuCau}</h3>
+                      <p className="mt-2 leading-relaxed text-slate-600">{dapUng}</p>
+                    </div>
+                  </li>
+                </HienDan>
+              ))}
+            </ul>
+          </Muc>
+        )}
+
+        {/* ——— Giới thiệu ——— */}
+        <Muc id="gioi-thieu" so={so()} nhan="Giới thiệu" tieuDe={vt.gioiThieu.tieuDe} moTa={vt.gioiThieu.moTa} nenXam={!!vt.phuHop}>
           <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
             <div className="grid gap-4">
-              {THE_MANH.map(([icon, ten, moTa], i) => (
+              {vt.theManh.map(([icon, ten, moTa], i) => (
                 <HienDan key={ten} tre={i * 90}>
                   <div className={`${THE} flex h-full items-start gap-5 p-6`}>
                     <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-blue-600 to-sky-500 text-white shadow-md shadow-blue-600/25">
@@ -293,14 +308,7 @@ export default async function TrangCV() {
                 <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-sky-400/20 blur-2xl" />
                 <h3 className="relative text-sm font-bold uppercase tracking-[0.18em] text-blue-200">Thông tin nhanh</h3>
                 <dl className="relative mt-4 space-y-3.5 text-sm">
-                  {(
-                    [
-                      ['cap', 'Ứng tuyển', 'Trợ lý Giám đốc / Trợ lý văn phòng'],
-                      ['ghim', 'Nơi làm việc', 'Buôn Ma Thuột, Đắk Lắk'],
-                      ['dongHo', 'Thời gian', 'T2 – sáng T7, 8h–17h, tăng ca khi cần'],
-                      ['lich', 'Năm sinh', NGAY_SINH.slice(-4)],
-                    ] as const
-                  ).map(([icon, nhan, giaTri]) => (
+                  {vt.thongTinNhanh.map(([icon, nhan, giaTri]) => (
                     <div key={nhan} className="flex gap-3">
                       <Icon ten={icon} className="mt-0.5 h-[18px] w-[18px] shrink-0 text-sky-300" />
                       <div>
@@ -328,7 +336,7 @@ export default async function TrangCV() {
         </Muc>
 
         {/* ——— 02 Kinh nghiệm ——— */}
-        <Muc id="kinh-nghiem" so="02" nhan="Kinh nghiệm" tieuDe="Hành trình làm việc" moTa="Hơn 3 năm đi làm, từ nhà máy, kho vận đến văn phòng Giám đốc." nenXam>
+        <Muc id="kinh-nghiem" so={so()} nhan="Kinh nghiệm" tieuDe="Hành trình làm việc" moTa="Hơn 3 năm đi làm, từ nhà máy, kho vận đến văn phòng Giám đốc." nenXam={!vt.phuHop}>
           <ol className="relative space-y-6 md:space-y-8">
             {/* Đường nối các mốc */}
             <span className="absolute bottom-4 left-[19px] top-4 w-px bg-gradient-to-b from-blue-500 via-blue-200 to-transparent md:left-[219px]" aria-hidden />
@@ -383,13 +391,14 @@ export default async function TrangCV() {
         {/* ——— 03 Dự án ——— */}
         <Muc
           id="du-an"
-          so="03"
+          so={so()}
           nhan="Dự án"
+          nenXam={!!vt.phuHop}
           tieuDe="Tự xây công cụ để làm việc nhanh hơn"
           moTa="Không chỉ dùng công cụ có sẵn: những hệ thống dưới đây do tôi tự làm và đang được dùng thật hằng ngày."
         >
           <div className="grid gap-5 sm:grid-cols-2">
-            {DU_AN.map((d, i) => (
+            {duAnCua(vt).map((d, i) => (
               <HienDan key={d.ten} tre={(i % 2) * 90}>
                 <article className={`${THE} group relative h-full overflow-hidden p-6 sm:p-7`}>
                   <span className="absolute inset-x-0 top-0 h-1 origin-left scale-x-0 bg-gradient-to-r from-blue-600 via-sky-400 to-amber-400 transition-transform duration-500 group-hover:scale-x-100" />
@@ -416,7 +425,7 @@ export default async function TrangCV() {
         </Muc>
 
         {/* ——— 04 Kỹ năng ——— */}
-        <Muc id="ky-nang" so="04" nhan="Kỹ năng" tieuDe="Làm được gì, dùng được gì" nenXam>
+        <Muc id="ky-nang" so={so()} nhan="Kỹ năng" tieuDe="Làm được gì, dùng được gì" nenXam={!vt.phuHop}>
           <div className="grid gap-5 lg:grid-cols-3">
             <HienDan>
               <div className={`${THE} h-full p-6`}>
@@ -424,7 +433,7 @@ export default async function TrangCV() {
                   <Icon ten="cap" className="h-5 w-5 text-blue-600" /> Chuyên môn
                 </h3>
                 <ul className="mt-4 space-y-2.5 text-[15px]">
-                  {KY_NANG.map((k) => (
+                  {vt.kyNang.map((k) => (
                     <li key={k} className="flex items-center gap-3">
                       <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-blue-600 text-white">
                         <Icon ten="dung" className="h-3 w-3" />
@@ -441,7 +450,7 @@ export default async function TrangCV() {
                   <Icon ten="congCu" className="h-5 w-5 text-blue-600" /> Công cụ
                 </h3>
                 <div className="mt-4 flex flex-wrap gap-2">
-                  {CONG_CU.map((c) => (
+                  {vt.congCu.map((c) => (
                     <span key={c} className="rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-semibold text-slate-700 ring-1 ring-slate-200">
                       {c}
                     </span>
@@ -455,7 +464,7 @@ export default async function TrangCV() {
                   <Icon ten="dongHo" className="h-5 w-5 text-blue-600" /> Sẵn sàng
                 </h3>
                 <ul className="mt-4 space-y-2.5 text-[15px]">
-                  {SAN_SANG.map((s) => (
+                  {vt.sanSang.map((s) => (
                     <li key={s} className="flex items-start gap-3">
                       <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
                       {s}
@@ -468,7 +477,7 @@ export default async function TrangCV() {
         </Muc>
 
         {/* ——— 05 Học vấn & mục tiêu ——— */}
-        <Muc id="muc-tieu" so="05" nhan="Học vấn & Mục tiêu" tieuDe="Nền tảng và hướng đi">
+        <Muc id="muc-tieu" so={so()} nhan="Học vấn & Mục tiêu" tieuDe="Nền tảng và hướng đi" nenXam={!!vt.phuHop}>
           <div className="grid gap-6 lg:grid-cols-[340px_1fr]">
             <HienDan>
               <div id="hoc-van" className={`${THE} h-full scroll-mt-28 p-6`}>
@@ -484,7 +493,7 @@ export default async function TrangCV() {
               </div>
             </HienDan>
             <ol className="grid gap-4 sm:grid-cols-3">
-              {MUC_TIEU.map(([moc, noiDung], i) => (
+              {vt.mucTieu.map(([moc, noiDung], i) => (
                 <HienDan key={moc} tre={i * 90}>
                   <li className={`${THE} relative h-full p-6`}>
                     <span
@@ -521,7 +530,7 @@ export default async function TrangCV() {
         <div className="mx-auto grid max-w-6xl gap-10 px-4 py-16 sm:px-6 sm:py-20 lg:grid-cols-2">
           <HienDan>
             <p className="flex items-center gap-3 text-sm font-bold uppercase tracking-[0.2em] text-blue-300">
-              <span className="tabular-nums text-white/25">06</span>
+              <span className="tabular-nums text-white/25">{so()}</span>
               <span className="h-px w-8 bg-blue-300/40" />
               Liên hệ
             </p>
@@ -553,7 +562,7 @@ export default async function TrangCV() {
         <footer className="border-t border-white/10 py-5 text-center text-sm text-white/50">© 2026 Nông Bảo Trọng · CV cá nhân</footer>
       </section>
 
-      <TroLyRobot dienThoai={DIEN_THOAI} />
+      <TroLyRobot dienThoai={DIEN_THOAI} hrefIn={hrefIn} viTri={vt.ma} />
       <TheoDoiXem />
     </div>
   )

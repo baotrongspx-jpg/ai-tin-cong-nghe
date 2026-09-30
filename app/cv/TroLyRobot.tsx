@@ -9,7 +9,7 @@ type Luot = { vai: 'nguoi' | 'robot'; noiDung: string }
 const GOI_Y = ['Anh Trọng có kinh nghiệm gì?', 'Điểm mạnh nổi bật là gì?', 'Dùng thành thạo công cụ nào?', 'Khi nào có thể đi làm?']
 
 // Robot góc phải dưới: bấm vào mở khung hỏi đáp về Trọng (AI trả lời theo CV) + lối tắt liên hệ
-export default function TroLyRobot({ dienThoai }: { dienThoai: string }) {
+export default function TroLyRobot({ dienThoai, hrefIn, viTri }: { dienThoai: string; hrefIn: string; viTri: string }) {
   const congTy = useCongTy()
   const [mo, setMo] = useState(false)
   const [hien, setHien] = useState(false)
@@ -58,7 +58,7 @@ export default function TroLyRobot({ dienThoai }: { dienThoai: string }) {
       const res = await fetch('/cv/hoi', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ congTy, lichSu: moi.slice(-11) }),
+        body: JSON.stringify({ congTy, viTri, lichSu: moi.slice(-11) }),
       })
       traLoi = ((await res.json()) as { traLoi?: string }).traLoi ?? traLoi
     } catch {}
@@ -74,7 +74,7 @@ export default function TroLyRobot({ dienThoai }: { dienThoai: string }) {
   const loiTat: [string, string, string][] = [
     ['📞', 'Gọi', `tel:${so}`],
     ['💬', 'Zalo', `https://zalo.me/${so}`],
-    ['📄', 'CV PDF', '/cv/ban-in'],
+    ['📄', 'CV PDF', hrefIn],
     ['✉️', 'Lời nhắn', '#lien-he'],
   ]
 

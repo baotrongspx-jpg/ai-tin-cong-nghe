@@ -24,9 +24,9 @@ If a visitor asks for something unrelated to Trọng or to hiring him, answer br
 ${hoSoDangChu()}
 </profile>`
 
-export async function hoiTroLy(lichSu: LuotChat[], congTy: string): Promise<string | null> {
-  // Tên công ty (từ link riêng) đặt ở lượt đầu, không đưa vào system để giữ system cố định
-  const boiCanh = congTy ? `[Người xem đến từ: ${congTy}]\n` : ''
+export async function hoiTroLy(lichSu: LuotChat[], congTy: string, viTri = ''): Promise<string | null> {
+  // Tên công ty (link riêng) và hồ sơ theo vị trí đặt ở lượt đầu, không đưa vào system để giữ system cố định
+  const boiCanh = (congTy ? `[Người xem đến từ: ${congTy}]\n` : '') + (viTri ? `[${viTri}]\n` : '')
   const luot = lichSu.map((l, i) => ({ ...l, noiDung: i === 0 ? boiCanh + l.noiDung : l.noiDung }))
   return process.env.GEMINI_API_KEY ? hoiGemini(luot) : hoiClaude(luot)
 }

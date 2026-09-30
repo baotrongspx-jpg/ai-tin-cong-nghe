@@ -45,3 +45,10 @@
 @media (max-width: 640px) {
   .input { font-size: 16px; }
 }
+
+/* In trang CV (/cv): khổ A4 không lề trang, giữ màu nền cột trái */
+@media print {
+  @page { size: A4; margin: 0; }
+  html, body { background: #fff !important; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

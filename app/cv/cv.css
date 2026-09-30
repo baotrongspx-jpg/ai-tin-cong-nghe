@@ -1,0 +1,38 @@
+/* Hiệu ứng riêng của trang CV (/cv) */
+
+html:has(#trang-chu) { scroll-behavior: smooth; }
+
+/* ---- Robot AI ---- */
+.robot { overflow: visible; }
+.robot .robot-bay { animation: rb-bay 3.2s ease-in-out infinite; }
+.robot .robot-bong { transform-origin: 100px 218px; animation: rb-bong 3.2s ease-in-out infinite; }
+.robot .robot-mat { transform-origin: 100px 78px; animation: rb-chop 4.5s infinite; }
+.robot .robot-tay { transform-origin: 149px 146px; animation: rb-vay 1.6s ease-in-out infinite; }
+.robot .robot-den { animation: rb-nhap 1.4s ease-in-out infinite; }
+.robot .robot-tim { animation: rb-nhap 0.9s ease-in-out infinite; }
+.robot .robot-quy-dao { transform-origin: 100px 100px; animation: rb-quay 14s linear infinite; }
+
+@keyframes rb-bay { 50% { transform: translateY(-10px); } }
+@keyframes rb-bong { 50% { transform: scaleX(0.75); opacity: 0.15; } }
+@keyframes rb-chop { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(0.1); } }
+@keyframes rb-vay { 0%, 100% { transform: rotate(-8deg); } 50% { transform: rotate(22deg); } }
+@keyframes rb-nhap { 50% { opacity: 0.35; } }
+@keyframes rb-quay { to { transform: rotate(360deg); } }
+
+/* Bong bóng lời chào + con trỏ gõ chữ */
+@keyframes cv-noi { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+.cv-noi { animation: cv-noi 3.2s ease-in-out infinite; }
+@keyframes cv-con-tro { 50% { opacity: 0; } }
+.cv-con-tro { animation: cv-con-tro 0.9s steps(1) infinite; }
+
+/* Lưới chấm mờ ở phần mở đầu */
+.cv-luoi {
+  background-image: radial-gradient(rgba(147, 197, 253, 0.18) 1px, transparent 1px);
+  background-size: 22px 22px;
+  mask-image: linear-gradient(to right, transparent, #000 60%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html:has(#trang-chu) { scroll-behavior: auto; }
+  .robot *, .cv-noi, .cv-con-tro { animation: none !important; }
+}

@@ -27,7 +27,8 @@ export default function HienDan({ children, tre = 0, className = '' }: { childre
     <div
       ref={ref}
       style={{ transitionDelay: `${tre}ms` }}
-      className={`transition duration-700 ease-out motion-reduce:transition-none ${
+      data-hien={hien}
+      className={`group/hd transition duration-700 ease-out motion-reduce:transition-none ${
         hien ? 'translate-y-0 opacity-100' : 'translate-y-6 opacity-0 motion-reduce:translate-y-0 motion-reduce:opacity-100'
       } ${className}`}
     >

@@ -1,11 +1,17 @@
 import type { Metadata } from 'next'
 import Image from 'next/image'
 import { Dancing_Script } from 'next/font/google'
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { ANH_MAC_DINH, diaChiAnhCV } from '@/lib/anhCV'
 import { DIEN_THOAI, DU_AN, EMAIL, KINH_NGHIEM } from './duLieu'
+import ChuChay from './ChuChay'
+import DemSo from './DemSo'
 import FormLienHe from './FormLienHe'
 import HienDan from './HienDan'
+import MenuCV from './MenuCV'
+import RobotAI from './RobotAI'
+import TroLyRobot from './TroLyRobot'
+import './cv.css'
 
 const viTay = Dancing_Script({ subsets: ['vietnamese'], weight: ['600', '700'] })
 
@@ -37,6 +43,15 @@ const KY_NANG_MUC: [string, number][] = [
   ['Soạn hợp đồng, văn bản', 80],
   ['Vận hành Fanpage, TikTok', 80],
 ]
+
+const SO_LIEU: [number, string, string][] = [
+  [3, '+', 'Năm đi làm thực tế'],
+  [12, '', 'Kho SPX vận hành cùng lúc'],
+  [4, '', 'Dự án tự xây, đang dùng'],
+  [3, '', 'Bài đăng Fanpage mỗi ngày'],
+]
+
+const CHUC_DANH = ['Trợ lý Giám đốc', 'Vận hành & Báo cáo số liệu', 'Đối soát · Điều phối · Soạn văn bản']
 
 const LOGO: Record<string, string> = { 'Công ty TNHH Trái Cây 001': '001', 'SPX Express': 'SPX', 'Giao Hàng Tiết Kiệm': 'GHTK', 'Thaco Trường Hải': 'THACO' }
 const logoCua = (noi: string) => Object.entries(LOGO).find(([k]) => noi.startsWith(k))?.[1] ?? noi.slice(0, 3)
@@ -83,7 +98,10 @@ function Icon({ ten, className = 'h-5 w-5' }: { ten: keyof typeof BT; className?
 function The({ id, icon, tieuDe, children, tre = 0 }: { id?: string; icon: keyof typeof BT; tieuDe: string; children: ReactNode; tre?: number }) {
   return (
     <HienDan tre={tre}>
-      <section id={id} className="scroll-mt-24 rounded-2xl bg-white p-6 shadow-[0_2px_20px_-6px_rgba(15,27,61,0.15)] ring-1 ring-slate-200/70">
+      <section
+        id={id}
+        className="scroll-mt-28 rounded-2xl bg-white p-6 shadow-[0_2px_20px_-6px_rgba(15,27,61,0.15)] ring-1 ring-slate-200/70 transition duration-300 hover:-translate-y-1 hover:shadow-[0_12px_32px_-10px_rgba(30,58,138,0.3)] hover:ring-blue-200 motion-reduce:hover:translate-y-0"
+      >
         <h2 className="mb-5 flex items-center gap-3 text-lg font-extrabold uppercase tracking-wide text-[#0f1b3d]">
           <span className="grid h-9 w-9 place-items-center rounded-full bg-blue-50 text-blue-600">
             <Icon ten={icon} className="h-[18px] w-[18px]" />
@@ -109,48 +127,37 @@ export default async function TrangCV() {
   return (
     <div id="trang-chu" className="min-h-screen scroll-smooth bg-slate-100 text-slate-700">
       {/* Thanh điều hướng */}
-      <header className="sticky top-0 z-30 bg-[#0b1631]/95 text-white backdrop-blur print:hidden">
-        <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3 sm:px-6">
+      <MenuCV
+        menu={MENU}
+        logo={
           <a href="#trang-chu" className="flex shrink-0 items-center gap-3">
-            <span className="grid h-10 w-10 place-items-center rounded-full border-2 border-blue-400 text-sm font-black text-blue-300">TB</span>
+            <span className="grid h-10 w-10 place-items-center rounded-full bg-gradient-to-br from-blue-500 to-sky-400 text-sm font-black text-white shadow-md shadow-blue-900/50">
+              TB
+            </span>
             <span className="leading-tight">
               <span className="block font-extrabold">Nông Bảo Trọng</span>
               <span className="block text-[11px] font-semibold tracking-[0.2em] text-blue-300">CV CÁ NHÂN</span>
             </span>
           </a>
-          <nav className="ml-auto hidden items-center gap-1 lg:flex">
-            {MENU.map(([ten, href], i) => (
-              <a
-                key={href}
-                href={href}
-                className={`rounded-lg px-3 py-2 text-sm font-semibold transition hover:bg-white/10 hover:text-white ${i === 0 ? 'text-white' : 'text-white/70'}`}
-              >
-                {ten}
-              </a>
-            ))}
-          </nav>
+        }
+        nut={
           <a
             href="/cv/ban-in"
             className="ml-auto flex shrink-0 items-center gap-2 rounded-lg border border-blue-400 px-3.5 py-2 text-sm font-bold text-blue-200 transition hover:bg-blue-500 hover:text-white lg:ml-2"
           >
             <Icon ten="tai" className="h-4 w-4" /> Tải CV PDF
           </a>
-        </div>
-        {/* Điện thoại: menu cuộn ngang */}
-        <nav className="flex gap-1 overflow-x-auto border-t border-white/10 px-3 py-1.5 lg:hidden">
-          {MENU.map(([ten, href]) => (
-            <a key={href} href={href} className="shrink-0 rounded-md px-3 py-1.5 text-[13px] font-semibold text-white/75 hover:text-white">
-              {ten}
-            </a>
-          ))}
-        </nav>
-      </header>
+        }
+      />
 
       {/* Phần mở đầu */}
       <section className="relative overflow-hidden bg-[#0b1631] text-white">
         <Image src="/cv/nen.jpg" alt="" fill priority sizes="100vw" className="object-cover object-right opacity-70" />
         <div className="absolute inset-0 bg-gradient-to-r from-[#0b1631] via-[#0b1631]/85 to-[#0b1631]/10" />
         <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#0b1631]/70 to-transparent" />
+        <div className="cv-luoi absolute inset-0" />
+        <div className="absolute -left-24 top-10 h-72 w-72 rounded-full bg-blue-600/25 blur-3xl" />
+        <div className="absolute right-10 top-1/3 h-64 w-64 rounded-full bg-sky-400/15 blur-3xl" />
 
         <div className="relative mx-auto grid max-w-7xl items-center gap-8 px-4 pb-14 pt-10 sm:px-6 md:grid-cols-[300px_1fr] lg:grid-cols-[340px_1fr_220px] lg:pb-16 lg:pt-12">
           <HienDan className="mx-auto w-full max-w-[300px] md:max-w-none">
@@ -174,12 +181,20 @@ export default async function TrangCV() {
           </HienDan>
 
           <HienDan tre={120}>
+            <p className="mb-3 inline-flex items-center gap-2 rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold text-emerald-300 ring-1 ring-emerald-400/30">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75 motion-reduce:hidden" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+              </span>
+              Sẵn sàng nhận việc tại Buôn Ma Thuột
+            </p>
             <p className="text-lg font-semibold text-blue-300">Xin chào, tôi là</p>
             <h1 className="mt-1 text-4xl font-black tracking-tight sm:text-6xl">
-              NÔNG BẢO <span className="text-blue-400">TRỌNG</span>
+              NÔNG BẢO{' '}
+              <span className="bg-gradient-to-r from-blue-400 via-sky-300 to-blue-400 bg-clip-text text-transparent">TRỌNG</span>
             </h1>
-            <p className="mt-3 inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-sm font-bold text-amber-300 ring-1 ring-white/15 sm:text-base">
-              Trợ lý Giám đốc · Vận hành & Báo cáo số liệu
+            <p className="mt-3 inline-flex min-h-[2.25rem] items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-sm font-bold text-amber-300 ring-1 ring-white/15 sm:text-base">
+              <ChuChay cau={CHUC_DANH} />
             </p>
             <p className="mt-5 max-w-2xl text-[15px] leading-relaxed text-white/80 sm:text-base">
               Đang làm Trợ lý Giám đốc tại Công ty TNHH Trái Cây 001: kiểm soát sản lượng, báo cáo định kỳ, soạn hợp đồng với đối tác.
@@ -216,18 +231,41 @@ export default async function TrangCV() {
             </div>
           </HienDan>
 
-          <HienDan tre={240} className="hidden self-start pt-6 lg:block">
-            <p className={`${viTay.className} text-right text-3xl leading-snug text-amber-200 drop-shadow`}>
-              “Kỹ năng hôm nay
-              <br />
-              là giá trị ngày mai”
+          <HienDan tre={240} className="hidden lg:block">
+            <div className="cv-noi relative mb-2 rounded-2xl rounded-br-sm bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-xl">
+              Xin chào! Tôi là trợ lý AI của Trọng 👋
+              <span className="block text-xs font-medium text-slate-500">Cuộn xuống để xem hồ sơ nhé.</span>
+              <span className="absolute -bottom-2 right-10 h-4 w-4 rotate-45 bg-white" />
+            </div>
+            <RobotAI ma="rb-lon" className="mx-auto h-56 w-full drop-shadow-[0_10px_30px_rgba(56,189,248,0.35)]" />
+            <p className={`${viTay.className} mt-2 text-center text-2xl leading-snug text-amber-200 drop-shadow`}>
+              “Kỹ năng hôm nay là giá trị ngày mai”
             </p>
           </HienDan>
         </div>
       </section>
 
+      {/* Dải số liệu nổi bật */}
+      <div className="relative z-10 mx-auto -mt-8 max-w-7xl px-4 sm:px-6">
+        <HienDan>
+          <ul className="grid grid-cols-2 overflow-hidden rounded-2xl bg-white shadow-[0_10px_40px_-12px_rgba(15,27,61,0.35)] ring-1 ring-slate-200/70 lg:grid-cols-4">
+            {SO_LIEU.map(([so, sau, nhan], i) => (
+              <li
+                key={nhan}
+                className={`px-5 py-5 text-center sm:py-6 ${i % 2 ? 'border-l' : ''} ${i > 1 ? 'border-t lg:border-t-0' : ''} ${i === 2 ? 'lg:border-l' : ''} border-slate-100`}
+              >
+                <p className="bg-gradient-to-br from-blue-700 to-sky-500 bg-clip-text text-3xl font-black text-transparent sm:text-4xl">
+                  <DemSo den={so} sau={sau} />
+                </p>
+                <p className="mt-1 text-xs font-semibold text-slate-500 sm:text-sm">{nhan}</p>
+              </li>
+            ))}
+          </ul>
+        </HienDan>
+      </div>
+
       {/* Lưới thông tin 3 cột */}
-      <main className="relative mx-auto -mt-6 grid max-w-7xl gap-6 px-4 pb-12 sm:px-6 lg:grid-cols-3">
+      <main className="relative mx-auto mt-8 grid max-w-7xl gap-6 px-4 pb-12 sm:px-6 lg:grid-cols-3">
         {/* Cột 1 */}
         <div className="space-y-6">
           <The id="gioi-thieu" icon="nguoi" tieuDe="Thông tin cá nhân">
@@ -251,7 +289,10 @@ export default async function TrangCV() {
                     <span className="font-bold text-blue-600">{pt}%</span>
                   </div>
                   <div className="h-2 overflow-hidden rounded-full bg-slate-100">
-                    <div className="h-full rounded-full bg-gradient-to-r from-blue-600 to-sky-400" style={{ width: `${pt}%` }} />
+                    <div
+                      className="h-full w-0 rounded-full bg-gradient-to-r from-blue-600 to-sky-400 transition-[width] delay-300 duration-1000 ease-out group-data-[hien=true]/hd:w-(--rong) motion-reduce:w-(--rong)"
+                      style={{ '--rong': `${pt}%` } as CSSProperties}
+                    />
                   </div>
                 </li>
               ))}
@@ -428,6 +469,8 @@ export default async function TrangCV() {
         </div>
         <footer className="border-t border-white/10 py-5 text-center text-sm text-white/50">© 2026 Nông Bảo Trọng · CV cá nhân</footer>
       </section>
+
+      <TroLyRobot dienThoai={DIEN_THOAI} />
     </div>
   )
 }

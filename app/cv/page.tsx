@@ -399,13 +399,13 @@ export default async function TrangCV({ searchParams }: PageProps<'/cv'>) {
           nhan="Dự án"
           nenXam={!!vt.phuHop}
           tieuDe="Tự xây công cụ để làm việc nhanh hơn"
-          moTa="Không chỉ dùng công cụ có sẵn: những hệ thống dưới đây do tôi tự làm và đang được dùng thật hằng ngày."
+          moTa="Không chỉ dùng công cụ có sẵn: những hệ thống dưới đây do tôi tự làm."
         >
           <HienDan>
             <figure className="mb-6 grid items-center gap-6 overflow-hidden rounded-2xl bg-[#0b1631] p-4 text-white ring-1 ring-slate-800 sm:p-6 lg:grid-cols-[1.6fr_1fr]">
               <video
-                src="/cv/durian-demo.mp4"
-                poster="/cv/durian-demo.jpg"
+                src="/cv/durian-demo.mp4?v=2"
+                poster="/cv/durian-demo.jpg?v=2"
                 controls
                 playsInline
                 preload="none"
@@ -417,7 +417,7 @@ export default async function TrangCV({ searchParams }: PageProps<'/cv'>) {
                 <p className="inline-flex rounded-full bg-amber-400 px-3 py-1 text-xs font-bold text-[#0b1631]">Video 44 giây</p>
                 <h3 className="mt-3 text-2xl font-black">Durian Frozen System</h3>
                 <p className="mt-2 leading-relaxed text-white/75">
-                  Phần mềm quản lý kho cấp đông sầu riêng tôi tự xây: tổng quan điều hành, dòng chảy 5 công đoạn, cân và dán tem, kho đông, truy
+                  Phần mềm quản lý kho cấp đông sầu riêng tôi đang tự phát triển: tổng quan điều hành, dòng chảy 5 công đoạn, cân và dán tem, kho đông, truy
                   xuất lô, song ngữ Việt – Trung.
                 </p>
                 <a

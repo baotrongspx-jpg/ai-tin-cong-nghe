@@ -11,7 +11,7 @@ export const KINH_NGHIEM = [
     viec: [
       'Theo dõi số liệu từng công đoạn tại Kho lột múi 001, tính tỷ lệ hao hụt và báo cáo định kỳ cho Giám đốc.',
       'Soạn thảo hợp đồng mua bán, vận chuyển, dịch vụ và văn bản pháp lý; làm việc với hợp tác xã, đối tác.',
-      'Tự xây Durian Frozen System đối chiếu nguyên liệu đầu vào với thành phẩm, thay sổ sách thủ công.',
+      'Đang tự xây Durian Frozen System để đối chiếu nguyên liệu đầu vào với thành phẩm, thay cho sổ sách thủ công.',
     ],
   },
   {
@@ -58,7 +58,7 @@ export const DU_AN: { ten: string; link?: string; moTa: string; nhan: string; ta
   {
     ten: 'Durian Frozen System',
     link: 'https://durian-frozen-system.vercel.app/vi',
-    moTa: 'Quản lý kho cấp đông, sản lượng, tỷ lệ thu hồi; đang dùng thực tế.',
+    moTa: 'Quản lý kho cấp đông, sản lượng, tỷ lệ thu hồi qua 5 công đoạn; đang phát triển, chưa đưa vào sử dụng chính thức.',
     nhan: 'Kho đông lạnh',
     taiKhoan: { ten: 'admin@gmail.com', matKhau: '123456789' },
   },
@@ -138,14 +138,15 @@ const QUAN_LY_KHO: HoSoViTri = {
     ' và tính hao hụt từng công đoạn tại Công ty TNHH Trái Cây 001. Gần 2 năm Quản lý Vận hành tại ',
     { dam: 'SPX Express' },
     ': điều phối nhân lực theo khối lượng hàng, và tự xây phần mềm giúp cấp trên quản lý cụm 12 kho. ',
-    { dam: 'Tự xây phần mềm quản lý kho đông lạnh' },
-    ' đang dùng thực tế.',
+    'Đang tự phát triển ',
+    { dam: 'phần mềm quản lý kho đông lạnh' },
+    '.',
   ],
   soLieu: [
     [12, '', 'Kho SPX dùng phần mềm tôi xây'],
     [3, '+', 'Năm đi làm thực tế'],
     [4, '', 'Công cụ quản lý tự xây'],
-    [1, '', 'Phần mềm kho đông lạnh đang dùng'],
+    [5, '', 'Công đoạn trong phần mềm kho đông lạnh'],
   ],
   gioiThieu: {
     tieuDe: 'Giữ cho số liệu kho luôn khớp, hao hụt luôn trong tầm kiểm soát',
@@ -154,7 +155,7 @@ const QUAN_LY_KHO: HoSoViTri = {
   theManh: [
     ['hop', 'Nắm chắc số liệu kho', 'Theo dõi sản lượng từng công đoạn, đối chiếu nguyên liệu đầu vào với thành phẩm, phát hiện chênh lệch sớm.'],
     ['bieuDo', 'Kiểm soát hao hụt', 'Tính tỷ lệ hao hụt, tỷ lệ thu hồi và báo cáo định kỳ cho cấp trên, luôn kèm đề xuất xử lý.'],
-    ['congCu', 'Số hóa quản lý kho', 'Tự xây phần mềm quản lý kho đông lạnh thay sổ sách thủ công, và hướng dẫn nhân viên dùng hệ thống mới.'],
+    ['congCu', 'Số hóa quản lý kho', 'Đang tự phát triển phần mềm quản lý kho đông lạnh để thay sổ sách thủ công; đã hướng dẫn nhân viên dùng hệ thống mới.'],
   ],
   thongTinNhanh: [
     ['cap', 'Ứng tuyển', 'Quản lý Kho (kho nông sản / đông lạnh)'],
@@ -172,7 +173,7 @@ const QUAN_LY_KHO: HoSoViTri = {
       ],
       [
         'Triển khai phần mềm quản lý kho (ERP), đào tạo nhân viên',
-        'Đã dùng hệ thống vận hành kho nội bộ của SPX; tự xây SPX Command Center được cấp trên dùng để quản lý cụm 12 kho; tự phát triển phần mềm quản lý kho đông lạnh đang dùng thực tế; đã hướng dẫn nhân viên dùng hệ thống và quy trình mới.',
+        'Đã dùng hệ thống vận hành kho nội bộ của SPX; tự xây SPX Command Center được cấp trên dùng để quản lý cụm 12 kho; đang tự phát triển phần mềm quản lý kho đông lạnh; đã hướng dẫn nhân viên dùng hệ thống và quy trình mới.',
       ],
       [
         'Kiểm soát hao hụt, thất thoát; báo cáo cấp trên',

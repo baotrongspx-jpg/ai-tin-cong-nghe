@@ -9,7 +9,7 @@ export async function generateMetadata({ searchParams }: PageProps<'/cv/ban-in'>
   const vt = layViTri((await searchParams).vt)
   return {
     title: `CV ${vt.ten} – Nông Bảo Trọng`,
-    description: `Ứng tuyển ${vt.ungTuyen}. Gần 2 năm Quản lý Vận hành cụm 12 kho SPX Express, tự xây công cụ quản lý và báo cáo.`,
+    description: `Ứng tuyển ${vt.ungTuyen}. Gần 2 năm Quản lý Vận hành tại SPX Express, tự xây phần mềm để cấp trên quản lý cụm 12 kho.`,
     robots: { index: false, follow: false },
     // Link ảnh xem trước (og:image) cần tên miền đầy đủ
     metadataBase: new URL(process.env.SITE_URL ?? 'https://ai-tin-cong-nghe-wpy7.vercel.app'),

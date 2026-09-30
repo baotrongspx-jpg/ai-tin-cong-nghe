@@ -44,7 +44,7 @@ export default async function Image() {
             Ứng tuyển: Quản lý Kho – nông sản / đông lạnh
           </div>
           <div style={{ display: 'flex', marginTop: 34, color: '#334155', fontSize: 28, fontWeight: 500, lineHeight: 1.4 }}>
-            Gần 2 năm Quản lý Vận hành cụm 12 kho SPX Express · Theo dõi kho cấp đông sầu riêng · Tự xây phần mềm quản lý kho đông lạnh
+            Quản lý Vận hành SPX Express · Theo dõi kho cấp đông sầu riêng · Tự xây phần mềm quản lý cụm 12 kho và kho đông lạnh
           </div>
         </div>
       </div>

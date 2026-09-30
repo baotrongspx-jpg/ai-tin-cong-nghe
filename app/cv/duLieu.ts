@@ -16,12 +16,11 @@ export const KINH_NGHIEM = [
   },
   {
     chucDanh: 'Quản lý Vận hành',
-    noi: 'SPX Express · Cụm kho Đắk Lắk (12 kho)',
+    noi: 'SPX Express · Đắk Lắk',
     thoiGian: '08/2024 – 06/2026',
     viec: [
-      'Đối soát số liệu cuối ngày cho toàn cụm 12 kho.',
       'Phân bổ nhân lực theo khối lượng hàng, theo dõi tiến độ trong ngày, dự báo nhu cầu lao động ngày kế tiếp.',
-      'Cảnh báo nhân sự dưới chỉ tiêu, báo cáo kèm đề xuất cho quản lý cụm.',
+      'Tự xây SPX Command Center để cấp trên quản lý cụm 12 kho: dashboard, đối soát dữ liệu, cảnh báo nhân sự dưới chỉ tiêu.',
     ],
   },
   {
@@ -53,7 +52,7 @@ export const DU_AN: { ten: string; link?: string; moTa: string; nhan: string; ta
   },
   {
     ten: 'SPX Command Center',
-    moTa: 'Điều hành cụm 12 kho: dashboard, đối soát dữ liệu, cảnh báo nhân sự dưới chỉ tiêu.',
+    moTa: 'Tự xây để cấp trên quản lý cụm 12 kho SPX Đắk Lắk: dashboard, đối soát dữ liệu, cảnh báo nhân sự dưới chỉ tiêu.',
     nhan: 'Vận hành',
   },
   {
@@ -134,21 +133,21 @@ const QUAN_LY_KHO: HoSoViTri = {
   tomTat: [
     'Đang theo dõi số liệu ',
     { dam: 'kho cấp đông sầu riêng' },
-    ' và tính hao hụt từng công đoạn tại Công ty TNHH Trái Cây 001. Gần 2 năm Quản lý Vận hành ',
-    { dam: 'cụm 12 kho SPX Express' },
-    ': đối soát số liệu cuối ngày, điều phối nhân lực theo khối lượng hàng. ',
+    ' và tính hao hụt từng công đoạn tại Công ty TNHH Trái Cây 001. Gần 2 năm Quản lý Vận hành tại ',
+    { dam: 'SPX Express' },
+    ': điều phối nhân lực theo khối lượng hàng, và tự xây phần mềm giúp cấp trên quản lý cụm 12 kho. ',
     { dam: 'Tự xây phần mềm quản lý kho đông lạnh' },
     ' đang dùng thực tế.',
   ],
   soLieu: [
-    [12, '', 'Kho SPX vận hành cùng lúc'],
+    [12, '', 'Kho SPX dùng phần mềm tôi xây'],
     [3, '+', 'Năm đi làm thực tế'],
     [4, '', 'Công cụ quản lý tự xây'],
     [1, '', 'Phần mềm kho đông lạnh đang dùng'],
   ],
   gioiThieu: {
     tieuDe: 'Giữ cho số liệu kho luôn khớp, hao hụt luôn trong tầm kiểm soát',
-    moTa: 'Từ cụm 12 kho SPX đến kho cấp đông sầu riêng: công việc của tôi là để số liệu nhập – xuất – tồn rõ ràng, chênh lệch được phát hiện sớm và báo cáo kịp thời.',
+    moTa: 'Từ vận hành kho SPX đến kho cấp đông sầu riêng: công việc của tôi là để số liệu nhập – xuất – tồn rõ ràng, chênh lệch được phát hiện sớm và báo cáo kịp thời.',
   },
   theManh: [
     ['hop', 'Nắm chắc số liệu kho', 'Theo dõi sản lượng từng công đoạn, đối chiếu nguyên liệu đầu vào với thành phẩm, phát hiện chênh lệch sớm.'],
@@ -171,13 +170,13 @@ const QUAN_LY_KHO: HoSoViTri = {
       ],
       [
         'Triển khai phần mềm quản lý kho (ERP), đào tạo nhân viên',
-        'Đã dùng hệ thống vận hành kho nội bộ của SPX; tự phát triển phần mềm quản lý kho đông lạnh đang dùng thực tế; đã hướng dẫn nhân viên dùng hệ thống và quy trình mới.',
+        'Đã dùng hệ thống vận hành kho nội bộ của SPX; tự xây SPX Command Center được cấp trên dùng để quản lý cụm 12 kho; tự phát triển phần mềm quản lý kho đông lạnh đang dùng thực tế; đã hướng dẫn nhân viên dùng hệ thống và quy trình mới.',
       ],
       [
         'Kiểm soát hao hụt, thất thoát; báo cáo cấp trên',
-        'Tính tỷ lệ hao hụt từng công đoạn, báo cáo định kỳ cho Giám đốc; đối soát số liệu cuối ngày cho cả cụm 12 kho SPX.',
+        'Tính tỷ lệ hao hụt từng công đoạn, báo cáo định kỳ cho Giám đốc; xây công cụ đối soát dữ liệu cho cụm 12 kho SPX.',
       ],
-      ['Kinh nghiệm kho 2 – 3 năm', 'Quản lý Vận hành tại GHTK (2024), rồi gần 2 năm Quản lý Vận hành cụm 12 kho SPX Express (08/2024 – 06/2026); nay theo dõi kho cấp đông tại Trái Cây 001.'],
+      ['Kinh nghiệm kho 2 – 3 năm', 'Quản lý Vận hành tại GHTK (2024), rồi gần 2 năm Quản lý Vận hành tại SPX Express (08/2024 – 06/2026); nay theo dõi kho cấp đông tại Trái Cây 001.'],
       ['Tin học văn phòng, phần mềm', 'Thành thạo Excel / Google Sheets, Apps Script; tự xây công cụ báo cáo và quản lý kho.'],
       ['Trung cấp trở lên', 'Cao đẳng Công nghệ Ô tô (2022); quen làm theo quy trình, checklist từ khi làm QC tại Thaco Trường Hải.'],
       ['Nam, trên 22 tuổi, chịu áp lực, đi công tác', 'Nam, sinh năm 2001; quen nhịp cao điểm của kho vận; sẵn sàng đi công tác, kể cả Bến Tre.'],

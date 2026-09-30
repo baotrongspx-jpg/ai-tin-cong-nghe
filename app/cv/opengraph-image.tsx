@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
 // Ảnh xem trước khi gửi link CV qua Zalo, Facebook
-export const alt = 'CV Nông Bảo Trọng – Ứng tuyển Trợ lý'
+export const alt = 'CV Nông Bảo Trọng – Ứng tuyển Quản lý Kho'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
@@ -41,10 +41,10 @@ export default async function Image() {
               color: '#b45309', fontSize: 34, fontWeight: 700,
             }}
           >
-            Ứng tuyển: Trợ lý – Buôn Ma Thuột
+            Ứng tuyển: Quản lý Kho – nông sản / đông lạnh
           </div>
           <div style={{ display: 'flex', marginTop: 34, color: '#334155', fontSize: 28, fontWeight: 500, lineHeight: 1.4 }}>
-            Trợ lý Giám đốc · 2 năm vận hành cụm 12 kho SPX Express · Tự xây công cụ báo cáo, Fanpage & TikTok
+            Gần 2 năm vận hành cụm 12 kho SPX Express · Theo dõi kho cấp đông sầu riêng · Tự xây phần mềm quản lý kho đông lạnh
           </div>
         </div>
       </div>

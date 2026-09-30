@@ -37,16 +37,21 @@ export default function TaoLinkRieng() {
     <div className="mt-8 border-t border-slate-200 pt-6">
       <h2 className="font-extrabold text-[#0f1b3d]">Tạo link CV riêng cho công ty</h2>
       <p className="mb-3 text-sm text-slate-500">Trang CV và robot sẽ chào đúng tên công ty. Telegram cũng báo rõ công ty nào đang xem.</p>
-      <label className="label" htmlFor="vi-tri">
-        Bản CV theo vị trí
-      </label>
-      <select id="vi-tri" value={viTri} onChange={(e) => setViTri(e.target.value)} className="input mb-3">
-        {VI_TRI.map((v) => (
-          <option key={v.ma} value={v.ma}>
-            {v.ten}
-          </option>
-        ))}
-      </select>
+      {/* Chỉ hiện ô chọn khi có từ 2 bản CV theo vị trí trở lên */}
+      {VI_TRI.length > 1 && (
+        <>
+          <label className="label" htmlFor="vi-tri">
+            Bản CV theo vị trí
+          </label>
+          <select id="vi-tri" value={viTri} onChange={(e) => setViTri(e.target.value)} className="input mb-3">
+            {VI_TRI.map((v) => (
+              <option key={v.ma} value={v.ma}>
+                {v.ten}
+              </option>
+            ))}
+          </select>
+        </>
+      )}
       <label className="label" htmlFor="ten-cong-ty">
         Tên công ty / người nhận
       </label>

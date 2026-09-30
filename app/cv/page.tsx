@@ -3,7 +3,7 @@ import Image from 'next/image'
 import { Dancing_Script } from 'next/font/google'
 import type { ReactNode } from 'react'
 import { ANH_MAC_DINH, diaChiAnhCV } from '@/lib/anhCV'
-import { DIA_CHI, DIEN_THOAI, duAnCua, EMAIL, KINH_NGHIEM, layViTri, NGAY_SINH, type DoanChu } from './duLieu'
+import { DIA_CHI, DIEN_THOAI, duAnCua, EMAIL, KINH_NGHIEM, layViTri, NGAY_SINH, VI_TRI, type DoanChu } from './duLieu'
 import ChuChay from './ChuChay'
 import DemSo from './DemSo'
 import FormLienHe from './FormLienHe'
@@ -112,9 +112,9 @@ function DoanVan({ doan, dam }: { doan: DoanChu[]; dam: string }) {
 }
 
 export default async function TrangCV({ searchParams }: PageProps<'/cv'>) {
-  // CV theo vị trí: /cv?vt=quan-ly-kho. Không có → bản chung (Trợ lý)
+  // CV theo vị trí: /cv?vt=<mã>. Không có → bản mặc định (Quản lý Kho)
   const vt = layViTri((await searchParams).vt)
-  const hrefIn = vt.ma === 'tro-ly' ? '/cv/ban-in' : `/cv/ban-in?vt=${vt.ma}`
+  const hrefIn = vt.ma === VI_TRI[0].ma ? '/cv/ban-in' : `/cv/ban-in?vt=${vt.ma}`
   const menu = vt.phuHop ? [MENU_CHUNG[0], ['Phù hợp', '#phu-hop'], ...MENU_CHUNG.slice(1)] : MENU_CHUNG
   // Số thứ tự các mục lớn, tự tăng (có mục "Phù hợp" thì các mục sau lùi một số)
   let dem = 0

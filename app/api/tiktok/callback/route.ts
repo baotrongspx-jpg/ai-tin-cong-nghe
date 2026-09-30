@@ -22,5 +22,5 @@ export async function GET(req: Request) {
   } catch (e) {
     return new Response(e instanceof Error ? e.message : String(e), { status: 500 })
   }
-  return Response.redirect(new URL('/', req.url))
+  return Response.redirect(new URL('/tiktok', req.url))
 }

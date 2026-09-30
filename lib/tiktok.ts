@@ -92,16 +92,30 @@ async function goiApi<T>(duongDan: string, token: string, body: unknown): Promis
 // Cắt chuỗi theo số ký tự UTF-16 (giới hạn của TikTok)
 const cat = (s: string, n: number) => (s.length <= n ? s : `${s.slice(0, n - 1).trimEnd()}…`)
 
+export type TaiKhoanTikTok = {
+  creator_nickname: string
+  creator_username: string
+  creator_avatar_url: string
+  privacy_level_options: string[]
+  comment_disabled: boolean
+}
+
+// Thông tin tài khoản đang kết nối: tên, ảnh đại diện, các chế độ hiển thị được phép
+export async function layTaiKhoanTikTok(token?: string) {
+  return goiApi<TaiKhoanTikTok>('/post/publish/creator_info/query/', token ?? (await layAccessToken()), {})
+}
+
+export type TuyChonDang = { privacy?: string; tatBinhLuan?: boolean }
+
 // Đăng bài ảnh lên TikTok. TikTok tự tải ảnh từ `urlAnh` (JPG, tên miền đã xác minh).
+// Không chọn chế độ hiển thị (lịch tự đăng) thì dùng TIKTOK_CHE_DO.
 // Đăng xong TikTok còn xử lý thêm: chờ tối đa ~15 giây để bắt lỗi sớm, quá thì coi như đã gửi.
-export async function dangAnhLenTikTok(urlAnh: string, tieuDe: string, moTa: string): Promise<string> {
+export async function dangAnhLenTikTok(urlAnh: string, tieuDe: string, moTa: string, tuyChon: TuyChonDang = {}) {
   const token = await layAccessToken()
 
   // Chế độ hiển thị phải nằm trong danh sách tài khoản cho phép. App chưa được TikTok duyệt chỉ đăng riêng tư được.
-  const { privacy_level_options: cheDo } = await goiApi<{ privacy_level_options: string[] }>(
-    '/post/publish/creator_info/query/', token, {},
-  )
-  const muonDung = process.env.TIKTOK_CHE_DO ?? 'PUBLIC_TO_EVERYONE'
+  const { privacy_level_options: cheDo, comment_disabled } = await layTaiKhoanTikTok(token)
+  const muonDung = tuyChon.privacy ?? process.env.TIKTOK_CHE_DO ?? 'PUBLIC_TO_EVERYONE'
   const privacy = cheDo.includes(muonDung) ? muonDung : cheDo.includes('SELF_ONLY') ? 'SELF_ONLY' : cheDo[0]
 
   const { publish_id } = await goiApi<{ publish_id: string }>('/post/publish/content/init/', token, {
@@ -111,7 +125,7 @@ export async function dangAnhLenTikTok(urlAnh: string, tieuDe: string, moTa: str
       title: cat(tieuDe, 90),
       description: cat(moTa, 4000),
       privacy_level: privacy,
-      disable_comment: false,
+      disable_comment: comment_disabled || !!tuyChon.tatBinhLuan,
       auto_add_music: true,
     },
     source_info: { source: 'PULL_FROM_URL', photo_cover_index: 0, photo_images: [urlAnh] },

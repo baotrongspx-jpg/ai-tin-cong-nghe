@@ -6,7 +6,7 @@ import { db, type BaiViet } from '@/lib/db'
 import { daDangNhap, dangNhap, dangXuat } from '@/lib/xacThuc'
 import { tongHopTin, type KetQuaTongHop } from '@/lib/tongHop'
 import { coFacebook } from '@/lib/facebook'
-import { coTikTok } from '@/lib/tiktok'
+import { coTikTok, type TuyChonDang } from '@/lib/tiktok'
 import { dangLenFacebook, dangLenTikTok } from '@/lib/dangBai'
 import { tachHashtag } from '@/lib/chuThich'
 
@@ -91,27 +91,33 @@ export async function dangBai(id: string, sua: SuaBai): Promise<KetQua> {
   }
 }
 
-export async function dangTikTok(id: string, sua: SuaBai): Promise<KetQua> {
+// Đăng từ trang TikTok: người dùng tự chọn ai được xem và có cho bình luận không (theo quy định của TikTok)
+export async function dangTikTok(id: string, tuyChon: TuyChonDang): Promise<KetQua> {
   await chanChuaDangNhap()
   if (!coTikTok()) return { ok: false, loi: 'Chưa cấu hình TIKTOK_CLIENT_KEY / TIKTOK_CLIENT_SECRET' }
+  if (!tuyChon.privacy) return { ok: false, loi: 'Chọn "Ai có thể xem" trước khi đăng' }
 
-  // Bài đã đăng Facebook thì khóa sửa, đăng nguyên nội dung đã lưu
   const { data: bai } = await db().from('bai_viet').select('*').eq('id', id).single<BaiViet>()
   if (!bai) return { ok: false, loi: 'Không tìm thấy bài' }
   if (bai.tiktok_publish_id) return { ok: false, loi: 'Bài này đã đăng TikTok rồi' }
 
-  let moi = bai
-  if (bai.trang_thai !== 'da_dang') {
-    const luu = await luuBai(id, sua)
-    if (!luu.ok) return luu
-    moi = (await db().from('bai_viet').select('*').eq('id', id).single<BaiViet>()).data ?? bai
-  }
-
   try {
-    await dangLenTikTok(moi)
+    await dangLenTikTok(bai, tuyChon)
     refresh()
     return { ok: true }
   } catch (e) {
     return { ok: false, loi: e instanceof Error ? e.message : String(e) }
   }
+}
+
+// Đã xóa bài trên TikTok → bỏ đánh dấu để đăng lại được
+export async function boDanhDauTikTok(id: string): Promise<KetQua> {
+  await chanChuaDangNhap()
+  const { error } = await db()
+    .from('bai_viet')
+    .update({ tiktok_publish_id: null, tiktok_dang_luc: null, tiktok_loi: null })
+    .eq('id', id)
+  if (error) return { ok: false, loi: error.message }
+  refresh()
+  return { ok: true }
 }

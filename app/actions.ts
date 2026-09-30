@@ -6,7 +6,8 @@ import { db, type BaiViet } from '@/lib/db'
 import { daDangNhap, dangNhap, dangXuat } from '@/lib/xacThuc'
 import { tongHopTin, type KetQuaTongHop } from '@/lib/tongHop'
 import { coFacebook } from '@/lib/facebook'
-import { dangLenFacebook } from '@/lib/dangBai'
+import { coTikTok } from '@/lib/tiktok'
+import { dangLenFacebook, dangLenTikTok } from '@/lib/dangBai'
 import { tachHashtag } from '@/lib/chuThich'
 
 type KetQua = { ok: boolean; loi?: string }
@@ -79,10 +80,35 @@ export async function dangBai(id: string, sua: SuaBai): Promise<KetQua> {
 
   const { data: bai } = await db().from('bai_viet').select('*').eq('id', id).single<BaiViet>()
   if (!bai) return { ok: false, loi: 'Không tìm thấy bài' }
-  if (bai.trang_thai === 'da_dang') return { ok: false, loi: 'Bài này đã đăng rồi' }
+  if (bai.fb_post_id) return { ok: false, loi: 'Bài này đã đăng Facebook rồi' }
 
   try {
     await dangLenFacebook(bai)
+    refresh()
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, loi: e instanceof Error ? e.message : String(e) }
+  }
+}
+
+export async function dangTikTok(id: string, sua: SuaBai): Promise<KetQua> {
+  await chanChuaDangNhap()
+  if (!coTikTok()) return { ok: false, loi: 'Chưa cấu hình TIKTOK_CLIENT_KEY / TIKTOK_CLIENT_SECRET' }
+
+  // Bài đã đăng Facebook thì khóa sửa, đăng nguyên nội dung đã lưu
+  const { data: bai } = await db().from('bai_viet').select('*').eq('id', id).single<BaiViet>()
+  if (!bai) return { ok: false, loi: 'Không tìm thấy bài' }
+  if (bai.tiktok_publish_id) return { ok: false, loi: 'Bài này đã đăng TikTok rồi' }
+
+  let moi = bai
+  if (bai.trang_thai !== 'da_dang') {
+    const luu = await luuBai(id, sua)
+    if (!luu.ok) return luu
+    moi = (await db().from('bai_viet').select('*').eq('id', id).single<BaiViet>()).data ?? bai
+  }
+
+  try {
+    await dangLenTikTok(moi)
     refresh()
     return { ok: true }
   } catch (e) {

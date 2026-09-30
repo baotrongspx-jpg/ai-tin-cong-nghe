@@ -1,9 +1,13 @@
+import sharp from 'sharp'
 import { db } from '@/lib/db'
 import { veAnhBai } from '@/lib/anh'
 
 // Link ảnh công khai (xem trước, tải ảnh). Chỉ lộ tiêu đề ảnh, không lộ gì khác.
+// /anh/<id>.jpg trả ảnh JPG cho TikTok (TikTok không nhận PNG).
 export async function GET(_req: Request, ctx: RouteContext<'/anh/[id]'>) {
-  const { id } = await ctx.params
+  const { id: ten } = await ctx.params
+  const jpg = ten.endsWith('.jpg')
+  const id = jpg ? ten.slice(0, -4) : ten
   if (!/^[0-9a-f-]{36}$/i.test(id)) return new Response('Không tìm thấy', { status: 404 })
 
   const { data } = await db()
@@ -13,5 +17,11 @@ export async function GET(_req: Request, ctx: RouteContext<'/anh/[id]'>) {
     .maybeSingle()
   if (!data) return new Response('Không tìm thấy', { status: 404 })
 
-  return veAnhBai(data)
+  const png = await veAnhBai(data)
+  if (!jpg) return png
+
+  const anh = await sharp(Buffer.from(await png.arrayBuffer())).jpeg({ quality: 92 }).toBuffer()
+  return new Response(new Uint8Array(anh), {
+    headers: { 'Content-Type': 'image/jpeg', 'Cache-Control': 'public, max-age=300' },
+  })
 }

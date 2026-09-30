@@ -4,18 +4,23 @@ import { layTinMoi } from './nguonTin'
 import { docNoiDungBai } from './docBai'
 import { chonTin, vietBai } from './ai'
 import { coFacebook } from './facebook'
-import { dangLenFacebook } from './dangBai'
+import { coTikTok } from './tiktok'
+import { dangLenFacebook, dangLenTikTok } from './dangBai'
 
-export type KetQuaTongHop = { soTin: number; daChon: number; daViet: number; daDang: number; loi: string[] }
+export type KetQuaTongHop = {
+  soTin: number; daChon: number; daViet: number; daDang: number; daDangTikTok: number; loi: string[]
+}
 
 // Toàn bộ quy trình: đọc RSS → bỏ bài đã soạn → AI chọn tin → đọc bài gốc → AI viết → lưu nháp.
-// `tuDongDang`: viết xong đăng thẳng lên Fanpage, không chờ duyệt.
+// `tuDongDang`: viết xong đăng thẳng lên Fanpage và TikTok (nơi nào đã cấu hình), không chờ duyệt.
 export async function tongHopTin(
   tuDongDang = false,
   soBai = Number(process.env.SO_BAI_MOI_LAN ?? 3),
 ): Promise<KetQuaTongHop> {
-  tuDongDang &&= coFacebook()
+  const dangFb = tuDongDang && coFacebook()
+  const dangTikTok = tuDongDang && coTikTok() && process.env.TIKTOK_TU_DONG_DANG !== '0'
   let daDang = 0
+  let daDangTikTok = 0
   const loi: string[] = []
   const batDau = Date.now()
   const tatCa = await layTinMoi(24)
@@ -27,7 +32,7 @@ export async function tongHopTin(
   const setDaCo = new Set((daCo ?? []).map((r) => r.nguon_link))
   const tin = tatCa.filter((t) => !setDaCo.has(t.link))
 
-  if (tin.length === 0) return { soTin: 0, daChon: 0, daViet: 0, daDang, loi }
+  if (tin.length === 0) return { soTin: 0, daChon: 0, daViet: 0, daDang, daDangTikTok, loi }
 
   // Tiêu đề tin đã soạn 3 ngày qua → tránh chọn lại cùng sự kiện từ báo khác
   const { data: ganDay } = await db()
@@ -68,14 +73,23 @@ export async function tongHopTin(
       if (error) throw error
       if (!bai) continue
       daViet++
-      if (tuDongDang) {
-        await dangLenFacebook(moi)
-        daDang++
+      // Facebook và TikTok đăng độc lập: bên này lỗi không chặn bên kia
+      if (dangFb) {
+        await dangLenFacebook(moi).then(
+          () => daDang++,
+          (e: Error) => loi.push(`${t.tieuDe} (Facebook): ${e.message}`),
+        )
+      }
+      if (dangTikTok) {
+        await dangLenTikTok(moi).then(
+          () => daDangTikTok++,
+          (e: Error) => loi.push(`${t.tieuDe} (TikTok): ${e.message}`),
+        )
       }
     } catch (e) {
       loi.push(`${t.tieuDe}: ${e instanceof Error ? e.message : String(e)}`)
     }
   }
 
-  return { soTin: tin.length, daChon: chon.length, daViet, daDang, loi }
+  return { soTin: tin.length, daChon: chon.length, daViet, daDang, daDangTikTok, loi }
 }

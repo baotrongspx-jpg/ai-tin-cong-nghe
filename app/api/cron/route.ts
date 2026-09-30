@@ -2,7 +2,7 @@ import { tongHopTin } from '@/lib/tongHop'
 
 // Vercel Cron gọi route này theo lịch trong vercel.json (6h, 12h, 18h giờ VN), kèm header Authorization: Bearer CRON_SECRET.
 // ?so_bai=2: số bài mỗi lần (1–5), không có thì dùng SO_BAI_MOI_LAN.
-// Mặc định soạn xong đăng thẳng lên Fanpage; đặt TU_DONG_DANG=0 để chỉ lưu nháp chờ duyệt.
+// Mặc định soạn xong đăng thẳng lên Fanpage và TikTok (nếu đã cấu hình); đặt TU_DONG_DANG=0 để chỉ lưu nháp chờ duyệt.
 // Thêm ?chi_soan=1 để chạy thử: chỉ soạn nháp, không đăng.
 export const maxDuration = 300
 

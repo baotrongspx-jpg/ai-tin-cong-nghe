@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { db, type BaiViet, type TrangThai } from '@/lib/db'
 import { daDangNhap } from '@/lib/xacThuc'
 import { coFacebook } from '@/lib/facebook'
+import { coTikTok, daKetNoiTikTok } from '@/lib/tiktok'
 import { dangXuatAction } from './actions'
 import NutTongHop from './NutTongHop'
 import TheBai from './TheBai'
@@ -28,6 +29,7 @@ export default async function TrangChu({ searchParams }: PageProps<'/'>) {
     ...THE.map((t) => db().from('bai_viet').select('id', { count: 'exact', head: true }).eq('trang_thai', t.ma)),
   ])
   const dsBai = (data ?? []) as BaiViet[]
+  const tiktok = coTikTok() && (await daKetNoiTikTok())
 
   return (
     <main className="mx-auto max-w-5xl p-4 sm:p-6">
@@ -35,11 +37,16 @@ export default async function TrangChu({ searchParams }: PageProps<'/'>) {
         <div>
           <h1 className="text-2xl font-bold">Duyệt bài tin công nghệ</h1>
           <p className="text-sm text-slate-500">
-            AI tự tổng hợp mỗi sáng. Sửa nếu cần, rồi bấm Đăng lên Facebook.
+            AI tự tổng hợp 3 lần mỗi ngày. Sửa nếu cần, rồi bấm Đăng lên Facebook / TikTok.
           </p>
         </div>
         <div className="flex items-start gap-2">
           <NutTongHop />
+          {coTikTok() && (
+            <a href="/api/tiktok/ket-noi" className="btn bg-white text-slate-600 hover:bg-slate-50">
+              {tiktok ? 'Kết nối lại TikTok' : 'Kết nối TikTok'}
+            </a>
+          )}
           <form action={dangXuatAction}>
             <button className="btn bg-white text-slate-600 hover:bg-slate-50">Đăng xuất</button>
           </form>
@@ -78,7 +85,7 @@ export default async function TrangChu({ searchParams }: PageProps<'/'>) {
       ) : (
         <div className="space-y-5">
           {dsBai.map((b) => (
-            <TheBai key={`${b.id}-${b.trang_thai}`} bai={b} />
+            <TheBai key={`${b.id}-${b.trang_thai}-${b.tiktok_publish_id}`} bai={b} tiktok={tiktok} />
           ))}
         </div>
       )}

@@ -17,7 +17,8 @@ export default function NutTongHop() {
           kq.soTin === 0
             ? 'Không có tin mới trong 24 giờ qua.'
             : `Đã soạn ${kq.daViet}/${kq.daChon} bài từ ${kq.soTin} tin mới.` +
-                (kq.loi.length ? ` ${kq.loi.length} bài lỗi.` : ''),
+                (kq.daDang || kq.daDangTikTok ? ` Đã đăng ${kq.daDang} Facebook, ${kq.daDangTikTok} TikTok.` : '') +
+                (kq.loi.length ? ` ${kq.loi.length} lỗi.` : ''),
         )
     })
 

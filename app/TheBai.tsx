@@ -4,20 +4,26 @@ import { useState, useTransition } from 'react'
 import type { BaiViet } from '@/lib/db'
 import { BANG_MAU } from '@/lib/bangMau'
 import { taoChuThich, tachHashtag } from '@/lib/chuThich'
-import { dangBai, doiMauAnh, doiTrangThai, luuBai } from './actions'
+import { dangBai, dangTikTok, doiMauAnh, doiTrangThai, luuBai } from './actions'
 
 const gio = (s: string) =>
   new Date(s).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', dateStyle: 'short', timeStyle: 'short' })
 
-export default function TheBai({ bai }: { bai: BaiViet }) {
+// `tiktok`: đã cấu hình và kết nối TikTok thì mới hiện nút đăng TikTok
+export default function TheBai({ bai, tiktok }: { bai: BaiViet; tiktok: boolean }) {
   const [tieuDe, setTieuDe] = useState(bai.tieu_de_anh)
   const [chuDe, setChuDe] = useState(bai.chu_de)
   const [noiDung, setNoiDung] = useState(bai.noi_dung)
   const [hashtag, setHashtag] = useState(bai.hashtag.map((h) => `#${h}`).join(' '))
   const [dangLam, startTransition] = useTransition()
   const [thongBao, setThongBao] = useState<{ loai: 'ok' | 'loi'; chu: string } | null>(
-    bai.loi && bai.trang_thai !== 'da_dang' ? { loai: 'loi', chu: bai.loi } : null,
+    bai.loi && !bai.fb_post_id
+      ? { loai: 'loi', chu: bai.loi }
+      : bai.tiktok_loi && !bai.tiktok_publish_id
+        ? { loai: 'loi', chu: `TikTok: ${bai.tiktok_loi}` }
+        : null,
   )
+  const choDang = bai.trang_thai === 'nhap' || bai.trang_thai === 'da_dang'
 
   const khoa = bai.trang_thai === 'da_dang'
   const daSua =
@@ -75,7 +81,8 @@ export default function TheBai({ bai }: { bai: BaiViet }) {
           </a>
           <div className="mt-0.5">
             Soạn lúc {gio(bai.tao_luc)}
-            {bai.dang_luc && <> · Đăng lúc {gio(bai.dang_luc)}</>}
+            {bai.dang_luc && <> · Đăng Facebook lúc {gio(bai.dang_luc)}</>}
+            {bai.tiktok_dang_luc && <> · Đăng TikTok lúc {gio(bai.tiktok_dang_luc)}</>}
           </div>
         </div>
 
@@ -111,7 +118,7 @@ export default function TheBai({ bai }: { bai: BaiViet }) {
         )}
 
         <div className="flex flex-wrap gap-2 pt-1">
-          {bai.trang_thai === 'nhap' && (
+          {choDang && !bai.fb_post_id && (
             <button
               disabled={dangLam}
               onClick={() => {
@@ -120,6 +127,17 @@ export default function TheBai({ bai }: { bai: BaiViet }) {
               className="btn bg-blue-600 text-white hover:bg-blue-700"
             >
               {dangLam ? 'Đang xử lý…' : 'Đăng lên Facebook'}
+            </button>
+          )}
+          {tiktok && choDang && !bai.tiktok_publish_id && (
+            <button
+              disabled={dangLam}
+              onClick={() => {
+                if (confirm('Đăng ảnh bài này lên TikTok?')) chay(() => dangTikTok(bai.id, sua), 'Đã gửi lên TikTok')
+              }}
+              className="btn bg-slate-900 text-white hover:bg-black"
+            >
+              {dangLam ? 'Đang xử lý…' : 'Đăng lên TikTok'}
             </button>
           )}
           {!khoa && (

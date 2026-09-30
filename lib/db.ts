@@ -19,6 +19,9 @@ export type BaiViet = {
   fb_post_id: string | null
   dang_luc: string | null
   loi: string | null
+  tiktok_publish_id: string | null
+  tiktok_dang_luc: string | null
+  tiktok_loi: string | null
 }
 
 let client: SupabaseClient | null = null

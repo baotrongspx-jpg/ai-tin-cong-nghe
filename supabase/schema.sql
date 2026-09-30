@@ -25,3 +25,16 @@ create index if not exists bai_viet_tao_luc on public.bai_viet (tao_luc desc);
 
 -- Bật RLS, không tạo policy: chỉ server (service_role) đọc ghi được.
 alter table public.bai_viet enable row level security;
+
+-- TikTok (chạy thêm đoạn này nếu bảng đã tạo từ trước)
+alter table public.bai_viet add column if not exists tiktok_publish_id text;
+alter table public.bai_viet add column if not exists tiktok_dang_luc   timestamptz;
+alter table public.bai_viet add column if not exists tiktok_loi        text;
+
+-- Lưu token kết nối (TikTok tự làm mới token mỗi ngày nên phải lưu ở đây, không để trong biến môi trường)
+create table if not exists public.cai_dat (
+  khoa          text primary key,
+  gia_tri       jsonb not null,
+  cap_nhat_luc  timestamptz not null default now()
+);
+alter table public.cai_dat enable row level security;

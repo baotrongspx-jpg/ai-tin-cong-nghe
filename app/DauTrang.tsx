@@ -21,6 +21,8 @@ export default function DauTrang({ dangO }: { dangO: Kenh }) {
         <Link
           key={ma}
           href={href}
+          // Tải trước cả trang (không chỉ khung chờ) để bấm chuyển trang hiện ngay
+          prefetch={true}
           aria-current={ma === dangO ? 'page' : undefined}
           className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-1.5 sm:px-4 text-sm font-bold transition sm:flex-none ${
             ma === dangO ? `${bat} shadow-md` : 'text-slate-500 hover:text-slate-800'

@@ -1,6 +1,10 @@
 'use server'
 
-import { refresh } from 'next/cache'
+import { revalidatePath } from 'next/cache'
+
+// Sau khi đổi dữ liệu: xóa toàn bộ trang trình duyệt đang nhớ (staleTimes), để trang nào mở tiếp cũng thấy dữ liệu mới.
+// refresh() chỉ làm mới trang đang xem, trang khác vẫn có thể hiện dữ liệu cũ tới 2 phút.
+const lamMoi = () => revalidatePath('/', 'layout')
 import { redirect } from 'next/navigation'
 import { db, type BaiViet } from '@/lib/db'
 import { daDangNhap, dangNhap, dangXuat } from '@/lib/xacThuc'
@@ -37,7 +41,7 @@ export async function tongHopNgay(): Promise<KetQuaTongHop | { loi: string }> {
   await chanChuaDangNhap()
   try {
     const kq = await tongHopTin()
-    refresh()
+    lamMoi()
     return kq
   } catch (e) {
     return { loi: e instanceof Error ? e.message : String(e) }
@@ -58,7 +62,7 @@ export async function luuBai(id: string, sua: SuaBai): Promise<KetQua> {
     })
     .eq('id', id)
   if (error) return { ok: false, loi: error.message }
-  refresh()
+  lamMoi()
   return { ok: true }
 }
 
@@ -66,7 +70,7 @@ export async function doiMauAnh(id: string, mau: number): Promise<KetQua> {
   await chanChuaDangNhap()
   const { error } = await db().from('bai_viet').update({ mau_anh: mau }).eq('id', id)
   if (error) return { ok: false, loi: error.message }
-  refresh()
+  lamMoi()
   return { ok: true }
 }
 
@@ -74,7 +78,7 @@ export async function doiTrangThai(id: string, trangThai: 'nhap' | 'bo_qua'): Pr
   await chanChuaDangNhap()
   const { error } = await db().from('bai_viet').update({ trang_thai: trangThai }).eq('id', id).neq('trang_thai', 'da_dang')
   if (error) return { ok: false, loi: error.message }
-  refresh()
+  lamMoi()
   return { ok: true }
 }
 
@@ -91,7 +95,7 @@ export async function dangBai(id: string, sua: SuaBai): Promise<KetQua> {
 
   try {
     await dangLenFacebook(bai)
-    refresh()
+    lamMoi()
     return { ok: true }
   } catch (e) {
     return { ok: false, loi: e instanceof Error ? e.message : String(e) }
@@ -109,7 +113,7 @@ export async function dangTikTok(id: string, tuyChon: TuyChonDang): Promise<KetQ
 
   try {
     await dangLenTikTok(bai, tuyChon)
-    refresh()
+    lamMoi()
     return { ok: true }
   } catch (e) {
     return { ok: false, loi: e instanceof Error ? e.message : String(e) }
@@ -124,7 +128,7 @@ export async function boDanhDauTikTok(id: string): Promise<KetQua> {
     .update({ tiktok_publish_id: null, tiktok_dang_luc: null, tiktok_loi: null })
     .eq('id', id)
   if (error) return { ok: false, loi: error.message }
-  refresh()
+  lamMoi()
   return { ok: true }
 }
 
@@ -147,7 +151,7 @@ export async function dangCaHai(id: string, sua: SuaBai, tuyChon: TuyChonDang): 
   }
   await chay('Facebook', !!bai.fb_post_id, () => dangLenFacebook(bai))
   await chay('TikTok', !!bai.tiktok_publish_id, () => dangLenTikTok(bai, tuyChon))
-  refresh()
+  lamMoi()
   return loi.length ? { ok: false, loi: loi.join(' · ') } : { ok: true }
 }
 
@@ -155,7 +159,7 @@ export async function dangCaHai(id: string, sua: SuaBai, tuyChon: TuyChonDang): 
 export async function timLaiXuHuong(): Promise<KetQua> {
   await chanChuaDangNhap()
   await layHashtagXuHuong(true)
-  refresh()
+  lamMoi()
   return { ok: true }
 }
 
@@ -164,7 +168,7 @@ export async function capNhatSoLieuNgay(): Promise<KetQua & { soBai?: number }> 
   await chanChuaDangNhap()
   try {
     const kq = await capNhatSoLieu(30)
-    refresh()
+    lamMoi()
     return { ok: true, soBai: kq.soBai, loi: kq.loi ?? undefined }
   } catch (e) {
     return { ok: false, loi: e instanceof Error ? e.message : String(e) }
@@ -196,7 +200,7 @@ export async function henGio(id: string, sua: SuaBai, noi: NoiHen, lucIso: strin
   try {
     if (coFb && !bai.fb_post_id) await dangLenFacebook(bai, luc)
     if (coTt && !bai.tiktok_publish_id) await henTikTok(id, luc)
-    refresh()
+    lamMoi()
     return { ok: true }
   } catch (e) {
     return { ok: false, loi: e instanceof Error ? e.message : String(e) }
@@ -215,7 +219,7 @@ export async function huyHen(id: string, noi: 'fb' | 'tt'): Promise<KetQua> {
       await xoaBaiFb(bai.fb_post_id)
       await db().from('bai_viet').update({ trang_thai: 'nhap', fb_post_id: null, dang_luc: null }).eq('id', id)
     }
-    refresh()
+    lamMoi()
     return { ok: true }
   } catch (e) {
     return { ok: false, loi: e instanceof Error ? e.message : String(e) }
@@ -240,7 +244,7 @@ export async function traLoiAction(commentId: string, noiDung: string): Promise<
   if (!noiDung.trim()) return { ok: false, loi: 'Chưa viết câu trả lời' }
   try {
     await traLoi(commentId, noiDung.trim())
-    refresh()
+    lamMoi()
     return { ok: true }
   } catch (e) {
     return { ok: false, loi: e instanceof Error ? e.message : String(e) }
@@ -255,7 +259,7 @@ export async function anBinhLuanAction(
   try {
     if (an) await anTay(c)
     else await hienLai(c.id)
-    refresh()
+    lamMoi()
     return { ok: true }
   } catch (e) {
     return { ok: false, loi: e instanceof Error ? e.message : String(e) }
@@ -282,7 +286,7 @@ export async function datAnhNenAction(id: string, anhNen: number): Promise<KetQu
   await chanChuaDangNhap()
   try {
     await datAnhNen(id, anhNen)
-    refresh()
+    lamMoi()
     return { ok: true }
   } catch (e) {
     return { ok: false, loi: e instanceof Error ? e.message : String(e) }

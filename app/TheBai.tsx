@@ -7,6 +7,7 @@ import { taoChuThich, tachHashtag } from '@/lib/chuThich'
 import { gio, truoc } from '@/lib/thoiGian'
 import { dangBai, dangCaHai, doiMauAnh, doiTrangThai, luuBai } from './actions'
 import { thongBao } from './ThongBao'
+import KhungHenGio from './KhungHenGio'
 import { IconBo, IconChep, IconFacebook, IconLai, IconLuu, IconMo, IconNhac, IconTai, IconTikTok, Xoay } from './BieuTuong'
 
 type Viec = 'fb' | 'ca_hai' | 'luu' | 'mau' | 'trang_thai'
@@ -21,8 +22,21 @@ const NHAN: Record<BaiViet['trang_thai'], { chu: string; mau: string }> = {
 // Tiêu đề ảnh dài hơn mức này thì chữ trên ảnh sẽ nhỏ, khó đọc
 const TIEU_DE_TOI_DA = 70
 
-// `tiktok`: đã kết nối TikTok thì hiện nút đăng cả 2 nền tảng
-export default function TheBai({ bai, tiktok }: { bai: BaiViet; tiktok: boolean }) {
+// `tiktok`: đã kết nối TikTok thì hiện nút đăng cả 2 nền tảng và hẹn giờ TikTok.
+// `henFb` / `henTikTok`: giờ đã hẹn đăng (nếu có). `gioVang`: giờ gợi ý khi hẹn giờ.
+export default function TheBai({
+  bai,
+  tiktok,
+  henFb,
+  henTikTok,
+  gioVang,
+}: {
+  bai: BaiViet
+  tiktok: boolean
+  henFb: string | null
+  henTikTok: string | null
+  gioVang: { gio: number[]; tuSoLieu: boolean }
+}) {
   const tagGoc = bai.hashtag.map((h) => `#${h}`).join(' ')
   const [tieuDe, setTieuDe] = useState(bai.tieu_de_anh)
   const [chuDe, setChuDe] = useState(bai.chu_de)
@@ -32,6 +46,7 @@ export default function TheBai({ bai, tiktok }: { bai: BaiViet; tiktok: boolean 
   const [viec, setViec] = useState<Viec | null>(null)
 
   const choDang = bai.trang_thai === 'nhap' || bai.trang_thai === 'da_dang'
+  const daHen = !!henFb || !!henTikTok
   const khoa = bai.trang_thai === 'da_dang'
   const daSua = tieuDe !== bai.tieu_de_anh || chuDe !== bai.chu_de || noiDung !== bai.noi_dung || hashtag !== tagGoc
   const sua = { tieu_de_anh: tieuDe, chu_de: chuDe, noi_dung: noiDung, hashtag }
@@ -64,7 +79,7 @@ export default function TheBai({ bai, tiktok }: { bai: BaiViet; tiktok: boolean 
     thongBao('ok', 'Đã sao chép nội dung bài đăng')
   }
 
-  const nhan = NHAN[bai.trang_thai]
+  const nhan = daHen ? { chu: '⏰ Đã hẹn', mau: 'bg-violet-600 text-white' } : NHAN[bai.trang_thai]
 
   return (
     <article onKeyDown={phim} className="the grid gap-5 p-4 sm:p-5 md:grid-cols-[280px_1fr]">
@@ -75,7 +90,7 @@ export default function TheBai({ bai, tiktok }: { bai: BaiViet; tiktok: boolean 
           <img src={urlAnh} alt={bai.tieu_de_anh} className="aspect-square w-full rounded-xl bg-slate-200 object-cover" />
           {/* Góc phải ảnh không có chữ nên đặt nhãn ở đó */}
           <div className="absolute right-2.5 top-2.5 flex items-center gap-1">
-            {bai.fb_post_id && (
+            {bai.fb_post_id && !henFb && (
               <span title="Đã lên Facebook" className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-white shadow">
                 <IconFacebook className="h-3.5 w-3.5" />
               </span>
@@ -122,7 +137,7 @@ export default function TheBai({ bai, tiktok }: { bai: BaiViet; tiktok: boolean 
           <span suppressHydrationWarning title={gio(bai.tao_luc)}>
             Soạn {truoc(bai.tao_luc)}
           </span>
-          {bai.dang_luc && (
+          {bai.dang_luc && !henFb && (
             <span suppressHydrationWarning title={gio(bai.dang_luc)}>
               · Đăng {truoc(bai.dang_luc)}
             </span>
@@ -189,9 +204,19 @@ export default function TheBai({ bai, tiktok }: { bai: BaiViet; tiktok: boolean 
           )}
         </div>
 
+        <KhungHenGio
+          baiId={bai.id}
+          sua={sua}
+          choHen={bai.trang_thai === 'nhap' && !daHen}
+          tiktok={tiktok}
+          henFb={henFb}
+          henTikTok={henTikTok}
+          gioVang={gioVang}
+        />
+
         {/* Thanh thao tác */}
         <div className="mt-auto flex flex-wrap items-center gap-2 border-t border-slate-100 pt-4">
-          {tiktok && choDang && !bai.fb_post_id && !bai.tiktok_publish_id && (
+          {tiktok && choDang && !bai.fb_post_id && !bai.tiktok_publish_id && !daHen && (
             <button
               disabled={dangLam}
               onClick={() => {
@@ -205,7 +230,7 @@ export default function TheBai({ bai, tiktok }: { bai: BaiViet; tiktok: boolean 
               {viec === 'ca_hai' ? 'Đang đăng… (~20 giây)' : 'Đăng cả 2'}
             </button>
           )}
-          {choDang && !bai.fb_post_id && (
+          {choDang && !bai.fb_post_id && !daHen && (
             <button
               disabled={dangLam}
               onClick={() => {
@@ -217,12 +242,12 @@ export default function TheBai({ bai, tiktok }: { bai: BaiViet; tiktok: boolean 
               {viec === 'fb' ? 'Đang đăng…' : 'Đăng Facebook'}
             </button>
           )}
-          {bai.fb_post_id && (
+          {bai.fb_post_id && !henFb && (
             <a href={`https://www.facebook.com/${bai.fb_post_id}`} target="_blank" rel="noreferrer" className="btn btn-phu text-blue-600">
               <IconFacebook /> Xem trên Facebook <IconMo className="h-3.5 w-3.5" />
             </a>
           )}
-          {tiktok && choDang && !bai.fb_post_id && !bai.tiktok_publish_id && (
+          {tiktok && choDang && !bai.fb_post_id && !bai.tiktok_publish_id && !daHen && (
             <span className="hidden items-center gap-1 text-xs text-slate-400 lg:flex">
               <IconNhac className="h-3.5 w-3.5" /> TikTok tự thêm nhạc
             </span>
@@ -235,7 +260,7 @@ export default function TheBai({ bai, tiktok }: { bai: BaiViet; tiktok: boolean 
               </NutPhu>
             )}
             <NutPhu onClick={saoChep} icon={<IconChep />}>Sao chép</NutPhu>
-            {bai.trang_thai === 'nhap' && (
+            {bai.trang_thai === 'nhap' && !daHen && (
               <NutPhu
                 onClick={() => chay('trang_thai', () => doiTrangThai(bai.id, 'bo_qua'), 'Đã chuyển sang Bỏ qua')}
                 disabled={dangLam}

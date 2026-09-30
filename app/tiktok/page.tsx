@@ -3,6 +3,7 @@ import { db, type BaiViet } from '@/lib/db'
 import { daDangNhap } from '@/lib/xacThuc'
 import { coTikTok, daKetNoiTikTok, layTaiKhoanTikTok, type TaiKhoanTikTok } from '@/lib/tiktok'
 import { layHashtagXuHuong } from '@/lib/xuHuong'
+import { dsHenTikTok } from '@/lib/henGio'
 import { SO_TAG_XU_HUONG } from '@/lib/chuThich'
 import DauTrang, { CanhBao, ThanhLoc, TieuDeTrang, Trong } from '../DauTrang'
 import { IconTikTok } from '../BieuTuong'
@@ -34,7 +35,7 @@ export default async function TrangTikTok({ searchParams }: PageProps<'/tiktok'>
     }
   }
 
-  const [ds, demChua, demDa, xuHuong] = await Promise.all([
+  const [ds, demChua, demDa, xuHuong, hen] = await Promise.all([
     (dangXem === 'da'
       ? locDa().order('tiktok_dang_luc', { ascending: false })
       : locChua().order('tao_luc', { ascending: false })
@@ -42,6 +43,7 @@ export default async function TrangTikTok({ searchParams }: PageProps<'/tiktok'>
     locChua().limit(0),
     locDa().limit(0),
     layHashtagXuHuong(),
+    dsHenTikTok(),
   ])
   const dsBai = (ds.data ?? []) as BaiViet[]
 
@@ -106,6 +108,7 @@ export default async function TrangTikTok({ searchParams }: PageProps<'/tiktok'>
                 key={`${b.id}-${b.tiktok_publish_id}`}
                 bai={b}
                 xuHuong={xuHuong.ds}
+                hen={hen[b.id] ?? null}
                 taiKhoan={taiKhoan && { khoaBinhLuan: taiKhoan.comment_disabled }}
               />
             ))}

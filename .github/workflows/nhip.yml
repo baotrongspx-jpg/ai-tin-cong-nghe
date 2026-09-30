@@ -1,0 +1,23 @@
+# "Nhịp" 10 phút một lần: đăng bài TikTok hẹn giờ, mỗi giờ cập nhật số liệu, báo bài hot, ẩn spam.
+# Cần thêm secret CRON_SECRET (giống trên Vercel) ở GitHub → Settings → Secrets and variables → Actions.
+# GitHub có thể chạy trễ vài phút khi đông, và tự tắt lịch nếu repo không có commit mới trong 60 ngày.
+name: Nhip
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  nhip:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    env:
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+    steps:
+      - name: Goi /api/nhip
+        # Chưa thêm secret thì bỏ qua, không báo lỗi
+        if: env.CRON_SECRET != ''
+        run: |
+          curl -fsS --max-time 300 -H "Authorization: Bearer $CRON_SECRET" \
+            https://ai-tin-cong-nghe-wpy7.vercel.app/api/nhip

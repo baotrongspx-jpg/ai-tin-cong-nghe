@@ -11,3 +11,6 @@ export function truoc(s: string) {
   if (phut < 7 * 24 * 60) return `${Math.floor(phut / 1440)} ngày trước`
   return gio(s)
 }
+
+// Giờ hiện tại cho Server Component: mỗi lượt tải trang chỉ chạy một lần nên đọc giờ ở đây không sao
+export const bayGio = () => Date.now()

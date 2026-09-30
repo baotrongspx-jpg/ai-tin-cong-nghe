@@ -5,12 +5,15 @@ import { redirect } from 'next/navigation'
 import { db, type BaiViet } from '@/lib/db'
 import { daDangNhap, dangNhap, dangXuat } from '@/lib/xacThuc'
 import { tongHopTin, type KetQuaTongHop } from '@/lib/tongHop'
-import { coFacebook } from '@/lib/facebook'
+import { coFacebook, xoaBaiFb } from '@/lib/facebook'
+import { henTikTok, huyHenTikTok } from '@/lib/henGio'
 import { coTikTok, type TuyChonDang } from '@/lib/tiktok'
 import { dangLenFacebook, dangLenTikTok } from '@/lib/dangBai'
 import { tachHashtag } from '@/lib/chuThich'
 import { layHashtagXuHuong } from '@/lib/xuHuong'
 import { capNhatSoLieu } from '@/lib/soLieu'
+import { goiYTraLoi } from '@/lib/ai'
+import { anTay, hienLai, traLoi } from '@/lib/binhLuan'
 
 type KetQua = { ok: boolean; loi?: string }
 
@@ -161,6 +164,97 @@ export async function capNhatSoLieuNgay(): Promise<KetQua & { soBai?: number }> 
     const kq = await capNhatSoLieu(30)
     refresh()
     return { ok: true, soBai: kq.soBai, loi: kq.loi ?? undefined }
+  } catch (e) {
+    return { ok: false, loi: e instanceof Error ? e.message : String(e) }
+  }
+}
+
+export type NoiHen = 'fb' | 'tt' | 'ca_hai'
+
+// Hẹn giờ đăng: Facebook tự đăng đúng giờ (cách hiện tại 10 phút đến 30 ngày),
+// TikTok được "nhịp" 10 phút một lần đăng khi tới giờ.
+export async function henGio(id: string, sua: SuaBai, noi: NoiHen, lucIso: string): Promise<KetQua> {
+  await chanChuaDangNhap()
+  const luc = new Date(lucIso)
+  if (Number.isNaN(luc.getTime())) return { ok: false, loi: 'Giờ hẹn không hợp lệ' }
+  const conPhut = (luc.getTime() - Date.now()) / 60_000
+  const coFb = noi !== 'tt'
+  const coTt = noi !== 'fb'
+  if (coFb && !coFacebook()) return { ok: false, loi: 'Chưa cấu hình Facebook' }
+  if (coTt && !coTikTok()) return { ok: false, loi: 'Chưa cấu hình TikTok' }
+  if (coFb && (conPhut < 10 || conPhut > 30 * 24 * 60))
+    return { ok: false, loi: 'Facebook chỉ cho hẹn giờ cách hiện tại từ 10 phút đến 30 ngày' }
+  if (coTt && conPhut < 1) return { ok: false, loi: 'Chọn giờ ở tương lai' }
+
+  const luu = await luuBai(id, sua)
+  if (!luu.ok) return luu
+  const { data: bai } = await db().from('bai_viet').select('*').eq('id', id).single<BaiViet>()
+  if (!bai) return { ok: false, loi: 'Không tìm thấy bài' }
+
+  try {
+    if (coFb && !bai.fb_post_id) await dangLenFacebook(bai, luc)
+    if (coTt && !bai.tiktok_publish_id) await henTikTok(id, luc)
+    refresh()
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, loi: e instanceof Error ? e.message : String(e) }
+  }
+}
+
+// Hủy hẹn: Facebook xóa bài đang chờ đăng và đưa bài về chờ duyệt; TikTok bỏ khỏi lịch
+export async function huyHen(id: string, noi: 'fb' | 'tt'): Promise<KetQua> {
+  await chanChuaDangNhap()
+  try {
+    if (noi === 'tt') await huyHenTikTok(id)
+    else {
+      const { data: bai } = await db().from('bai_viet').select('*').eq('id', id).single<BaiViet>()
+      if (!bai?.fb_post_id || !bai.dang_luc || new Date(bai.dang_luc).getTime() <= Date.now())
+        return { ok: false, loi: 'Bài này đã lên Facebook rồi, không hủy hẹn được' }
+      await xoaBaiFb(bai.fb_post_id)
+      await db().from('bai_viet').update({ trang_thai: 'nhap', fb_post_id: null, dang_luc: null }).eq('id', id)
+    }
+    refresh()
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, loi: e instanceof Error ? e.message : String(e) }
+  }
+}
+
+// ---------- Bình luận Facebook ----------
+
+export async function goiYTraLoiAction(baiId: string, binhLuan: string): Promise<KetQua & { tra_loi?: string }> {
+  await chanChuaDangNhap()
+  const { data: bai } = await db().from('bai_viet').select('noi_dung').eq('id', baiId).single<Pick<BaiViet, 'noi_dung'>>()
+  try {
+    const tra_loi = await goiYTraLoi(bai?.noi_dung ?? '', binhLuan)
+    return tra_loi ? { ok: true, tra_loi } : { ok: false, loi: 'AI không gợi ý được, thử lại hoặc tự viết' }
+  } catch (e) {
+    return { ok: false, loi: e instanceof Error ? e.message : String(e) }
+  }
+}
+
+export async function traLoiAction(commentId: string, noiDung: string): Promise<KetQua> {
+  await chanChuaDangNhap()
+  if (!noiDung.trim()) return { ok: false, loi: 'Chưa viết câu trả lời' }
+  try {
+    await traLoi(commentId, noiDung.trim())
+    refresh()
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, loi: e instanceof Error ? e.message : String(e) }
+  }
+}
+
+export async function anBinhLuanAction(
+  c: { id: string; noiDung: string; nguoi: string; luc: string; baiId: string; tieuDe: string },
+  an: boolean,
+): Promise<KetQua> {
+  await chanChuaDangNhap()
+  try {
+    if (an) await anTay(c)
+    else await hienLai(c.id)
+    refresh()
+    return { ok: true }
   } catch (e) {
     return { ok: false, loi: e instanceof Error ? e.message : String(e) }
   }

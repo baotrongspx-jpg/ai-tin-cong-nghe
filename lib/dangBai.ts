@@ -7,13 +7,14 @@ import { dangAnhLenTikTok, urlWeb, type TuyChonDang } from './tiktok'
 import { layHashtagXuHuong } from './xuHuong'
 
 // Vẽ ảnh, đăng lên Fanpage rồi đánh dấu bài đã đăng. Lỗi thì ghi vào cột `loi` và ném lỗi ra.
-export async function dangLenFacebook(bai: BaiViet) {
+// `henLuc`: Facebook tự đăng vào giờ đó; `dang_luc` ghi giờ hẹn (ở tương lai nghĩa là đang chờ đăng).
+export async function dangLenFacebook(bai: BaiViet, henLuc?: Date) {
   try {
     const anh = await (await veAnhBai(bai)).blob()
-    const postId = await dangAnhLenPage(anh, taoChuThich(bai))
+    const postId = await dangAnhLenPage(anh, taoChuThich(bai), henLuc)
     await db()
       .from('bai_viet')
-      .update({ trang_thai: 'da_dang', fb_post_id: postId, dang_luc: new Date().toISOString(), loi: null })
+      .update({ trang_thai: 'da_dang', fb_post_id: postId, dang_luc: (henLuc ?? new Date()).toISOString(), loi: null })
       .eq('id', bai.id)
     return postId
   } catch (e) {

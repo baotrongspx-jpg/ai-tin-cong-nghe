@@ -40,3 +40,4 @@ export const Xoay = ({ className = 'h-4 w-4' }: P) => (
   </svg>
 )
 export const IconBieuDo = ({ className }: P) => svg(<><path d="M4 20V10" /><path d="M10 20V4" /><path d="M16 20v-7" /><path d="M22 20H2" /></>, className)
+export const IconBinhLuan = ({ className }: P) => svg(<path d="M21 12a8 8 0 0 1-11.5 7.2L4 20l1-4.6A8 8 0 1 1 21 12Z" />, className)

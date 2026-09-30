@@ -6,11 +6,16 @@ export const coFacebook = () => !!(process.env.FB_PAGE_ID && process.env.FB_PAGE
 
 // Đăng một ảnh kèm chú thích lên Fanpage. Gửi thẳng file ảnh (không cần link công khai,
 // nên chạy được cả trên máy lẫn trên Vercel).
-export async function dangAnhLenPage(anh: Blob, chuThich: string): Promise<string> {
+// `henLuc`: nhờ Facebook tự đăng vào giờ đó (phải cách hiện tại 10 phút đến 30 ngày).
+export async function dangAnhLenPage(anh: Blob, chuThich: string, henLuc?: Date): Promise<string> {
   const form = new FormData()
   form.append('source', anh, 'anh.png')
   form.append('caption', chuThich)
   form.append('access_token', process.env.FB_PAGE_TOKEN!)
+  if (henLuc) {
+    form.append('published', 'false')
+    form.append('scheduled_publish_time', String(Math.floor(henLuc.getTime() / 1000)))
+  }
 
   const res = await fetch(`https://graph.facebook.com/${PHIEN_BAN}/${process.env.FB_PAGE_ID}/photos`, {
     method: 'POST',
@@ -22,6 +27,16 @@ export async function dangAnhLenPage(anh: Blob, chuThich: string): Promise<strin
   return data.post_id ?? data.id ?? ''
 }
 
+// Xóa bài (dùng để hủy bài đã hẹn giờ mà Facebook chưa đăng)
+export async function xoaBaiFb(postId: string) {
+  const res = await fetch(`https://graph.facebook.com/${PHIEN_BAN}/${postId}?access_token=${process.env.FB_PAGE_TOKEN}`, {
+    method: 'DELETE',
+    signal: AbortSignal.timeout(20_000),
+  })
+  const data = (await res.json().catch(() => ({}))) as { error?: { message: string } }
+  if (!res.ok || data.error) throw new Error(data.error?.message ?? `Facebook trả lỗi ${res.status}`)
+}
+
 export type SoLieuFb = {
   camXuc: number | null // null: token chưa có quyền pages_read_user_content
   binhLuan: number | null
@@ -30,9 +45,12 @@ export type SoLieuFb = {
   tiepCan: number | null
 }
 
-async function goiFb<T>(duongDan: string): Promise<T> {
+// Gọi Graph API bằng token Fanpage. Lỗi có kèm `ma` (10 hoặc 200: thiếu quyền).
+export async function goiFb<T>(duongDan: string, phuongThuc: 'GET' | 'POST' = 'GET', than?: Record<string, string>): Promise<T> {
   const tach = duongDan.includes('?') ? '&' : '?'
   const res = await fetch(`https://graph.facebook.com/${PHIEN_BAN}/${duongDan}${tach}access_token=${process.env.FB_PAGE_TOKEN}`, {
+    method: phuongThuc,
+    body: than ? new URLSearchParams(than) : undefined,
     signal: AbortSignal.timeout(20_000),
   })
   const data = (await res.json()) as T & { error?: { message: string; code: number } }

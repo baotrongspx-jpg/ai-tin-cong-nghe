@@ -6,6 +6,7 @@ import { chonTin, vietBai } from './ai'
 import { coFacebook } from './facebook'
 import { coTikTok } from './tiktok'
 import { dangLenFacebook, dangLenTikTok } from './dangBai'
+import { xepHang } from './soLieu'
 
 export type KetQuaTongHop = {
   soTin: number; daChon: number; daViet: number; daDang: number; daDangTikTok: number; loi: string[]
@@ -42,7 +43,14 @@ export async function tongHopTin(
     .neq('trang_thai', 'loi')
     .limit(100)
 
-  const chon = await chonTin(tin, soBai, (ganDay ?? []).map((r) => r.tieu_de_goc))
+  // Điểm tương tác 30 ngày qua: 8 bài cao nhất và 4 bài thấp nhất. Chưa có bài nào có điểm thì bỏ qua.
+  const hang = await xepHang(30).catch(() => null)
+  const coDiem = (hang?.ds ?? []).filter((x) => x.soLieu)
+  const hieuQua = coDiem.some((x) => x.diem > 0)
+    ? [...coDiem.slice(0, 8), ...coDiem.slice(8).slice(-4)].map((x) => ({ tieuDe: x.bai.tieu_de_anh, diem: x.diem }))
+    : []
+
+  const chon = await chonTin(tin, soBai, (ganDay ?? []).map((r) => r.tieu_de_goc), hieuQua)
   let daViet = 0
 
   // Viết lần lượt từng bài: gói miễn phí của Gemini giới hạn số lần gọi mỗi phút

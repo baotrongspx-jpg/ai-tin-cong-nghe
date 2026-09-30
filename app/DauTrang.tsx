@@ -2,17 +2,18 @@ import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { dangXuatAction } from './actions'
 import NutTongHop from './NutTongHop'
-import { IconBieuDo, IconFacebook, IconThoat, IconTikTok } from './BieuTuong'
+import { IconBieuDo, IconBinhLuan, IconFacebook, IconThoat, IconTikTok } from './BieuTuong'
 
 const KENH = [
   { ma: 'facebook', ten: 'Facebook', href: '/', Icon: IconFacebook, bat: 'bg-blue-600 text-white shadow-blue-600/30' },
   { ma: 'tiktok', ten: 'TikTok', href: '/tiktok', Icon: IconTikTok, bat: 'bg-slate-900 text-white shadow-slate-900/30' },
+  { ma: 'binh_luan', ten: 'Bình luận', href: '/binh-luan', Icon: IconBinhLuan, bat: 'bg-sky-600 text-white shadow-sky-600/30' },
   { ma: 'thong_ke', ten: 'Thống kê', href: '/thong-ke', Icon: IconBieuDo, bat: 'bg-emerald-600 text-white shadow-emerald-600/30' },
 ] as const
 
 type Kenh = (typeof KENH)[number]['ma']
 
-// Thanh trên cùng, dính khi cuộn: logo, chuyển giữa trang Facebook / TikTok / Thống kê, tổng hợp, đăng xuất
+// Thanh trên cùng, dính khi cuộn: logo, chuyển giữa các trang, tổng hợp, đăng xuất
 export default function DauTrang({ dangO }: { dangO: Kenh }) {
   const chuyenKenh = (
     <nav className="flex rounded-xl bg-slate-100 p-1" aria-label="Chọn nền tảng">
@@ -26,7 +27,7 @@ export default function DauTrang({ dangO }: { dangO: Kenh }) {
           }`}
         >
           <Icon className="h-4 w-4" />
-          {ten}
+          <span className="max-[420px]:sr-only">{ten}</span>
         </Link>
       ))}
     </nav>

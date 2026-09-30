@@ -1,6 +1,7 @@
 import 'server-only'
 import { db, type BaiViet } from './db'
 import { coFacebook, laySoLieuBai, type SoLieuFb } from './facebook'
+import { coTelegram, guiTelegram, thoat } from './telegram'
 
 // Số liệu tương tác lưu thành một bản ghi trong bảng cai_dat (không cần thêm cột):
 // { [id bài]: số liệu }. Mỗi lần cập nhật chỉ ghi đè những bài vừa lấy lại.
@@ -22,6 +23,7 @@ export async function capNhatSoLieu(ngay = 7) {
     .select('id, fb_post_id')
     .not('fb_post_id', 'is', null)
     .gte('dang_luc', new Date(Date.now() - ngay * 86400_000).toISOString())
+    .lte('dang_luc', new Date().toISOString())
     .limit(200)
   const ds = (data ?? []) as Pick<BaiViet, 'id' | 'fb_post_id'>[]
 
@@ -67,7 +69,7 @@ export type BaiXepHang = {
 // Bài đã đăng Facebook trong khoảng `ngay` ngày, xếp từ nhiều tương tác nhất xuống.
 // Bài đang lên xếp theo điểm như mọi bài, chỉ được gắn nhãn.
 export async function xepHang(ngay: number | null) {
-  let q = db().from('bai_viet').select('*').not('fb_post_id', 'is', null)
+  let q = db().from('bai_viet').select('*').not('fb_post_id', 'is', null).lte('dang_luc', new Date().toISOString())
   if (ngay) q = q.gte('dang_luc', new Date(Date.now() - ngay * 86400_000).toISOString())
   const [{ data }, banGhi] = await Promise.all([q.order('dang_luc', { ascending: false }).limit(300), docBanGhi()])
 
@@ -100,4 +102,29 @@ export async function xepHang(ngay: number | null) {
     thieuQuyenCamXuc: coSo.length > 0 && coSo.every((x) => x.soLieu!.camXuc === null),
     thieuLuotXem: coSo.length > 0 && coSo.every((x) => x.soLieu!.luotXem === null),
   }
+}
+
+// Nhắn Telegram khi có bài mới "đang lên". Mỗi bài chỉ báo một lần (ghi nhớ trong cai_dat).
+export async function baoBaiHot() {
+  if (!coTelegram()) return 0
+  const { ds } = await xepHang(2)
+  const { data } = await db().from('cai_dat').select('gia_tri').eq('khoa', 'da_bao_hot').maybeSingle()
+  const daBao = new Set((data?.gia_tri as string[] | undefined) ?? [])
+  const moi = ds.filter((x) => x.dangLen && !daBao.has(x.bai.id))
+  if (!moi.length) return 0
+
+  await guiTelegram(
+    `🔥 <b>${moi.length} bài đang lên</b>\n` +
+      moi
+        .map(
+          (x) =>
+            `• <a href="https://www.facebook.com/${x.bai.fb_post_id}">${thoat(x.bai.tieu_de_anh)}</a>: ${x.diem} điểm, ` +
+            `${x.tocDo.toFixed(1)} điểm/giờ`,
+        )
+        .join('\n'),
+  )
+  // Chỉ giữ 200 id gần nhất cho bản ghi khỏi phình
+  const giu = [...daBao, ...moi.map((x) => x.bai.id)].slice(-200)
+  await db().from('cai_dat').upsert({ khoa: 'da_bao_hot', gia_tri: giu, cap_nhat_luc: new Date().toISOString() })
+  return moi.length
 }

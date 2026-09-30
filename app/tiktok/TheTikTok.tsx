@@ -17,10 +17,12 @@ type Viec = 'tt' | 'ca_hai' | 'bo_danh_dau'
 export default function TheTikTok({
   bai,
   xuHuong,
+  hen,
   taiKhoan,
 }: {
   bai: BaiViet
   xuHuong: string[]
+  hen: string | null // giờ đã hẹn đăng TikTok
   taiKhoan: { khoaBinhLuan: boolean } | null
 }) {
   const [choBinhLuan, setChoBinhLuan] = useState(true)
@@ -75,6 +77,12 @@ export default function TheTikTok({
 
         <h2 className="text-lg font-extrabold leading-snug">{bai.tieu_de_anh}</h2>
 
+        {hen && !daDang && (
+          <p className="rounded-xl bg-violet-50 p-3 text-sm font-medium text-violet-900 ring-1 ring-violet-200" suppressHydrationWarning>
+            ⏰ Đã hẹn đăng lúc {gio(hen)} (có thể trễ khoảng 10 phút). Đổi hoặc hủy ở tab Hẹn giờ bên trang Facebook.
+          </p>
+        )}
+
         {bai.tiktok_loi && !daDang && (
           <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700 ring-1 ring-red-200"><b>Lần đăng trước lỗi:</b> {dichLoiTikTok(bai.tiktok_loi)}</p>
         )}
@@ -103,7 +111,7 @@ export default function TheTikTok({
 
         {/* Thanh thao tác */}
         <div className="mt-auto flex flex-wrap items-center gap-2 border-t border-slate-100 pt-4">
-          {!daDang && taiKhoan && (
+          {!daDang && !hen && taiKhoan && (
             <>
               <button
                 disabled={dangLam}

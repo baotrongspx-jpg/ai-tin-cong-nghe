@@ -6,6 +6,8 @@ import { henGio, huyHen, type NoiHen, type SuaBai } from './actions'
 import { thongBao } from './ThongBao'
 import { IconBo, IconFacebook, IconTikTok, Xoay } from './BieuTuong'
 
+const TEN_NOI: Record<NoiHen, string> = { ca_hai: 'Facebook + TikTok', fb: 'Chỉ Facebook', tt: 'Chỉ TikTok' }
+
 // Định dạng cho ô datetime-local theo giờ máy người dùng: "2026-09-30T20:00"
 const choO = (d: Date) => {
   const p = (n: number) => String(n).padStart(2, '0')
@@ -23,23 +25,25 @@ const lanToi = (h: number) => {
 export default function KhungHenGio({
   baiId,
   sua,
-  choHen,
-  tiktok,
+  noiDuocHen,
   henFb,
   henTikTok,
   gioVang,
 }: {
   baiId: string
   sua: SuaBai
-  choHen: boolean // bài chờ duyệt, chưa hẹn gì
-  tiktok: boolean
+  // Nơi còn hẹn được: bài chờ duyệt thì Facebook / TikTok / cả hai, bài đã lên Facebook thì chỉ TikTok. Rỗng: ẩn nút.
+  noiDuocHen: NoiHen[]
   henFb: string | null
   henTikTok: string | null
   gioVang: { gio: number[]; tuSoLieu: boolean }
 }) {
   const [mo, setMo] = useState(false)
-  const [luc, setLuc] = useState(() => choO(lanToi(gioVang.gio[0] ?? 20)))
-  const [noi, setNoi] = useState<NoiHen>(tiktok ? 'ca_hai' : 'fb')
+  // Mặc định giờ vàng gần nhất
+  const [luc, setLuc] = useState(() =>
+    choO(new Date(Math.min(...(gioVang.gio.length ? gioVang.gio : [20]).map((h) => lanToi(h).getTime())))),
+  )
+  const [noi, setNoi] = useState<NoiHen>(noiDuocHen[0] ?? 'fb')
   const [toiThieu] = useState(() => choO(new Date(Date.now() + 10 * 60_000)))
   const [dangLam, startTransition] = useTransition()
 
@@ -81,11 +85,11 @@ export default function KhungHenGio({
     )
   }
 
-  if (!choHen) return null
+  if (!noiDuocHen.length) return null
   if (!mo)
     return (
       <button onClick={() => setMo(true)} className="btn btn-phu self-start">
-        ⏰ Hẹn giờ đăng
+        ⏰ {noiDuocHen.length === 1 && noiDuocHen[0] === 'tt' ? 'Hẹn giờ đăng TikTok' : 'Hẹn giờ đăng'}
       </button>
     )
 
@@ -103,7 +107,7 @@ export default function KhungHenGio({
           {gioVang.tuSoLieu ? '🌟 Giờ vàng của trang (bài đăng giờ này nhiều tương tác nhất)' : '🌟 Giờ thường đông người xem'}
         </div>
         <div className="flex flex-wrap gap-1.5">
-          {gioVang.gio.map((h) => {
+          {[...gioVang.gio].sort((a, b) => lanToi(a).getTime() - lanToi(b).getTime()).map((h) => {
             const d = lanToi(h)
             const chon = choO(d) === luc
             return (
@@ -131,9 +135,11 @@ export default function KhungHenGio({
           onChange={(e) => setLuc(e.target.value)}
         />
         <select aria-label="Đăng lên" className="input sm:w-auto" value={noi} onChange={(e) => setNoi(e.target.value as NoiHen)}>
-          {tiktok && <option value="ca_hai">Facebook + TikTok</option>}
-          <option value="fb">Chỉ Facebook</option>
-          {tiktok && <option value="tt">Chỉ TikTok</option>}
+          {noiDuocHen.map((n) => (
+            <option key={n} value={n}>
+              {TEN_NOI[n]}
+            </option>
+          ))}
         </select>
         <button
           disabled={dangLam || !luc}

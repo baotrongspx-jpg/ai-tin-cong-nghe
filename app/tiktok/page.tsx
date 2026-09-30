@@ -3,7 +3,7 @@ import { db, type BaiViet } from '@/lib/db'
 import { daDangNhap } from '@/lib/xacThuc'
 import { coTikTok, daKetNoiTikTok, layTaiKhoanTikTok, type TaiKhoanTikTok } from '@/lib/tiktok'
 import { layHashtagXuHuong } from '@/lib/xuHuong'
-import { dsHenTikTok } from '@/lib/henGio'
+import { dsHenTikTok, gioVang } from '@/lib/henGio'
 import { SO_TAG_XU_HUONG } from '@/lib/chuThich'
 import DauTrang, { CanhBao, ThanhLoc, TieuDeTrang, Trong } from '../DauTrang'
 import { IconTikTok } from '../BieuTuong'
@@ -35,7 +35,7 @@ export default async function TrangTikTok({ searchParams }: PageProps<'/tiktok'>
     }
   }
 
-  const [ds, demChua, demDa, xuHuong, hen] = await Promise.all([
+  const [ds, demChua, demDa, xuHuong, hen, vang] = await Promise.all([
     (dangXem === 'da'
       ? locDa().order('tiktok_dang_luc', { ascending: false })
       : locChua().order('tao_luc', { ascending: false })
@@ -44,6 +44,7 @@ export default async function TrangTikTok({ searchParams }: PageProps<'/tiktok'>
     locDa().limit(0),
     layHashtagXuHuong(),
     dsHenTikTok(),
+    gioVang(),
   ])
   const dsBai = (ds.data ?? []) as BaiViet[]
 
@@ -105,10 +106,11 @@ export default async function TrangTikTok({ searchParams }: PageProps<'/tiktok'>
           <div className="space-y-5">
             {dsBai.map((b) => (
               <TheTikTok
-                key={`${b.id}-${b.tiktok_publish_id}`}
+                key={`${b.id}-${b.tiktok_publish_id}-${hen[b.id]}`}
                 bai={b}
                 xuHuong={xuHuong.ds}
                 hen={hen[b.id] ?? null}
+                gioVang={vang}
                 taiKhoan={taiKhoan && { khoaBinhLuan: taiKhoan.comment_disabled }}
               />
             ))}

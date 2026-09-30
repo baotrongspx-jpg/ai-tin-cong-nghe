@@ -207,8 +207,17 @@ export default function TheBai({
         <KhungHenGio
           baiId={bai.id}
           sua={sua}
-          choHen={bai.trang_thai === 'nhap' && !daHen}
-          tiktok={tiktok}
+          noiDuocHen={
+            daHen
+              ? []
+              : bai.trang_thai === 'nhap'
+                ? tiktok
+                  ? ['ca_hai', 'fb', 'tt']
+                  : ['fb']
+                : bai.trang_thai === 'da_dang' && tiktok && !bai.tiktok_publish_id
+                  ? ['tt']
+                  : []
+          }
           henFb={henFb}
           henTikTok={henTikTok}
           gioVang={gioVang}

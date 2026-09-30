@@ -14,15 +14,14 @@ export function ghepHashtagTikTok(hashtag: string[], xuHuong: string[] = []) {
   return [...hashtag, ...them]
 }
 
-// Mô tả cho TikTok: TikTok chỉ hiện vài dòng đầu, nên đưa hashtag lên ngay sau đoạn mở đầu.
+// Mô tả cho TikTok: nội dung, nguồn, rồi toàn bộ hashtag ở cuối.
 // Bỏ link nguồn vì link trong mô tả TikTok không bấm được, chỉ giữ tên nguồn.
 export function taoChuThichTikTok(
   b: { noi_dung: string; hashtag: string[]; nguon_ten: string },
   xuHuong: string[] = [],
 ) {
-  const [moDau, ...conLai] = b.noi_dung.trim().split(/\n\s*\n/)
   const tag = ghepHashtagTikTok(b.hashtag, xuHuong).map((h) => `#${h}`).join(' ')
-  return [moDau, tag, ...conLai, `📰 Nguồn: ${b.nguon_ten}`].filter(Boolean).join('\n\n')
+  return [b.noi_dung.trim(), `📰 Nguồn: ${b.nguon_ten}`, tag].filter(Boolean).join('\n\n')
 }
 
 export const tachHashtag = (s: string) =>

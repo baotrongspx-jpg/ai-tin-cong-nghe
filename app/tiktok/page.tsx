@@ -95,8 +95,6 @@ export default async function TrangTikTok({ searchParams }: PageProps<'/tiktok'>
         </p>
       )}
 
-      <XuHuong ds={xuHuong.ds} luc={xuHuong.luc} soThem={SO_TAG_XU_HUONG} />
-
       <nav className="mb-5 flex gap-1 overflow-x-auto rounded-xl bg-white p-1">
         {THE.map((t) => (
           <Link
@@ -131,6 +129,10 @@ export default async function TrangTikTok({ searchParams }: PageProps<'/tiktok'>
           ))}
         </div>
       )}
+
+      <div className="mt-8">
+        <XuHuong ds={xuHuong.ds} luc={xuHuong.luc} soThem={SO_TAG_XU_HUONG} />
+      </div>
     </main>
   )
 }

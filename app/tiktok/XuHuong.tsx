@@ -11,7 +11,7 @@ export default function XuHuong({ ds, luc, soThem }: { ds: string[]; luc: string
   const [dangTim, startTransition] = useTransition()
 
   return (
-    <section className="mb-5 rounded-xl bg-white p-4 shadow-sm">
+    <section className="rounded-xl bg-white p-4 shadow-sm">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-bold">🔥 Hashtag xu hướng công nghệ trên TikTok</h2>
         <div className="flex items-center gap-2 text-xs text-slate-500">

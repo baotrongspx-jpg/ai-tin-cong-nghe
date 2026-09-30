@@ -26,3 +26,8 @@ export function taoChuThichTikTok(
 
 export const tachHashtag = (s: string) =>
   s.split(/[\s,]+/).map((h) => h.replace(/^#/, '')).filter(Boolean).slice(0, 10)
+
+// Link ảnh của bài. `w`: bản nhỏ WebP (96, 160, 320, 480, 640px) cho trang duyệt bài; bỏ trống là ảnh gốc PNG.
+// ?v= đổi khi tiêu đề / chủ đề / màu đổi, để trình duyệt không dùng ảnh cũ.
+export const urlAnh = (b: { id: string; tieu_de_anh: string; chu_de: string; mau_anh: number }, w?: number) =>
+  `/anh/${b.id}?v=${encodeURIComponent(`${b.tieu_de_anh}|${b.chu_de}|${b.mau_anh}`)}${w ? `&w=${w}` : ''}`

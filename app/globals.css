@@ -6,7 +6,6 @@
       radial-gradient(1200px 500px at 10% -10%, #dbeafe 0%, transparent 60%),
       radial-gradient(900px 400px at 100% 0%, #fce7f3 0%, transparent 55%),
       #f5f7fb;
-    background-attachment: fixed;
   }
   ::selection { background: #bfdbfe; }
 }
@@ -25,7 +24,8 @@
   .btn-phu { @apply bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50; }
   .btn-nhat { @apply text-slate-500 hover:bg-slate-100 hover:text-slate-700; }
 
-  .the { @apply rounded-2xl bg-white/90 shadow-sm ring-1 ring-slate-200/70 backdrop-blur; }
+  /* Không dùng backdrop-blur cho thẻ: làm mờ hàng chục thẻ mỗi khung hình khi cuộn rất nặng trên máy yếu */
+  .the { @apply rounded-2xl bg-white shadow-sm ring-1 ring-slate-200/70; }
 
   .input {
     @apply w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition

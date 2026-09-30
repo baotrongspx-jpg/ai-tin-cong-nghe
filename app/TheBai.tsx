@@ -3,7 +3,7 @@
 import { useState, useTransition, type KeyboardEvent, type ReactNode } from 'react'
 import type { BaiViet } from '@/lib/db'
 import { BANG_MAU } from '@/lib/bangMau'
-import { taoChuThich, tachHashtag } from '@/lib/chuThich'
+import { taoChuThich, tachHashtag, urlAnh } from '@/lib/chuThich'
 import { gio, truoc } from '@/lib/thoiGian'
 import { dangBai, dangCaHai, doiMauAnh, doiTrangThai, luuBai } from './actions'
 import { thongBao } from './ThongBao'
@@ -52,7 +52,7 @@ export default function TheBai({
   const sua = { tieu_de_anh: tieuDe, chu_de: chuDe, noi_dung: noiDung, hashtag }
   const soChu = noiDung.trim().split(/\s+/).filter(Boolean).length
   // Ảnh đổi khi tiêu đề / chủ đề / màu đã lưu thay đổi
-  const urlAnh = `/anh/${bai.id}?v=${encodeURIComponent(`${bai.tieu_de_anh}|${bai.chu_de}|${bai.mau_anh}`)}`
+  const anhGoc = urlAnh(bai)
 
   const chay = (ten: Viec, viecLam: () => Promise<{ ok: boolean; loi?: string }>, xong: string) => {
     setViec(ten)
@@ -87,7 +87,15 @@ export default function TheBai({
       <div className="space-y-3">
         <div className="relative">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={urlAnh} alt={bai.tieu_de_anh} className="aspect-square w-full rounded-xl bg-slate-200 object-cover" />
+          <img
+            src={urlAnh(bai, 640)}
+            alt={bai.tieu_de_anh}
+            width={640}
+            height={640}
+            loading="lazy"
+            decoding="async"
+            className="aspect-square w-full rounded-xl bg-slate-200 object-cover"
+          />
           {/* Góc phải ảnh không có chữ nên đặt nhãn ở đó */}
           <div className="absolute right-2.5 top-2.5 flex items-center gap-1">
             {bai.fb_post_id && !henFb && (
@@ -125,7 +133,7 @@ export default function TheBai({
             </div>
           </div>
         )}
-        <a href={urlAnh} download={`anh-${bai.id.slice(0, 8)}.png`} className="btn btn-phu w-full">
+        <a href={anhGoc} download={`anh-${bai.id.slice(0, 8)}.png`} className="btn btn-phu w-full">
           <IconTai /> Tải ảnh
         </a>
       </div>

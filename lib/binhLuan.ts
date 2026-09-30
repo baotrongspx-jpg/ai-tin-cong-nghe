@@ -28,46 +28,55 @@ type CmFb = {
   comments?: { data: { from?: { id: string } }[] }
 }
 
-// Bình luận gốc (không gồm trả lời) của các bài đăng trong `ngay` ngày, mới nhất trước
+// Bình luận gốc (không gồm trả lời) của các bài đăng trong `ngay` ngày, mới nhất trước.
+// Gọi Facebook một lần lấy mọi bài của Fanpage kèm bình luận (trước đây gọi từng bài: 36 lần, ~3 giây).
 export async function layBinhLuan(ngay = 7): Promise<BinhLuan[]> {
   if (!coFacebook()) return []
+  const trang = process.env.FB_PAGE_ID
+  const tu = Math.floor((Date.now() - ngay * 86400_000) / 1000)
+  type Trang = { data: { id: string; comments?: { data: CmFb[] } }[]; paging?: { next?: string } }
+
+  const baiFb: Trang['data'] = []
+  let duongDan: string | null =
+    `${trang}/published_posts?since=${tu}&limit=100` +
+    `&fields=id,comments.filter(toplevel).order(reverse_chronological).limit(50){id,message,from{id,name},created_time,comments.limit(20){from{id}}}`
+  // Tối đa 3 trang (300 bài), đủ cho 7 ngày
+  for (let i = 0; i < 3 && duongDan; i++) {
+    let kq: Trang
+    try {
+      kq = await goiFb<Trang>(duongDan)
+    } catch (e) {
+      if (laLoiQuyen(e)) throw new ThieuQuyen((e as Error).message)
+      throw e
+    }
+    baiFb.push(...kq.data)
+    // Link trang sau đã kèm sẵn token: chỉ lấy phần đường dẫn và tham số, goiFb tự thêm token
+    duongDan = kq.paging?.next?.replace(/^https:\/\/graph\.facebook\.com\/v[\d.]+\//, '').replace(/&?access_token=[^&]*/, '') ?? null
+  }
+
+  const coBinhLuan = baiFb.filter((p) => p.comments?.data.length)
+  if (!coBinhLuan.length) return []
   const { data } = await db()
     .from('bai_viet')
     .select('id, tieu_de_anh, noi_dung, fb_post_id, chu_de, mau_anh')
-    .not('fb_post_id', 'is', null)
-    .gte('dang_luc', new Date(Date.now() - ngay * 86400_000).toISOString())
-    .lte('dang_luc', new Date().toISOString())
-    .order('dang_luc', { ascending: false })
-    .limit(60)
-  const dsBai = (data ?? []) as BinhLuan['bai'][]
-  const trang = process.env.FB_PAGE_ID
+    .in('fb_post_id', coBinhLuan.map((p) => p.id))
+  const theoId = new Map(((data ?? []) as BinhLuan['bai'][]).map((b) => [b.fb_post_id, b]))
 
   const kq: BinhLuan[] = []
-  for (let i = 0; i < dsBai.length; i += 5) {
-    await Promise.all(
-      dsBai.slice(i, i + 5).map(async (bai) => {
-        try {
-          const { data: cm } = await goiFb<{ data: CmFb[] }>(
-            `${bai.fb_post_id}/comments?filter=toplevel&order=reverse_chronological&limit=50` +
-              `&fields=id,message,from{id,name},created_time,comments.limit(20){from{id}}`,
-          )
-          for (const c of cm) {
-            if (!c.message || c.from?.id === trang) continue // bỏ bình luận của chính Fanpage
-            kq.push({
-              id: c.id,
-              noiDung: c.message,
-              nguoi: c.from?.name ?? 'Người dùng Facebook',
-              luc: c.created_time,
-              daTraLoi: (c.comments?.data ?? []).some((r) => r.from?.id === trang),
-              bai,
-            })
-          }
-        } catch (e) {
-          if (laLoiQuyen(e)) throw new ThieuQuyen((e as Error).message)
-          // bài đã bị xóa trên Facebook: bỏ qua
-        }
-      }),
-    )
+  for (const p of coBinhLuan) {
+    const bai = theoId.get(p.id)
+    if (!bai) continue // bài đăng tay trên Fanpage, không do app soạn
+    for (const c of p.comments!.data) {
+      if (!c.message || c.from?.id === trang) continue // bỏ bình luận của chính Fanpage
+      kq.push({
+        id: c.id,
+        noiDung: c.message,
+        nguoi: c.from?.name ?? 'Người dùng Facebook',
+        luc: c.created_time,
+        daTraLoi: (c.comments?.data ?? []).some((r) => r.from?.id === trang),
+        bai,
+      })
+    }
   }
   return kq.sort((a, b) => b.luc.localeCompare(a.luc))
 }

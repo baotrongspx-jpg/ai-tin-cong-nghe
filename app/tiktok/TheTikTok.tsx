@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import type { BaiViet } from '@/lib/db'
-import { ghepHashtagTikTok } from '@/lib/chuThich'
+import { ghepHashtagTikTok, urlAnh } from '@/lib/chuThich'
 import { gio, truoc } from '@/lib/thoiGian'
 import { dichLoiTikTok } from '@/lib/loiTikTok'
 import { boDanhDauTikTok, dangCaHai, dangTikTok } from '../actions'
@@ -36,7 +36,6 @@ export default function TheTikTok({
   const daDang = !!bai.tiktok_publish_id
   const tags = ghepHashtagTikTok(bai.hashtag, xuHuong)
   const tagXuHuong = tags.slice(bai.hashtag.length)
-  const urlAnh = `/anh/${bai.id}?v=${encodeURIComponent(`${bai.tieu_de_anh}|${bai.chu_de}|${bai.mau_anh}`)}`
 
   const chay = (ten: Viec, viecLam: () => Promise<{ ok: boolean; loi?: string }>, xong: string) => {
     setViec(ten)
@@ -51,7 +50,15 @@ export default function TheTikTok({
     <article className="the grid gap-5 p-4 sm:p-5 md:grid-cols-[240px_1fr]">
       <div className="relative self-start">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={urlAnh} alt={bai.tieu_de_anh} className="aspect-square w-full rounded-xl bg-slate-200 object-cover" />
+        <img
+          src={urlAnh(bai, 480)}
+          alt={bai.tieu_de_anh}
+          width={480}
+          height={480}
+          loading="lazy"
+          decoding="async"
+          className="aspect-square w-full rounded-xl bg-slate-200 object-cover"
+        />
         {/* Góc phải ảnh không có chữ nên đặt nhãn ở đó */}
         <div className="absolute right-2.5 top-2.5 flex items-center gap-1">
           {bai.fb_post_id && (

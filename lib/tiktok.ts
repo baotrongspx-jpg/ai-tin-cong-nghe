@@ -1,6 +1,7 @@
 import 'server-only'
 import { db } from './db'
 import { dichLoiTikTok } from './loiTikTok'
+import { nhoTam } from './nhoTam'
 
 const API = 'https://open.tiktokapis.com/v2'
 const KHOA_TOKEN = 'tiktok_token'
@@ -106,6 +107,9 @@ export type TaiKhoanTikTok = {
 export async function layTaiKhoanTikTok(token?: string) {
   return goiApi<TaiKhoanTikTok>('/post/publish/creator_info/query/', token ?? (await layAccessToken()), {})
 }
+
+// Cho trang TikTok: nhớ 5 phút để mở trang không phải gọi TikTok mỗi lần
+export const layTaiKhoanTikTokNhanh = () => nhoTam('tai_khoan_tiktok', 5 * 60_000, () => layTaiKhoanTikTok())
 
 export type TuyChonDang = { privacy?: string; tatBinhLuan?: boolean }
 

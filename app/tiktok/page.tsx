@@ -1,8 +1,9 @@
 import { redirect } from 'next/navigation'
 import { db, type BaiViet } from '@/lib/db'
 import { daDangNhap } from '@/lib/xacThuc'
-import { coTikTok, daKetNoiTikTok, layTaiKhoanTikTok, type TaiKhoanTikTok } from '@/lib/tiktok'
-import { layHashtagXuHuong } from '@/lib/xuHuong'
+import Link from 'next/link'
+import { coTikTok, daKetNoiTikTok, layTaiKhoanTikTokNhanh, type TaiKhoanTikTok } from '@/lib/tiktok'
+import { docHashtagXuHuong } from '@/lib/xuHuong'
 import { dsHenTikTok, gioVang } from '@/lib/henGio'
 import { SO_TAG_XU_HUONG } from '@/lib/chuThich'
 import DauTrang, { CanhBao, ThanhLoc, TieuDeTrang, Trong } from '../DauTrang'
@@ -13,6 +14,9 @@ import TheTikTok from './TheTikTok'
 // Nút "Tổng hợp ngay" ở đầu trang chạy AI trong Server Action, cần thời gian dài
 export const maxDuration = 300
 
+// Mỗi lần hiện 12 bài, bấm "Xem thêm" hiện thêm 12
+const SO_MOI_LAN = 12
+
 // Bài chưa lên TikTok: bài chờ duyệt hoặc đã lên Facebook (bỏ qua bài bị bỏ và bài lỗi)
 const locChua = () =>
   db().from('bai_viet').select('*', { count: 'exact' }).is('tiktok_publish_id', null).in('trang_thai', ['nhap', 'da_dang'])
@@ -21,32 +25,36 @@ const locDa = () => db().from('bai_viet').select('*', { count: 'exact' }).not('t
 export default async function TrangTikTok({ searchParams }: PageProps<'/tiktok'>) {
   if (!(await daDangNhap())) redirect('/dang-nhap')
 
-  const dangXem = (await searchParams).tt === 'da' ? 'da' : 'chua'
+  const q = await searchParams
+  const dangXem = q.tt === 'da' ? 'da' : 'chua'
+  const soHien = Math.min(200, Math.max(SO_MOI_LAN, Number(q.n) || SO_MOI_LAN))
   const cauHinh = coTikTok()
-  const ketNoi = cauHinh && (await daKetNoiTikTok())
 
-  let taiKhoan: TaiKhoanTikTok | null = null
-  let loiTaiKhoan: string | null = null
-  if (ketNoi) {
+  // Tài khoản TikTok (gọi API TikTok, nhớ 5 phút) chạy song song với các truy vấn khác
+  const docTaiKhoan = async (): Promise<{ ketNoi: boolean; taiKhoan: TaiKhoanTikTok | null; loi: string | null }> => {
+    if (!cauHinh || !(await daKetNoiTikTok())) return { ketNoi: false, taiKhoan: null, loi: null }
     try {
-      taiKhoan = await layTaiKhoanTikTok()
+      return { ketNoi: true, taiKhoan: await layTaiKhoanTikTokNhanh(), loi: null }
     } catch (e) {
-      loiTaiKhoan = e instanceof Error ? e.message : String(e)
+      return { ketNoi: true, taiKhoan: null, loi: e instanceof Error ? e.message : String(e) }
     }
   }
 
-  const [ds, demChua, demDa, xuHuong, hen, vang] = await Promise.all([
+  const [ds, demChua, demDa, xuHuong, hen, vang, tk] = await Promise.all([
     (dangXem === 'da'
       ? locDa().order('tiktok_dang_luc', { ascending: false })
       : locChua().order('tao_luc', { ascending: false })
-    ).limit(50),
+    ).limit(soHien),
     locChua().limit(0),
     locDa().limit(0),
-    layHashtagXuHuong(),
+    docHashtagXuHuong(),
     dsHenTikTok(),
     gioVang(),
+    docTaiKhoan(),
   ])
+  const { ketNoi, taiKhoan, loi: loiTaiKhoan } = tk
   const dsBai = (ds.data ?? []) as BaiViet[]
+  const tong = (dangXem === 'da' ? demDa.count : demChua.count) ?? 0
 
   const oTaiKhoan = !cauHinh ? null : (
     <div className="the flex items-center gap-3 p-2 pr-2.5">
@@ -114,6 +122,15 @@ export default async function TrangTikTok({ searchParams }: PageProps<'/tiktok'>
                 taiKhoan={taiKhoan && { khoaBinhLuan: taiKhoan.comment_disabled }}
               />
             ))}
+            {tong > dsBai.length && (
+              <Link
+                href={`/tiktok?${new URLSearchParams({ ...(dangXem === 'da' && { tt: 'da' }), n: String(soHien + SO_MOI_LAN) })}`}
+                scroll={false}
+                className="btn btn-phu w-full py-3"
+              >
+                Xem thêm ({tong - dsBai.length} bài nữa)
+              </Link>
+            )}
           </div>
         )}
 

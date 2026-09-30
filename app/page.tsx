@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { db, type BaiViet, type TrangThai } from '@/lib/db'
 import { daDangNhap } from '@/lib/xacThuc'
@@ -13,6 +14,9 @@ export const maxDuration = 300
 
 // "Hẹn giờ" không phải trạng thái trong bảng: bài Facebook có giờ đăng ở tương lai, hoặc bài có lịch TikTok
 type Tab = TrangThai | 'hen_gio'
+
+// Mỗi lần hiện 12 bài, bấm "Xem thêm" hiện thêm 12: trang nhẹ, mở nhanh
+const SO_MOI_LAN = 12
 
 const THE: { ma: Tab; ten: string }[] = [
   { ma: 'nhap', ten: 'Chờ duyệt' },
@@ -33,10 +37,17 @@ const TRONG: Record<Tab, { bieuTuong: string; tieuDe: string; goiY: string }> = 
 export default async function TrangChu({ searchParams }: PageProps<'/'>) {
   if (!(await daDangNhap())) redirect('/dang-nhap')
 
-  const tt = (await searchParams).tt
+  const q = await searchParams
+  const tt = q.tt
   const dangXem: Tab = THE.some((t) => t.ma === tt) ? (tt as Tab) : 'nhap'
 
-  const [henTikTok, vang] = await Promise.all([dsHenTikTok(), gioVang()])
+  const soHien = Math.min(200, Math.max(SO_MOI_LAN, Number(q.n) || SO_MOI_LAN))
+  const [henTikTok, vang, tiktok] = await Promise.all([
+    dsHenTikTok(),
+    gioVang(),
+    // Đã kết nối TikTok thì hiện nút đăng cả 2 nền tảng và hẹn giờ TikTok
+    coTikTok() ? daKetNoiTikTok() : false,
+  ])
   const idHen = Object.keys(henTikTok)
   const luc = bayGio()
   const bay = `"${new Date(luc).toISOString()}"`
@@ -56,12 +67,11 @@ export default async function TrangChu({ searchParams }: PageProps<'/'>) {
         : { cot: 'tao_luc', tang: false }
 
   const [{ data, error }, ...dem] = await Promise.all([
-    loc(dangXem).order(thuTu.cot, { ascending: thuTu.tang, nullsFirst: false }).limit(50),
+    loc(dangXem).order(thuTu.cot, { ascending: thuTu.tang, nullsFirst: false }).limit(soHien),
     ...THE.map((t) => loc(t.ma, true)),
   ])
   const dsBai = (data ?? []) as unknown as BaiViet[]
-  // Đã kết nối TikTok thì hiện nút đăng cả 2 nền tảng và hẹn giờ TikTok
-  const tiktok = coTikTok() && (await daKetNoiTikTok())
+  const tong = dem[THE.findIndex((t) => t.ma === dangXem)]?.count ?? 0
 
   return (
     <>
@@ -100,6 +110,15 @@ export default async function TrangChu({ searchParams }: PageProps<'/'>) {
                 gioVang={vang}
               />
             ))}
+            {tong > dsBai.length && (
+              <Link
+                href={`/?${new URLSearchParams({ ...(dangXem !== 'nhap' && { tt: dangXem }), n: String(soHien + SO_MOI_LAN) })}`}
+                scroll={false}
+                className="btn btn-phu w-full py-3"
+              >
+                Xem thêm ({tong - dsBai.length} bài nữa)
+              </Link>
+            )}
           </div>
         )}
       </main>

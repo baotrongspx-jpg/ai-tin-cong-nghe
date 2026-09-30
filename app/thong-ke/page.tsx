@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { daDangNhap } from '@/lib/xacThuc'
 import { xepHang, type BaiXepHang } from '@/lib/soLieu'
 import { gio, truoc } from '@/lib/thoiGian'
+import { urlAnh } from '@/lib/chuThich'
 import DauTrang, { CanhBao, ThanhLoc, TieuDeTrang, Trong } from '../DauTrang'
 import { IconFacebook, IconMo, IconTikTok } from '../BieuTuong'
 import NutCapNhat from './NutCapNhat'
@@ -108,14 +109,13 @@ const HUY_CHUONG = ['🥇', '🥈', '🥉']
 
 function Dong({ x, hang, diemCao }: { x: BaiXepHang; hang: number; diemCao: number }) {
   const { bai, soLieu } = x
-  const urlAnh = `/anh/${bai.id}?v=${encodeURIComponent(`${bai.tieu_de_anh}|${bai.chu_de}|${bai.mau_anh}`)}`
   return (
     <li className={`the flex flex-wrap items-center gap-x-4 gap-y-3 p-3 sm:flex-nowrap ${x.dangLen ? 'ring-2 ring-orange-300' : ''}`}>
       <div className="w-8 shrink-0 text-center text-lg font-extrabold text-slate-400">
         {hang <= 3 && x.diem > 0 ? <span className="text-2xl">{HUY_CHUONG[hang - 1]}</span> : `#${hang}`}
       </div>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={urlAnh} alt="" className="h-16 w-16 shrink-0 rounded-lg bg-slate-200 object-cover" loading="lazy" />
+      <img src={urlAnh(bai, 160)} alt="" width={64} height={64} className="h-16 w-16 shrink-0 rounded-lg bg-slate-200 object-cover" loading="lazy" decoding="async" />
 
       <div className="min-w-0 flex-1 basis-48">
         <div className="flex flex-wrap items-center gap-1.5">

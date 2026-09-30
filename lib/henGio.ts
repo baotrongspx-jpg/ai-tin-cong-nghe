@@ -3,6 +3,7 @@ import { db, type BaiViet } from './db'
 import { dangLenTikTok } from './dangBai'
 import { xepHang } from './soLieu'
 import { guiTelegram, thoat } from './telegram'
+import { nhoTam } from './nhoTam'
 
 // TikTok không có hẹn giờ qua API: lưu { [id bài]: giờ hẹn } trong cai_dat,
 // "nhịp" 10 phút một lần (/api/nhip) đăng những bài đã tới giờ.
@@ -59,7 +60,9 @@ export async function chayHenGioTikTok() {
 
 // Giờ đăng mà bài có điểm tương tác trung bình cao nhất (giờ Việt Nam), cần ít nhất 2 bài mỗi giờ.
 // Chưa đủ số liệu thì gợi ý các giờ mạng xã hội thường đông người xem.
-export async function gioVang(): Promise<{ gio: number[]; tuSoLieu: boolean }> {
+export const gioVang = () => nhoTam('gio_vang', 10 * 60_000, tinhGioVang)
+
+async function tinhGioVang(): Promise<{ gio: number[]; tuSoLieu: boolean }> {
   const { ds } = await xepHang(30).catch(() => ({ ds: [] }))
   const theoGio = new Map<number, number[]>()
   for (const x of ds) {

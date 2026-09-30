@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import type { BinhLuan, DaAn } from '@/lib/binhLuan'
 import { gio, truoc } from '@/lib/thoiGian'
+import { urlAnh } from '@/lib/chuThich'
 import { anBinhLuanAction, goiYTraLoiAction, traLoiAction } from '../actions'
 import { thongBao } from '../ThongBao'
 import { IconMo, IconSao, IconXong, Xoay } from '../BieuTuong'
@@ -14,7 +15,6 @@ export default function TheBinhLuan({ c, nghiSpam }: { c: BinhLuan; nghiSpam: bo
   const [traLoi, setTraLoi] = useState('')
   const [dangLam, startTransition] = useTransition()
   const [viec, setViec] = useState<Viec | null>(null)
-  const urlAnh = `/anh/${c.bai.id}?v=${encodeURIComponent(`${c.bai.tieu_de_anh}|${c.bai.chu_de}|${c.bai.mau_anh}`)}`
   // Mã bình luận dạng "<post>_<comment>": mở thẳng bình luận trên Facebook
   const urlFb = `https://www.facebook.com/${c.bai.fb_post_id}?comment_id=${c.id.split('_').pop()}`
 
@@ -75,7 +75,7 @@ export default function TheBinhLuan({ c, nghiSpam }: { c: BinhLuan; nghiSpam: bo
 
           <div className="mt-2 flex items-center gap-2 rounded-lg bg-slate-50 p-1.5 text-xs text-slate-500">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={urlAnh} alt="" className="h-7 w-7 rounded object-cover" loading="lazy" />
+            <img src={urlAnh(c.bai, 96)} alt="" width={28} height={28} className="h-7 w-7 rounded object-cover" loading="lazy" decoding="async" />
             <span className="line-clamp-1">Bài: {c.bai.tieu_de_anh}</span>
           </div>
 

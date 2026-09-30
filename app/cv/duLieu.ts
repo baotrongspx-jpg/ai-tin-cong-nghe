@@ -116,6 +116,8 @@ export type HoSoViTri = {
   theManh: [BieuTuong, string, string][]
   thongTinNhanh: [BieuTuong, string, string][]
   phuHop?: { tieuDe: string; moTa: string; ds: [string, string][] }
+  // Kế hoạch nếu được nhận: [mốc, tên giai đoạn, các việc]
+  keHoach?: [string, string, string[]][]
   kyNang: string[]
   congCu: string[]
   sanSang: string[]
@@ -182,6 +184,35 @@ const QUAN_LY_KHO: HoSoViTri = {
       ['Nam, trên 22 tuổi, chịu áp lực, đi công tác', 'Nam, sinh năm 2001; quen nhịp cao điểm của kho vận; sẵn sàng đi công tác, kể cả Bến Tre.'],
     ],
   },
+  keHoach: [
+    [
+      '30 ngày đầu',
+      'Nắm việc',
+      [
+        'Đi hết quy trình kho nông sản / đông lạnh tại nhà máy: sơ đồ kho, mã hàng, cách ghi lô.',
+        'Học phân hệ Kho trên ERP, đối chiếu số liệu trên hệ thống với hàng thực tế.',
+        'Lập danh sách các điểm hay chênh lệch, hao hụt; báo cáo hiện trạng cho cấp trên.',
+      ],
+    ],
+    [
+      '60 ngày',
+      'Chuẩn hóa',
+      [
+        'Thống nhất quy trình và mẫu phiếu nhập – xuất – tồn giữa kho và các bộ phận liên quan.',
+        'Lên lịch kiểm kê định kỳ, xử lý chênh lệch ngay sau mỗi lần kiểm kê.',
+        'Hướng dẫn nhân viên kho dùng ERP đúng quy trình; báo cáo hao hụt hằng tuần kèm nguyên nhân.',
+      ],
+    ],
+    [
+      '90 ngày',
+      'Cải thiện',
+      [
+        'Đặt ngưỡng hao hụt cho từng công đoạn, cảnh báo sớm khi vượt.',
+        'Bảng số liệu kho hằng ngày để cấp trên theo dõi tồn kho, xuất kho, hao hụt.',
+        'Đề xuất cách giảm hao hụt và tồn đọng dựa trên số liệu 3 tháng.',
+      ],
+    ],
+  ],
   kyNang: [
     'Theo dõi số liệu nhập – xuất – tồn',
     'Kiểm soát hao hụt, tỷ lệ thu hồi',
@@ -222,5 +253,6 @@ export function boiCanhViTri(vt: HoSoViTri) {
   return [
     `Người xem đang đọc bản CV cho vị trí: ${vt.ten}.`,
     ...(vt.phuHop?.ds.map(([yc, dap]) => `- Yêu cầu "${yc}": ${dap}`) ?? []),
+    ...(vt.keHoach?.map(([moc, ten, viec]) => `- Kế hoạch ${moc} (${ten}): ${viec.join(' ')}`) ?? []),
   ].join('\n')
 }

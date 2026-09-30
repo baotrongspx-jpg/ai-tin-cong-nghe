@@ -34,13 +34,13 @@ export default function MenuCV({ menu, logo, nut }: { menu: string[][]; logo: Re
     <header className="sticky top-0 z-30 bg-[#0b1631]/95 text-white backdrop-blur print:hidden">
       <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3 sm:px-6">
         {logo}
-        <nav className="ml-auto hidden items-center gap-1 lg:flex">
+        <nav className="ml-auto hidden items-center gap-1 xl:flex">
           {menu.map(([ten, href]) => (
             <a
               key={href}
               href={href}
               aria-current={dangXem === href ? 'location' : undefined}
-              className={`relative rounded-lg px-3 py-2 text-sm font-semibold transition hover:bg-white/10 hover:text-white ${
+              className={`relative whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold transition hover:bg-white/10 hover:text-white ${
                 dangXem === href ? 'text-white' : 'text-white/65'
               }`}
             >
@@ -56,7 +56,7 @@ export default function MenuCV({ menu, logo, nut }: { menu: string[][]; logo: Re
         {nut}
       </div>
       {/* Điện thoại: menu cuộn ngang */}
-      <nav className="flex gap-1 overflow-x-auto border-t border-white/10 px-3 py-1.5 lg:hidden">
+      <nav className="flex gap-1 overflow-x-auto border-t border-white/10 px-3 py-1.5 xl:hidden">
         {menu.map(([ten, href]) => (
           <a
             key={href}

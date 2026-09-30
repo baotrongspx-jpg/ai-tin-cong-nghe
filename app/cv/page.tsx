@@ -4,6 +4,7 @@ import { Dancing_Script } from 'next/font/google'
 import type { ReactNode } from 'react'
 import { ANH_MAC_DINH, diaChiAnhCV } from '@/lib/anhCV'
 import { DIA_CHI, DIEN_THOAI, duAnCua, EMAIL, KINH_NGHIEM, layViTri, NGAY_SINH, VI_TRI, type DoanChu } from './duLieu'
+import BangKhoMau from './BangKhoMau'
 import ChuChay from './ChuChay'
 import DemSo from './DemSo'
 import FormLienHe from './FormLienHe'
@@ -33,6 +34,7 @@ const MENU_CHUNG = [
   ['Kinh nghiệm', '#kinh-nghiem'],
   ['Dự án', '#du-an'],
   ['Kỹ năng', '#ky-nang'],
+  ['Kế hoạch', '#ke-hoach'],
   ['Mục tiêu', '#muc-tieu'],
   ['Liên hệ', '#lien-he'],
 ]
@@ -148,7 +150,7 @@ export default async function TrangCV({ searchParams }: PageProps<'/cv'>) {
           <a
             href={hrefPdf}
             download
-            className="ml-auto flex shrink-0 items-center gap-2 rounded-lg border border-blue-400 px-3.5 py-2 text-sm font-bold text-blue-200 transition hover:bg-blue-500 hover:text-white lg:ml-2"
+            className="ml-auto flex shrink-0 items-center gap-2 rounded-lg border border-blue-400 px-3.5 py-2 text-sm font-bold text-blue-200 transition hover:bg-blue-500 hover:text-white xl:ml-2"
           >
             <Icon ten="tai" className="h-4 w-4" /> Tải CV PDF
           </a>
@@ -399,6 +401,36 @@ export default async function TrangCV({ searchParams }: PageProps<'/cv'>) {
           tieuDe="Tự xây công cụ để làm việc nhanh hơn"
           moTa="Không chỉ dùng công cụ có sẵn: những hệ thống dưới đây do tôi tự làm và đang được dùng thật hằng ngày."
         >
+          <HienDan>
+            <figure className="mb-6 grid items-center gap-6 overflow-hidden rounded-2xl bg-[#0b1631] p-4 text-white ring-1 ring-slate-800 sm:p-6 lg:grid-cols-[1.6fr_1fr]">
+              <video
+                src="/cv/durian-demo.mp4"
+                poster="/cv/durian-demo.jpg"
+                controls
+                playsInline
+                preload="none"
+                className="aspect-video w-full rounded-xl bg-black ring-1 ring-white/10"
+              >
+                Trình duyệt không phát được video.
+              </video>
+              <figcaption>
+                <p className="inline-flex rounded-full bg-amber-400 px-3 py-1 text-xs font-bold text-[#0b1631]">Video 44 giây</p>
+                <h3 className="mt-3 text-2xl font-black">Durian Frozen System</h3>
+                <p className="mt-2 leading-relaxed text-white/75">
+                  Phần mềm quản lý kho cấp đông sầu riêng tôi tự xây: tổng quan điều hành, dòng chảy 5 công đoạn, cân và dán tem, kho đông, truy
+                  xuất lô, song ngữ Việt – Trung.
+                </p>
+                <a
+                  href="https://durian-frozen-system.vercel.app/vi"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-4 inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-[#0b1631] transition hover:bg-blue-50"
+                >
+                  Tự bấm thử hệ thống <Icon ten="moRa" className="h-4 w-4" />
+                </a>
+              </figcaption>
+            </figure>
+          </HienDan>
           <div className="grid gap-5 sm:grid-cols-2">
             {duAnCua(vt).map((d, i) => (
               <HienDan key={d.ten} tre={(i % 2) * 90}>
@@ -441,8 +473,21 @@ export default async function TrangCV({ searchParams }: PageProps<'/cv'>) {
           </div>
         </Muc>
 
-        {/* ——— 04 Kỹ năng ——— */}
-        <Muc id="ky-nang" so={so()} nhan="Kỹ năng" tieuDe="Làm được gì, dùng được gì" nenXam={!vt.phuHop}>
+        {/* ——— Số liệu kho mẫu ——— */}
+        <Muc
+          id="so-lieu-kho"
+          so={so()}
+          nhan="Số liệu kho"
+          tieuDe="Tôi theo dõi kho như thế nào"
+          moTa="Một bảng mẫu với dữ liệu minh họa: nhập – xuất – tồn, hao hụt theo ngày và theo lô, tự đánh dấu chỗ vượt ngưỡng. Rê chuột hoặc chạm vào từng cột để xem chi tiết."
+        >
+          <HienDan>
+            <BangKhoMau />
+          </HienDan>
+        </Muc>
+
+        {/* ——— Kỹ năng ——— */}
+        <Muc id="ky-nang" so={so()} nhan="Kỹ năng" tieuDe="Làm được gì, dùng được gì" nenXam>
           <div className="grid gap-5 lg:grid-cols-3">
             <HienDan>
               <div className={`${THE} h-full p-6`}>
@@ -493,8 +538,46 @@ export default async function TrangCV({ searchParams }: PageProps<'/cv'>) {
           </div>
         </Muc>
 
-        {/* ——— 05 Học vấn & mục tiêu ——— */}
-        <Muc id="muc-tieu" so={so()} nhan="Học vấn & Mục tiêu" tieuDe="Nền tảng và hướng đi" nenXam={!!vt.phuHop}>
+        {/* ——— Kế hoạch 30 – 60 – 90 ngày ——— */}
+        {vt.keHoach && (
+          <Muc
+            id="ke-hoach"
+            so={so()}
+            nhan="Kế hoạch"
+            tieuDe="Nếu được nhận, 90 ngày đầu tôi sẽ làm gì"
+            moTa="Kế hoạch dự kiến, sẽ điều chỉnh theo thực tế và yêu cầu của cấp trên sau khi nắm quy trình nhà máy."
+          >
+            <ol className="relative grid gap-5 lg:grid-cols-3">
+              <span className="absolute left-[10%] right-[10%] top-[27px] hidden h-0.5 bg-gradient-to-r from-blue-600 via-sky-400 to-amber-400 lg:block" aria-hidden />
+              {vt.keHoach.map(([moc, ten, viec], i) => (
+                <HienDan key={moc} tre={i * 110}>
+                  <li className={`${THE} relative h-full p-6`}>
+                    <span
+                      className={`relative grid h-14 w-14 place-items-center rounded-2xl text-lg font-black shadow-lg ${
+                        i === 2 ? 'bg-amber-400 text-[#0f1b3d] shadow-amber-400/30' : 'bg-[#0f1b3d] text-white shadow-blue-900/20'
+                      }`}
+                    >
+                      {moc.match(/[0-9]+/)?.[0]}
+                    </span>
+                    <p className="mt-4 text-xs font-bold uppercase tracking-[0.18em] text-blue-600">{moc}</p>
+                    <h3 className="text-xl font-extrabold text-[#0f1b3d]">{ten}</h3>
+                    <ul className="mt-3 space-y-2 text-[15px] leading-relaxed text-slate-600">
+                      {viec.map((v) => (
+                        <li key={v} className="flex gap-3">
+                          <Icon ten="dung" className="mt-1 h-4 w-4 shrink-0 text-blue-600" />
+                          {v}
+                        </li>
+                      ))}
+                    </ul>
+                  </li>
+                </HienDan>
+              ))}
+            </ol>
+          </Muc>
+        )}
+
+        {/* ——— Học vấn & mục tiêu ——— */}
+        <Muc id="muc-tieu" so={so()} nhan="Học vấn & Mục tiêu" tieuDe="Nền tảng và hướng đi" nenXam>
           <div className="grid gap-6 lg:grid-cols-[340px_1fr]">
             <HienDan>
               <div id="hoc-van" className={`${THE} h-full scroll-mt-28 p-6`}>

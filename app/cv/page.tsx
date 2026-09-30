@@ -114,7 +114,8 @@ function DoanVan({ doan, dam }: { doan: DoanChu[]; dam: string }) {
 export default async function TrangCV({ searchParams }: PageProps<'/cv'>) {
   // CV theo vị trí: /cv?vt=<mã>. Không có → bản mặc định (Quản lý Kho)
   const vt = layViTri((await searchParams).vt)
-  const hrefIn = vt.ma === VI_TRI[0].ma ? '/cv/ban-in' : `/cv/ban-in?vt=${vt.ma}`
+  // Nút "Tải CV PDF": máy chủ dựng sẵn file PDF, bấm là tải về (không qua hộp thoại in)
+  const hrefPdf = vt.ma === VI_TRI[0].ma ? '/cv/tai-pdf' : `/cv/tai-pdf?vt=${vt.ma}`
   const menu = vt.phuHop ? [MENU_CHUNG[0], ['Phù hợp', '#phu-hop'], ...MENU_CHUNG.slice(1)] : MENU_CHUNG
   // Số thứ tự các mục lớn, tự tăng (có mục "Phù hợp" thì các mục sau lùi một số)
   let dem = 0
@@ -145,7 +146,8 @@ export default async function TrangCV({ searchParams }: PageProps<'/cv'>) {
         }
         nut={
           <a
-            href={hrefIn}
+            href={hrefPdf}
+            download
             className="ml-auto flex shrink-0 items-center gap-2 rounded-lg border border-blue-400 px-3.5 py-2 text-sm font-bold text-blue-200 transition hover:bg-blue-500 hover:text-white lg:ml-2"
           >
             <Icon ten="tai" className="h-4 w-4" /> Tải CV PDF
@@ -225,7 +227,7 @@ export default async function TrangCV({ searchParams }: PageProps<'/cv'>) {
             </ul>
 
             <div className="mt-8 flex flex-wrap gap-3">
-              <a href={hrefIn} className="flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-bold shadow-lg shadow-blue-900/40 transition hover:bg-blue-500">
+              <a href={hrefPdf} download className="flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-bold shadow-lg shadow-blue-900/40 transition hover:bg-blue-500">
                 <Icon ten="tai" className="h-5 w-5" /> Tải CV PDF
               </a>
               <a href="#lien-he" className="flex items-center gap-2 rounded-xl border border-white/40 px-6 py-3 font-bold transition hover:bg-white hover:text-[#0b1631]">
@@ -577,7 +579,7 @@ export default async function TrangCV({ searchParams }: PageProps<'/cv'>) {
         <footer className="border-t border-white/10 py-5 text-center text-sm text-white/50">© 2026 Nông Bảo Trọng · CV cá nhân</footer>
       </section>
 
-      <TroLyRobot dienThoai={DIEN_THOAI} hrefIn={hrefIn} viTri={vt.ma} />
+      <TroLyRobot dienThoai={DIEN_THOAI} hrefPdf={hrefPdf} viTri={vt.ma} />
       <TheoDoiXem />
     </div>
   )

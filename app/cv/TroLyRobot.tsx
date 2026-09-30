@@ -9,7 +9,7 @@ type Luot = { vai: 'nguoi' | 'robot'; noiDung: string }
 const GOI_Y = ['Anh Trọng có kinh nghiệm gì?', 'Điểm mạnh nổi bật là gì?', 'Dùng thành thạo công cụ nào?', 'Khi nào có thể đi làm?']
 
 // Robot góc phải dưới: bấm vào mở khung hỏi đáp về Trọng (AI trả lời theo CV) + lối tắt liên hệ
-export default function TroLyRobot({ dienThoai, hrefIn, viTri }: { dienThoai: string; hrefIn: string; viTri: string }) {
+export default function TroLyRobot({ dienThoai, hrefPdf, viTri }: { dienThoai: string; hrefPdf: string; viTri: string }) {
   const congTy = useCongTy()
   const [mo, setMo] = useState(false)
   const [hien, setHien] = useState(false)
@@ -74,7 +74,7 @@ export default function TroLyRobot({ dienThoai, hrefIn, viTri }: { dienThoai: st
   const loiTat: [string, string, string][] = [
     ['📞', 'Gọi', `tel:${so}`],
     ['💬', 'Zalo', `https://zalo.me/${so}`],
-    ['📄', 'CV PDF', hrefIn],
+    ['📄', 'CV PDF', hrefPdf],
     ['✉️', 'Lời nhắn', '#lien-he'],
   ]
 
@@ -106,6 +106,7 @@ export default function TroLyRobot({ dienThoai, hrefIn, viTri }: { dienThoai: st
                 key={ten}
                 href={href}
                 onClick={() => href.startsWith('#') && setMo(false)}
+                download={href.includes('/tai-pdf') || undefined}
                 target={href.startsWith('http') ? '_blank' : undefined}
                 rel={href.startsWith('http') ? 'noreferrer' : undefined}
                 className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-slate-50 py-1.5 text-xs font-semibold transition hover:bg-blue-50 hover:text-blue-700"

@@ -1,10 +1,10 @@
 'use client'
 
-// Mở hộp thoại in của trình duyệt: chọn "Lưu dưới dạng PDF" để có file CV 1 trang A4
+// Mở hộp thoại in của trình duyệt để in CV ra giấy (tải file PDF dùng nút "Tải PDF" bên cạnh)
 export default function NutIn() {
   return (
-    <button onClick={() => window.print()} className="btn btn-fb">
-      ⬇ Lưu PDF
+    <button onClick={() => window.print()} className="btn btn-phu">
+      🖨 In
     </button>
   )
 }

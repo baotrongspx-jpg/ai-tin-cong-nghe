@@ -27,6 +27,9 @@ export default async function TrangCV({ searchParams }: PageProps<'/cv/ban-in'>)
           💬 Zalo
         </a>
         <NutIn />
+        <a href={`/cv/tai-pdf?vt=${vt.ma}`} download className="btn btn-fb">
+          ⬇ Tải PDF
+        </a>
       </div>
 
       <article className="mx-auto grid max-w-5xl overflow-hidden rounded-3xl bg-white shadow-xl ring-1 ring-slate-900/5 print:min-h-[297mm] print:max-w-none print:rounded-none print:shadow-none print:ring-0 md:grid-cols-[290px_1fr] print:grid-cols-[230px_1fr]">

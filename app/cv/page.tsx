@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Image from 'next/image'
 import { Dancing_Script } from 'next/font/google'
 import type { ReactNode } from 'react'
+import { ANH_MAC_DINH, diaChiAnhCV } from '@/lib/anhCV'
 import { DIEN_THOAI, DU_AN, EMAIL, KINH_NGHIEM } from './duLieu'
 import FormLienHe from './FormLienHe'
 import HienDan from './HienDan'
@@ -95,7 +96,9 @@ function The({ id, icon, tieuDe, children, tre = 0 }: { id?: string; icon: keyof
   )
 }
 
-export default function TrangCV() {
+export default async function TrangCV() {
+  // Ảnh đổi ở /cv/doi-anh (lưu trong cơ sở dữ liệu); đổi xong trang được làm mới ngay
+  const anhDaiDien = await diaChiAnhCV()
   const thongTin: [keyof typeof BT, string, string, string?][] = [
     ['lich', 'Ngày sinh', NGAY_SINH],
     ['ghim', 'Địa chỉ', DIA_CHI],
@@ -154,7 +157,8 @@ export default function TrangCV() {
             <div className="relative">
               <div className="absolute -inset-2 rounded-[28px] bg-gradient-to-br from-blue-500/60 to-amber-400/40 blur-md" />
               <Image
-                src="/cv/chan-dung.jpg"
+                src={anhDaiDien}
+                unoptimized={anhDaiDien !== ANH_MAC_DINH}
                 alt="Ảnh chân dung Nông Bảo Trọng"
                 width={512}
                 height={640}

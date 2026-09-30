@@ -54,6 +54,9 @@ export default function DauTrang({ dangO }: { dangO: Kenh }) {
 
         <div className="ml-auto flex items-center gap-2 sm:ml-0">
           <NutTongHop />
+          <Link href="/cv/doi-anh" className="btn btn-nhat px-2.5 text-xs font-bold" title="Đổi ảnh đại diện trên trang CV">
+            CV
+          </Link>
           <form action={dangXuatAction}>
             <button className="btn btn-nhat px-2.5" title="Đăng xuất" aria-label="Đăng xuất">
               <IconThoat className="h-5 w-5" />

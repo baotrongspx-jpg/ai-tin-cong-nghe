@@ -3,13 +3,15 @@ import Image from 'next/image'
 import { Dancing_Script } from 'next/font/google'
 import type { CSSProperties, ReactNode } from 'react'
 import { ANH_MAC_DINH, diaChiAnhCV } from '@/lib/anhCV'
-import { DIEN_THOAI, DU_AN, EMAIL, KINH_NGHIEM } from './duLieu'
+import { DIA_CHI, DIEN_THOAI, DU_AN, EMAIL, KINH_NGHIEM, MUC_TIEU, NGAY_SINH } from './duLieu'
 import ChuChay from './ChuChay'
 import DemSo from './DemSo'
 import FormLienHe from './FormLienHe'
 import HienDan from './HienDan'
 import MenuCV from './MenuCV'
 import RobotAI from './RobotAI'
+import { BongBongRobot, KinhGui, NutHoiRobot } from './LoiChao'
+import TheoDoiXem from './TheoDoiXem'
 import TroLyRobot from './TroLyRobot'
 import './cv.css'
 
@@ -22,8 +24,6 @@ export const metadata: Metadata = {
   metadataBase: new URL(process.env.SITE_URL ?? 'https://ai-tin-cong-nghe-wpy7.vercel.app'),
 }
 
-const NGAY_SINH = '03/04/2001'
-const DIA_CHI = 'TP. Buôn Ma Thuột, Đắk Lắk'
 
 const MENU = [
   ['Trang chủ', '#trang-chu'],
@@ -181,7 +181,8 @@ export default async function TrangCV() {
           </HienDan>
 
           <HienDan tre={120}>
-            <p className="mb-3 inline-flex items-center gap-2 rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold text-emerald-300 ring-1 ring-emerald-400/30">
+            <KinhGui />
+            <p className="mb-3 flex w-fit items-center gap-2 rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold text-emerald-300 ring-1 ring-emerald-400/30">
               <span className="relative flex h-2 w-2">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75 motion-reduce:hidden" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
@@ -228,15 +229,12 @@ export default async function TrangCV() {
               <a href="#lien-he" className="flex items-center gap-2 rounded-xl border border-white/40 px-6 py-3 font-bold transition hover:bg-white hover:text-[#0b1631]">
                 <Icon ten="guiThu" className="h-5 w-5" /> Liên hệ ngay
               </a>
+              <NutHoiRobot />
             </div>
           </HienDan>
 
           <HienDan tre={240} className="hidden lg:block">
-            <div className="cv-noi relative mb-2 rounded-2xl rounded-br-sm bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-xl">
-              Xin chào! Tôi là trợ lý AI của Trọng 👋
-              <span className="block text-xs font-medium text-slate-500">Cuộn xuống để xem hồ sơ nhé.</span>
-              <span className="absolute -bottom-2 right-10 h-4 w-4 rotate-45 bg-white" />
-            </div>
+            <BongBongRobot />
             <RobotAI ma="rb-lon" className="mx-auto h-56 w-full drop-shadow-[0_10px_30px_rgba(56,189,248,0.35)]" />
             <p className={`${viTay.className} mt-2 text-center text-2xl leading-snug text-amber-200 drop-shadow`}>
               “Kỹ năng hôm nay là giá trị ngày mai”
@@ -366,11 +364,7 @@ export default async function TrangCV() {
 
           <The id="muc-tieu" icon="bia" tieuDe="Mục tiêu nghề nghiệp" tre={220}>
             <ul className="space-y-2.5 text-sm">
-              {[
-                ['Ngắn hạn', 'Nắm nhanh quy trình công ty, hỗ trợ Giám đốc theo dõi tiến độ, báo cáo và giấy tờ chính xác, đúng hạn.'],
-                ['Trung hạn', 'Học thêm quay dựng video (CapCut) và ghi sổ thu – chi để hỗ trợ được nhiều việc hơn.'],
-                ['Dài hạn', 'Trở thành trợ lý đáng tin cậy, gắn bó lâu dài và cùng công ty phát triển tại Buôn Ma Thuột.'],
-              ].map(([moc, noiDung]) => (
+              {MUC_TIEU.map(([moc, noiDung]) => (
                 <li key={moc} className="flex gap-3">
                   <Icon ten="dung" className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
                   <span>
@@ -471,6 +465,7 @@ export default async function TrangCV() {
       </section>
 
       <TroLyRobot dienThoai={DIEN_THOAI} />
+      <TheoDoiXem />
     </div>
   )
 }

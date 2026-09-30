@@ -3,6 +3,7 @@ import { ANH_MAC_DINH, diaChiAnhCV } from '@/lib/anhCV'
 import { daDangNhap } from '@/lib/xacThuc'
 import FormDangNhap from './FormDangNhap'
 import FormDoiAnh from './FormDoiAnh'
+import TaoLinkRieng from './TaoLinkRieng'
 
 export const metadata: Metadata = { title: 'Đổi ảnh đại diện CV', robots: { index: false, follow: false } }
 
@@ -17,6 +18,7 @@ export default async function TrangDoiAnh() {
         <h1 className="text-xl font-extrabold text-[#0f1b3d]">Đổi ảnh đại diện CV</h1>
         <p className="mb-6 text-sm text-slate-500">Ảnh hiện ở đầu trang CV cá nhân (/cv).</p>
         {vao ? <FormDoiAnh anhHienTai={anh} laMacDinh={anh === ANH_MAC_DINH} /> : <FormDangNhap />}
+        {vao && <TaoLinkRieng />}
       </div>
     </main>
   )

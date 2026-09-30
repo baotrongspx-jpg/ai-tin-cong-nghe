@@ -77,3 +77,32 @@ export const SAN_SANG = [
   'Học ghi sổ thu – chi theo quy trình công ty',
   'Tăng ca khi công việc cần',
 ]
+
+export const NGAY_SINH = '03/04/2001'
+export const DIA_CHI = 'TP. Buôn Ma Thuột, Đắk Lắk'
+export const HOC_VAN = 'Trường Cao đẳng Phương Đông, Đà Nẵng · Cao đẳng Công nghệ Ô tô · Tốt nghiệp 2022'
+export const MUC_TIEU: [string, string][] = [
+  ['Ngắn hạn', 'Nắm nhanh quy trình công ty, hỗ trợ Giám đốc theo dõi tiến độ, báo cáo và giấy tờ chính xác, đúng hạn.'],
+  ['Trung hạn', 'Học thêm quay dựng video (CapCut) và ghi sổ thu – chi để hỗ trợ được nhiều việc hơn.'],
+  ['Dài hạn', 'Trở thành trợ lý đáng tin cậy, gắn bó lâu dài và cùng công ty phát triển tại Buôn Ma Thuột.'],
+]
+
+// Toàn bộ hồ sơ dạng chữ, làm "tài liệu" cho robot trả lời câu hỏi của nhà tuyển dụng
+export function hoSoDangChu() {
+  return [
+    `Họ tên: Nông Bảo Trọng. Ngày sinh: ${NGAY_SINH}. Nơi ở: ${DIA_CHI}.`,
+    `Điện thoại / Zalo: ${DIEN_THOAI}. Email: ${EMAIL}.`,
+    'Vị trí ứng tuyển: Trợ lý (Trợ lý Giám đốc / Trợ lý văn phòng) tại Buôn Ma Thuột.',
+    `Học vấn: ${HOC_VAN}.`,
+    'Kinh nghiệm:',
+    ...KINH_NGHIEM.map((k) => `- ${k.chucDanh}, ${k.noi} (${k.thoiGian}): ${k.viec.join(' ')}`),
+    'Dự án tự làm:',
+    ...DU_AN.map((d) => `- ${d.ten}: ${d.moTa}`),
+    `Kỹ năng: ${KY_NANG.join('; ')}.`,
+    `Công cụ: ${CONG_CU.join(', ')}.`,
+    `Sẵn sàng: ${SAN_SANG.join('; ')}.`,
+    'Mục tiêu nghề nghiệp:',
+    ...MUC_TIEU.map(([moc, nd]) => `- ${moc}: ${nd}`),
+    'Sở thích: du lịch, thể thao, công nghệ, âm nhạc.',
+  ].join('\n')
+}

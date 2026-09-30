@@ -10,6 +10,7 @@ import { coTikTok, type TuyChonDang } from '@/lib/tiktok'
 import { dangLenFacebook, dangLenTikTok } from '@/lib/dangBai'
 import { tachHashtag } from '@/lib/chuThich'
 import { layHashtagXuHuong } from '@/lib/xuHuong'
+import { capNhatSoLieu } from '@/lib/soLieu'
 
 type KetQua = { ok: boolean; loi?: string }
 
@@ -151,4 +152,16 @@ export async function timLaiXuHuong(): Promise<KetQua> {
   await layHashtagXuHuong(true)
   refresh()
   return { ok: true }
+}
+
+// Nút "Cập nhật số liệu" trên trang Thống kê: lấy lại lượt tương tác các bài 30 ngày gần đây
+export async function capNhatSoLieuNgay(): Promise<KetQua & { soBai?: number }> {
+  await chanChuaDangNhap()
+  try {
+    const kq = await capNhatSoLieu(30)
+    refresh()
+    return { ok: true, soBai: kq.soBai, loi: kq.loi ?? undefined }
+  } catch (e) {
+    return { ok: false, loi: e instanceof Error ? e.message : String(e) }
+  }
 }

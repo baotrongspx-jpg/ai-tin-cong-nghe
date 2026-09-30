@@ -2,16 +2,17 @@ import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { dangXuatAction } from './actions'
 import NutTongHop from './NutTongHop'
-import { IconFacebook, IconThoat, IconTikTok } from './BieuTuong'
+import { IconBieuDo, IconFacebook, IconThoat, IconTikTok } from './BieuTuong'
 
 const KENH = [
   { ma: 'facebook', ten: 'Facebook', href: '/', Icon: IconFacebook, bat: 'bg-blue-600 text-white shadow-blue-600/30' },
   { ma: 'tiktok', ten: 'TikTok', href: '/tiktok', Icon: IconTikTok, bat: 'bg-slate-900 text-white shadow-slate-900/30' },
+  { ma: 'thong_ke', ten: 'Thống kê', href: '/thong-ke', Icon: IconBieuDo, bat: 'bg-emerald-600 text-white shadow-emerald-600/30' },
 ] as const
 
 type Kenh = (typeof KENH)[number]['ma']
 
-// Thanh trên cùng, dính khi cuộn: logo, chuyển giữa trang Facebook / TikTok, tổng hợp, đăng xuất
+// Thanh trên cùng, dính khi cuộn: logo, chuyển giữa trang Facebook / TikTok / Thống kê, tổng hợp, đăng xuất
 export default function DauTrang({ dangO }: { dangO: Kenh }) {
   const chuyenKenh = (
     <nav className="flex rounded-xl bg-slate-100 p-1" aria-label="Chọn nền tảng">
@@ -20,7 +21,7 @@ export default function DauTrang({ dangO }: { dangO: Kenh }) {
           key={ma}
           href={href}
           aria-current={ma === dangO ? 'page' : undefined}
-          className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-1.5 text-sm font-bold transition sm:flex-none ${
+          className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-1.5 sm:px-4 text-sm font-bold transition sm:flex-none ${
             ma === dangO ? `${bat} shadow-md` : 'text-slate-500 hover:text-slate-800'
           }`}
         >
@@ -80,7 +81,7 @@ export function ThanhLoc({
   dangXem,
   mauBat,
 }: {
-  ds: { ma: string; ten: string; href: string; so: number }[]
+  ds: { ma: string; ten: string; href: string; so?: number }[]
   dangXem: string
   mauBat: string
 }) {
@@ -98,9 +99,11 @@ export function ThanhLoc({
             }`}
           >
             {t.ten}
-            <span className={`rounded-full px-2 py-0.5 text-xs ${bat ? 'bg-white/20' : 'bg-slate-100 text-slate-500'}`}>
-              {t.so}
-            </span>
+            {t.so !== undefined && (
+              <span className={`rounded-full px-2 py-0.5 text-xs ${bat ? 'bg-white/20' : 'bg-slate-100 text-slate-500'}`}>
+                {t.so}
+              </span>
+            )}
           </Link>
         )
       })}

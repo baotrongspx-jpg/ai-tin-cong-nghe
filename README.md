@@ -32,7 +32,7 @@ Mở http://localhost:3000, đăng nhập bằng `ADMIN_PASSWORD`, bấm **Tổn
 
 1. Vào developers.facebook.com → **Tạo ứng dụng**, chọn trường hợp sử dụng quản lý Trang (Pages).
 2. Ứng dụng → **Cài đặt ứng dụng → Thông tin cơ bản**: chép **App ID** và **App Secret** vào `FB_APP_ID`, `FB_APP_SECRET`.
-3. Mở **Graph API Explorer** (developers.facebook.com/tools/explorer), chọn ứng dụng, thêm quyền `pages_manage_posts`, `pages_read_engagement`, `pages_show_list` → **Generate Access Token** → chọn Fanpage → chép token vào `FB_USER_TOKEN`.
+3. Mở **Graph API Explorer** (developers.facebook.com/tools/explorer), chọn ứng dụng, thêm quyền `pages_manage_posts`, `pages_read_engagement`, `pages_show_list`, `pages_read_user_content`, `read_insights` (2 quyền cuối để trang Thống kê đọc được cảm xúc, bình luận, lượt xem) → **Generate Access Token** → chọn Fanpage → chép token vào `FB_USER_TOKEN`.
 4. Chạy `npm run token-fb`: script đổi sang token Fanpage không hết hạn và tự ghi `FB_PAGE_ID`, `FB_PAGE_TOKEN`.
 
 Chưa có token thì vẫn dùng được: nút **Sao chép nội dung** + **Tải ảnh** để đăng tay.

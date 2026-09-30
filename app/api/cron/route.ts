@@ -1,4 +1,5 @@
 import { tongHopTin } from '@/lib/tongHop'
+import { capNhatSoLieu } from '@/lib/soLieu'
 
 // Vercel Cron gọi route này theo lịch trong vercel.json (6h, 12h, 18h giờ VN), kèm header Authorization: Bearer CRON_SECRET.
 // ?so_bai=2: số bài mỗi lần (1–5), không có thì dùng SO_BAI_MOI_LAN.
@@ -15,7 +16,10 @@ export async function GET(req: Request) {
     const q = new URL(req.url).searchParams
     const chiSoan = q.get('chi_soan') === '1'
     const soBai = Math.min(5, Math.max(1, Number(q.get('so_bai') ?? process.env.SO_BAI_MOI_LAN ?? 3) || 3))
-    return Response.json(await tongHopTin(!chiSoan && process.env.TU_DONG_DANG !== '0', soBai))
+    const kq = await tongHopTin(!chiSoan && process.env.TU_DONG_DANG !== '0', soBai)
+    // Tiện thể cập nhật lượt tương tác các bài 7 ngày gần đây cho trang Thống kê
+    const soLieu = await capNhatSoLieu(7).catch((e: Error) => ({ soBai: 0, loi: e.message }))
+    return Response.json({ ...kq, soLieu })
   } catch (e) {
     console.error(e)
     return Response.json({ loi: e instanceof Error ? e.message : String(e) }, { status: 500 })

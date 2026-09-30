@@ -48,6 +48,7 @@ export default async function TrangBinhLuan({ searchParams }: PageProps<'/binh-l
             <b>Chưa đọc được bình luận:</b> token Facebook cần thêm quyền <code>pages_read_user_content</code> (đọc) và{' '}
             <code>pages_manage_engagement</code> (trả lời, ẩn). Vào Graph API Explorer → thêm 2 quyền này (giữ các quyền cũ) →
             Generate Access Token → <code>npm run token-fb</code>, rồi thay <code>FB_PAGE_TOKEN</code> trên Vercel và Redeploy.
+            <span className="mt-1.5 block text-xs opacity-75">Facebook báo: {thieuQuyen}</span>
           </CanhBao>
         )}
 

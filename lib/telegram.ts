@@ -1,4 +1,5 @@
 import 'server-only'
+import { db } from './db'
 
 // Báo động qua Telegram. Cần TELEGRAM_BOT_TOKEN (tạo bot với @BotFather) và TELEGRAM_CHAT_ID
 // (nhắn cho bot một tin rồi mở https://api.telegram.org/bot<token>/getUpdates để lấy "chat":{"id":...}).
@@ -27,3 +28,18 @@ export async function guiTelegram(noiDung: string) {
 
 // Chữ lấy từ bài báo / lỗi có thể chứa < > &, phải thoát trước khi ghép vào tin HTML
 export const thoat = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+
+// Báo token Facebook hỏng / thiếu quyền, tối đa 6 giờ một lần để khỏi nhắn liên tục mỗi nhịp
+export async function baoLoiToken(loi: string) {
+  if (!coTelegram()) return
+  const { data } = await db().from('cai_dat').select('cap_nhat_luc').eq('khoa', 'bao_loi_token').maybeSingle()
+  if (data && Date.now() - new Date(data.cap_nhat_luc).getTime() < 6 * 3600_000) return
+  await guiTelegram(
+    `🔑 <b>Token Facebook có vấn đề</b>, web không đọc được số liệu / bình luận (có thể cả đăng bài):\n${thoat(loi.slice(0, 300))}\n\n` +
+      'Kiểm tra FB_PAGE_TOKEN trên Vercel, hoặc tạo lại token (npm run token-fb).',
+  )
+  await db().from('cai_dat').upsert({ khoa: 'bao_loi_token', gia_tri: loi.slice(0, 300), cap_nhat_luc: new Date().toISOString() })
+}
+
+// Lỗi Facebook do token hết hạn / thiếu quyền (mã #10, #190, #200)
+export const laLoiToken = (loi: string) => /\(#(10|190|200)\)|access token|session has expired/i.test(loi)

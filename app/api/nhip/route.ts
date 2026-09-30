@@ -1,6 +1,7 @@
 import { chayHenGioTikTok } from '@/lib/henGio'
 import { baoBaiHot, capNhatSoLieu } from '@/lib/soLieu'
 import { anSpamTuDong } from '@/lib/binhLuan'
+import { baoLoiToken, laLoiToken } from '@/lib/telegram'
 
 // "Nhịp" GitHub Actions gọi 10 phút một lần (.github/workflows/nhip.yml), kèm Authorization: Bearer CRON_SECRET.
 // Mỗi nhịp: đăng bài TikTok hẹn giờ đã tới giờ.
@@ -19,6 +20,7 @@ export async function GET(req: Request) {
   if (!tatCa) return Response.json({ henGio })
 
   const soLieu = await capNhatSoLieu(2).catch(loi)
+  if (soLieu.loi && laLoiToken(soLieu.loi)) await baoLoiToken(soLieu.loi)
   const [baoHot, anSpam] = await Promise.all([baoBaiHot().catch(loi), anSpamTuDong().catch(loi)])
   return Response.json({ henGio, soLieu, baoHot, anSpam })
 }

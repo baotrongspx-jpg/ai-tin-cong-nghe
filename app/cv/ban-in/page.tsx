@@ -148,6 +148,16 @@ export default async function TrangCV({ searchParams }: PageProps<'/cv/ban-in'>)
                   </span>
                 </div>
                 <p className="mt-1.5 text-sm leading-relaxed text-slate-600 print:mt-1 print:text-[10.5px] print:leading-snug">{d.moTa}</p>
+                {d.taiKhoan && d.link && (
+                  <p className="mt-1.5 rounded-lg bg-white px-2.5 py-1.5 text-xs leading-relaxed text-slate-700 ring-1 ring-slate-200 print:mt-1 print:px-2 print:py-1 print:text-[9.5px] print:leading-snug">
+                    <b>Dùng thử:</b>{' '}
+                    <a href={d.link} target="_blank" rel="noreferrer" className="font-semibold text-blue-700 underline">
+                      {d.link.replace(/^https?:\/\//, '')}
+                    </a>
+                    <br />
+                    TK <b className="font-mono">{d.taiKhoan.ten}</b> · MK <b className="font-mono">{d.taiKhoan.matKhau}</b>
+                  </p>
+                )}
               </div>
             ))}
           </div>

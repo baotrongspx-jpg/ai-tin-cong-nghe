@@ -38,7 +38,8 @@ export const KINH_NGHIEM = [
   },
 ]
 
-export const DU_AN: { ten: string; link?: string; moTa: string; nhan: string }[] = [
+// taiKhoan: tài khoản dùng thử hiện công khai trên CV để nhà tuyển dụng tự đăng nhập xem (chủ trang chọn để công khai)
+export const DU_AN: { ten: string; link?: string; moTa: string; nhan: string; taiKhoan?: { ten: string; matKhau: string } }[] = [
   {
     ten: 'Fanpage & TikTok Công Nghệ 24H',
     link: 'https://www.facebook.com/102093421307437',
@@ -57,8 +58,10 @@ export const DU_AN: { ten: string; link?: string; moTa: string; nhan: string }[]
   },
   {
     ten: 'Durian Frozen System',
+    link: 'https://durian-frozen-system.vercel.app/vi',
     moTa: 'Quản lý kho cấp đông, sản lượng, tỷ lệ thu hồi; đang dùng thực tế.',
-    nhan: 'Đối soát',
+    nhan: 'Kho đông lạnh',
+    taiKhoan: { ten: 'admin@gmail.com', matKhau: '123456789' },
   },
 ]
 
@@ -75,7 +78,12 @@ export function hoSoDangChu() {
     'Kinh nghiệm:',
     ...KINH_NGHIEM.map((k) => `- ${k.chucDanh}, ${k.noi} (${k.thoiGian}): ${k.viec.join(' ')}`),
     'Dự án tự làm:',
-    ...DU_AN.map((d) => `- ${d.ten}: ${d.moTa}`),
+    ...DU_AN.map(
+      (d) =>
+        `- ${d.ten}: ${d.moTa}` +
+        (d.link ? ` Xem tại ${d.link}` : '') +
+        (d.taiKhoan ? ` (tài khoản xem thử: ${d.taiKhoan.ten} / mật khẩu ${d.taiKhoan.matKhau})` : ''),
+    ),
     `Kỹ năng: ${QUAN_LY_KHO.kyNang.join('; ')}.`,
     `Công cụ: ${QUAN_LY_KHO.congCu.join(', ')}.`,
     `Sẵn sàng: ${QUAN_LY_KHO.sanSang.join('; ')}.`,
@@ -84,6 +92,7 @@ export function hoSoDangChu() {
     'Về kho: đã dùng hệ thống vận hành kho nội bộ của SPX; đang tự phát triển phần mềm quản lý kho đông lạnh (Durian Frozen System); đã hướng dẫn nhân viên dùng hệ thống và quy trình mới.',
     'Về nhập – xuất – tồn: nắm và đối soát số liệu nhập – xuất – tồn, hao hụt; chưa trực tiếp làm thủ kho hay tự tổ chức kiểm kê.',
     'Sẵn sàng đi công tác, kể cả tỉnh xa (ví dụ Bến Tre) khi công ty cần.',
+    'Chưa trực tiếp phối hợp với bộ phận sản xuất, kế toán hay vận tải. Ở SPX có phân bổ nhân lực theo khối lượng hàng.',
     'Sở thích: du lịch, thể thao, công nghệ, âm nhạc.',
   ].join('\n')
 }
@@ -168,10 +177,6 @@ const QUAN_LY_KHO: HoSoViTri = {
         'Kiểm soát hao hụt, thất thoát; báo cáo cấp trên',
         'Tính tỷ lệ hao hụt từng công đoạn, báo cáo định kỳ cho Giám đốc; đối soát số liệu cuối ngày cho cả cụm 12 kho SPX.',
       ],
-      [
-        'Phối hợp Sản xuất, Kế toán, Vận tải',
-        'Làm việc với hợp tác xã, đối tác mua bán và vận chuyển; phân bổ nhân lực theo khối lượng hàng tại SPX.',
-      ],
       ['Kinh nghiệm kho 2 – 3 năm', 'Gần 2 năm vận hành cụm 12 kho SPX Express (08/2024 – 06/2026), nay tiếp tục với kho cấp đông tại Trái Cây 001.'],
       ['Tin học văn phòng, phần mềm', 'Thành thạo Excel / Google Sheets, Apps Script; tự xây công cụ báo cáo và quản lý kho.'],
       ['Trung cấp trở lên', 'Cao đẳng Công nghệ Ô tô (2022); quen làm theo quy trình, checklist từ khi làm QC tại Thaco Trường Hải.'],
@@ -185,7 +190,6 @@ const QUAN_LY_KHO: HoSoViTri = {
     'Điều phối nhân lực theo khối lượng hàng',
     'Hướng dẫn nhân viên dùng hệ thống',
     'Báo cáo định kỳ kèm đề xuất',
-    'Phối hợp đối tác, hợp tác xã',
   ],
   congCu: ['Excel / Sheets', 'Hệ thống vận hành kho SPX', 'Phần mềm kho đông lạnh (tự xây)', 'Google Workspace', 'Apps Script', 'Word', 'AI (Gemini, Claude)'],
   sanSang: [

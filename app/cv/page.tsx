@@ -408,14 +408,29 @@ export default async function TrangCV({ searchParams }: PageProps<'/cv'>) {
                   </div>
                   <h3 className="mt-4 text-xl font-extrabold text-[#0f1b3d]">{d.ten}</h3>
                   <p className="mt-2 leading-relaxed text-slate-600">{d.moTa}</p>
+                  {d.taiKhoan && (
+                    <div className="mt-4 rounded-xl bg-slate-50 px-4 py-3 text-sm ring-1 ring-slate-200">
+                      <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-slate-400">Tài khoản xem thử</p>
+                      <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+                        <dt className="text-slate-500">Email</dt>
+                        <dd className="select-all break-all font-mono font-semibold text-[#0f1b3d]">{d.taiKhoan.ten}</dd>
+                        <dt className="text-slate-500">Mật khẩu</dt>
+                        <dd className="select-all font-mono font-semibold text-[#0f1b3d]">{d.taiKhoan.matKhau}</dd>
+                      </dl>
+                    </div>
+                  )}
                   {d.link && (
                     <a
                       href={d.link}
                       target="_blank"
                       rel="noreferrer"
-                      className="mt-4 inline-flex items-center gap-1.5 text-sm font-bold text-blue-600 hover:text-blue-800"
+                      className={
+                        d.taiKhoan
+                          ? 'mt-4 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white shadow-md shadow-blue-600/25 transition hover:bg-blue-500'
+                          : 'mt-4 inline-flex items-center gap-1.5 text-sm font-bold text-blue-600 hover:text-blue-800'
+                      }
                     >
-                      Xem trang <Icon ten="moRa" className="h-4 w-4" />
+                      {d.taiKhoan ? 'Mở hệ thống dùng thử' : 'Xem trang'} <Icon ten="moRa" className="h-4 w-4" />
                     </a>
                   )}
                 </article>

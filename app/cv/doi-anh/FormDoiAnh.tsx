@@ -3,21 +3,44 @@
 import { startTransition, useActionState, useState } from 'react'
 import { doiAnhCV, khoiPhucAnhCV, type KetQuaDoiAnh } from '../actions'
 
-// Ảnh điện thoại nặng vài MB: thu nhỏ ngay trên trình duyệt (cạnh dài ≤1600px) cho vừa giới hạn gửi lên máy chủ
+// Mở ảnh bằng thẻ <img>: đọc được cả ảnh HEIC của iPhone trên Safari, tự xoay đúng chiều
+function moAnh(tep: File): Promise<HTMLImageElement> {
+  return new Promise((xong, loi) => {
+    const url = URL.createObjectURL(tep)
+    const img = new Image()
+    img.onload = () => xong(img)
+    img.onerror = () => loi(new Error('không mở được ảnh'))
+    img.src = url
+  })
+}
+
+// Ảnh điện thoại nặng vài MB: thu nhỏ ngay trên trình duyệt (cạnh dài ≤1200px, dưới ~800KB) rồi mới gửi lên
 async function thuNho(tep: File): Promise<Blob> {
-  const anh = await createImageBitmap(tep, { imageOrientation: 'from-image' })
-  const tiLe = Math.min(1, 1600 / Math.max(anh.width, anh.height))
+  const anh = await moAnh(tep)
+  const rong = anh.naturalWidth, cao = anh.naturalHeight
+  if (!rong || !cao) throw new Error('ảnh rỗng')
+  const tiLe = Math.min(1, 1200 / Math.max(rong, cao))
   const nen = document.createElement('canvas')
-  nen.width = Math.round(anh.width * tiLe)
-  nen.height = Math.round(anh.height * tiLe)
+  nen.width = Math.round(rong * tiLe)
+  nen.height = Math.round(cao * tiLe)
   nen.getContext('2d')!.drawImage(anh, 0, 0, nen.width, nen.height)
-  return new Promise((xong, loi) => nen.toBlob((b) => (b ? xong(b) : loi(new Error('không nén được ảnh'))), 'image/jpeg', 0.9))
+  URL.revokeObjectURL(anh.src)
+  for (const chatLuong of [0.88, 0.75, 0.6]) {
+    const b = await new Promise<Blob | null>((xong) => nen.toBlob(xong, 'image/jpeg', chatLuong))
+    if (b && (b.size < 800_000 || chatLuong === 0.6)) return b
+  }
+  throw new Error('không nén được ảnh')
 }
 
 export default function FormDoiAnh({ anhHienTai, laMacDinh }: { anhHienTai: string; laMacDinh: boolean }) {
   const [kq, gui, dangGui] = useActionState(async (truoc: KetQuaDoiAnh, form: FormData) => {
-    if (form.get('khoi_phuc')) return khoiPhucAnhCV()
-    return doiAnhCV(truoc, form)
+    // Lỗi mạng / máy chủ từ chối: hiện thành dòng báo lỗi thay vì trang trắng
+    try {
+      if (form.get('khoi_phuc')) return await khoiPhucAnhCV()
+      return await doiAnhCV(truoc, form)
+    } catch (e) {
+      return { ok: false, thongBao: `Chưa lưu được (${(e as Error).message || 'lỗi mạng'}). Thử lại hoặc chọn ảnh khác.` }
+    }
   }, null)
   const [xemTruoc, setXemTruoc] = useState<string | null>(null)
   const [tep, setTep] = useState<Blob | null>(null)
@@ -34,9 +57,13 @@ export default function FormDoiAnh({ anhHienTai, laMacDinh }: { anhHienTai: stri
         if (cu) URL.revokeObjectURL(cu)
         return URL.createObjectURL(b)
       })
-    } catch {
-      setLoiChon('Trình duyệt không mở được ảnh này. Hãy chọn ảnh JPG hoặc PNG.')
+    } catch (loi) {
+      setTep(null)
+      setLoiChon(
+        `Không mở được ảnh này (${(loi as Error).message}). Nếu là ảnh iPhone, vào Cài đặt → Camera → Định dạng → chọn "Tương thích nhất", hoặc chụp màn hình ảnh rồi chọn ảnh chụp màn hình.`,
+      )
     }
+    e.target.value = '' // chọn lại đúng ảnh đó vẫn chạy
   }
 
   function luu() {

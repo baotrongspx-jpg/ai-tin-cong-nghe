@@ -21,7 +21,7 @@ export async function generateMetadata({ searchParams }: PageProps<'/cv'>): Prom
   const vt = layViTri((await searchParams).vt)
   return {
     title: `Nông Bảo Trọng – CV ${vt.ten}`,
-    description: `Ứng tuyển ${vt.ungTuyen} · gần 2 năm vận hành cụm 12 kho SPX Express.`,
+    description: `Ứng tuyển ${vt.ungTuyen} · gần 2 năm Quản lý Vận hành cụm 12 kho SPX Express.`,
     robots: { index: false, follow: false },
     metadataBase: new URL(process.env.SITE_URL ?? 'https://ai-tin-cong-nghe-wpy7.vercel.app'),
   }

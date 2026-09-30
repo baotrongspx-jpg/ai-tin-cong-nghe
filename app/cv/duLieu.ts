@@ -15,7 +15,7 @@ export const KINH_NGHIEM = [
     ],
   },
   {
-    chucDanh: 'Nhân viên Vận hành',
+    chucDanh: 'Quản lý Vận hành',
     noi: 'SPX Express · Cụm kho Đắk Lắk (12 kho)',
     thoiGian: '08/2024 – 06/2026',
     viec: [
@@ -25,7 +25,7 @@ export const KINH_NGHIEM = [
     ],
   },
   {
-    chucDanh: 'Nhân viên Vận hành',
+    chucDanh: 'Quản lý Vận hành',
     noi: 'Giao Hàng Tiết Kiệm (GHTK)',
     thoiGian: '2024',
     viec: ['Điều phối nhân sự, xử lý sự cố phát sinh để giữ chất lượng dịch vụ cho khách hàng.'],
@@ -134,7 +134,7 @@ const QUAN_LY_KHO: HoSoViTri = {
   tomTat: [
     'Đang theo dõi số liệu ',
     { dam: 'kho cấp đông sầu riêng' },
-    ' và tính hao hụt từng công đoạn tại Công ty TNHH Trái Cây 001. Gần 2 năm vận hành ',
+    ' và tính hao hụt từng công đoạn tại Công ty TNHH Trái Cây 001. Gần 2 năm Quản lý Vận hành ',
     { dam: 'cụm 12 kho SPX Express' },
     ': đối soát số liệu cuối ngày, điều phối nhân lực theo khối lượng hàng. ',
     { dam: 'Tự xây phần mềm quản lý kho đông lạnh' },
@@ -177,7 +177,7 @@ const QUAN_LY_KHO: HoSoViTri = {
         'Kiểm soát hao hụt, thất thoát; báo cáo cấp trên',
         'Tính tỷ lệ hao hụt từng công đoạn, báo cáo định kỳ cho Giám đốc; đối soát số liệu cuối ngày cho cả cụm 12 kho SPX.',
       ],
-      ['Kinh nghiệm kho 2 – 3 năm', 'Gần 2 năm vận hành cụm 12 kho SPX Express (08/2024 – 06/2026), nay tiếp tục với kho cấp đông tại Trái Cây 001.'],
+      ['Kinh nghiệm kho 2 – 3 năm', 'Quản lý Vận hành tại GHTK (2024), rồi gần 2 năm Quản lý Vận hành cụm 12 kho SPX Express (08/2024 – 06/2026); nay theo dõi kho cấp đông tại Trái Cây 001.'],
       ['Tin học văn phòng, phần mềm', 'Thành thạo Excel / Google Sheets, Apps Script; tự xây công cụ báo cáo và quản lý kho.'],
       ['Trung cấp trở lên', 'Cao đẳng Công nghệ Ô tô (2022); quen làm theo quy trình, checklist từ khi làm QC tại Thaco Trường Hải.'],
       ['Nam, trên 22 tuổi, chịu áp lực, đi công tác', 'Nam, sinh năm 2001; quen nhịp cao điểm của kho vận; sẵn sàng đi công tác, kể cả Bến Tre.'],

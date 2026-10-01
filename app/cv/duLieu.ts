@@ -58,7 +58,7 @@ export const DU_AN: { ten: string; link?: string; moTa: string; nhan: string; ta
   {
     ten: 'Durian Frozen System',
     link: 'https://durian-frozen-system.vercel.app/vi',
-    moTa: 'Quản lý kho cấp đông, sản lượng, tỷ lệ thu hồi qua 5 công đoạn; đang phát triển, chưa đưa vào sử dụng chính thức.',
+    moTa: 'Quản lý kho cấp đông, sản lượng, tỷ lệ thu hồi qua 5 công đoạn; đang phát triển.',
     nhan: 'Kho đông lạnh',
     taiKhoan: { ten: 'admin@gmail.com', matKhau: '123456789' },
   },
@@ -223,9 +223,8 @@ const QUAN_LY_KHO: HoSoViTri = {
     'Hướng dẫn nhân viên dùng hệ thống',
     'Báo cáo định kỳ kèm đề xuất',
     'Áp dụng 5S / Kaizen tại nơi làm việc',
-    'Làm việc với mã vạch, tem QR',
   ],
-  congCu: ['Excel / Sheets', 'Hệ thống vận hành kho SPX', 'Mã vạch / QR', 'Phần mềm kho đông lạnh (tự xây)', 'Google Workspace', 'Apps Script', 'Word', 'AI (Gemini, Claude)'],
+  congCu: ['Excel / Sheets', 'Hệ thống vận hành kho SPX', 'Phần mềm kho đông lạnh (tự xây)', 'Google Workspace', 'Apps Script', 'Word', 'AI (Gemini, Claude)'],
   sanSang: [
     'T2 – T7, 8h–17h tại nhà máy Cư M’gar (đi xe đưa đón từ Buôn Ma Thuột)',
     'Đi công tác, kể cả Bến Tre khi công ty cần',

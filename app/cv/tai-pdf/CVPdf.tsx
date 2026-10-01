@@ -24,6 +24,8 @@ const s = StyleSheet.create({
   trai: { width: 178, backgroundColor: XANH, color: 'white', paddingVertical: 20, paddingHorizontal: 16, borderRightWidth: 4, borderRightColor: VANG },
   anh: { width: 86, height: 108, borderRadius: 10, objectFit: 'cover', alignSelf: 'center', borderWidth: 2, borderColor: VANG },
   mucTrai: { marginTop: 11 },
+  khungQr: { marginTop: 'auto', flexDirection: 'row', alignItems: 'center', backgroundColor: '#ffffff14', borderRadius: 8, padding: 6, textDecoration: 'none' },
+  qr: { width: 52, height: 52, backgroundColor: 'white', borderRadius: 4, padding: 3 },
   tieuDeTrai: { fontSize: 8, fontWeight: 700, color: VANG, letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 5, paddingBottom: 3, borderBottomWidth: 1, borderBottomColor: '#fbbf2466' },
   nhanNho: { fontSize: 6.6, color: '#ffffff88', textTransform: 'uppercase', letterSpacing: 0.8 },
   dong: { flexDirection: 'row', marginBottom: 2.5 },
@@ -73,7 +75,7 @@ function TieuDe({ so, children }: { so: string; children: string }) {
   )
 }
 
-export default function CVPdf({ vt, anh, trangWeb }: { vt: HoSoViTri; anh: Buffer | null; trangWeb: string }) {
+export default function CVPdf({ vt, anh, qr, trangWeb }: { vt: HoSoViTri; anh: Buffer | null; qr: Buffer; trangWeb: string }) {
   const so = DIEN_THOAI.replace(/\s/g, '')
   return (
     <Document title={`CV ${vt.ten} – Nông Bảo Trọng`} author="Nông Bảo Trọng" language="vi">
@@ -134,6 +136,16 @@ export default function CVPdf({ vt, anh, trangWeb }: { vt: HoSoViTri; anh: Buffe
               </View>
             ))}
           </MucTrai>
+
+          {/* Mã QR ở đáy cột trái: người cầm CV giấy quét để mở bản web (video, số liệu kho, hệ thống dùng thử) */}
+          <Link src={trangWeb} style={s.khungQr}>
+            {/* eslint-disable-next-line jsx-a11y/alt-text */}
+            <Image src={{ data: qr, format: 'png' }} style={s.qr} />
+            <View style={{ flex: 1, marginLeft: 7 }}>
+              <Text style={{ fontSize: 7.8, fontWeight: 700, color: VANG }}>Quét để xem CV online</Text>
+              <Text style={{ fontSize: 6.8, color: '#ffffffcc', marginTop: 1.5 }}>Video giới thiệu, số liệu kho và hệ thống dùng thử</Text>
+            </View>
+          </Link>
         </View>
 
         {/* Cột phải */}

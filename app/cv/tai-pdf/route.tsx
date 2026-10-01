@@ -1,4 +1,5 @@
 import { renderToBuffer } from '@react-pdf/renderer'
+import QRCode from 'qrcode'
 import { layAnhCV } from '@/lib/anhCV'
 import { layViTri } from '../duLieu'
 import CVPdf from './CVPdf'
@@ -15,7 +16,9 @@ export async function GET(req: Request) {
     anh = res?.ok ? Buffer.from(await res.arrayBuffer()) : null
   }
 
-  const pdf = await renderToBuffer(<CVPdf vt={vt} anh={anh} trangWeb={`${url.origin}/cv`} />)
+  const trangWeb = `${url.origin}/cv`
+  const qr = await QRCode.toBuffer(trangWeb, { errorCorrectionLevel: 'M', margin: 0, width: 360, color: { dark: '#0f1b3d', light: '#ffffff' } })
+  const pdf = await renderToBuffer(<CVPdf vt={vt} anh={anh} qr={qr} trangWeb={trangWeb} />)
   const tenFile = `CV-Nong-Bao-Trong-${vt.ten.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/gi, 'd').replace(/\s+/g, '-')}.pdf`
 
   return new Response(new Uint8Array(pdf), {

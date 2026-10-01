@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import QRCode from 'qrcode'
 import type { ReactNode } from 'react'
 import NutIn from './NutIn'
 import { DIEN_THOAI, duAnCua, EMAIL, KINH_NGHIEM, layViTri } from '../duLieu'
@@ -18,6 +19,9 @@ export async function generateMetadata({ searchParams }: PageProps<'/cv/ban-in'>
 
 export default async function TrangCV({ searchParams }: PageProps<'/cv/ban-in'>) {
   const vt = layViTri((await searchParams).vt)
+  // Mã QR dẫn tới bản web của CV (có video, số liệu kho, hệ thống dùng thử) cho người cầm CV giấy
+  const trangWeb = `${(process.env.SITE_URL ?? 'https://ai-tin-cong-nghe-wpy7.vercel.app').replace(/\/$/, '')}/cv`
+  const qr = await QRCode.toString(trangWeb, { type: 'svg', errorCorrectionLevel: 'M', margin: 0, color: { dark: '#0f1b3d', light: '#ffffff' } })
   return (
     <main className="min-h-screen bg-slate-200/70 px-3 py-6 print:bg-white print:p-0 sm:px-6 sm:py-10">
       {/* Nút hành động (ẩn khi in) */}
@@ -95,6 +99,19 @@ export default async function TrangCV({ searchParams }: PageProps<'/cv/ban-in'>)
               ))}
             </ul>
           </Muc>
+
+          <a href={trangWeb} className="mt-8 flex items-center gap-3 rounded-xl bg-white/10 p-3 print:mt-4 print:p-2">
+            <span
+              className="block h-20 w-20 shrink-0 rounded-md bg-white p-1.5 print:h-16 print:w-16 print:p-1"
+              dangerouslySetInnerHTML={{ __html: qr }}
+              aria-label="Mã QR mở CV trực tuyến"
+              role="img"
+            />
+            <span className="text-sm leading-snug print:text-[10.5px]">
+              <b className="block text-amber-300">Quét để xem CV online</b>
+              <span className="text-white/75">Video giới thiệu, số liệu kho và hệ thống dùng thử</span>
+            </span>
+          </a>
         </aside>
 
         {/* Cột phải */}

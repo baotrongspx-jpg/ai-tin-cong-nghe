@@ -37,7 +37,7 @@ export default function FormLienHe() {
       {kq && !kq.ok && <p className="text-sm font-medium text-red-300">{kq.thongBao}</p>}
       <button
         disabled={dangGui}
-        className="w-full rounded-xl bg-orange-500 px-6 py-3.5 font-bold text-[#0b1631] transition hover:bg-orange-400 disabled:opacity-60"
+        className="w-full rounded-xl bg-blue-600 px-6 py-3.5 font-bold text-white transition hover:bg-blue-500 disabled:opacity-60"
       >
         {dangGui ? 'Đang gửi…' : 'Gửi lời nhắn'}
       </button>

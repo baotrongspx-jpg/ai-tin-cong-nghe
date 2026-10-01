@@ -79,7 +79,7 @@ const THE =
 // Một mục lớn của trang: số thứ tự + nhãn nhỏ + tiêu đề lớn, nền trắng / xám xen kẽ
 function Muc({ id, so, nhan, tieuDe, moTa, nenXam, children }: { id: string; so: string; nhan: string; tieuDe: string; moTa?: string; nenXam?: boolean; children: ReactNode }) {
   return (
-    <section id={id} className={`scroll-mt-28 py-16 sm:py-20 ${nenXam ? 'bg-slate-50' : 'bg-white'}`}>
+    <section id={id} className={`scroll-mt-28 py-16 sm:py-20 ${nenXam ? 'bg-[#e9edf2]' : 'bg-white'}`}>
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <HienDan>
           <p className="flex items-center gap-3 text-sm font-bold uppercase tracking-[0.2em] text-blue-600">
@@ -150,7 +150,7 @@ export default async function TrangCV({ searchParams }: PageProps<'/cv'>) {
           <a
             href={hrefPdf}
             download
-            className="ml-auto flex shrink-0 items-center gap-2 rounded-lg border border-blue-400 px-3.5 py-2 text-sm font-bold text-blue-200 transition hover:bg-blue-500 hover:text-white xl:ml-2"
+            className="ml-auto flex shrink-0 items-center gap-2 rounded-lg bg-orange-500 px-3.5 py-2 text-sm font-bold text-[#0b1631] transition hover:bg-orange-400 xl:ml-2"
           >
             <Icon ten="tai" className="h-4 w-4" /> Tải CV PDF
           </a>
@@ -229,7 +229,7 @@ export default async function TrangCV({ searchParams }: PageProps<'/cv'>) {
             </ul>
 
             <div className="mt-8 flex flex-wrap gap-3">
-              <a href={hrefPdf} download className="flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-bold shadow-lg shadow-blue-900/40 transition hover:bg-blue-500">
+              <a href={hrefPdf} download className="flex items-center gap-2 rounded-xl bg-orange-500 px-6 py-3 font-bold text-[#0b1631] shadow-lg shadow-orange-900/40 transition hover:bg-orange-400">
                 <Icon ten="tai" className="h-5 w-5" /> Tải CV PDF
               </a>
               <a href="#lien-he" className="flex items-center gap-2 rounded-xl border border-white/40 px-6 py-3 font-bold transition hover:bg-white hover:text-[#0b1631]">
@@ -250,12 +250,13 @@ export default async function TrangCV({ searchParams }: PageProps<'/cv'>) {
       <div className="relative z-10 mx-auto -mt-12 max-w-6xl px-4 sm:px-6">
         <HienDan>
           <ul className="grid grid-cols-2 overflow-hidden rounded-2xl bg-white shadow-[0_20px_50px_-20px_rgba(15,27,61,0.35)] ring-1 ring-slate-200/70 lg:grid-cols-4">
-            {vt.soLieu.map(([so, sau, nhan], i) => (
+            {vt.soLieu.map(([so, sau, nhan, truoc], i) => (
               <li
                 key={nhan}
                 className={`border-slate-100 px-5 py-6 text-center sm:py-7 ${i % 2 ? 'border-l' : ''} ${i > 1 ? 'border-t lg:border-t-0' : ''} ${i === 2 ? 'lg:border-l' : ''}`}
               >
                 <p className="bg-gradient-to-br from-blue-700 to-sky-500 bg-clip-text text-4xl font-black text-transparent sm:text-5xl">
+                  {truoc}
                   <DemSo den={so} sau={sau} />
                 </p>
                 <p className="mt-1.5 text-xs font-semibold text-slate-500 sm:text-sm">{nhan}</p>
@@ -460,7 +461,7 @@ export default async function TrangCV({ searchParams }: PageProps<'/cv'>) {
                       rel="noreferrer"
                       className={
                         d.taiKhoan
-                          ? 'mt-4 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white shadow-md shadow-blue-600/25 transition hover:bg-blue-500'
+                          ? 'mt-4 inline-flex items-center gap-2 rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-bold text-[#0b1631] shadow-md shadow-orange-500/25 transition hover:bg-orange-400'
                           : 'mt-4 inline-flex items-center gap-1.5 text-sm font-bold text-blue-600 hover:text-blue-800'
                       }
                     >

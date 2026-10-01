@@ -21,21 +21,21 @@ const XAM = '#475569'
 
 const s = StyleSheet.create({
   trang: { flexDirection: 'row', fontFamily: 'BeVietnamPro', fontWeight: 500, fontSize: 8.6, color: '#1e293b', lineHeight: 1.4 },
-  trai: { width: 178, backgroundColor: XANH, color: 'white', paddingVertical: 20, paddingHorizontal: 16, borderRightWidth: 4, borderRightColor: VANG },
-  anh: { width: 86, height: 108, borderRadius: 10, objectFit: 'cover', alignSelf: 'center', borderWidth: 2, borderColor: VANG },
-  mucTrai: { marginTop: 11 },
-  khungQr: { marginTop: 'auto', flexDirection: 'row', alignItems: 'center', backgroundColor: '#ffffff14', borderRadius: 8, padding: 6, textDecoration: 'none' },
-  qr: { width: 52, height: 52, backgroundColor: 'white', borderRadius: 4, padding: 3 },
-  tieuDeTrai: { fontSize: 8, fontWeight: 700, color: VANG, letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 5, paddingBottom: 3, borderBottomWidth: 1, borderBottomColor: '#fbbf2466' },
+  trai: { fontSize: 8.2, lineHeight: 1.32, width: 178, backgroundColor: XANH, color: 'white', paddingVertical: 18, paddingHorizontal: 16, borderRightWidth: 4, borderRightColor: VANG },
+  anh: { width: 70, height: 88, borderRadius: 10, objectFit: 'cover', alignSelf: 'center', borderWidth: 2, borderColor: VANG },
+  mucTrai: { marginTop: 9 },
+  khungQr: { marginTop: 'auto', flexDirection: 'row', alignItems: 'center', backgroundColor: '#ffffff14', borderRadius: 8, padding: 5, textDecoration: 'none' },
+  qr: { width: 46, height: 46, backgroundColor: 'white', borderRadius: 4, padding: 3 },
+  tieuDeTrai: { fontSize: 8, fontWeight: 700, color: VANG, letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 4, paddingBottom: 2.5, borderBottomWidth: 1, borderBottomColor: '#fbbf2466' },
   nhanNho: { fontSize: 6.6, color: '#ffffff88', textTransform: 'uppercase', letterSpacing: 0.8 },
-  dong: { flexDirection: 'row', marginBottom: 2.5 },
+  dong: { flexDirection: 'row', marginBottom: 1.5 },
   cham: { width: 3.5, height: 3.5, backgroundColor: VANG, marginTop: 4, marginRight: 5 },
   the: { fontSize: 7.2, borderWidth: 0.8, borderColor: '#ffffff44', borderRadius: 8, paddingVertical: 1.5, paddingHorizontal: 5, marginRight: 3, marginBottom: 3 },
   phai: { flex: 1, paddingTop: 18, paddingBottom: 16, paddingHorizontal: 22 },
   ten: { fontSize: 24, fontWeight: 700, color: XANH, letterSpacing: -0.3, lineHeight: 1.5 },
   ungTuyen: { marginTop: 2, alignSelf: 'flex-start', backgroundColor: '#fffbeb', borderLeftWidth: 3, borderLeftColor: VANG, paddingVertical: 3, paddingHorizontal: 8, fontSize: 9.5, fontWeight: 700, color: '#b45309' },
-  tomTat: { marginTop: 8, fontSize: 9, color: '#334155', lineHeight: 1.45 },
-  tieuDe: { flexDirection: 'row', alignItems: 'center', marginTop: 10, marginBottom: 5 },
+  tomTat: { marginTop: 7, fontSize: 8.6, color: '#334155', lineHeight: 1.45 },
+  tieuDe: { flexDirection: 'row', alignItems: 'center', marginTop: 9, marginBottom: 5 },
   so: { backgroundColor: XANH, color: VANG, fontSize: 7, fontWeight: 700, paddingVertical: 1.5, paddingHorizontal: 4, borderRadius: 3, marginRight: 6 },
   chuTieuDe: { fontSize: 10.5, fontWeight: 700, color: XANH, textTransform: 'uppercase', letterSpacing: 0.6 },
   gach: { flex: 1, height: 0.8, backgroundColor: '#e2e8f0', marginLeft: 6 },
@@ -53,7 +53,7 @@ const s = StyleSheet.create({
   moTa: { fontSize: 7.8, color: XAM, marginTop: 2 },
   dungThu: { fontSize: 7.2, marginTop: 3, backgroundColor: 'white', borderWidth: 0.8, borderColor: '#e2e8f0', borderRadius: 4, padding: 3 },
   phongCach: { fontSize: 7.8, fontWeight: 700, color: '#92400e', backgroundColor: '#fffbeb', borderWidth: 0.8, borderColor: '#fde68a', borderRadius: 8, paddingVertical: 2, paddingHorizontal: 7, marginRight: 4, marginBottom: 4 },
-  camDoan: { marginTop: 8, fontSize: 7.6, color: '#64748b', textAlign: 'right' },
+  camDoan: { marginTop: 5, fontSize: 7.6, color: '#64748b', textAlign: 'right' },
 })
 
 function MucTrai({ tieuDe, children }: { tieuDe: string; children: ReactNode }) {
@@ -96,7 +96,7 @@ export default function CVPdf({ vt, anh, qr, trangWeb }: { vt: HoSoViTri; anh: B
                 ['CV trực tuyến', trangWeb.replace(/^https?:\/\//, ''), trangWeb],
               ] as [string, string, string?][]
             ).map(([nhan, giaTri, href]) => (
-              <View key={nhan} style={{ marginBottom: 3 }}>
+              <View key={nhan} style={{ marginBottom: 2 }}>
                 <Text style={s.nhanNho}>{nhan}</Text>
                 {href ? (
                   <Link src={href} style={{ color: 'white', textDecoration: 'none', fontSize: 8.2 }}>

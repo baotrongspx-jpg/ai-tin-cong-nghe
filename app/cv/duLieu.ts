@@ -19,7 +19,7 @@ export const KINH_NGHIEM = [
     noi: 'SPX Express · Đắk Lắk',
     thoiGian: '08/2024 – 06/2026',
     viec: [
-      'Phân bổ nhân lực theo khối lượng hàng, theo dõi tiến độ trong ngày, dự báo nhu cầu lao động ngày kế tiếp.',
+      'Điều phối đội 20 – 50 nhân sự: phân bổ theo khối lượng hàng, theo dõi tiến độ trong ngày, dự báo nhu cầu lao động ngày kế tiếp.',
       'Tự xây SPX Command Center để cấp trên quản lý cụm 12 kho: dashboard, đối soát dữ liệu, cảnh báo nhân sự dưới chỉ tiêu.',
     ],
   },
@@ -27,7 +27,7 @@ export const KINH_NGHIEM = [
     chucDanh: 'Quản lý Vận hành',
     noi: 'Giao Hàng Tiết Kiệm (GHTK)',
     thoiGian: '2024',
-    viec: ['Điều phối nhân sự, xử lý sự cố phát sinh để giữ chất lượng dịch vụ cho khách hàng.'],
+    viec: ['Điều phối đội 20 – 50 nhân sự, xử lý sự cố phát sinh để giữ chất lượng dịch vụ cho khách hàng.'],
   },
   {
     chucDanh: 'Nhân viên Kiểm tra Chất lượng (QC)',
@@ -111,7 +111,8 @@ export type HoSoViTri = {
   nhanSanSang: string
   chucDanh: string[]
   tomTat: DoanChu[]
-  soLieu: [number, string, string][]
+  // [số đếm tới, chữ sau, nhãn, chữ trước số (vd "20–")]
+  soLieu: [number, string, string, string?][]
   gioiThieu: { tieuDe: string; moTa: string }
   theManh: [BieuTuong, string, string][]
   thongTinNhanh: [BieuTuong, string, string][]
@@ -137,16 +138,16 @@ const QUAN_LY_KHO: HoSoViTri = {
     { dam: 'kho cấp đông sầu riêng' },
     ' và tính hao hụt từng công đoạn tại Công ty TNHH Trái Cây 001. Gần 2 năm Quản lý Vận hành tại ',
     { dam: 'SPX Express' },
-    ': điều phối nhân lực theo khối lượng hàng, và tự xây phần mềm giúp cấp trên quản lý cụm 12 kho. ',
+    ': điều phối đội 20 – 50 nhân sự theo khối lượng hàng, và tự xây phần mềm giúp cấp trên quản lý cụm 12 kho. ',
     'Đang tự phát triển ',
     { dam: 'phần mềm quản lý kho đông lạnh' },
     '.',
   ],
   soLieu: [
+    [50, '', 'Nhân sự từng điều phối', '20–'],
     [12, '', 'Kho SPX dùng phần mềm tôi xây'],
     [3, '+', 'Năm đi làm thực tế'],
     [4, '', 'Công cụ quản lý tự xây'],
-    [5, '', 'Công đoạn trong phần mềm kho đông lạnh'],
   ],
   gioiThieu: {
     tieuDe: 'Giữ cho số liệu kho luôn khớp, hao hụt luôn trong tầm kiểm soát',
@@ -221,8 +222,10 @@ const QUAN_LY_KHO: HoSoViTri = {
     'Điều phối nhân lực theo khối lượng hàng',
     'Hướng dẫn nhân viên dùng hệ thống',
     'Báo cáo định kỳ kèm đề xuất',
+    'Áp dụng 5S / Kaizen tại nơi làm việc',
+    'Làm việc với mã vạch, tem QR',
   ],
-  congCu: ['Excel / Sheets', 'Hệ thống vận hành kho SPX', 'Phần mềm kho đông lạnh (tự xây)', 'Google Workspace', 'Apps Script', 'Word', 'AI (Gemini, Claude)'],
+  congCu: ['Excel / Sheets', 'Hệ thống vận hành kho SPX', 'Mã vạch / QR', 'Phần mềm kho đông lạnh (tự xây)', 'Google Workspace', 'Apps Script', 'Word', 'AI (Gemini, Claude)'],
   sanSang: [
     'T2 – T7, 8h–17h tại nhà máy Cư M’gar (đi xe đưa đón từ Buôn Ma Thuột)',
     'Đi công tác, kể cả Bến Tre khi công ty cần',

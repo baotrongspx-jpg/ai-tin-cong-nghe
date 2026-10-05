@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
 // Ảnh xem trước khi gửi link CV qua Zalo, Facebook
-export const alt = 'CV Nông Bảo Trọng – Ứng tuyển Quản lý Kho'
+export const alt = 'CV Nông Bảo Trọng – Ứng tuyển Executive Project Lead'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
@@ -41,10 +41,10 @@ export default async function Image() {
               color: '#b45309', fontSize: 34, fontWeight: 700,
             }}
           >
-            Ứng tuyển: Quản lý Kho – nông sản / đông lạnh
+            Ứng tuyển: Executive Project Lead
           </div>
           <div style={{ display: 'flex', marginTop: 34, color: '#334155', fontSize: 28, fontWeight: 500, lineHeight: 1.4 }}>
-            Quản lý Vận hành SPX Express · Theo dõi kho cấp đông sầu riêng · Tự xây phần mềm quản lý cụm 12 kho và kho đông lạnh
+            Trợ lý Giám đốc · Quản lý Vận hành logistics SPX Express, GHTK · Tự xây dashboard điều hành cụm 12 kho
           </div>
         </div>
       </div>

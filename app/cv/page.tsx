@@ -114,7 +114,7 @@ function DoanVan({ doan, dam }: { doan: DoanChu[]; dam: string }) {
 }
 
 export default async function TrangCV({ searchParams }: PageProps<'/cv'>) {
-  // CV theo vị trí: /cv?vt=<mã>. Không có → bản mặc định (Quản lý Kho)
+  // CV theo vị trí: /cv?vt=<mã>. Không có → bản mặc định (VI_TRI[0])
   const vt = layViTri((await searchParams).vt)
   // Nút "Tải CV PDF": máy chủ dựng sẵn file PDF, bấm là tải về (không qua hộp thoại in)
   const hrefPdf = vt.ma === VI_TRI[0].ma ? '/cv/tai-pdf' : `/cv/tai-pdf?vt=${vt.ma}`

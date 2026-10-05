@@ -92,7 +92,7 @@ export function hoSoDangChu() {
 
 // ——— CV theo vị trí ứng tuyển ———
 // Mở /cv?vt=<mã> (và /cv/ban-in?vt=<mã>) để trang nhấn đúng kinh nghiệm hợp với tin tuyển dụng.
-// Không có mã hoặc mã lạ → bản đầu tiên (Quản lý Kho). Chỉ viết những gì có thật trong hồ sơ.
+// Không có mã hoặc mã lạ → bản đầu tiên trong VI_TRI. Chỉ viết những gì có thật trong hồ sơ.
 
 export type BieuTuong = 'bieuDo' | 'chuong' | 'bongDen' | 'hop' | 'congCu' | 'cap' | 'ghim' | 'dongHo' | 'lich'
 // Đoạn tóm tắt: chuỗi thường, hoặc { dam } để in đậm
@@ -366,8 +366,8 @@ const TRUONG_NHOM_DU_AN: HoSoViTri = {
   thuTuDuAn: ['SPX Command Center', 'Daily Report Hub', 'Durian Frozen System', 'Fanpage & TikTok Công Nghệ 24H'],
 }
 
-// Thêm vị trí mới: khai báo như QUAN_LY_KHO rồi thêm vào danh sách này
-export const VI_TRI: HoSoViTri[] = [QUAN_LY_KHO, TRUONG_NHOM_DU_AN]
+// Thêm vị trí mới: khai báo như QUAN_LY_KHO rồi thêm vào danh sách này. Bản đầu tiên là bản mặc định của /cv
+export const VI_TRI: HoSoViTri[] = [TRUONG_NHOM_DU_AN, QUAN_LY_KHO]
 
 export function layViTri(ma?: string | string[] | null) {
   return VI_TRI.find((v) => v.ma === ma) ?? VI_TRI[0]

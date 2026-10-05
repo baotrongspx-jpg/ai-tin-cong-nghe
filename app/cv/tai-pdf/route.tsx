@@ -1,7 +1,7 @@
 import { renderToBuffer } from '@react-pdf/renderer'
 import QRCode from 'qrcode'
 import { layAnhCV } from '@/lib/anhCV'
-import { layViTri } from '../duLieu'
+import { layViTri, VI_TRI } from '../duLieu'
 import CVPdf from './CVPdf'
 
 // /cv/tai-pdf?vt=<mã vị trí>: tải thẳng file CV PDF, không phải qua hộp thoại in của trình duyệt
@@ -16,7 +16,7 @@ export async function GET(req: Request) {
     anh = res?.ok ? Buffer.from(await res.arrayBuffer()) : null
   }
 
-  const trangWeb = `${url.origin}/cv`
+  const trangWeb = `${url.origin}/cv${vt.ma === VI_TRI[0].ma ? '' : `?vt=${vt.ma}`}`
   const qr = await QRCode.toBuffer(trangWeb, { errorCorrectionLevel: 'M', margin: 0, width: 360, color: { dark: '#0f1b3d', light: '#ffffff' } })
   const pdf = await renderToBuffer(<CVPdf vt={vt} anh={anh} qr={qr} trangWeb={trangWeb} />)
   const tenFile = `CV-Nong-Bao-Trong-${vt.ten.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/gi, 'd').replace(/\s+/g, '-')}.pdf`

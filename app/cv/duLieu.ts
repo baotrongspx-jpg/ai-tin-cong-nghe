@@ -72,7 +72,6 @@ export function hoSoDangChu() {
   return [
     `Họ tên: Nông Bảo Trọng. Ngày sinh: ${NGAY_SINH}. Nơi ở: ${DIA_CHI}.`,
     `Điện thoại / Zalo: ${DIEN_THOAI}. Email: ${EMAIL}.`,
-    `Vị trí ứng tuyển: ${QUAN_LY_KHO.ungTuyen}, tại Đắk Lắk.`,
     `Học vấn: ${HOC_VAN}.`,
     'Kinh nghiệm:',
     ...KINH_NGHIEM.map((k) => `- ${k.chucDanh}, ${k.noi} (${k.thoiGian}): ${k.viec.join(' ')}`),
@@ -83,11 +82,6 @@ export function hoSoDangChu() {
         (d.link ? ` Xem tại ${d.link}` : '') +
         (d.taiKhoan ? ` (tài khoản xem thử: ${d.taiKhoan.ten} / mật khẩu ${d.taiKhoan.matKhau})` : ''),
     ),
-    `Kỹ năng: ${QUAN_LY_KHO.kyNang.join('; ')}.`,
-    `Công cụ: ${QUAN_LY_KHO.congCu.join(', ')}.`,
-    `Sẵn sàng: ${QUAN_LY_KHO.sanSang.join('; ')}.`,
-    'Mục tiêu nghề nghiệp:',
-    ...QUAN_LY_KHO.mucTieu.map(([moc, nd]) => `- ${moc}: ${nd}`),
     'Về kho: đã dùng hệ thống vận hành kho nội bộ của SPX; đang tự phát triển phần mềm quản lý kho đông lạnh (Durian Frozen System); đã hướng dẫn nhân viên dùng hệ thống và quy trình mới.',
     'Về nhập – xuất – tồn: nắm và đối soát số liệu nhập – xuất – tồn, hao hụt; chưa trực tiếp làm thủ kho hay tự tổ chức kiểm kê.',
     'Sẵn sàng đi công tác, kể cả tỉnh xa (ví dụ Bến Tre) khi công ty cần.',
@@ -125,6 +119,8 @@ export type HoSoViTri = {
   mucTieu: [string, string][]
   phongCach: string[]
   thuTuDuAn: string[]
+  // Hiện mục bảng số liệu kho mẫu trên website
+  bangKho?: boolean
 }
 
 const QUAN_LY_KHO: HoSoViTri = {
@@ -238,10 +234,140 @@ const QUAN_LY_KHO: HoSoViTri = {
   ],
   phongCach: ['Cẩn thận, làm việc có số liệu', 'Kỷ luật, trung thực', 'Xử lý sự cố nhanh, dứt khoát', 'Tư duy quy trình, checklist'],
   thuTuDuAn: ['Durian Frozen System', 'SPX Command Center', 'Daily Report Hub', 'Fanpage & TikTok Công Nghệ 24H'],
+  bangKho: true,
+}
+
+// Hiệp hội Logistics và Cảng biển tỉnh Đắk Lắk (DLP): Executive Project Lead, đồng hành trực tiếp cùng Chủ tịch
+const TRUONG_NHOM_DU_AN: HoSoViTri = {
+  ma: 'truong-nhom-du-an',
+  ten: 'Trưởng nhóm Điều hành & Quản lý Dự án',
+  ungTuyen: 'Executive Project Lead – Trưởng nhóm Điều hành & Quản lý Dự án',
+  nhanSanSang: 'Sẵn sàng làm hybrid Đắk Lắk – TP.HCM – Tuy Hòa · có thể bắt đầu sớm',
+  chucDanh: ['Ứng tuyển: Executive Project Lead', 'Trưởng nhóm Điều hành & Quản lý Dự án', 'Action List · Dashboard · Báo cáo tiến độ'],
+  tomTat: [
+    'Đang là ',
+    { dam: 'Trợ lý Giám đốc' },
+    ' tại Công ty TNHH Trái Cây 001: nhận việc trực tiếp từ Giám đốc, theo dõi số liệu, báo cáo định kỳ và làm việc với hợp tác xã, đối tác. Gần 2 năm Quản lý Vận hành ',
+    { dam: 'logistics' },
+    ' tại SPX Express và GHTK Đắk Lắk: điều phối đội 20 – 50 nhân sự, và tự xây ',
+    { dam: 'dashboard điều hành' },
+    ' để cấp trên quản lý cụm 12 kho. Thế mạnh: biến chỉ đạo thành đầu việc rõ ràng, theo dõi đến khi có kết quả.',
+  ],
+  soLieu: [
+    [50, '', 'Nhân sự từng điều phối', '20–'],
+    [12, '', 'Kho dùng dashboard tôi xây'],
+    [3, '+', 'Năm đi làm thực tế'],
+    [4, '', 'Công cụ quản lý tự xây'],
+  ],
+  gioiThieu: {
+    tieuDe: 'Chuyển định hướng thành kế hoạch, hành động và kết quả cụ thể',
+    moTa: 'Từ điều hành vận hành logistics đến văn phòng Giám đốc: công việc của tôi là nắm rõ chỉ đạo, chia thành đầu việc có người phụ trách và hạn chót, theo dõi trên dashboard và báo cáo kết quả kèm đề xuất.',
+  },
+  theManh: [
+    ['bongDen', 'Chỉ đạo thành Action List', 'Nhận việc trực tiếp từ Giám đốc, tách thành đầu việc, theo dõi tiến độ và báo cáo định kỳ, luôn kèm phương án đề xuất.'],
+    ['bieuDo', 'Dashboard & báo cáo', 'Tự xây SPX Command Center, Daily Report Hub: dashboard điều hành, báo cáo ngày tự động, cảnh báo sớm khi chậm chỉ tiêu.'],
+    ['chuong', 'Điều phối & kết nối', 'Điều phối đội 20 – 50 nhân sự logistics; làm việc với hợp tác xã, đối tác; soạn hợp đồng mua bán, vận chuyển, dịch vụ.'],
+  ],
+  thongTinNhanh: [
+    ['cap', 'Ứng tuyển', 'Executive Project Lead (Trưởng nhóm Điều hành & QLDA)'],
+    ['ghim', 'Nơi làm việc', 'Hybrid Đắk Lắk – TP.HCM – Phú Yên/Tuy Hòa'],
+    ['dongHo', 'Bắt đầu', 'Có thể bắt đầu sớm'],
+    ['lich', 'Năm sinh', `${NGAY_SINH.slice(-4)} (nam)`],
+  ],
+  phuHop: {
+    tieuDe: 'Đối chiếu với công việc của Executive Project Lead',
+    moTa: 'Từng đầu việc trong tin tuyển dụng của Hiệp hội, và kinh nghiệm thực tế tôi đã có.',
+    ds: [
+      [
+        'Chuyển chỉ đạo của Chủ tịch thành Action List và kế hoạch triển khai',
+        'Hiện là Trợ lý Giám đốc, nhận việc trực tiếp từ Giám đốc (theo dõi sản lượng, hao hụt, hợp đồng, đối tác) và báo cáo định kỳ. Ở SPX, mỗi ngày chuyển chỉ tiêu của cấp trên thành phân bổ nhân sự và kế hoạch ngày kế tiếp.',
+      ],
+      [
+        'Quản lý Dashboard, theo sát tiến độ và kết quả',
+        'Tự xây SPX Command Center (dashboard, đối soát dữ liệu, cảnh báo nhân sự dưới chỉ tiêu) được cấp trên dùng để quản lý cụm 12 kho; Daily Report Hub báo cáo ngày tự động. Có thể dựng dashboard theo dõi đầu việc của Hiệp hội ngay từ tuần đầu.',
+      ],
+      [
+        'Điều phối nhân sự và các đầu việc trọng tâm',
+        'Điều phối đội 20 – 50 nhân sự tại SPX Express và GHTK: phân bổ theo khối lượng hàng, theo dõi tiến độ trong ngày, xử lý sự cố phát sinh.',
+      ],
+      [
+        'Tổ chức gặp, kết nối và làm việc với doanh nghiệp; chăm sóc hội viên',
+        'Làm việc với hợp tác xã, đối tác vùng trồng tại Trái Cây 001; soạn hợp đồng mua bán, vận chuyển, dịch vụ. Tự xây và vận hành Fanpage, TikTok Công Nghệ 24H, trả lời bình luận, chăm sóc người theo dõi.',
+      ],
+      [
+        'Điều phối Business Matching – kết nối giao thương',
+        'Hiểu cả hai phía cung – cầu logistics ở Đắk Lắk: phía vận chuyển (SPX, GHTK) và phía chủ hàng nông sản (sầu riêng cấp đông tại Trái Cây 001). Chưa trực tiếp tổ chức sự kiện Business Matching, sẵn sàng học quy trình của Hiệp hội.',
+      ],
+      [
+        'Chủ trì báo cáo, nghiên cứu về logistics',
+        'Gần 2 năm làm logistics chặng cuối tại Đắk Lắk; quen tổng hợp số liệu nhiều nguồn thành báo cáo kèm đề xuất; dùng AI (Gemini, Claude) để tổng hợp tài liệu nhanh.',
+      ],
+      [
+        'Tổng hợp và báo cáo tiến độ, kết quả với Chủ tịch hằng tuần',
+        'Đang báo cáo định kỳ cho Giám đốc; Daily Report Hub được chọn dự thi AI Innovator Awards của SPX.',
+      ],
+      [
+        'Hybrid Đắk Lắk – TP.HCM – Phú Yên/Tuy Hòa; tư duy hệ thống; chủ động, trách nhiệm',
+        'Sống tại Buôn Ma Thuột, sẵn sàng có mặt khi cần và đi TP.HCM, Tuy Hòa. Tư duy quy trình, checklist từ khi làm QC tại Thaco Trường Hải; tự xây 4 công cụ quản lý để giải bài toán thật.',
+      ],
+    ],
+  },
+  keHoach: [
+    [
+      '30 ngày đầu',
+      'Nắm việc',
+      [
+        'Làm việc với Chủ tịch để nắm định hướng, đầu việc trọng tâm và danh sách hội viên, đối tác của Hiệp hội.',
+        'Lập Action List đầu tiên: mỗi đầu việc có người phụ trách, hạn chót, trạng thái.',
+        'Dựng dashboard theo dõi đầu việc và mẫu báo cáo tuần gửi Chủ tịch.',
+      ],
+    ],
+    [
+      '60 ngày',
+      'Vận hành nhịp làm việc',
+      [
+        'Chạy đều nhịp họp – báo cáo tuần; cảnh báo sớm đầu việc chậm, kèm phương án xử lý.',
+        'Lập lịch gặp gỡ, chăm sóc hội viên; ghi lại nhu cầu của từng doanh nghiệp.',
+        'Chuẩn bị nội dung cho hoạt động Business Matching đầu tiên cùng Ban Chủ tịch.',
+      ],
+    ],
+    [
+      '90 ngày',
+      'Ra kết quả',
+      [
+        'Báo cáo tổng kết 3 tháng: đầu việc đã xong, đang làm, vướng mắc.',
+        'Bản tổng hợp hiện trạng, nhu cầu logistics Đắk Lắk từ góp ý của hội viên.',
+        'Đề xuất kế hoạch quý tiếp theo cho Hiệp hội.',
+      ],
+    ],
+  ],
+  kyNang: [
+    'Chuyển chỉ đạo thành Action List, kế hoạch',
+    'Dựng và quản lý dashboard tiến độ',
+    'Điều phối nhân sự, đầu việc song song',
+    'Báo cáo định kỳ kèm đề xuất',
+    'Soạn hợp đồng, văn bản',
+    'Làm việc với đối tác, hợp tác xã',
+    'Vận hành Fanpage, TikTok, chăm sóc cộng đồng',
+  ],
+  congCu: ['Excel / Sheets', 'Google Workspace', 'Dashboard tự xây (Next.js, Supabase)', 'Apps Script', 'Word', 'AI (Gemini, Claude)'],
+  sanSang: [
+    'Làm hybrid Đắk Lắk – TP.HCM – Phú Yên/Tuy Hòa',
+    'Có mặt tại Đắk Lắk bất cứ khi nào công việc cần',
+    'Đi công tác, gặp doanh nghiệp, đối tác',
+    'Có thể bắt đầu sớm',
+  ],
+  mucTieu: [
+    ['Ngắn hạn', 'Trở thành đầu mối tin cậy của Chủ tịch: mọi chỉ đạo đều có Action List, người phụ trách và báo cáo đúng hạn.'],
+    ['Trung hạn', 'Chuẩn hóa dashboard, quy trình điều phối và chăm sóc hội viên; tổ chức đều các hoạt động kết nối giao thương.'],
+    ['Dài hạn', 'Cùng Hiệp hội xây dựng cộng đồng doanh nghiệp và hệ sinh thái logistics – cảng biển Đắk Lắk.'],
+  ],
+  phongCach: ['Chủ động, báo cáo kèm phương án', 'Làm việc có số liệu, minh bạch', 'Bám việc đến kết quả cuối', 'Tư duy hệ thống, quy trình'],
+  thuTuDuAn: ['SPX Command Center', 'Daily Report Hub', 'Durian Frozen System', 'Fanpage & TikTok Công Nghệ 24H'],
 }
 
 // Thêm vị trí mới: khai báo như QUAN_LY_KHO rồi thêm vào danh sách này
-export const VI_TRI: HoSoViTri[] = [QUAN_LY_KHO]
+export const VI_TRI: HoSoViTri[] = [QUAN_LY_KHO, TRUONG_NHOM_DU_AN]
 
 export function layViTri(ma?: string | string[] | null) {
   return VI_TRI.find((v) => v.ma === ma) ?? VI_TRI[0]
@@ -254,7 +380,11 @@ export const duAnCua = (vt: HoSoViTri) =>
 // Phần hồ sơ riêng của vị trí, thêm vào câu hỏi đầu gửi robot
 export function boiCanhViTri(vt: HoSoViTri) {
   return [
-    `Người xem đang đọc bản CV cho vị trí: ${vt.ten}.`,
+    `Người xem đang đọc bản CV cho vị trí: ${vt.ungTuyen}.`,
+    `Kỹ năng: ${vt.kyNang.join('; ')}.`,
+    `Công cụ: ${vt.congCu.join(', ')}.`,
+    `Sẵn sàng: ${vt.sanSang.join('; ')}.`,
+    ...vt.mucTieu.map(([moc, nd]) => `- Mục tiêu ${moc.toLowerCase()}: ${nd}`),
     ...(vt.phuHop?.ds.map(([yc, dap]) => `- Yêu cầu "${yc}": ${dap}`) ?? []),
     ...(vt.keHoach?.map(([moc, ten, viec]) => `- Kế hoạch ${moc} (${ten}): ${viec.join(' ')}`) ?? []),
   ].join('\n')

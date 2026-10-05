@@ -474,18 +474,20 @@ export default async function TrangCV({ searchParams }: PageProps<'/cv'>) {
           </div>
         </Muc>
 
-        {/* ——— Số liệu kho mẫu ——— */}
-        <Muc
-          id="so-lieu-kho"
-          so={so()}
-          nhan="Số liệu kho"
-          tieuDe="Tôi theo dõi kho như thế nào"
-          moTa="Một bảng mẫu với dữ liệu minh họa: nhập – xuất – tồn, hao hụt theo ngày và theo lô, tự đánh dấu chỗ vượt ngưỡng. Rê chuột hoặc chạm vào từng cột để xem chi tiết."
-        >
-          <HienDan>
-            <BangKhoMau />
-          </HienDan>
-        </Muc>
+        {/* ——— Số liệu kho mẫu (chỉ bản CV về kho) ——— */}
+        {vt.bangKho && (
+          <Muc
+            id="so-lieu-kho"
+            so={so()}
+            nhan="Số liệu kho"
+            tieuDe="Tôi theo dõi kho như thế nào"
+            moTa="Một bảng mẫu với dữ liệu minh họa: nhập – xuất – tồn, hao hụt theo ngày và theo lô, tự đánh dấu chỗ vượt ngưỡng. Rê chuột hoặc chạm vào từng cột để xem chi tiết."
+          >
+            <HienDan>
+              <BangKhoMau />
+            </HienDan>
+          </Muc>
+        )}
 
         {/* ——— Kỹ năng ——— */}
         <Muc id="ky-nang" so={so()} nhan="Kỹ năng" tieuDe="Làm được gì, dùng được gì" nenXam>
@@ -546,7 +548,7 @@ export default async function TrangCV({ searchParams }: PageProps<'/cv'>) {
             so={so()}
             nhan="Kế hoạch"
             tieuDe="Nếu được nhận, 90 ngày đầu tôi sẽ làm gì"
-            moTa="Kế hoạch dự kiến, sẽ điều chỉnh theo thực tế và yêu cầu của cấp trên sau khi nắm quy trình nhà máy."
+            moTa="Kế hoạch dự kiến, sẽ điều chỉnh theo thực tế và yêu cầu của cấp trên sau khi nắm quy trình làm việc."
           >
             <ol className="relative grid gap-5 lg:grid-cols-3">
               <span className="absolute left-[10%] right-[10%] top-[27px] hidden h-0.5 bg-gradient-to-r from-blue-600 via-sky-400 to-amber-400 lg:block" aria-hidden />

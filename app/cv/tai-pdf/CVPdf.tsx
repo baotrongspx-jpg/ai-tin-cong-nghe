@@ -93,7 +93,7 @@ export default function CVPdf({ vt, anh, qr, trangWeb }: { vt: HoSoViTri; anh: B
                 ['Email', EMAIL, `mailto:${EMAIL}`],
                 ['Nơi ở', DIA_CHI],
                 ['Ngày sinh', NGAY_SINH],
-                ['CV trực tuyến', trangWeb.replace(/^https?:\/\//, ''), trangWeb],
+                ['CV trực tuyến', trangWeb.replace(/^https?:\/\//, '').replace(/\?.*$/, ''), trangWeb],
               ] as [string, string, string?][]
             ).map(([nhan, giaTri, href]) => (
               <View key={nhan} style={{ marginBottom: 2 }}>
@@ -143,7 +143,7 @@ export default function CVPdf({ vt, anh, qr, trangWeb }: { vt: HoSoViTri; anh: B
             <Image src={{ data: qr, format: 'png' }} style={s.qr} />
             <View style={{ flex: 1, marginLeft: 7 }}>
               <Text style={{ fontSize: 7.8, fontWeight: 700, color: VANG }}>Quét để xem CV online</Text>
-              <Text style={{ fontSize: 6.8, color: '#ffffffcc', marginTop: 1.5 }}>Video giới thiệu, số liệu kho và hệ thống dùng thử</Text>
+              <Text style={{ fontSize: 6.8, color: '#ffffffcc', marginTop: 1.5 }}>{vt.bangKho ? 'Video giới thiệu, số liệu kho và hệ thống dùng thử' : 'Video giới thiệu, dự án và hệ thống dùng thử'}</Text>
             </View>
           </Link>
         </View>

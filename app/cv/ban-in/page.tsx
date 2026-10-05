@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import QRCode from 'qrcode'
 import type { ReactNode } from 'react'
 import NutIn from './NutIn'
-import { DIEN_THOAI, duAnCua, EMAIL, KINH_NGHIEM, layViTri } from '../duLieu'
+import { DIEN_THOAI, duAnCua, EMAIL, KINH_NGHIEM, layViTri, VI_TRI } from '../duLieu'
 
 // Bản CV 1 trang A4 để in / lưu PDF (nút Tải CV trên website /cv mở trang này).
 // Có ?vt=<mã vị trí> thì in bản CV theo vị trí đó (xem VI_TRI trong duLieu.ts)
@@ -19,8 +19,8 @@ export async function generateMetadata({ searchParams }: PageProps<'/cv/ban-in'>
 
 export default async function TrangCV({ searchParams }: PageProps<'/cv/ban-in'>) {
   const vt = layViTri((await searchParams).vt)
-  // Mã QR dẫn tới bản web của CV (có video, số liệu kho, hệ thống dùng thử) cho người cầm CV giấy
-  const trangWeb = `${(process.env.SITE_URL ?? 'https://ai-tin-cong-nghe-wpy7.vercel.app').replace(/\/$/, '')}/cv`
+  // Mã QR dẫn tới bản web của CV (có video, dự án, hệ thống dùng thử), đúng bản theo vị trí cho người cầm CV giấy
+  const trangWeb = `${(process.env.SITE_URL ?? 'https://ai-tin-cong-nghe-wpy7.vercel.app').replace(/\/$/, '')}/cv${vt.ma === VI_TRI[0].ma ? '' : `?vt=${vt.ma}`}`
   const qr = await QRCode.toString(trangWeb, { type: 'svg', errorCorrectionLevel: 'M', margin: 0, color: { dark: '#0f1b3d', light: '#ffffff' } })
   return (
     <main className="min-h-screen bg-slate-200/70 px-3 py-6 print:bg-white print:p-0 sm:px-6 sm:py-10">
@@ -109,7 +109,7 @@ export default async function TrangCV({ searchParams }: PageProps<'/cv/ban-in'>)
             />
             <span className="text-sm leading-snug print:text-[10.5px]">
               <b className="block text-amber-300">Quét để xem CV online</b>
-              <span className="text-white/75">Video giới thiệu, số liệu kho và hệ thống dùng thử</span>
+              <span className="text-white/75">{vt.bangKho ? 'Video giới thiệu, số liệu kho và hệ thống dùng thử' : 'Video giới thiệu, dự án và hệ thống dùng thử'}</span>
             </span>
           </a>
         </aside>

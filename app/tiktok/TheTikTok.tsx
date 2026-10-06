@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useState, useTransition } from 'react'
+import { useEffect, useState, useSyncExternalStore, useTransition } from 'react'
 import Link from 'next/link'
 import type { BaiViet } from '@/lib/db'
 import { ghepHashtagTikTok, urlAnh } from '@/lib/chuThich'
 import { gio, truoc } from '@/lib/thoiGian'
+import { DS_GIONG } from '@/lib/dsGiong'
 import { dichLoiTikTok } from '@/lib/loiTikTok'
 import { boDanhDauTikTok, dangCaHai, dangTikTok } from '../actions'
 import { thongBao } from '../ThongBao'
@@ -13,6 +14,34 @@ import { Tags } from '../TheBai'
 import { IconFacebook, IconLai, IconNhac, IconTikTok, Xoay } from '../BieuTuong'
 
 type Viec = 'tt' | 'ca_hai' | 'bo_danh_dau'
+
+// Giọng đọc chọn lần trước, nhớ trên trình duyệt này và dùng chung cho mọi thẻ bài
+const GIONG_DAU = 'Kore'
+const KHOA_GIONG = 'giong_tiktok'
+let giongTam = GIONG_DAU // khi trình duyệt chặn localStorage (chế độ riêng tư) vẫn đổi giọng được
+const docGiong = () => {
+  try {
+    const g = localStorage.getItem(KHOA_GIONG)
+    return g && DS_GIONG.some(([ma]) => ma === g) ? g : giongTam
+  } catch {
+    return giongTam
+  }
+}
+const ngheGiong = (bao: () => void) => {
+  window.addEventListener('doi-giong', bao)
+  window.addEventListener('storage', bao)
+  return () => {
+    window.removeEventListener('doi-giong', bao)
+    window.removeEventListener('storage', bao)
+  }
+}
+const luuGiong = (g: string) => {
+  giongTam = g
+  try {
+    localStorage.setItem(KHOA_GIONG, g)
+  } catch {}
+  window.dispatchEvent(new Event('doi-giong'))
+}
 
 // `taiKhoan`: null khi chưa kết nối TikTok → chỉ xem trước, không đăng được
 export default function TheTikTok({
@@ -30,6 +59,11 @@ export default function TheTikTok({
 }) {
   const [choBinhLuan, setChoBinhLuan] = useState(true)
   const [longTieng, setLongTieng] = useState(true)
+  const giong = useSyncExternalStore(ngheGiong, docGiong, () => GIONG_DAU)
+  const chonGiong = (g: string) => {
+    luuGiong(g)
+    setVideo(null) // video đang xem là giọng cũ
+  }
   const [moRong, setMoRong] = useState(false)
   // Xem trước video lồng tiếng: link blob của video, đang dựng, lỗi
   const [video, setVideo] = useState<string | null>(null)
@@ -41,7 +75,7 @@ export default function TheTikTok({
     setDangDung(true)
     setLoiVideo('')
     try {
-      const res = await fetch(`/api/video/${bai.id}`, { cache: 'no-store' })
+      const res = await fetch(`/api/video/${bai.id}?giong=${giong}`, { cache: 'no-store' })
       if (!res.ok) throw new Error((await res.text()) || `Lỗi ${res.status}`)
       setVideo(URL.createObjectURL(await res.blob()))
     } catch (e) {
@@ -98,6 +132,21 @@ export default function TheTikTok({
       </div>
       {!daDang && (
         <>
+          <label className="grid gap-1 text-xs font-semibold text-slate-500">
+            Giọng đọc
+            <select
+              value={giong}
+              disabled={dangDung || dangLam}
+              onChange={(e) => chonGiong(e.target.value)}
+              className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm font-normal text-slate-800"
+            >
+              {DS_GIONG.map(([ma, mo]) => (
+                <option key={ma} value={ma}>
+                  {ma} — {mo}
+                </option>
+              ))}
+            </select>
+          </label>
           <button disabled={dangDung || dangLam} onClick={video ? () => setVideo(null) : xemTruoc} className="btn btn-nhat justify-center">
             {dangDung ? <Xoay /> : null}
             {dangDung ? 'Đang dựng video… (~1 phút)' : video ? 'Xem ảnh' : '▶ Xem trước video lồng tiếng'}
@@ -167,7 +216,7 @@ export default function TheTikTok({
             <>
               <button
                 disabled={dangLam}
-                onClick={() => chay('tt', () => dangTikTok(bai.id, { tatBinhLuan: !choBinhLuan, longTieng }), 'Đã gửi lên TikTok')}
+                onClick={() => chay('tt', () => dangTikTok(bai.id, { tatBinhLuan: !choBinhLuan, longTieng, giong }), 'Đã gửi lên TikTok')}
                 className="btn btn-tt"
               >
                 {viec === 'tt' ? <Xoay /> : <IconTikTok />}
@@ -185,7 +234,7 @@ export default function TheTikTok({
                           dangCaHai(
                             bai.id,
                             { tieu_de_anh: bai.tieu_de_anh, chu_de: bai.chu_de, noi_dung: bai.noi_dung, hashtag: bai.hashtag.join(' ') },
-                            { tatBinhLuan: !choBinhLuan, longTieng },
+                            { tatBinhLuan: !choBinhLuan, longTieng, giong },
                           ),
                         'Đã đăng lên Facebook và TikTok',
                       )

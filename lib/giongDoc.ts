@@ -1,10 +1,14 @@
 import 'server-only'
+import { giongHopLe } from './dsGiong'
 
 // Giọng AI đọc tiếng Việt bằng Gemini TTS (dùng chung GEMINI_API_KEY). Trả về WAV 24 kHz, mono, 16-bit.
 const MODEL = () => process.env.GEMINI_TTS_MODEL?.trim() || 'gemini-3.8-flash-lite-tts'
 
-// Kore, Leda, Aoede, Zephyr (nữ) · Puck, Charon, Fenrir (nam)
-export const giongMacDinh = () => process.env.TIKTOK_GIONG?.trim() || 'Kore'
+// Giọng mặc định cho lịch tự đăng / hẹn giờ (danh sách ở lib/dsGiong.ts)
+export const giongMacDinh = () => {
+  const g = process.env.TIKTOK_GIONG?.trim()
+  return giongHopLe(g) ? g : 'Kore'
+}
 
 // Tìm chuỗi base64 âm thanh trong kết quả (cấu trúc trả về có thể khác nhau giữa các phiên bản API)
 function timAmThanh(x: unknown): string | null {
@@ -37,7 +41,8 @@ function bocWav(pcm: Buffer) {
   return Buffer.concat([h, pcm])
 }
 
-export async function docThanhGiong(chu: string, giong = giongMacDinh()): Promise<Buffer> {
+// Gói miễn phí chỉ cho 3 lần đọc mỗi phút: chạm giới hạn (429) thì chờ theo lời Gemini báo (tối đa 60 giây) rồi thử lại một lần
+export async function docThanhGiong(chu: string, giong = giongMacDinh(), thuLai = true): Promise<Buffer> {
   const khoa = process.env.GEMINI_API_KEY?.trim()
   if (!khoa) throw new Error('Chưa cài GEMINI_API_KEY nên không lồng tiếng được')
   const res = await fetch('https://generativelanguage.googleapis.com/v1beta/interactions', {
@@ -53,6 +58,13 @@ export async function docThanhGiong(chu: string, giong = giongMacDinh()): Promis
     cache: 'no-store',
   })
   const json = await res.json().catch(() => ({}))
+  if (res.status === 429 && thuLai) {
+    const giay = Number(String(json.error?.message ?? '').match(/retry in ([\d.]+)s/i)?.[1] ?? 30)
+    if (giay <= 60) {
+      await new Promise((r) => setTimeout(r, (giay + 1) * 1000))
+      return docThanhGiong(chu, giong, false)
+    }
+  }
   if (!res.ok) throw new Error(`Giọng đọc Gemini lỗi: ${json.error?.message ?? res.status}`)
   const b64 = timAmThanh(json)
   if (!b64) throw new Error('Giọng đọc Gemini không trả âm thanh')

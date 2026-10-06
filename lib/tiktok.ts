@@ -112,7 +112,8 @@ export async function layTaiKhoanTikTok(token?: string) {
 export const layTaiKhoanTikTokNhanh = () => nhoTam('tai_khoan_tiktok', 5 * 60_000, () => layTaiKhoanTikTok())
 
 // `longTieng`: đăng dạng video có giọng AI đọc bài thay vì bài ảnh. Bỏ trống thì theo TIKTOK_LONG_TIENG (mặc định bật).
-export type TuyChonDang = { privacy?: string; tatBinhLuan?: boolean; longTieng?: boolean }
+// `giong`: giọng đọc khi lồng tiếng (bỏ trống thì theo TIKTOK_GIONG).
+export type TuyChonDang = { privacy?: string; tatBinhLuan?: boolean; longTieng?: boolean; giong?: string }
 
 export const batLongTieng = (tuyChon: TuyChonDang = {}) => tuyChon.longTieng ?? process.env.TIKTOK_LONG_TIENG !== '0'
 

@@ -157,7 +157,7 @@ export default function TheTikTok({
   return (
     <article className="the grid gap-5 p-4 sm:p-5 md:grid-cols-[240px_1fr]">
       {/* min-w-0: chữ dài trong ô chọn giọng không được làm cột 240px phình ra đè sang bên phải */}
-      <div className="grid min-w-0 gap-2 self-start">
+      <div className="grid min-w-0 grid-cols-1 gap-2 self-start">
       <div className="relative">
         {video ? (
           <video src={video} controls autoPlay playsInline className="aspect-[9/16] w-full rounded-xl bg-black" />
@@ -187,7 +187,7 @@ export default function TheTikTok({
       </div>
       {!daDang && (
         <>
-          <div className="grid gap-1">
+          <div className="grid min-w-0 grid-cols-1 gap-1">
             <label htmlFor={`giong-${bai.id}`} className="text-xs font-semibold text-slate-500">
               Giọng đọc
             </label>

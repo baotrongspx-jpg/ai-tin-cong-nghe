@@ -111,18 +111,63 @@ export async function layTaiKhoanTikTok(token?: string) {
 // Cho trang TikTok: nhớ 5 phút để mở trang không phải gọi TikTok mỗi lần
 export const layTaiKhoanTikTokNhanh = () => nhoTam('tai_khoan_tiktok', 5 * 60_000, () => layTaiKhoanTikTok())
 
-export type TuyChonDang = { privacy?: string; tatBinhLuan?: boolean }
+// `longTieng`: đăng dạng video có giọng AI đọc bài thay vì bài ảnh. Bỏ trống thì theo TIKTOK_LONG_TIENG (mặc định bật).
+export type TuyChonDang = { privacy?: string; tatBinhLuan?: boolean; longTieng?: boolean }
 
-// Đăng bài ảnh lên TikTok. TikTok tự tải ảnh từ `urlAnh` (JPG, tên miền đã xác minh).
+export const batLongTieng = (tuyChon: TuyChonDang = {}) => tuyChon.longTieng ?? process.env.TIKTOK_LONG_TIENG !== '0'
+
+// Chế độ hiển thị phải nằm trong danh sách tài khoản cho phép. App chưa được TikTok duyệt chỉ đăng riêng tư được.
 // Không chọn chế độ hiển thị (lịch tự đăng) thì dùng TIKTOK_CHE_DO.
-// Đăng xong TikTok còn xử lý thêm: chờ tối đa ~15 giây để bắt lỗi sớm, quá thì coi như đã gửi.
-export async function dangAnhLenTikTok(urlAnh: string, tieuDe: string, moTa: string, tuyChon: TuyChonDang = {}) {
+async function chuanBiDang(tuyChon: TuyChonDang) {
   const token = await layAccessToken()
-
-  // Chế độ hiển thị phải nằm trong danh sách tài khoản cho phép. App chưa được TikTok duyệt chỉ đăng riêng tư được.
   const { privacy_level_options: cheDo, comment_disabled } = await layTaiKhoanTikTok(token)
   const muonDung = tuyChon.privacy ?? process.env.TIKTOK_CHE_DO ?? 'PUBLIC_TO_EVERYONE'
   const privacy = cheDo.includes(muonDung) ? muonDung : cheDo.includes('SELF_ONLY') ? 'SELF_ONLY' : cheDo[0]
+  return { token, privacy, tatBinhLuan: comment_disabled || !!tuyChon.tatBinhLuan }
+}
+
+// Đăng xong TikTok còn xử lý thêm: chờ tối đa `lan` x 3 giây để bắt lỗi sớm, quá thì coi như đã gửi.
+async function choXuLy(token: string, publish_id: string, lan: number) {
+  for (let i = 0; i < lan; i++) {
+    await new Promise((r) => setTimeout(r, 3000))
+    const { status, fail_reason } = await goiApi<{ status: string; fail_reason?: string }>(
+      '/post/publish/status/fetch/', token, { publish_id },
+    )
+    if (status === 'FAILED') throw new Error(`TikTok đăng lỗi: ${fail_reason ?? 'không rõ lý do'}`)
+    if (status === 'PUBLISH_COMPLETE') break
+  }
+}
+
+// Đăng video (MP4) lên TikTok: tải thẳng file lên (không cần xác minh tên miền). `moTa` tối đa 2200 ký tự.
+export async function dangVideoLenTikTok(video: Buffer, moTa: string, tuyChon: TuyChonDang = {}) {
+  const { token, privacy, tatBinhLuan } = await chuanBiDang(tuyChon)
+  // Video dưới 64MB tải một lần (video tin ~1 phút chỉ vài MB)
+  if (video.length > 64 * 1024 * 1024) throw new Error('Video lớn hơn 64MB')
+  const { publish_id, upload_url } = await goiApi<{ publish_id: string; upload_url: string }>('/post/publish/video/init/', token, {
+    post_info: {
+      title: cat(moTa, 2200),
+      privacy_level: privacy,
+      disable_comment: tatBinhLuan,
+      disable_duet: false,
+      disable_stitch: false,
+      video_cover_timestamp_ms: 1000,
+    },
+    source_info: { source: 'FILE_UPLOAD', video_size: video.length, chunk_size: video.length, total_chunk_count: 1 },
+  })
+  const res = await fetch(upload_url, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'video/mp4', 'Content-Range': `bytes 0-${video.length - 1}/${video.length}` },
+    body: new Uint8Array(video),
+    signal: AbortSignal.timeout(120_000),
+  })
+  if (!res.ok) throw new Error(`TikTok: tải video lên lỗi (${res.status}) ${(await res.text().catch(() => '')).slice(0, 200)}`)
+  await choXuLy(token, publish_id, 8)
+  return publish_id
+}
+
+// Đăng bài ảnh lên TikTok. TikTok tự tải ảnh từ `urlAnh` (JPG, tên miền đã xác minh).
+export async function dangAnhLenTikTok(urlAnh: string, tieuDe: string, moTa: string, tuyChon: TuyChonDang = {}) {
+  const { token, privacy, tatBinhLuan } = await chuanBiDang(tuyChon)
 
   const { publish_id } = await goiApi<{ publish_id: string }>('/post/publish/content/init/', token, {
     media_type: 'PHOTO',
@@ -131,19 +176,11 @@ export async function dangAnhLenTikTok(urlAnh: string, tieuDe: string, moTa: str
       title: cat(tieuDe, 90),
       description: cat(moTa, 4000),
       privacy_level: privacy,
-      disable_comment: comment_disabled || !!tuyChon.tatBinhLuan,
+      disable_comment: tatBinhLuan,
       auto_add_music: true,
     },
     source_info: { source: 'PULL_FROM_URL', photo_cover_index: 0, photo_images: [urlAnh] },
   })
-
-  for (let i = 0; i < 5; i++) {
-    await new Promise((r) => setTimeout(r, 3000))
-    const { status, fail_reason } = await goiApi<{ status: string; fail_reason?: string }>(
-      '/post/publish/status/fetch/', token, { publish_id },
-    )
-    if (status === 'FAILED') throw new Error(`TikTok đăng lỗi: ${fail_reason ?? 'không rõ lý do'}`)
-    if (status === 'PUBLISH_COMPLETE') break
-  }
+  await choXuLy(token, publish_id, 5)
   return publish_id
 }

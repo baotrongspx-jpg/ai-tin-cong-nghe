@@ -21,7 +21,7 @@ import { anTay, hienLai, traLoi } from '@/lib/binhLuan'
 import { coPixabay } from '@/lib/pixabay'
 import { datAnhNen, timAnhChoBai } from '@/lib/anhNen'
 
-type KetQua = { ok: boolean; loi?: string }
+type KetQua = { ok: boolean; loi?: string; canhBao?: string }
 
 async function chanChuaDangNhap() {
   if (!(await daDangNhap())) throw new Error('Chưa đăng nhập')
@@ -112,9 +112,9 @@ export async function dangTikTok(id: string, tuyChon: TuyChonDang): Promise<KetQ
   if (bai.tiktok_publish_id) return { ok: false, loi: 'Bài này đã đăng TikTok rồi' }
 
   try {
-    await dangLenTikTok(bai, tuyChon)
+    const { canhBao } = await dangLenTikTok(bai, tuyChon)
     lamMoi()
-    return { ok: true }
+    return { ok: true, canhBao }
   } catch (e) {
     return { ok: false, loi: e instanceof Error ? e.message : String(e) }
   }
@@ -145,14 +145,15 @@ export async function dangCaHai(id: string, sua: SuaBai, tuyChon: TuyChonDang): 
   if (!bai) return { ok: false, loi: 'Không tìm thấy bài' }
 
   const loi: string[] = []
+  let canhBao: string | undefined
   const chay = async (ten: string, daCo: boolean, viec: () => Promise<unknown>) => {
     if (daCo) return
     await viec().catch((e: Error) => loi.push(`${ten}: ${e.message}`))
   }
   await chay('Facebook', !!bai.fb_post_id, () => dangLenFacebook(bai))
-  await chay('TikTok', !!bai.tiktok_publish_id, () => dangLenTikTok(bai, tuyChon))
+  await chay('TikTok', !!bai.tiktok_publish_id, async () => ({ canhBao } = await dangLenTikTok(bai, tuyChon)))
   lamMoi()
-  return loi.length ? { ok: false, loi: loi.join(' · ') } : { ok: true }
+  return loi.length ? { ok: false, loi: loi.join(' · ') } : { ok: true, canhBao }
 }
 
 // Nút "Tìm lại" trên trang TikTok: tìm hashtag xu hướng mới ngay, không chờ hết 24 giờ

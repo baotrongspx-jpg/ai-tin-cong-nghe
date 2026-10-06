@@ -98,8 +98,12 @@ export async function tongHopTin(
         )
       }
       if (dangTikTok) {
-        await dangLenTikTok(moi).then(
-          () => daDangTikTok++,
+        // Đã chạy lâu thì đăng dạng ảnh cho nhanh, kẻo dựng video lồng tiếng làm quá 300 giây
+        await dangLenTikTok(moi, Date.now() - batDau > 150_000 ? { longTieng: false } : {}).then(
+          ({ canhBao }) => {
+            daDangTikTok++
+            if (canhBao) loi.push(`${t.tieuDe} (TikTok): ${canhBao}`)
+          },
           (e: Error) => loi.push(`${t.tieuDe} (TikTok): ${e.message}`),
         )
       }

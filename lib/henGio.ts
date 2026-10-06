@@ -28,14 +28,14 @@ export async function huyHenTikTok(id: string) {
   await ghi(ds)
 }
 
-// Đăng các bài TikTok đã tới giờ, tối đa 3 bài mỗi nhịp để khỏi chạm giới hạn tốc độ của TikTok.
+// Đăng các bài TikTok đã tới giờ, tối đa 2 bài mỗi nhịp (mỗi video lồng tiếng mất ~1-2 phút, hàm bị cắt sau 300 giây).
 // Lỗi thì bỏ khỏi lịch (không thử lại mãi), ghi lỗi vào bài và báo Telegram.
 export async function chayHenGioTikTok() {
   const ds = await dsHenTikTok()
   const toiGio = Object.entries(ds)
     .filter(([, luc]) => new Date(luc).getTime() <= Date.now())
     .sort((a, b) => a[1].localeCompare(b[1]))
-    .slice(0, 3)
+    .slice(0, 2)
   if (!toiGio.length) return { daDang: 0, loi: [] as string[] }
 
   const { data } = await db().from('bai_viet').select('*').in('id', toiGio.map(([id]) => id))
@@ -47,7 +47,8 @@ export async function chayHenGioTikTok() {
     const b = bai.get(id)
     if (!b || b.tiktok_publish_id) continue // bài đã xóa hoặc đã đăng tay
     try {
-      await dangLenTikTok(b)
+      const { canhBao } = await dangLenTikTok(b)
+      if (canhBao) loi.push(`${b.tieu_de_anh}: ${canhBao}`)
       daDang++
     } catch (e) {
       loi.push(`${b.tieu_de_anh}: ${e instanceof Error ? e.message : String(e)}`)

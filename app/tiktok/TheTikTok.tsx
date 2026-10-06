@@ -29,6 +29,7 @@ export default function TheTikTok({
   taiKhoan: { khoaBinhLuan: boolean } | null
 }) {
   const [choBinhLuan, setChoBinhLuan] = useState(true)
+  const [longTieng, setLongTieng] = useState(true)
   const [moRong, setMoRong] = useState(false)
   const [dangLam, startTransition] = useTransition()
   const [viec, setViec] = useState<Viec | null>(null)
@@ -37,11 +38,11 @@ export default function TheTikTok({
   const tags = ghepHashtagTikTok(bai.hashtag, xuHuong)
   const tagXuHuong = tags.slice(bai.hashtag.length)
 
-  const chay = (ten: Viec, viecLam: () => Promise<{ ok: boolean; loi?: string }>, xong: string) => {
+  const chay = (ten: Viec, viecLam: () => Promise<{ ok: boolean; loi?: string; canhBao?: string }>, xong: string) => {
     setViec(ten)
     startTransition(async () => {
       const kq = await viecLam()
-      thongBao(kq.ok ? 'ok' : 'loi', kq.ok ? xong : (kq.loi ?? 'Có lỗi'))
+      thongBao(kq.ok && !kq.canhBao ? 'ok' : 'loi', kq.ok ? (kq.canhBao ? `${xong}. ${kq.canhBao}` : xong) : (kq.loi ?? 'Có lỗi'))
       setViec(null)
     })
   }
@@ -131,11 +132,11 @@ export default function TheTikTok({
             <>
               <button
                 disabled={dangLam}
-                onClick={() => chay('tt', () => dangTikTok(bai.id, { tatBinhLuan: !choBinhLuan }), 'Đã gửi lên TikTok')}
+                onClick={() => chay('tt', () => dangTikTok(bai.id, { tatBinhLuan: !choBinhLuan, longTieng }), 'Đã gửi lên TikTok')}
                 className="btn btn-tt"
               >
                 {viec === 'tt' ? <Xoay /> : <IconTikTok />}
-                {viec === 'tt' ? 'Đang đăng… (~15 giây)' : 'Đăng TikTok'}
+                {viec === 'tt' ? (longTieng ? 'Đang dựng video… (~1-2 phút)' : 'Đang đăng… (~15 giây)') : 'Đăng TikTok'}
               </button>
               {/* Bài chờ duyệt chưa lên Facebook: đăng luôn cả hai nơi */}
               {bai.trang_thai === 'nhap' && !bai.fb_post_id && (
@@ -149,7 +150,7 @@ export default function TheTikTok({
                           dangCaHai(
                             bai.id,
                             { tieu_de_anh: bai.tieu_de_anh, chu_de: bai.chu_de, noi_dung: bai.noi_dung, hashtag: bai.hashtag.join(' ') },
-                            { tatBinhLuan: !choBinhLuan },
+                            { tatBinhLuan: !choBinhLuan, longTieng },
                           ),
                         'Đã đăng lên Facebook và TikTok',
                       )
@@ -157,7 +158,7 @@ export default function TheTikTok({
                   className="btn btn-ca-hai"
                 >
                   {viec === 'ca_hai' ? <Xoay /> : <><IconFacebook /><IconTikTok /></>}
-                  {viec === 'ca_hai' ? 'Đang đăng… (~20 giây)' : 'Đăng cả 2'}
+                  {viec === 'ca_hai' ? (longTieng ? 'Đang đăng… (~1-2 phút)' : 'Đang đăng… (~20 giây)') : 'Đăng cả 2'}
                 </button>
               )}
               <div className="ml-auto flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-600">
@@ -171,9 +172,21 @@ export default function TheTikTok({
                   />
                   Cho bình luận
                 </label>
-                <span className="flex items-center gap-1 text-xs text-slate-400">
-                  <IconNhac className="h-3.5 w-3.5" /> Nhạc tự động
-                </span>
+                <label className="flex cursor-pointer items-center gap-2" title="Đăng dạng video: giọng AI đọc tiêu đề và nội dung bài, có phụ đề">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 accent-slate-900"
+                    checked={longTieng}
+                    disabled={dangLam}
+                    onChange={(e) => setLongTieng(e.target.checked)}
+                  />
+                  Lồng tiếng AI đọc bài
+                </label>
+                {!longTieng && (
+                  <span className="flex items-center gap-1 text-xs text-slate-400">
+                    <IconNhac className="h-3.5 w-3.5" /> Nhạc tự động
+                  </span>
+                )}
               </div>
               <p className="w-full text-xs text-slate-400">
                 Khi bấm Đăng, bạn đồng ý với{' '}
@@ -186,6 +199,7 @@ export default function TheTikTok({
                   Xác nhận sử dụng âm nhạc
                 </a>{' '}
                 của TikTok. Bài có thể mất vài phút mới hiện trên hồ sơ.
+                {longTieng && ' Lồng tiếng: đăng dạng video dọc, ảnh bài + giọng AI đọc + phụ đề (tốn 1 lượt giọng Gemini). Giọng lỗi thì tự đăng dạng ảnh.'}
               </p>
             </>
           )}

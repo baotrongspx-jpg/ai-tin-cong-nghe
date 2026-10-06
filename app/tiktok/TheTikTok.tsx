@@ -43,6 +43,60 @@ const luuGiong = (g: string) => {
   window.dispatchEvent(new Event('doi-giong'))
 }
 
+// Nghe thử giọng: mẫu tạo một lần cho mỗi giọng rồi lưu lại (lần đầu tốn 1 lượt Gemini, sau đó miễn phí).
+// Một trình phát chung cho cả trang: bấm nghe giọng khác thì giọng đang phát tự dừng.
+let trinhPhat: HTMLAudioElement | null = null
+const daTai = new Map<string, string>() // giọng → link blob đã tải trong phiên này
+const ngheTrinhPhat = (bao: () => void) => {
+  window.addEventListener('doi-mau-giong', bao)
+  return () => window.removeEventListener('doi-mau-giong', bao)
+}
+const dangPhat = () => (trinhPhat && !trinhPhat.paused ? trinhPhat.dataset.giong ?? null : null)
+const baoDoi = () => window.dispatchEvent(new Event('doi-mau-giong'))
+
+function NutNgheThu({ giong }: { giong: string }) {
+  const phat = useSyncExternalStore(ngheTrinhPhat, dangPhat, () => null)
+  const [dangTai, setDangTai] = useState(false)
+  const dangNghe = phat === giong
+  const bam = async () => {
+    if (!trinhPhat) {
+      trinhPhat = new Audio()
+      for (const su of ['play', 'pause', 'ended', 'error']) trinhPhat.addEventListener(su, baoDoi)
+    }
+    if (dangNghe) return trinhPhat.pause()
+    trinhPhat.pause()
+    let link = daTai.get(giong)
+    if (!link) {
+      setDangTai(true)
+      try {
+        const res = await fetch(`/api/giong-mau/${giong}`)
+        if (!res.ok) throw new Error((await res.text()) || `Lỗi ${res.status}`)
+        link = URL.createObjectURL(await res.blob())
+        daTai.set(giong, link)
+      } catch (e) {
+        thongBao('loi', `Chưa nghe thử được giọng ${giong}: ${e instanceof Error ? e.message : 'lỗi'}`)
+        return
+      } finally {
+        setDangTai(false)
+      }
+    }
+    trinhPhat.src = link
+    trinhPhat.dataset.giong = giong
+    trinhPhat.play().catch(() => thongBao('loi', 'Không phát được giọng mẫu'))
+  }
+  return (
+    <button
+      type="button"
+      onClick={bam}
+      disabled={dangTai}
+      title={dangNghe ? 'Dừng' : `Nghe thử giọng ${giong}`}
+      className="btn btn-nhat shrink-0 px-3"
+    >
+      {dangTai ? <Xoay /> : dangNghe ? '■' : '▶'} <span className="text-xs">{dangNghe ? 'Dừng' : 'Nghe'}</span>
+    </button>
+  )
+}
+
 // `taiKhoan`: null khi chưa kết nối TikTok → chỉ xem trước, không đăng được
 export default function TheTikTok({
   bai,
@@ -102,7 +156,8 @@ export default function TheTikTok({
 
   return (
     <article className="the grid gap-5 p-4 sm:p-5 md:grid-cols-[240px_1fr]">
-      <div className="grid gap-2 self-start">
+      {/* min-w-0: chữ dài trong ô chọn giọng không được làm cột 240px phình ra đè sang bên phải */}
+      <div className="grid min-w-0 gap-2 self-start">
       <div className="relative">
         {video ? (
           <video src={video} controls autoPlay playsInline className="aspect-[9/16] w-full rounded-xl bg-black" />
@@ -132,24 +187,30 @@ export default function TheTikTok({
       </div>
       {!daDang && (
         <>
-          <label className="grid gap-1 text-xs font-semibold text-slate-500">
-            Giọng đọc
-            <select
-              value={giong}
-              disabled={dangDung || dangLam}
-              onChange={(e) => chonGiong(e.target.value)}
-              className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm font-normal text-slate-800"
-            >
-              {DS_GIONG.map(([ma, mo]) => (
-                <option key={ma} value={ma}>
-                  {ma} — {mo}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="grid gap-1">
+            <label htmlFor={`giong-${bai.id}`} className="text-xs font-semibold text-slate-500">
+              Giọng đọc
+            </label>
+            <div className="flex min-w-0 gap-1.5">
+              <select
+                id={`giong-${bai.id}`}
+                value={giong}
+                disabled={dangDung || dangLam}
+                onChange={(e) => chonGiong(e.target.value)}
+                className="w-full min-w-0 flex-1 truncate rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-800"
+              >
+                {DS_GIONG.map(([ma, mo]) => (
+                  <option key={ma} value={ma}>
+                    {ma} — {mo}
+                  </option>
+                ))}
+              </select>
+              <NutNgheThu giong={giong} />
+            </div>
+          </div>
           <button disabled={dangDung || dangLam} onClick={video ? () => setVideo(null) : xemTruoc} className="btn btn-nhat justify-center">
             {dangDung ? <Xoay /> : null}
-            {dangDung ? 'Đang dựng video… (~1 phút)' : video ? 'Xem ảnh' : '▶ Xem trước video lồng tiếng'}
+            {dangDung ? 'Đang dựng video… (~1 phút)' : video ? 'Xem ảnh' : '▶ Xem trước video'}
           </button>
           {loiVideo && <p className="text-xs text-red-600">{loiVideo}</p>}
           {video && <p className="text-xs text-slate-400">Bấm Đăng (có lồng tiếng) sẽ dùng đúng video này. Sửa bài thì video tự dựng lại.</p>}

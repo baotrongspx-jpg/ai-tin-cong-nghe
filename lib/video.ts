@@ -89,7 +89,7 @@ function chayFfmpeg(args: string[], cwd: string) {
 
 // Video đã dựng được lưu ở Supabase Storage (kho riêng tư), tên gồm mã băm của mọi thứ làm video thay đổi:
 // xem trước rồi bấm Đăng dùng lại đúng video đó, không tốn thêm lượt giọng Gemini. Sửa bài thì tự dựng lại.
-const KHO = 'video-tiktok'
+export const KHO = 'video-tiktok'
 const PHIEN_BAN = 1 // tăng khi đổi cách dựng video để bỏ video cũ
 
 const tenTep = (bai: BaiViet, giong: string) =>
@@ -103,10 +103,17 @@ async function layVideoDaLuu(ten: string) {
   return data ? Buffer.from(await data.arrayBuffer()) : null
 }
 
-async function luuVideo(bai: BaiViet, ten: string, video: Buffer) {
+// Lần đầu dùng: tạo kho riêng tư
+export async function damBaoKho() {
   const kho = db().storage
   const { error: chuaCo } = await kho.getBucket(KHO)
   if (chuaCo) await kho.createBucket(KHO, { public: false })
+  return kho.from(KHO)
+}
+
+async function luuVideo(bai: BaiViet, ten: string, video: Buffer) {
+  const kho = db().storage
+  await damBaoKho()
   // Bỏ các bản cũ của bài này (trước khi sửa bài) cho đỡ tốn dung lượng
   const { data: cu } = await kho.from(KHO).list(bai.id)
   const xoa = (cu ?? []).map((f) => `${bai.id}/${f.name}`).filter((t) => t !== ten)
@@ -124,6 +131,18 @@ export async function taoVideoBai(bai: BaiViet, giong?: string | null) {
   const video = await dungVideo(bai, g)
   await luuVideo(bai, ten, video).catch((e) => console.error('Không lưu được video TikTok:', e))
   return video
+}
+
+// WAV → MP3 nhỏ gọn (giọng mẫu để nghe thử)
+export async function wavSangMp3(wav: Buffer) {
+  const thuMuc = await mkdtemp(join(tmpdir(), 'mp3-'))
+  try {
+    await writeFile(join(thuMuc, 'vao.wav'), wav)
+    await chayFfmpeg(['-hide_banner', '-y', '-i', 'vao.wav', '-c:a', 'libmp3lame', '-b:a', '64k', 'ra.mp3'], thuMuc)
+    return await readFile(join(thuMuc, 'ra.mp3'))
+  } finally {
+    await rm(thuMuc, { recursive: true, force: true }).catch(() => {})
+  }
 }
 
 // Dựng video MP4 (H.264 + AAC) lồng tiếng AI cho một bài

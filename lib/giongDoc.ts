@@ -41,7 +41,8 @@ function bocWav(pcm: Buffer) {
   return Buffer.concat([h, pcm])
 }
 
-// Gói miễn phí chỉ cho 3 lần đọc mỗi phút: chạm giới hạn (429) thì chờ theo lời Gemini báo (tối đa 60 giây) rồi thử lại một lần
+// Gói miễn phí giới hạn 3 lần đọc mỗi phút và 10 lần mỗi ngày. Chạm giới hạn theo phút (429) thì chờ theo lời Gemini báo
+// (tối đa 60 giây) rồi thử lại một lần; hết lượt trong ngày thì báo lỗi dễ hiểu.
 export async function docThanhGiong(chu: string, giong = giongMacDinh(), thuLai = true): Promise<Buffer> {
   const khoa = process.env.GEMINI_API_KEY?.trim()
   if (!khoa) throw new Error('Chưa cài GEMINI_API_KEY nên không lồng tiếng được')
@@ -58,8 +59,12 @@ export async function docThanhGiong(chu: string, giong = giongMacDinh(), thuLai 
     cache: 'no-store',
   })
   const json = await res.json().catch(() => ({}))
+  const loi = String(json.error?.message ?? '')
+  if (res.status === 429 && /per day/i.test(loi))
+    throw new Error('Gemini đã hết lượt đọc hôm nay (gói miễn phí 10 lần/ngày). Thử lại ngày mai hoặc nâng gói Gemini.')
   if (res.status === 429 && thuLai) {
-    const giay = Number(String(json.error?.message ?? '').match(/retry in ([\d.]+)s/i)?.[1] ?? 30)
+    // "retry in 39s" thì chờ rồi thử lại; dạng "17h48m47s" (chờ lâu) thì báo lỗi luôn
+    const giay = Number(loi.match(/retry in ([\d.]+)s\b/i)?.[1] ?? Infinity)
     if (giay <= 60) {
       await new Promise((r) => setTimeout(r, (giay + 1) * 1000))
       return docThanhGiong(chu, giong, false)

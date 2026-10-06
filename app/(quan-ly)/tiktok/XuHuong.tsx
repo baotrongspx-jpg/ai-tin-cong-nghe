@@ -2,9 +2,9 @@
 
 import { useTransition } from 'react'
 import { gio } from '@/lib/thoiGian'
-import { timLaiXuHuong } from '../actions'
-import { thongBao } from '../ThongBao'
-import { IconLai, Xoay } from '../BieuTuong'
+import { timLaiXuHuong } from '@/app/actions'
+import { thongBao } from '@/app/ThongBao'
+import { IconLai, Xoay } from '@/app/BieuTuong'
 
 // Khung hashtag xu hướng cuối trang TikTok. `luc` null nghĩa là đang dùng bộ dự phòng.
 export default function XuHuong({ ds, luc, soThem }: { ds: string[]; luc: string | null; soThem: number }) {

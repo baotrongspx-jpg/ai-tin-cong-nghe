@@ -3,8 +3,8 @@ import { daDangNhap } from '@/lib/xacThuc'
 import { xepHang, type BaiXepHang } from '@/lib/soLieu'
 import { gio, truoc } from '@/lib/thoiGian'
 import { urlAnh } from '@/lib/chuThich'
-import DauTrang, { CanhBao, ThanhLoc, TieuDeTrang, Trong } from '../DauTrang'
-import { IconFacebook, IconMo, IconTikTok } from '../BieuTuong'
+import { CanhBao, ThanhLoc, TieuDeTrang, Trong } from '@/app/DauTrang'
+import { IconBieuDo, IconFacebook, IconMo, IconTikTok } from '@/app/BieuTuong'
 import NutCapNhat from './NutCapNhat'
 
 // Nút "Tổng hợp ngay" ở đầu trang chạy AI trong Server Action, cần thời gian dài
@@ -30,10 +30,11 @@ export default async function TrangThongKe({ searchParams }: PageProps<'/thong-k
 
   return (
     <>
-      <DauTrang dangO="thong_ke" />
-      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
+      <main className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6">
         <TieuDeTrang
           ten="Thống kê tương tác"
+          Icon={IconBieuDo}
+          mauIcon="from-emerald-400 to-emerald-600 shadow-emerald-600/30"
           moTa={
             luc
               ? `Bài Facebook xếp từ nhiều tương tác nhất xuống. Số liệu lấy lúc ${gio(luc)}, tự cập nhật sau mỗi lần lịch chạy.`

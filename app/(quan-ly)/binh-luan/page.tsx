@@ -2,7 +2,8 @@ import { redirect } from 'next/navigation'
 import { daDangNhap } from '@/lib/xacThuc'
 import { coFacebook } from '@/lib/facebook'
 import { dsDaAn, layBinhLuan, laSpam, ThieuQuyen, type BinhLuan } from '@/lib/binhLuan'
-import DauTrang, { CanhBao, ThanhLoc, TieuDeTrang, Trong } from '../DauTrang'
+import { CanhBao, ThanhLoc, TieuDeTrang, Trong } from '@/app/DauTrang'
+import { IconBinhLuan } from '@/app/BieuTuong'
 import TheBinhLuan, { TheDaAn } from './TheBinhLuan'
 
 // Nút "Tổng hợp ngay" ở đầu trang chạy AI trong Server Action, cần thời gian dài
@@ -35,10 +36,11 @@ export default async function TrangBinhLuan({ searchParams }: PageProps<'/binh-l
 
   return (
     <>
-      <DauTrang dangO="binh_luan" />
-      <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6">
+      <main className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6">
         <TieuDeTrang
           ten="Bình luận Facebook"
+          Icon={IconBinhLuan}
+          mauIcon="from-sky-400 to-sky-600 shadow-sky-600/30"
           moTa="Bình luận 7 ngày gần đây của các bài trên Fanpage. AI gợi ý câu trả lời, bình luận spam được tự ẩn mỗi giờ."
         />
 

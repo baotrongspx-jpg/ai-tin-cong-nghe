@@ -4,9 +4,9 @@ import { useState, useTransition } from 'react'
 import type { BinhLuan, DaAn } from '@/lib/binhLuan'
 import { gio, truoc } from '@/lib/thoiGian'
 import { urlAnh } from '@/lib/chuThich'
-import { anBinhLuanAction, goiYTraLoiAction, traLoiAction } from '../actions'
-import { thongBao } from '../ThongBao'
-import { IconMo, IconSao, IconXong, Xoay } from '../BieuTuong'
+import { anBinhLuanAction, goiYTraLoiAction, traLoiAction } from '@/app/actions'
+import { thongBao } from '@/app/ThongBao'
+import { IconMo, IconSao, IconXong, Xoay } from '@/app/BieuTuong'
 
 type Viec = 'goi_y' | 'gui' | 'an'
 

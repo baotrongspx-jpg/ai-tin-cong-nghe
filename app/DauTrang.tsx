@@ -1,80 +1,35 @@
 import Link from 'next/link'
-import type { ReactNode } from 'react'
-import { dangXuatAction } from './actions'
-import NutTongHop from './NutTongHop'
-import { IconBieuDo, IconBinhLuan, IconFacebook, IconThoat, IconTikTok } from './BieuTuong'
+import type { ComponentType, ReactNode } from 'react'
 
-const KENH = [
-  { ma: 'facebook', ten: 'Facebook', href: '/', Icon: IconFacebook, bat: 'bg-blue-600 text-white shadow-blue-600/30' },
-  { ma: 'tiktok', ten: 'TikTok', href: '/tiktok', Icon: IconTikTok, bat: 'bg-slate-900 text-white shadow-slate-900/30' },
-  { ma: 'binh_luan', ten: 'Bình luận', href: '/binh-luan', Icon: IconBinhLuan, bat: 'bg-sky-600 text-white shadow-sky-600/30' },
-  { ma: 'thong_ke', ten: 'Thống kê', href: '/thong-ke', Icon: IconBieuDo, bat: 'bg-emerald-600 text-white shadow-emerald-600/30' },
-] as const
+// Thanh bên + thanh trên nằm ở app/KhungQuanLy.tsx (dùng chung qua app/(quan-ly)/layout.tsx).
+// File này giữ các mảnh dùng trong từng trang: tiêu đề, thanh lọc, hộp trống, cảnh báo.
 
-type Kenh = (typeof KENH)[number]['ma']
-
-// Thanh trên cùng, dính khi cuộn: logo, chuyển giữa các trang, tổng hợp, đăng xuất
-export default function DauTrang({ dangO }: { dangO: Kenh }) {
-  const chuyenKenh = (
-    <nav className="flex rounded-xl bg-slate-100 p-1" aria-label="Chọn nền tảng">
-      {KENH.map(({ ma, ten, href, Icon, bat }) => (
-        <Link
-          key={ma}
-          href={href}
-          // Tải trước cả trang (không chỉ khung chờ) để bấm chuyển trang hiện ngay
-          prefetch={true}
-          aria-current={ma === dangO ? 'page' : undefined}
-          className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-1.5 sm:px-4 text-sm font-bold transition sm:flex-none ${
-            ma === dangO ? `${bat} shadow-md` : 'text-slate-500 hover:text-slate-800'
-          }`}
-        >
-          <Icon className="h-4 w-4" />
-          <span className="max-[420px]:sr-only">{ten}</span>
-        </Link>
-      ))}
-    </nav>
-  )
-
+// Tiêu đề từng trang: ô biểu tượng, tên, mô tả ngắn, thêm nội dung bên phải (vd. bộ lọc, tài khoản TikTok)
+export function TieuDeTrang({
+  ten,
+  moTa,
+  phai,
+  Icon,
+  mauIcon = 'from-blue-500 to-indigo-600 shadow-blue-600/30',
+}: {
+  ten: string
+  moTa: string
+  phai?: ReactNode
+  Icon?: ComponentType<{ className?: string }>
+  mauIcon?: string
+}) {
   return (
-    <header className="sticky top-0 z-40 border-b border-slate-200/70 bg-white/80 backdrop-blur-md">
-      <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-2.5 sm:px-6">
-        <Link href="/" className="flex items-center gap-2.5">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-900 text-[11px] font-black leading-none text-white shadow-md shadow-blue-600/30">
-            TIN
-            <br />
-            TECH
+    <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+      <div className="flex min-w-0 items-center gap-4">
+        {Icon && (
+          <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br text-white shadow-lg ${mauIcon}`}>
+            <Icon className="h-6 w-6" />
           </span>
-          <span className="hidden leading-tight sm:block">
-            <span className="block text-sm font-extrabold">Tin Công Nghệ</span>
-            <span className="block text-xs text-slate-500">Bảng duyệt bài</span>
-          </span>
-        </Link>
-
-        <div className="order-3 w-full sm:order-none sm:mx-auto sm:w-auto">{chuyenKenh}</div>
-
-        <div className="ml-auto flex items-center gap-2 sm:ml-0">
-          <NutTongHop />
-          <Link href="/cv/doi-anh" className="btn btn-nhat px-2.5 text-xs font-bold" title="Đổi ảnh đại diện trên trang CV">
-            CV
-          </Link>
-          <form action={dangXuatAction}>
-            <button className="btn btn-nhat px-2.5" title="Đăng xuất" aria-label="Đăng xuất">
-              <IconThoat className="h-5 w-5" />
-            </button>
-          </form>
+        )}
+        <div className="min-w-0">
+          <h1 className="text-2xl font-extrabold tracking-tight">{ten}</h1>
+          <p className="mt-0.5 text-sm text-slate-500">{moTa}</p>
         </div>
-      </div>
-    </header>
-  )
-}
-
-// Tiêu đề từng trang: tên, mô tả ngắn, thêm nội dung bên phải (vd. tài khoản TikTok)
-export function TieuDeTrang({ ten, moTa, phai }: { ten: string; moTa: string; phai?: ReactNode }) {
-  return (
-    <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
-      <div>
-        <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">{ten}</h1>
-        <p className="mt-1 text-sm text-slate-500">{moTa}</p>
       </div>
       {phai}
     </div>
@@ -87,12 +42,12 @@ export function ThanhLoc({
   dangXem,
   mauBat,
 }: {
-  ds: { ma: string; ten: string; href: string; so?: number }[]
+  ds: { ma: string; ten: string; href: string; so?: number; Icon?: ComponentType<{ className?: string }> }[]
   dangXem: string
   mauBat: string
 }) {
   return (
-    <nav className="mb-5 flex gap-1.5 overflow-x-auto pb-1" aria-label="Lọc bài">
+    <nav className="mb-5 flex gap-2 overflow-x-auto pb-1" aria-label="Lọc bài">
       {ds.map((t) => {
         const bat = t.ma === dangXem
         return (
@@ -101,9 +56,10 @@ export function ThanhLoc({
             href={t.href}
             aria-current={bat ? 'page' : undefined}
             className={`flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold ring-1 transition ${
-              bat ? `${mauBat} ring-transparent shadow-sm` : 'bg-white text-slate-600 ring-slate-200 hover:bg-slate-50'
+              bat ? `${mauBat} ring-transparent shadow-md` : 'bg-white text-slate-600 ring-slate-200 hover:bg-slate-50'
             }`}
           >
+            {t.Icon && <t.Icon className="h-4 w-4" />}
             {t.ten}
             {t.so !== undefined && (
               <span className={`rounded-full px-2 py-0.5 text-xs ${bat ? 'bg-white/20' : 'bg-slate-100 text-slate-500'}`}>

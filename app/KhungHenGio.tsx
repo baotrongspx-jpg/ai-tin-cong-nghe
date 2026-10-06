@@ -29,6 +29,7 @@ export default function KhungHenGio({
   henFb,
   henTikTok,
   gioVang,
+  nutMo,
 }: {
   baiId: string
   sua: SuaBai
@@ -37,6 +38,8 @@ export default function KhungHenGio({
   henFb: string | null
   henTikTok: string | null
   gioVang: { gio: number[]; tuSoLieu: boolean }
+  // Tự vẽ nút mở khung (vd. nút lớn ở cột quyết định); bỏ trống thì dùng nút mặc định
+  nutMo?: (moKhung: () => void) => React.ReactNode
 }) {
   const [mo, setMo] = useState(false)
   // Mặc định giờ vàng gần nhất
@@ -86,6 +89,7 @@ export default function KhungHenGio({
   }
 
   if (!noiDuocHen.length) return null
+  if (!mo && nutMo) return nutMo(() => setMo(true))
   if (!mo)
     return (
       <button onClick={() => setMo(true)} className="btn btn-phu self-start">
@@ -94,7 +98,7 @@ export default function KhungHenGio({
     )
 
   return (
-    <div className="hien-len space-y-3 rounded-xl bg-violet-50 p-3.5 ring-1 ring-violet-200">
+    <div className="hien-len @container space-y-3 rounded-xl bg-violet-50 p-3.5 ring-1 ring-violet-200">
       <div className="flex items-center justify-between">
         <span className="text-sm font-bold text-violet-900">⏰ Hẹn giờ đăng</span>
         <button onClick={() => setMo(false)} className="text-violet-400 hover:text-violet-700" aria-label="Đóng">
@@ -125,7 +129,7 @@ export default function KhungHenGio({
         </div>
       </div>
 
-      <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto]">
+      <div className="grid gap-2 @md:grid-cols-[1fr_auto_auto]">
         <input
           type="datetime-local"
           aria-label="Giờ đăng"
@@ -134,7 +138,7 @@ export default function KhungHenGio({
           min={toiThieu}
           onChange={(e) => setLuc(e.target.value)}
         />
-        <select aria-label="Đăng lên" className="input sm:w-auto" value={noi} onChange={(e) => setNoi(e.target.value as NoiHen)}>
+        <select aria-label="Đăng lên" className="input @md:w-auto" value={noi} onChange={(e) => setNoi(e.target.value as NoiHen)}>
           {noiDuocHen.map((n) => (
             <option key={n} value={n}>
               {TEN_NOI[n]}

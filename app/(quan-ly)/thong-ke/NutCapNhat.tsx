@@ -1,9 +1,9 @@
 'use client'
 
 import { useTransition } from 'react'
-import { capNhatSoLieuNgay } from '../actions'
-import { thongBao } from '../ThongBao'
-import { IconLai, Xoay } from '../BieuTuong'
+import { capNhatSoLieuNgay } from '@/app/actions'
+import { thongBao } from '@/app/ThongBao'
+import { IconLai, Xoay } from '@/app/BieuTuong'
 
 export default function NutCapNhat() {
   const [dangChay, startTransition] = useTransition()

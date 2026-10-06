@@ -1,13 +1,14 @@
 import 'server-only'
 import { spawn } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { copyFile, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import ffmpeg from 'ffmpeg-static'
 import sharp from 'sharp'
 import { veAnhBai } from './anh'
-import type { BaiViet } from './db'
-import { docThanhGiong } from './giongDoc'
+import { db, type BaiViet } from './db'
+import { docThanhGiong, giongMacDinh } from './giongDoc'
 
 // Video dọc 1080x1920 cho TikTok: ảnh bài ở giữa trên nền mờ, giọng AI đọc bài, phụ đề chạy theo từng đoạn.
 const RONG = 1080
@@ -85,8 +86,45 @@ function chayFfmpeg(args: string[], cwd: string) {
   })
 }
 
-// Dựng video MP4 (H.264 + AAC) lồng tiếng AI cho một bài
+// Video đã dựng được lưu ở Supabase Storage (kho riêng tư), tên gồm mã băm của mọi thứ làm video thay đổi:
+// xem trước rồi bấm Đăng dùng lại đúng video đó, không tốn thêm lượt giọng Gemini. Sửa bài thì tự dựng lại.
+const KHO = 'video-tiktok'
+const PHIEN_BAN = 1 // tăng khi đổi cách dựng video để bỏ video cũ
+
+const tenTep = (bai: BaiViet) =>
+  `${bai.id}/${createHash('sha256')
+    .update(JSON.stringify([PHIEN_BAN, giongMacDinh(), chuDeDoc(bai), bai.chu_de, bai.mau_anh, bai.anh_nen ?? null, bai.nguon_ten, bai.ngay_bao]))
+    .digest('hex')
+    .slice(0, 16)}.mp4`
+
+async function layVideoDaLuu(ten: string) {
+  const { data } = await db().storage.from(KHO).download(ten)
+  return data ? Buffer.from(await data.arrayBuffer()) : null
+}
+
+async function luuVideo(bai: BaiViet, ten: string, video: Buffer) {
+  const kho = db().storage
+  const { error: chuaCo } = await kho.getBucket(KHO)
+  if (chuaCo) await kho.createBucket(KHO, { public: false })
+  // Bỏ các bản cũ của bài này (trước khi sửa bài) cho đỡ tốn dung lượng
+  const { data: cu } = await kho.from(KHO).list(bai.id)
+  const xoa = (cu ?? []).map((f) => `${bai.id}/${f.name}`).filter((t) => t !== ten)
+  if (xoa.length) await kho.from(KHO).remove(xoa)
+  await kho.from(KHO).upload(ten, video, { contentType: 'video/mp4', upsert: true })
+}
+
+// Video lồng tiếng của bài: lấy bản đã lưu nếu bài chưa đổi, không thì dựng mới rồi lưu lại
 export async function taoVideoBai(bai: BaiViet) {
+  const ten = tenTep(bai)
+  const daLuu = await layVideoDaLuu(ten).catch(() => null)
+  if (daLuu) return daLuu
+  const video = await dungVideo(bai)
+  await luuVideo(bai, ten, video).catch((e) => console.error('Không lưu được video TikTok:', e))
+  return video
+}
+
+// Dựng video MP4 (H.264 + AAC) lồng tiếng AI cho một bài
+async function dungVideo(bai: BaiViet) {
   const chu = chuDeDoc(bai)
   if (!chu) throw new Error('Bài không có chữ để đọc')
   const [wav, anh] = await Promise.all([docThanhGiong(chu), veAnhBai(bai).then(async (r) => Buffer.from(await r.arrayBuffer()))])

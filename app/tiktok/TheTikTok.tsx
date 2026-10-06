@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import Link from 'next/link'
 import type { BaiViet } from '@/lib/db'
 import { ghepHashtagTikTok, urlAnh } from '@/lib/chuThich'
@@ -31,6 +31,25 @@ export default function TheTikTok({
   const [choBinhLuan, setChoBinhLuan] = useState(true)
   const [longTieng, setLongTieng] = useState(true)
   const [moRong, setMoRong] = useState(false)
+  // Xem trước video lồng tiếng: link blob của video, đang dựng, lỗi
+  const [video, setVideo] = useState<string | null>(null)
+  const [dangDung, setDangDung] = useState(false)
+  const [loiVideo, setLoiVideo] = useState('')
+  useEffect(() => () => void (video && URL.revokeObjectURL(video)), [video])
+
+  const xemTruoc = async () => {
+    setDangDung(true)
+    setLoiVideo('')
+    try {
+      const res = await fetch(`/api/video/${bai.id}`, { cache: 'no-store' })
+      if (!res.ok) throw new Error((await res.text()) || `Lỗi ${res.status}`)
+      setVideo(URL.createObjectURL(await res.blob()))
+    } catch (e) {
+      setLoiVideo(e instanceof Error ? e.message : 'Dựng video lỗi')
+    } finally {
+      setDangDung(false)
+    }
+  }
   const [dangLam, startTransition] = useTransition()
   const [viec, setViec] = useState<Viec | null>(null)
 
@@ -49,8 +68,12 @@ export default function TheTikTok({
 
   return (
     <article className="the grid gap-5 p-4 sm:p-5 md:grid-cols-[240px_1fr]">
-      <div className="relative self-start">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
+      <div className="grid gap-2 self-start">
+      <div className="relative">
+        {video ? (
+          <video src={video} controls autoPlay playsInline className="aspect-[9/16] w-full rounded-xl bg-black" />
+        ) : (
+        // eslint-disable-next-line @next/next/no-img-element
         <img
           src={urlAnh(bai, 480)}
           alt={bai.tieu_de_anh}
@@ -60,6 +83,7 @@ export default function TheTikTok({
           decoding="async"
           className="aspect-square w-full rounded-xl bg-slate-200 object-cover"
         />
+        )}
         {/* Góc phải ảnh không có chữ nên đặt nhãn ở đó */}
         <div className="absolute right-2.5 top-2.5 flex items-center gap-1">
           {bai.fb_post_id && (
@@ -71,6 +95,17 @@ export default function TheTikTok({
             <IconTikTok className="h-3 w-3" /> {daDang ? 'Đã đăng' : 'Chưa đăng'}
           </span>
         </div>
+      </div>
+      {!daDang && (
+        <>
+          <button disabled={dangDung || dangLam} onClick={video ? () => setVideo(null) : xemTruoc} className="btn btn-nhat justify-center">
+            {dangDung ? <Xoay /> : null}
+            {dangDung ? 'Đang dựng video… (~1 phút)' : video ? 'Xem ảnh' : '▶ Xem trước video lồng tiếng'}
+          </button>
+          {loiVideo && <p className="text-xs text-red-600">{loiVideo}</p>}
+          {video && <p className="text-xs text-slate-400">Bấm Đăng (có lồng tiếng) sẽ dùng đúng video này. Sửa bài thì video tự dựng lại.</p>}
+        </>
+      )}
       </div>
 
       <div className="flex min-w-0 flex-col gap-3">

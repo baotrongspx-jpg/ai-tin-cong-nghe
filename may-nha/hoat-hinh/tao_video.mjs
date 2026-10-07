@@ -233,15 +233,89 @@ loi.forEach((l, i) => {
   tw.push(`tl.from("#pd${i} .pd-khung", { y: 30, opacity: 0, duration: 0.2, ease: "power2.out" }, ${f(t0)});`)
 })
 
-// Bối cảnh đổi theo từng câu (mờ dần sang cảnh mới), xen kẽ hai rãnh để chồng lên nhau lúc chuyển
-const nenCanh = loi.map((l, i) => {
-  const t0 = i ? batDau[i] - 0.4 : 0
-  const het = i === loi.length - 1 ? TONG : batDau[i + 1]
-  const bc = (BOI_CANH[l.boi_canh] ?? BOI_CANH.truong_quay)(`bc${i}`)
+// ── Bối cảnh: các câu liền nhau cùng bối cảnh dùng chung một cảnh; đổi cảnh bằng mờ dần / trượt ngang / phóng to ─
+// Mọi lớp nền nằm sẵn trong một khung chung (#camera-nen) để máy quay đẩy được cả nền.
+const doanCanh = []
+loi.forEach((l, i) => {
+  const ten = BOI_CANH[l.boi_canh] ? l.boi_canh : 'truong_quay'
+  const cuoi = doanCanh.at(-1)
+  if (cuoi && cuoi.ten === ten) cuoi.het = i
+  else doanCanh.push({ ten, tu: i, het: i })
+})
+const KIEU_CHUYEN = ['truot', 'phong', 'mo']
+const nenCanh = doanCanh.map((dc, k) => {
+  const t0 = k ? batDau[dc.tu] - 0.35 : 0
+  const het = dc.het === loi.length - 1 ? TONG : batDau[dc.het + 1]
+  const bc = BOI_CANH[dc.ten](`bc${k}`)
   tw.push(...bc.tw(t0, het - t0))
-  if (i) tw.push(`tl.from("#bc${i}", { opacity: 0, duration: 0.4, ease: "power1.inOut" }, ${f(t0)});`)
-  return `
-      <div id="bc${i}" class="clip" data-start="${f(t0)}" data-duration="${f(het - t0)}" data-track-index="${i % 2 ? 5 : 0}"><svg class="nen-svg" viewBox="0 0 1080 1920" width="1080" height="1920">${bc.svg}</svg></div>`
+  if (k) {
+    const kieu = KIEU_CHUYEN[(k - 1) % KIEU_CHUYEN.length]
+    const truoc = `#bc${k - 1}`
+    if (kieu === 'truot') {
+      tw.push(`tl.fromTo("#bc${k}", { opacity: 1, x: 1080 }, { opacity: 1, x: 0, duration: 0.6, ease: "power3.inOut" }, ${f(t0)});`)
+      tw.push(`tl.to("${truoc}", { x: -500, duration: 0.6, ease: "power3.inOut" }, ${f(t0)});`)
+    } else if (kieu === 'phong') {
+      tw.push(`tl.fromTo("#bc${k}", { opacity: 0, scale: 1.35 }, { opacity: 1, scale: 1, duration: 0.6, ease: "power2.out" }, ${f(t0)});`)
+    } else tw.push(`tl.fromTo("#bc${k}", { opacity: 0 }, { opacity: 1, duration: 0.5, ease: "power1.inOut" }, ${f(t0)});`)
+    tw.push(`tl.set("${truoc}", { opacity: 0 }, ${f(t0 + 0.65)});`)
+    // Hai nhân vật nhún nhẹ khi đổi cảnh
+    tw.push(`tl.to(["#o-meo", "#o-robot"], { y: -28, duration: 0.18, yoyo: true, repeat: 1, ease: "power1.out" }, ${f(t0 + 0.1)});`)
+  }
+  return `<div id="bc${k}" class="lop-nen"${k ? ' style="opacity:0"' : ''}><svg class="nen-svg" viewBox="0 0 1080 1920" width="1080" height="1920">${bc.svg}</svg></div>`
+})
+
+// ── Máy quay: cảnh rộng, cảnh vừa và cận mặt người nói; nền trôi chậm hơn nhân vật để có chiều sâu ─
+// Điểm nhìn (toạ độ khung hình) của từng nhân vật khi cận cảnh
+const TAM = { meo: { x: 290, y: 930 }, robot: { x: 790, y: 930 } }
+const SAU_NEN = 0.55 // nền dịch chuyển bằng 55% nhân vật
+const lia = (t, scale, ox, oy, giay, ease = 'power2.inOut') => {
+  // đưa điểm (ox, oy) về giữa khung với độ phóng `scale` (gốc biến đổi ở giữa khung 540, 960)
+  const x = scale === 1 ? 0 : -(ox - 540) * scale
+  const y = scale === 1 ? 0 : -(oy - 960) * scale
+  tw.push(`tl.to("#camera-nv", { scale: ${f(scale)}, x: ${f(x)}, y: ${f(y)}, duration: ${f(giay)}, ease: "${ease}" }, ${f(t)});`)
+  tw.push(`tl.to("#camera-nen", { scale: ${f(1 + (scale - 1) * SAU_NEN)}, x: ${f(x * SAU_NEN)}, y: ${f(y * SAU_NEN)}, duration: ${f(giay)}, ease: "${ease}" }, ${f(t)});`)
+}
+const MANH = new Set(['bat_ngo', 'lo_lang', 'vui'])
+loi.forEach((l, i) => {
+  const t0 = batDau[i]
+  const d = doDai[i]
+  const tam = TAM[l.ai] ?? TAM.robot
+  let canh // [scale, ox, oy]
+  if (i === 0 || i === loi.length - 1) canh = [1, 540, 960] // mở đầu, kết thúc: cảnh rộng
+  else if (MANH.has(l.cam_xuc)) canh = [1.55, tam.x, tam.y - 60] // cảm xúc mạnh: cận mặt
+  else if (i % 3 === 1) canh = [1.25, (tam.x + 540) / 2, 980] // cảnh vừa nghiêng về người nói
+  else canh = [1.08, 540, 980]
+  lia(Math.max(0, t0 - 0.2), ...canh, 0.6)
+  // Trôi nhẹ trong suốt câu cho khung hình không đứng yên
+  const [s, ox, oy] = canh
+  lia(t0 + 0.45, s + 0.04, ox + (i % 2 ? 18 : -18), oy, Math.max(0.5, d - 0.7), 'sine.inOut')
+})
+
+// ── Đạo cụ: hiện bên cạnh người nói theo nội dung câu (AI chọn), bay nhẹ rồi biến mất ─
+const DAO_CU = {
+  dien_thoai: '📱', laptop: '💻', kinh_lup: '🔍', bieu_do: '📈', tien: '💰', khien: '🛡️', coi_bao: '🚨',
+  chip: '🔌', o_to: '🚗', ten_lua: '🚀', bong_den: '💡', o_khoa: '🔒', the_ngan_hang: '💳', robot: '🤖',
+  tai_lieu: '📄', dong_ho: '⏰', trai_dat: '🌍', tay_cam_game: '🎮', may_anh: '📷', tai_nghe: '🎧',
+  cup: '🏆', tin_nhan: '💬', canh_bao: '⚠️', vu_tru: '🛰️', pin: '🔋', mang: '📶',
+}
+const daoCu = []
+loi.forEach((l, i) => {
+  const bt = DAO_CU[l.dao_cu]
+  if (!bt) return
+  const t0 = batDau[i]
+  const d = doDai[i]
+  const id = `dc${i}`
+  daoCu.push(`<div id="${id}" class="dao-cu ${l.ai}">${bt}</div>`)
+  tw.push(`tl.fromTo("#${id}", { opacity: 0, scale: 0, rotation: -30 }, { opacity: 1, scale: 1, rotation: 0, duration: 0.5, ease: "back.out(2.2)" }, ${f(t0 + 0.25)});`)
+  tw.push(`tl.to("#${id}", { y: -24, rotation: 6, duration: 0.6, yoyo: true, repeat: ${lap(d - 1.2, 0.6) | 1}, ease: "sine.inOut" }, ${f(t0 + 0.75)});`)
+  tw.push(`tl.to("#${id}", { opacity: 0, scale: 0.3, duration: 0.3, ease: "power2.in" }, ${f(t0 + d - 0.2)});`)
+})
+
+// ── Không khí: hạt sáng lơ lửng trước nền (vị trí cố định theo công thức, không ngẫu nhiên) ─
+const hat = [...Array(16)].map((_, k) => {
+  const x = (k * 263) % 1040, y = 260 + ((k * 397) % 1100), r = 6 + (k % 4) * 5
+  tw.push(`tl.to("#hat${k}", { y: ${-60 - (k % 5) * 25}, x: ${(k % 2 ? 1 : -1) * (20 + (k % 3) * 15)}, opacity: ${0.15 + (k % 3) * 0.15}, duration: ${f(TONG)}, ease: "sine.inOut" }, 0);`)
+  return `<div id="hat${k}" class="hat" style="left:${x}px;top:${y}px;width:${r * 2}px;height:${r * 2}px;opacity:${0.5 + (k % 3) * 0.15}"></div>`
 })
 
 // Bảng tin phía sau đổi theo lời thoại
@@ -269,10 +343,14 @@ const trang = `<!doctype html>
       body { margin: 0; background: #0b1020; color: #fff; font-family: "BVP", "Emoji", sans-serif; }
       #root { position: relative; width: ${RONG}px; height: ${CAO}px; overflow: hidden; }
       .clip { position: absolute; inset: 0; }
-      .phong { background: linear-gradient(180deg, #1e1b4b 0%, #312e81 52%, #3b2a6b 52%, #241a46 100%); }
-      .cua-so { position: absolute; top: 300px; width: 230px; height: 300px; border-radius: 24px; border: 10px solid #4c1d95; background: linear-gradient(180deg, #0ea5e955, #a855f733); }
-      .den { position: absolute; top: 230px; width: 16px; height: 16px; border-radius: 50%; background: #fde68a; box-shadow: 0 0 40px 18px #fde68a66; }
+      .camera { position: absolute; inset: 0; transform-origin: 540px 960px; }
+      .lop-nen { position: absolute; inset: 0; }
       .nen-svg { display: block; }
+      .hat { position: absolute; border-radius: 50%; background: radial-gradient(circle, #ffffffcc, #ffffff00 70%); }
+      #vien-toi { background: radial-gradient(ellipse 85% 70% at 50% 45%, transparent 55%, #00000099 100%); }
+      .dao-cu { position: absolute; top: 640px; width: 190px; height: 190px; display: flex; align-items: center; justify-content: center; font-size: 150px; line-height: 1; font-family: "Emoji", sans-serif; filter: drop-shadow(0 18px 24px #0008); opacity: 0; }
+      .dao-cu.meo { left: 400px; }
+      .dao-cu.robot { left: 490px; }
       .dau-trang { height: 200px; background: linear-gradient(#000000aa, transparent); display: flex; align-items: center; justify-content: space-between; padding: 0 64px; box-sizing: border-box; }
       .kenh { display: flex; align-items: center; gap: 18px; font-size: 40px; font-weight: 700; }
       .vach { display: block; width: 10px; height: 48px; border-radius: 6px; background: #38bdf8; }
@@ -297,14 +375,20 @@ const trang = `<!doctype html>
   </head>
   <body>
     <div id="root" data-composition-id="main" data-width="${RONG}" data-height="${CAO}" data-duration="${f(TONG)}">
-      ${nenCanh.join("")}
+      <div id="canh" class="clip" data-start="0" data-duration="${f(TONG)}" data-track-index="0">
+        <div id="camera-nen" class="camera">${nenCanh.join('')}${hat.join('')}</div>
+      </div>
       <div id="dau-trang" class="dau-trang clip" data-start="0" data-duration="${f(TONG)}" data-track-index="6">
         <div class="kenh"><span class="vach"></span>${esc(kenh)}</div><div class="chude">${esc(chu_de)}</div>
       </div>${bang.join('')}
       <div id="sau-khau" class="clip" data-start="0" data-duration="${f(TONG)}" data-track-index="4">
-        <div id="o-meo" class="o-nv">${meoSvg}</div>
-        <div id="o-robot" class="o-nv">${robotSvg}</div>
-      </div>${phuDe.join('')}
+        <div id="camera-nv" class="camera">
+          <div id="o-meo" class="o-nv">${meoSvg}</div>
+          <div id="o-robot" class="o-nv">${robotSvg}</div>
+          ${daoCu.join('')}
+        </div>
+      </div>
+      <div id="vien-toi" class="clip" data-start="0" data-duration="${f(TONG)}" data-track-index="5"></div>${phuDe.join('')}
       ${amThanh.join('\n      ')}
     </div>
     <script>

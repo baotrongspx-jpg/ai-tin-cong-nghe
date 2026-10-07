@@ -11,7 +11,7 @@ import { GIONG } from './dsGiong'
 export const batHoatHinh = () => process.env.VIDEO_HOAT_HINH !== '0'
 
 const KHO = 'video-tiktok' // cùng kho với video thường (lib/video.ts)
-const PHIEN_BAN = 2 // tăng khi đổi cách dựng để bỏ video hoạt hình cũ
+const PHIEN_BAN = 3 // tăng khi đổi cách dựng để bỏ video hoạt hình cũ
 export const NHAN_VAT = { meo: { ten: 'Mèo Mun', giong: 'Ngọc Huyền' }, robot: { ten: 'Robot Bit', giong: GIONG } }
 
 const bam = (x: unknown) => createHash('sha256').update(JSON.stringify(x)).digest('hex').slice(0, 16)

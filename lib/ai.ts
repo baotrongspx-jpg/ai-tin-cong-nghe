@@ -288,9 +288,13 @@ export async function goiYTuKhoaAnh(tieuDe: string, noiDung: string): Promise<st
 
 // ---------- Video hoạt hình: viết bài thành lời thoại Mèo Mun hỏi, Robot Bit giải thích ----------
 
-// Phải khớp với may-nha/hoat-hinh (tao_video.mjs: cử chỉ, boiCanh.mjs: bối cảnh)
+// Phải khớp với may-nha/hoat-hinh (tao_video.mjs: cử chỉ + đạo cụ, boiCanh.mjs: bối cảnh)
 export const CAM_XUC = ['to_mo', 'bat_ngo', 'giai_thich', 'khang_dinh', 'vui', 'lo_lang', 'suy_nghi'] as const
-export const BOI_CANH = ['truong_quay', 'pho_florida', 'may_chu', 'don_canh_sat', 'phong_khach'] as const
+export const BOI_CANH = ['truong_quay', 'pho_florida', 'may_chu', 'don_canh_sat', 'phong_khach', 'van_phong', 'vu_tru', 'cua_hang'] as const
+export const DAO_CU = [
+  'khong', 'dien_thoai', 'laptop', 'kinh_lup', 'bieu_do', 'tien', 'khien', 'coi_bao', 'chip', 'o_to', 'ten_lua', 'bong_den', 'o_khoa',
+  'the_ngan_hang', 'robot', 'tai_lieu', 'dong_ho', 'trai_dat', 'tay_cam_game', 'may_anh', 'tai_nghe', 'cup', 'tin_nhan', 'canh_bao', 'vu_tru', 'pin', 'mang',
+] as const
 
 const THOAI_SYSTEM = `You write scripts for "Công Nghệ 24H", a Vietnamese TikTok channel that explains tech news with two cartoon mascots:
 - "meo" (Mèo Mun): a curious, playful orange cat. Asks the questions ordinary viewers would ask, reacts with surprise, worry or joy, sometimes sums up in simple words.
@@ -301,7 +305,8 @@ Turn the article in the user turn into a short dialogue between them, in natural
 - Cover every important fact of the article (who, what, where, numbers, why it matters) without inventing anything that is not in the article.
 - Each line at most 30 words, written to be read aloud: no emoji, no hashtags, no URLs. Keep the channel name exactly as "Công Nghệ 24H".
 - cam_xuc: the speaker's emotion and gesture for that line. Mèo Mun uses to_mo, bat_ngo, vui, lo_lang or suy_nghi. Robot Bit uses giai_thich, khang_dinh, vui, lo_lang or suy_nghi.
-- boi_canh: the backdrop that fits the line: truong_quay (news studio, default for general talk, intro and outro), pho_florida (a sunny city street, use for any outdoor or city or "in country X" moment), may_chu (AI / data center / servers / technology inside), don_canh_sat (police, crime, law, court), phong_khach (home, everyday users, phones and apps at home). Keep the same backdrop for consecutive lines about the same thing; change it only when the topic moves.
+- boi_canh: the backdrop that fits the line: truong_quay (news studio, default for general talk, intro and outro), pho_florida (a sunny city street, use for any outdoor or city or "in country X" moment), may_chu (AI / data center / servers / technology inside), don_canh_sat (police, crime, law, court), phong_khach (home, everyday users, phones and apps at home), van_phong (a tech company office: business, CEOs, companies, revenue, jobs), vu_tru (space, satellites, rockets, global internet), cua_hang (a tech store: product launches, prices, buying phones or gadgets). Keep the same backdrop for 2-3 consecutive lines about the same thing; change it when the topic moves so the video does not stay in one place.
+- dao_cu: a prop that pops up next to the speaker, matching what the line talks about (dien_thoai phone, laptop, kinh_lup magnifier for investigating, bieu_do growth chart, tien money, khien shield/security, coi_bao siren/emergency, chip, o_to car, ten_lua rocket, bong_den idea, o_khoa lock/privacy, the_ngan_hang bank card, robot AI, tai_lieu document/law, dong_ho time/deadline, trai_dat world, tay_cam_game games, may_anh camera, tai_nghe headphones, cup award, tin_nhan chat/message, canh_bao warning, vu_tru satellite, pin battery, mang network/signal). Use khong (none) for about a third of the lines so props stay special.
 - bang: a small sign shown behind the characters: bieu_tuong is exactly one emoji character (for example 🤖 🚨 📱 🔒 💡), never a word; chu is at most 6 Vietnamese words with diacritics summing up the line.`
 
 const ThoaiSchema = z.object({
@@ -312,6 +317,7 @@ const ThoaiSchema = z.object({
         chu: z.string().min(1),
         cam_xuc: z.enum(CAM_XUC),
         boi_canh: z.enum(BOI_CANH),
+        dao_cu: z.enum(DAO_CU),
         bang: z.object({ bieu_tuong: z.string(), chu: z.string() }),
       }),
     )
@@ -329,6 +335,7 @@ const coDauDu = (loi: LoiThoai) => {
 // Biểu tượng bảng tin phải là emoji; AI ghi chữ thì thay bằng emoji theo bối cảnh
 const EMOJI_BOI_CANH: Record<(typeof BOI_CANH)[number], string> = {
   truong_quay: '📺', pho_florida: '🏙️', may_chu: '🤖', don_canh_sat: '🚓', phong_khach: '📱',
+  van_phong: '🏢', vu_tru: '🚀', cua_hang: '🛍️',
 }
 
 export async function vietLoiThoai(bai: { tieu_de_anh: string; noi_dung: string; nguon_ten: string }): Promise<LoiThoai | null> {
@@ -365,6 +372,7 @@ async function vietLoiThoaiMotLan(bai: { tieu_de_anh: string; noi_dung: string; 
               chu: { type: 'string' },
               cam_xuc: { type: 'string', enum: [...CAM_XUC] },
               boi_canh: { type: 'string', enum: [...BOI_CANH] },
+              dao_cu: { type: 'string', enum: [...DAO_CU] },
               bang: {
                 type: 'object',
                 properties: { bieu_tuong: { type: 'string' }, chu: { type: 'string' } },
@@ -372,7 +380,7 @@ async function vietLoiThoaiMotLan(bai: { tieu_de_anh: string; noi_dung: string; 
                 additionalProperties: false,
               },
             },
-            required: ['ai', 'chu', 'cam_xuc', 'boi_canh', 'bang'],
+            required: ['ai', 'chu', 'cam_xuc', 'boi_canh', 'dao_cu', 'bang'],
             additionalProperties: false,
           },
         },

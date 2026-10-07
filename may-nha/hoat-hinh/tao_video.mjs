@@ -256,7 +256,7 @@ loi.forEach((l, i) => {
   const doanPd = []
   let dong = [], hien = []
   for (const w of tu) {
-    if (hien.length && [...hien, w].join(' ').length > 24) {
+    if (hien.length && [...hien, w].join(' ').length > 28) {
       dong.push(hien)
       hien = [w]
       if (dong.length === 2) {
@@ -569,12 +569,13 @@ const trang = `<!doctype html>
       #o-robot { right: -30px; }
       .nv { display: block; overflow: visible; }
       #meo-mieng-mo, #robot-mieng-mo { opacity: 0; }
-      /* Phụ đề sát đáy, nền mờ dần thay cho khung đen để không che nhân vật */
-      .phu-de { top: auto; height: 420px; display: flex; align-items: flex-end; justify-content: center; padding: 0 40px 120px; box-sizing: border-box; background: linear-gradient(transparent, #000000a6 60%); }
-      .pd-khung { display: flex; flex-direction: column; align-items: center; gap: 6px; }
-      .pd-ten { font-size: 30px; font-weight: 700; padding: 6px 20px; border-radius: 999px; margin-bottom: 6px; background: #f59e0b; color: #1c1917; }
+      /* Phụ đề nằm trên vùng an toàn của TikTok: ~420px dưới cùng là tên kênh / mô tả / nhạc, ~130px bên phải là cột nút
+         (tim, bình luận, chia sẻ) nên chữ đặt cao hơn đáy 430px và lệch trái một chút. Nền mờ dần chỉ quanh dòng chữ. */
+      .phu-de { top: auto; height: 680px; display: flex; align-items: flex-end; justify-content: center; padding: 0 130px 430px 40px; box-sizing: border-box; background: linear-gradient(transparent 20%, #00000080 52%, #00000080 72%, transparent 92%); }
+      .pd-khung { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+      .pd-ten { font-size: 25px; font-weight: 700; padding: 5px 16px; border-radius: 999px; margin-bottom: 4px; background: #f59e0b; color: #1c1917; }
       .pd-ten.robot { background: #22d3ee; color: #082f49; }
-      .pd-dong { font-size: 62px; font-weight: 700; line-height: 1.2; white-space: nowrap; text-shadow: 0 0 6px #000, 0 4px 0 #000, 3px 3px 0 #000, -3px 3px 0 #000, 3px -3px 0 #000, -3px -3px 0 #000; }
+      .pd-dong { font-size: 48px; font-weight: 700; line-height: 1.2; white-space: nowrap; text-shadow: 0 0 5px #000, 0 3px 0 #000, 2.5px 2.5px 0 #000, -2.5px 2.5px 0 #000, 2.5px -2.5px 0 #000, -2.5px -2.5px 0 #000; }
       .pd-tu { display: inline-block; color: #fff; }
     </style>
   </head>

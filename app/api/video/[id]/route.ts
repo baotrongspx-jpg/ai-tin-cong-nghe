@@ -20,7 +20,7 @@ export async function GET(req: Request, ctx: RouteContext<'/api/video/[id]'>) {
       (e) => new Response(e instanceof Error ? e.message : 'Dựng video lỗi', { status: 503 }),
     )
   try {
-    return Response.json({ url: await linkVideoBai(bai) }, { headers: { 'Cache-Control': 'private, no-store' } })
+    return Response.json(await linkVideoBai(bai), { headers: { 'Cache-Control': 'private, no-store' } })
   } catch (e) {
     return new Response(e instanceof Error ? e.message : 'Dựng video lỗi', { status: 500 })
   }

@@ -188,21 +188,22 @@ export async function dungSanVideoBai(bai: BaiViet) {
 // Xem trước: link tạm (1 giờ) tải thẳng video từ kho, vì Vercel chỉ cho trả tối đa 4,5 MB mỗi lần
 export async function linkVideoBai(bai: BaiViet) {
   let ten = tenTep(bai)
-  if (!(await daCoVideo(bai, ten))) ten = (await dungVaLuu(bai, ten, false, true)).ten
+  let buoc: Record<string, number> | null = null
+  if (!(await daCoVideo(bai, ten))) ({ ten, buoc } = await dungVaLuu(bai, ten, false, true))
   const { data, error } = await db().storage.from(KHO).createSignedUrl(ten, 3600)
   if (error || !data) throw new Error(`Không tạo được link video: ${error?.message ?? 'lỗi'}`)
-  return data.signedUrl
+  return { url: data.signedUrl, buoc }
 }
 
 // `batBuocLuu`: lưu được mới thôi (xem trước cần link từ kho). Video đọc bằng giọng dự phòng lưu tên "-tam",
 // lần sau không khớp tên chính nên dựng lại bằng giọng chính.
 async function dungVaLuu(bai: BaiViet, ten: string, chiGiongChinh = false, batBuocLuu = false) {
-  const { video, luu } = await dungVideo(bai, chiGiongChinh)
+  const { video, luu, buoc } = await dungVideo(bai, chiGiongChinh)
   const tenLuu = luu ? ten : ten.replace(/.mp4$/, '-tam.mp4')
   const viec = luuVideo(bai, tenLuu, video)
   if (batBuocLuu) await viec
   else await viec.catch((e) => console.error('Không lưu được video TikTok:', e))
-  return { video, ten: tenLuu }
+  return { video, ten: tenLuu, buoc }
 }
 
 // WAV → MP3 nhỏ gọn (giọng mẫu để nghe thử)
@@ -219,6 +220,13 @@ export async function wavSangMp3(wav: Buffer) {
 
 // Dựng video MP4 (H.264 + AAC) lồng tiếng AI cho một bài
 async function dungVideo(bai: BaiViet, chiGiongChinh = false) {
+  // Thời gian từng bước (giây), trả kèm link xem trước để biết chậm ở đâu
+  const buoc: Record<string, number> = {}
+  let luc = Date.now()
+  const ghi = (ten: string) => {
+    buoc[ten] = (Date.now() - luc) / 1000
+    luc = Date.now()
+  }
   const chu = chuDeDoc(bai)
   if (!chu) throw new Error('Bài không có chữ để đọc')
   const cau = tachCau(chu)
@@ -227,6 +235,7 @@ async function dungVideo(bai: BaiViet, chiGiongChinh = false) {
     veAnhBai(bai).then(async (r) => Buffer.from(await r.arrayBuffer())),
   ])
   const tong = doDaiWav(wav)
+  ghi('giong_va_anh')
 
   const thuMuc = await mkdtemp(join(tmpdir(), 'video-'))
   try {
@@ -259,6 +268,7 @@ async function dungVideo(bai: BaiViet, chiGiongChinh = false) {
           }),
         )
       : [khung]
+    ghi('phu_de')
     const ds = (lich.length ? lich : [{ giay: tong + DUOI }]).map((d, i) => `file 'f${i}.jpg'\nduration ${d.giay.toFixed(3)}`)
     ds.push(`file 'f${khungHinh.length - 1}.jpg'`) // concat cần nhắc lại khung cuối để giữ đúng thời lượng
 
@@ -275,14 +285,15 @@ async function dungVideo(bai: BaiViet, chiGiongChinh = false) {
         '-map', '0:v', '-map', '1:a',
         '-af', `apad=pad_dur=${DUOI}`,
         '-t', (tong + DUOI).toFixed(2),
-        '-c:v', 'libx264', '-preset', 'veryfast', '-tune', 'stillimage', '-crf', '23', '-pix_fmt', 'yuv420p', '-r', '24', '-g', '48',
+        '-c:v', 'libx264', '-preset', 'ultrafast', '-tune', 'stillimage', '-crf', '23', '-pix_fmt', 'yuv420p', '-r', '24', '-g', '48',
         '-c:a', 'aac', '-b:a', '128k', '-ar', '44100',
         '-movflags', '+faststart',
         'video.mp4',
       ],
       thuMuc,
     )
-    return { video: await readFile(join(thuMuc, 'video.mp4')), luu }
+    ghi('ffmpeg')
+    return { video: await readFile(join(thuMuc, 'video.mp4')), luu, buoc }
   } finally {
     await rm(thuMuc, { recursive: true, force: true }).catch(() => {})
   }

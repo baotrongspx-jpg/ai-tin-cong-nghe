@@ -7,15 +7,15 @@ import { ghepHashtagTikTok, urlAnh } from '@/lib/chuThich'
 import { gio, truoc } from '@/lib/thoiGian'
 import { GIONG, MO_TA_GIONG } from '@/lib/dsGiong'
 import { dichLoiTikTok } from '@/lib/loiTikTok'
-import { boDanhDauTikTok, dangCaHai, dangTikTok } from '@/app/actions'
+import { boDanhDauTikTok, dangCaHai, dangTikTok, xoaBai } from '@/app/actions'
 import { thongBao } from '@/app/ThongBao'
 import KhungHenGio from '@/app/KhungHenGio'
 import { Tags } from '@/app/TheBai'
-import { IconDongHo, IconFacebook, IconLai, IconNhac, IconTikTok, Xoay } from '@/app/BieuTuong'
+import { IconDongHo, IconFacebook, IconLai, IconNhac, IconTikTok, IconXoa, Xoay } from '@/app/BieuTuong'
 import { CotPhai, LuuY, NutQuyetDinh, ThongTinBai } from '@/app/PhanDuyet'
 import { choDungSan, useVideoSan } from './DungSan'
 
-type Viec = 'tt' | 'ca_hai' | 'bo_danh_dau'
+type Viec = 'tt' | 'ca_hai' | 'bo_danh_dau' | 'xoa'
 
 // Nghe thử giọng: mẫu tạo một lần rồi lưu lại, lần sau phát ngay.
 // Một trình phát chung cho cả trang: bấm nghe ở thẻ khác thì bản đang phát tự dừng.
@@ -389,6 +389,18 @@ export default function TheTikTok({
               }}
             />
           )}
+          <NutQuyetDinh
+            mau="do"
+            icon={<IconXoa className="h-5 w-5" />}
+            ten="Xoá bài"
+            moTa="Xoá hẳn khỏi trang cho nhẹ"
+            disabled={dangLam}
+            dangChay={viec === 'xoa'}
+            onClick={() => {
+              const daLen = bai.fb_post_id || bai.tiktok_publish_id ? '\n\nBài đã đăng trên Facebook / TikTok vẫn giữ nguyên ở đó.' : ''
+              if (confirm(`Xoá hẳn bài "${bai.tieu_de_anh}" khỏi trang? Không khôi phục được.${daLen}`)) chay('xoa', () => xoaBai(bai.id), 'Đã xoá bài')
+            }}
+          />
         </section>
         <LuuY>Nghe thử giọng và xem trước video trước khi đăng. Máy đọc giọng lâu không dùng sẽ ngủ, lần đầu có thể chờ thêm 1–2 phút.</LuuY>
       </CotPhai>

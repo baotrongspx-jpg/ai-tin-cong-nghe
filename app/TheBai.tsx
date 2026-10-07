@@ -5,13 +5,14 @@ import type { BaiViet } from '@/lib/db'
 import { BANG_MAU } from '@/lib/bangMau'
 import { taoChuThich, tachHashtag, urlAnh } from '@/lib/chuThich'
 import { gio, truoc } from '@/lib/thoiGian'
-import { dangBai, dangCaHai, doiMauAnh, doiTrangThai, luuBai, type NoiHen } from './actions'
+import { dangBai, dangCaHai, doiMauAnh, doiTrangThai, luuBai, xoaBai, type NoiHen } from './actions'
 import { thongBao } from './ThongBao'
 import KhungHenGio from './KhungHenGio'
 import ChonAnhNen from './ChonAnhNen'
 import { CotPhai, LuuY, NutQuyetDinh, ThongTinBai } from './PhanDuyet'
 import {
   IconBoQua,
+  IconXoa,
   IconBut,
   IconChep,
   IconDongHo,
@@ -25,7 +26,7 @@ import {
   Xoay,
 } from './BieuTuong'
 
-type Viec = 'fb' | 'ca_hai' | 'luu' | 'mau' | 'trang_thai'
+type Viec = 'fb' | 'ca_hai' | 'luu' | 'mau' | 'trang_thai' | 'xoa'
 
 const NHAN: Record<BaiViet['trang_thai'], { chu: string; mau: string }> = {
   nhap: { chu: 'Chờ duyệt', mau: 'bg-amber-400 text-amber-950' },
@@ -362,6 +363,18 @@ export default function TheBai({
               onClick={() => chay('trang_thai', () => doiTrangThai(bai.id, 'nhap'), 'Đã đưa về Chờ duyệt')}
             />
           )}
+          <NutQuyetDinh
+            mau="do"
+            icon={<IconXoa className="h-5 w-5" />}
+            ten="Xoá bài"
+            moTa="Xoá hẳn khỏi trang cho nhẹ"
+            disabled={dangLam}
+            dangChay={viec === 'xoa'}
+            onClick={() => {
+              const daLen = bai.fb_post_id || bai.tiktok_publish_id ? '\n\nBài đã đăng trên Facebook / TikTok vẫn giữ nguyên ở đó.' : ''
+              if (confirm(`Xoá hẳn bài "${bai.tieu_de_anh}" khỏi trang? Không khôi phục được.${daLen}`)) chay('xoa', () => xoaBai(bai.id), 'Đã xoá bài')
+            }}
+          />
         </section>
         <LuuY>Kiểm tra kỹ nội dung, hình ảnh và nguồn tin trước khi đăng. Bài đã đăng thì không sửa được nữa.</LuuY>
       </CotPhai>

@@ -11,6 +11,7 @@ import { daDangNhap, dangNhap, dangXuat } from '@/lib/xacThuc'
 import { tongHopTin, type KetQuaTongHop } from '@/lib/tongHop'
 import { coFacebook, xoaBaiFb } from '@/lib/facebook'
 import { henTikTok, huyHenTikTok } from '@/lib/henGio'
+import { xoaVideoBai } from '@/lib/video'
 import { coTikTok, type TuyChonDang } from '@/lib/tiktok'
 import { dangLenFacebook, dangLenTikTok } from '@/lib/dangBai'
 import { tachHashtag } from '@/lib/chuThich'
@@ -332,6 +333,26 @@ export async function xinLinkNgheNhac(ten: string): Promise<KetQua & { url?: str
   await chanChuaDangNhap()
   try {
     return { ok: true, url: await linkNgheNhac(ten) }
+  } catch (e) {
+    return { ok: false, loi: e instanceof Error ? e.message : String(e) }
+  }
+}
+
+// Xoá hẳn bài khỏi trang: huỷ lịch hẹn chưa tới giờ (TikTok, Facebook) để bài không tự đăng sau đó, xoá video + giọng đọc
+// trong kho, rồi xoá dòng dữ liệu. Bài đã đăng trên Facebook / TikTok vẫn giữ nguyên ở đó.
+export async function xoaBai(id: string): Promise<KetQua> {
+  await chanChuaDangNhap()
+  const { data: bai } = await db().from('bai_viet').select('*').eq('id', id).maybeSingle<BaiViet>()
+  if (!bai) return { ok: false, loi: 'Không tìm thấy bài' }
+  try {
+    await huyHenTikTok(id).catch(() => {})
+    // Facebook hẹn giờ mà chưa tới giờ: xoá bài chờ đăng trên Fanpage
+    if (bai.fb_post_id && bai.dang_luc && new Date(bai.dang_luc).getTime() > Date.now()) await xoaBaiFb(bai.fb_post_id).catch(() => {})
+    await xoaVideoBai(id).catch(() => {})
+    const { error } = await db().from('bai_viet').delete().eq('id', id)
+    if (error) return { ok: false, loi: error.message }
+    lamMoi()
+    return { ok: true }
   } catch (e) {
     return { ok: false, loi: e instanceof Error ? e.message : String(e) }
   }

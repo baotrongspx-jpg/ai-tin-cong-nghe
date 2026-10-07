@@ -400,12 +400,18 @@ export async function xoaVideoBai(baiId: string) {
 }
 
 // Lưới an toàn (lịch tự đăng): xoá video còn sót của các bài đã lên TikTok (vd video dựng sẵn gửi lên sau khi đã đăng)
+// và của các bài đã bị xoá khỏi trang
 export async function donKhoDaDang() {
   const { data: thuMuc } = await db().storage.from(KHO).list('', { limit: 1000 })
   const ids = (thuMuc ?? []).map((f) => f.name).filter((n) => /^[0-9a-f-]{36}$/i.test(n))
   if (!ids.length) return 0
-  const { data } = await db().from('bai_viet').select('id').in('id', ids).not('tiktok_publish_id', 'is', null)
+  const [{ data: daDang }, { data: conLai }] = await Promise.all([
+    db().from('bai_viet').select('id').in('id', ids).not('tiktok_publish_id', 'is', null),
+    db().from('bai_viet').select('id').in('id', ids),
+  ])
+  const con = new Set(((conLai ?? []) as { id: string }[]).map((b) => b.id))
+  const xoa = [...((daDang ?? []) as { id: string }[]).map((b) => b.id), ...ids.filter((id) => !con.has(id))]
   let so = 0
-  for (const { id } of (data ?? []) as { id: string }[]) so += await xoaVideoBai(id).catch(() => 0)
+  for (const id of xoa) so += await xoaVideoBai(id).catch(() => 0)
   return so
 }

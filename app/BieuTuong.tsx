@@ -44,6 +44,7 @@ export const IconBinhLuan = ({ className }: P) => svg(<path d="M21 12a8 8 0 0 1-
 export const IconHop = ({ className }: P) => svg(<><path d="M4 13V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v7" /><path d="M4 13h4l1.5 3h5L16 13h4v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z" /></>, className)
 export const IconDongHo = ({ className }: P) => svg(<><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>, className)
 export const IconLich = ({ className }: P) => svg(<><rect x="4" y="5" width="16" height="15" rx="2" /><path d="M8 3v4M16 3v4M4 10h16" /></>, className)
+export const IconXoa = ({ className }: P) => svg(<><path d="M4 7h16" /><path d="M10 11v6M14 11v6" /><path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12" /><path d="M9 7V4h6v3" /></>, className)
 export const IconBoQua = ({ className }: P) => svg(<><path d="m5 6 6 6-6 6" /><path d="m13 6 6 6-6 6" /></>, className)
 export const IconCanhBao = ({ className }: P) => svg(<><path d="M12 3 2 20h20Z" /><path d="M12 10v4M12 17h.01" /></>, className)
 export const IconAn = ({ className }: P) =>

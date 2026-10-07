@@ -16,7 +16,7 @@ const vaoRa = (id, t0, d) => [
 export const MINH_HOA = {
   // Con số lớn: "30 tuổi", "1 tỷ USD", "tăng 200%"
   so_lieu: (id, m) => ({
-    html: `<div class="mh-khung mh-so"><div class="mh-vong" id="${id}-vong"></div><div class="mh-so-lon${String(m.chu_chinh ?? '').length > 9 ? ' dai' : ''}">${esc(m.chu_chinh)}</div><div class="mh-phu">${esc(m.chu_phu)}</div></div>`,
+    html: `<div class="mh-khung mh-so"><div class="mh-vong" id="${id}-vong"></div><div class="mh-so-lon${String(m.chu_chinh ?? '').length > 6 ? ' dai' : ''}">${esc(m.chu_chinh)}</div><div class="mh-phu">${esc(m.chu_phu)}</div></div>`,
     tw: (t0, d) => [
       ...vaoRa(id, t0, d),
       `tl.fromTo("#${id}-vong", { scale: 0.4, opacity: 0.9 }, { scale: 1.6, opacity: 0, duration: 0.9, ease: "power2.out" }, ${f(t0 + 0.15)});`,
@@ -85,32 +85,36 @@ export function mocMoDau(moc, giay) {
 }
 
 export const CSS_MINH_HOA = `
-      .mh { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding-bottom: 260px; box-sizing: border-box; background: radial-gradient(circle at 50% 45%, #0f172acc, #020617f2 75%); opacity: 0; }
-      .mh-khung { display: flex; flex-direction: column; align-items: center; gap: 22px; text-align: center; max-width: 900px; }
-      .mh-phu { font-size: 44px; font-weight: 500; color: #cbd5e1; max-width: 900px; }
+      /* Thẻ minh hoạ nhỏ trên đầu người nói (đuôi nhọn chỉ xuống như bong bóng thoại), không phủ tối, không che nhân vật */
+      .mh { position: absolute; width: 480px; height: 330px; display: flex; align-items: flex-end; justify-content: center; opacity: 0; }
+      .mh-khung { position: relative; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; max-width: 480px; padding: 18px 26px 20px; border-radius: 30px; background: #0f172aeb; border: 4px solid #facc15; box-shadow: 0 18px 40px #0009; box-sizing: border-box; transform-origin: 50% 100%; }
+      .mh-khung::after { content: ''; position: absolute; left: 50%; bottom: -22px; margin-left: -18px; border: 18px solid transparent; border-top-color: #facc15; border-bottom: 0; }
+      .mh-phu { font-size: 28px; font-weight: 500; color: #cbd5e1; line-height: 1.2; }
       .mh-so { position: relative; }
-      .mh-vong { position: absolute; left: 50%; top: 50%; width: 520px; height: 520px; margin: -300px 0 0 -260px; border-radius: 50%; border: 14px solid #facc15; }
-      .mh-so-lon.dai { font-size: 128px; }
-      .mh-so-lon { display: block; font-size: 200px; font-weight: 700; line-height: 1; color: #facc15; text-shadow: 0 0 40px #facc1599, 0 10px 0 #a16207; }
-      .mh-ban-do svg { display: block; border-radius: 40px; box-shadow: 0 30px 80px #0009; }
-      .mh-ten-noi { font-size: 72px; font-weight: 700; color: #fff; }
-      .mh-trich { position: relative; padding: 70px 60px 50px; border-radius: 48px; background: #f8fafc; color: #0f172a; box-shadow: 0 30px 80px #0009; }
+      .mh-vong { position: absolute; left: 50%; top: 50%; width: 260px; height: 260px; margin: -150px 0 0 -130px; border-radius: 50%; border: 8px solid #facc15; }
+      .mh-so-lon.dai { font-size: 58px; white-space: nowrap; }
+      .mh-so-lon { display: block; font-size: 104px; font-weight: 700; line-height: 1; color: #facc15; text-shadow: 0 0 24px #facc1599, 0 6px 0 #a16207; }
+      .mh-ban-do svg { display: block; width: 360px; height: 234px; border-radius: 20px; }
+      .mh-ten-noi { font-size: 42px; font-weight: 700; color: #fff; }
+      .mh-trich { background: #f8fafc; color: #0f172a; border-color: #f43f5e; padding-top: 30px; }
+      .mh-trich::after { border-top-color: #f43f5e; }
       .mh-trich .mh-phu { color: #475569; }
-      .mh-ngoac { position: absolute; left: 30px; top: -70px; font-size: 220px; line-height: 1; color: #f43f5e; font-family: Georgia, serif; }
-      .mh-loi { font-size: 64px; font-weight: 700; line-height: 1.25; }
-      .mh-bt { position: relative; }
-      .mh-tia { position: absolute; left: 50%; top: 170px; width: 900px; height: 900px; margin: -450px 0 0 -450px; background: repeating-conic-gradient(#facc1533 0deg 12deg, transparent 12deg 30deg); border-radius: 50%; }
-      .mh-emoji { position: relative; display: block; font-size: 300px; line-height: 1; font-family: "Emoji", sans-serif; filter: drop-shadow(0 20px 40px #000a); }
-      .mh-nhan { position: relative; font-size: 78px; font-weight: 700; color: #fff; text-shadow: 0 6px 0 #000; }
-      .mh-ss { flex-direction: row; align-items: stretch; gap: 26px; }
-      .mh-cot { display: flex; flex-direction: column; justify-content: center; gap: 16px; width: 400px; min-height: 420px; padding: 36px 28px; border-radius: 40px; box-sizing: border-box; }
+      .mh-ngoac { position: absolute; left: 14px; top: -38px; font-size: 110px; line-height: 1; color: #f43f5e; font-family: Georgia, serif; }
+      .mh-loi { font-size: 36px; font-weight: 700; line-height: 1.22; }
+      .mh-bt { position: relative; overflow: hidden; }
+      .mh-tia { position: absolute; left: 50%; top: 80px; width: 460px; height: 460px; margin: -230px 0 0 -230px; background: repeating-conic-gradient(#facc1530 0deg 12deg, transparent 12deg 30deg); border-radius: 50%; }
+      .mh-emoji { position: relative; display: block; font-size: 120px; line-height: 1; font-family: "Emoji", sans-serif; filter: drop-shadow(0 10px 18px #000a); }
+      .mh-nhan { position: relative; font-size: 42px; font-weight: 700; color: #fff; }
+      .mh-ss { flex-direction: row; align-items: stretch; gap: 10px; padding: 14px; }
+      .mh-cot { display: flex; flex-direction: column; justify-content: center; gap: 6px; width: 180px; min-height: 180px; padding: 14px 10px; border-radius: 22px; box-sizing: border-box; }
       .mh-cot.a { background: linear-gradient(160deg, #2563eb, #1e3a8a); }
       .mh-cot.b { background: linear-gradient(160deg, #e11d48, #881337); }
-      .mh-cot-ten { font-size: 64px; font-weight: 700; line-height: 1.15; }
-      .mh-cot-phu { font-size: 40px; font-weight: 500; color: #e2e8f0; }
-      .mh-vs { display: flex; align-items: center; font-size: 90px; font-weight: 700; color: #facc15; text-shadow: 0 6px 0 #000; }
-      .moc { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 30px; padding: 0 60px 280px; box-sizing: border-box; background: radial-gradient(circle, #00000066, #000000d9 80%); opacity: 0; }
-      .moc-bt { display: block; font-size: 200px; line-height: 1; font-family: "Emoji", sans-serif; }
-      .moc-chu { font-size: 104px; font-weight: 700; line-height: 1.12; text-align: center; text-transform: uppercase; }
-      .moc-tu { display: inline-block; color: #fff; text-shadow: 0 0 10px #000, 0 8px 0 #e11d48; }
+      .mh-cot-ten { font-size: 32px; font-weight: 700; line-height: 1.15; }
+      .mh-cot-phu { font-size: 22px; font-weight: 500; color: #e2e8f0; }
+      .mh-vs { display: flex; align-items: center; font-size: 44px; font-weight: 700; color: #facc15; text-shadow: 0 4px 0 #000; }
+      /* Câu giật tít: dải chữ lớn ở vùng trên cùng, không phủ tối nhân vật */
+      .moc { position: absolute; left: 0; right: 0; top: 210px; height: 420px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 0 50px; box-sizing: border-box; opacity: 0; }
+      .moc-bt { display: block; font-size: 110px; line-height: 1; font-family: "Emoji", sans-serif; }
+      .moc-chu { font-size: 84px; font-weight: 700; line-height: 1.1; text-align: center; text-transform: uppercase; }
+      .moc-tu { display: inline-block; color: #fff; text-shadow: 0 0 8px #000, 0 0 2px #000, 0 7px 0 #e11d48; }
 `

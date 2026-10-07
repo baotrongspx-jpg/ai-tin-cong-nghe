@@ -23,7 +23,7 @@ font + `gsap.min.js` trong `hyperframes/assets/`, rồi chạy `tao_video.mjs` v
 | Bối cảnh | `boiCanh.mjs` | Thêm hàm trả `{ svg, tw }` (mặt sàn từ y≈1180); thêm tên + mô tả khi nào dùng vào `BOI_CANH` và lời dặn AI (`lib/ai.ts`) |
 | Đạo cụ | `tao_video.mjs` (`DAO_CU`) | Thêm `ten: 'emoji'` + tên vào `DAO_CU` (`lib/ai.ts`) |
 | Cử chỉ theo cảm xúc | `tao_video.mjs` (`CU_CHI`) | Thêm hàm `(p, t0) => [tween...]` dùng tiền tố bộ phận `p`; thêm tên vào `CAM_XUC` (`lib/ai.ts`) |
-| Minh hoạ chèn theo chi tiết | `minhHoa.mjs` (`MINH_HOA`) | Thêm hàm `(id, m) => { html, tw }` + CSS trong `CSS_MINH_HOA`; thêm tên + khi nào dùng vào `MINH_HOA` (`lib/ai.ts`) |
+| Minh hoạ chèn theo chi tiết (thẻ nhỏ trên đầu người nói) | `minhHoa.mjs` (`MINH_HOA`) | Thêm hàm `(id, m) => { html, tw }` + CSS trong `CSS_MINH_HOA`; thêm tên + khi nào dùng vào `MINH_HOA` (`lib/ai.ts`) |
 | Chuyển cảnh | `tao_video.mjs` (`KIEU_CHUYEN`) | Thêm nhánh xử lý theo tên kiểu |
 | Câu giật tít mở đầu | `minhHoa.mjs` (`mocMoDau`) | |
 

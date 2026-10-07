@@ -460,6 +460,14 @@ const hat = [...Array(16)].map((_, k) => {
 const gtMoc = Math.min(2.2, batDau[0] + doDai[0])
 const giatTit = mocMoDau(moc, gtMoc)
 tw.push(...giatTit.tw)
+// Bảng tin câu đầu nhường chỗ cho câu giật tít
+if (giatTit.html) {
+  tw.push(`tl.set("#bang0", { opacity: 0 }, 0);`)
+  tw.push(`tl.to("#bang0", { opacity: 1, duration: 0.3 }, ${f(gtMoc)});`)
+}
+// Thẻ minh hoạ nằm ngay trên đầu người nói (toạ độ trong lớp nhân vật nên đi theo máy quay)
+const DAU = { meo: { x: 290, dinh: 715 }, robot: { x: 790, dinh: 715 } }
+const DAU_PHU = { x: 540, dinh: 520 }
 const minhHoa = []
 loi.forEach((l, i) => {
   const m = l.minh_hoa
@@ -476,7 +484,12 @@ loi.forEach((l, i) => {
   const id = `mh${i}`
   const mh = ve(id, m)
   tw.push(...mh.tw(bd, kt - bd))
-  minhHoa.push(`<div id="${id}" class="mh">${mh.html}</div>`)
+  const dau = laPhu(l.ai) ? DAU_PHU : DAU[l.ai === 'meo' ? 'meo' : 'robot']
+  const trai = Math.min(Math.max(dau.x - 240, 10), 1080 - 490)
+  minhHoa.push(`<div id="${id}" class="mh" style="left:${trai}px;top:${dau.dinh - 345}px">${mh.html}</div>`)
+  // Bảng tin của câu tạm ẩn trong lúc thẻ minh hoạ hiện
+  tw.push(`tl.to("#bang${i}", { opacity: 0, duration: 0.15 }, ${f(bd)});`)
+  tw.push(`tl.to("#bang${i}", { opacity: 1, duration: 0.25 }, ${f(kt)});`)
 })
 
 // Bảng tin phía sau đổi theo lời thoại
@@ -557,10 +570,11 @@ const trang = `<!doctype html>
           <div id="o-meo" class="o-nv">${meoSvg}</div>
           <div id="o-robot" class="o-nv">${robotSvg}</div>
           ${daoCu.join('')}
+          ${minhHoa.join('')}
         </div>
       </div>
       <div id="vien-toi" class="clip" data-start="0" data-duration="${f(TONG)}" data-track-index="5"></div>
-      <div id="lop-minh-hoa" class="clip" data-start="0" data-duration="${f(TONG)}" data-track-index="7">${minhHoa.join('')}${giatTit.html}</div>${phuDe.join('')}
+      <div id="lop-minh-hoa" class="clip" data-start="0" data-duration="${f(TONG)}" data-track-index="7">${giatTit.html}</div>${phuDe.join('')}
       ${amThanh.join('\n      ')}
     </div>
     <script>

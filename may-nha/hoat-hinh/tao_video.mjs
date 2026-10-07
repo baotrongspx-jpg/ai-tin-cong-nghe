@@ -336,7 +336,7 @@ const nenCanh = doanCanh.map((dc, k) => {
     } else if (kieu === 'xuyen') {
       // Xuyên qua: máy quay lao vào cảnh cũ rồi bước ra cảnh mới
       tw.push(`tl.to("${truoc}", { scale: 2.4, opacity: 0, duration: 0.45, ease: "power3.in" }, ${f(t0 - 0.1)});`)
-      tw.push(`tl.fromTo("#bc${k}", { opacity: 0, scale: 0.82 }, { opacity: 1, scale: 1, duration: 0.5, ease: "power3.out" }, ${f(t0 + 0.2)});`)
+      tw.push(`tl.fromTo("#bc${k}", { opacity: 0, scale: 1.18 }, { opacity: 1, scale: 1, duration: 0.5, ease: "power3.out" }, ${f(t0 + 0.2)});`)
     } else {
       // Tối dần kiểu điện ảnh: khung tối lại, đổi cảnh trong bóng tối, sáng lên cảnh mới
       tw.push(`tl.to("#toi-chuyen", { opacity: 0.85, duration: 0.3, ease: "power1.in" }, ${f(t0 - 0.05)});`)
@@ -359,8 +359,15 @@ const lia = (t, scale, ox, oy, giay, ease = 'power2.inOut', xoay = 0) => {
   const x = scale === 1 ? 0 : -(ox - 540) * scale
   const y = scale === 1 ? 0 : -(oy - 960) * scale
   tw.push(`tl.to("#camera-nv", { scale: ${f(scale)}, x: ${f(x)}, y: ${f(y)}, rotation: ${f(xoay)}, duration: ${f(giay)}, ease: "${ease}" }, ${f(t)});`)
-  tw.push(`tl.to("#camera-nen", { scale: ${f(1 + (scale - 1) * SAU_NEN)}, x: ${f(x * SAU_NEN)}, y: ${f(y * SAU_NEN)}, rotation: ${f(xoay * SAU_NEN)}, duration: ${f(giay)}, ease: "${ease}" }, ${f(t)});`)
+  // Nền luôn phủ kín khung: phóng thêm cho mép mờ (blur) và góc nghiêng, rồi giới hạn độ dịch để mép nền không lộ thành sọc
+  const xn = xoay * SAU_NEN
+  const sn = (1 + (scale - 1) * SAU_NEN) * (1.03 + Math.abs(xn) * 0.035)
+  const kep = (v, du) => Math.max(-du, Math.min(du, v))
+  const nx = kep(x * SAU_NEN, (RONG * sn - RONG) / 2 - 8)
+  const ny = kep(y * SAU_NEN, (CAO * sn - CAO) / 2 - 8)
+  tw.push(`tl.to("#camera-nen", { scale: ${f(sn)}, x: ${f(nx)}, y: ${f(ny)}, rotation: ${f(xn)}, duration: ${f(giay)}, ease: "${ease}" }, ${f(t)});`)
 }
+tw.push(`gsap.set("#camera-nen", { scale: 1.03 });`)
 // ── Nhân vật phụ (AI chọn khi lời thoại nhắc tới): đứng phía sau giữa hai nhân vật chính, vẫy tay / gật đầu ─
 const daGioiThieu = new Set()
 const gioiThieu = new Set() // câu có nhân vật phụ lần đầu xuất hiện → máy quay quay sang giới thiệu
@@ -435,6 +442,12 @@ loi.forEach((l, i) => {
     lia(t0 + 0.4, s + (i % 3 ? 0.04 : -0.03), ox + (i % 2 ? 20 : -20), 980, conLai, 'sine.inOut')
   }
   if (lui) lia(t0 + d - lui, 1, 540, 960, lui, 'power2.inOut')
+  // Cận cảnh một nhân vật chính: người nghe lùi hẳn ra ngoài khung (không lộ một lát mỏng ở mép màn hình như vệt sọc),
+  // cảnh rộng / cảnh vừa / có nhân vật phụ thì về chỗ cũ. Dùng xPercent để không đụng độ dịch x của các chuyển động khác.
+  const canCanh = !laPhu(l.ai) && !gioiThieu.has(i) && i > 0 && i < loi.length - 1 && ['bat_ngo', 'lo_lang', 'vui', 'suy_nghi'].includes(l.cam_xuc)
+  tw.push(`tl.to("#o-${nghe}", { xPercent: ${canCanh ? (nghe === 'robot' ? 45 : -45) : 0}, duration: 0.55, ease: "power2.inOut" }, ${f(Math.max(0, t0 - 0.2))});`)
+  tw.push(`tl.to("#o-${nghe === 'robot' ? 'meo' : 'robot'}", { xPercent: 0, duration: 0.55, ease: "power2.inOut" }, ${f(Math.max(0, t0 - 0.2))});`)
+  if (canCanh && lui) tw.push(`tl.to("#o-${nghe}", { xPercent: 0, duration: ${f(lui)}, ease: "power2.inOut" }, ${f(t0 + d - lui)});`)
   // Nhịp giữa câu dài: người nghe gật đầu, đạo cụ / biểu cảm đã lo phần đầu câu
   if (d > 4.5) tw.push(`tl.to("#${nghe}-dau", { rotation: 6, duration: 0.2, yoyo: true, repeat: 3, ease: "sine.inOut" }, ${f(t0 + d / 2)});`)
 })

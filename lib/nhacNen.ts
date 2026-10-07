@@ -16,10 +16,13 @@ export async function dsNhac() {
 }
 
 // Cài đặt nhạc nền (bảng cai_dat): âm lượng chung (% so với giọng đọc) + lựa chọn riêng từng bài
-// (tên bản nhạc, hoặc 'khong' = không nhạc; không có thì tự chọn theo mã bài)
+// (bản nhạc: tên, hoặc 'khong' = không nhạc, không có thì tự chọn theo mã bài; âm lượng riêng, không có thì theo mức chung).
+// Video lưu trong kho KHÔNG có nhạc: xem trước thì trình duyệt phát nhạc song song để chỉnh nghe ngay,
+// lúc đăng mới trộn nhạc theo lựa chọn đã lưu (tronNhac, vài giây).
 const KHOA_CAI_DAT = 'nhac_nen'
 export const AM_LUONG_MAC_DINH = 12
-export type CaiDatNhac = { amLuong: number; theoBai: Record<string, string> }
+type ChonRieng = string | { ten: string; amLuong?: number }
+export type CaiDatNhac = { amLuong: number; theoBai: Record<string, ChonRieng> }
 export async function docCaiDatNhac(): Promise<CaiDatNhac> {
   const { data } = await db().from('cai_dat').select('gia_tri').eq('khoa', KHOA_CAI_DAT).maybeSingle()
   const g = (data?.gia_tri ?? {}) as Partial<CaiDatNhac>
@@ -33,28 +36,38 @@ export async function datAmLuongNhac(amLuong: number) {
   const cd = await docCaiDatNhac()
   await luuCaiDatNhac({ ...cd, amLuong: Math.round(Math.min(40, Math.max(0, amLuong))) })
 }
-// `chon`: tên bản nhạc, 'khong' (không nhạc) hoặc 'tu_dong' (bỏ lựa chọn riêng)
-export async function datNhacChoBai(baiId: string, chon: string) {
+// `chon`: tên bản nhạc, 'khong' (không nhạc) hoặc 'tu_dong' (bỏ lựa chọn riêng); `amLuong`: % riêng của bài (bỏ trống = mức chung)
+export async function datNhacChoBai(baiId: string, chon: string, amLuong?: number) {
   const cd = await docCaiDatNhac()
   const theoBai = { ...cd.theoBai }
-  if (chon === 'tu_dong') delete theoBai[baiId]
-  else theoBai[baiId] = chon
+  const muc = amLuong === undefined ? undefined : Math.round(Math.min(40, Math.max(0, amLuong)))
+  if (chon === 'tu_dong' && muc === undefined) delete theoBai[baiId]
+  else theoBai[baiId] = { ten: chon, ...(muc === undefined ? {} : { amLuong: muc }) }
   await luuCaiDatNhac({ ...cd, theoBai })
 }
 
-// Nhạc nền của một video: bản nhạc + âm lượng (cả hai nằm trong mã tên video: đổi nhạc / âm lượng thì dựng lại)
+// Nhạc nền của một video: bản nhạc + âm lượng (% so với giọng đọc)
 export type Nhac = { ten: string; amLuong: number } | null
 
-// Bài có chọn riêng thì theo lựa chọn; không thì cố định một bản theo mã bài để video đã lưu không đổi nhạc
+// Bài có chọn riêng thì theo lựa chọn; không thì cố định một bản theo mã bài
 export async function chonNhac(baiId: string): Promise<Nhac> {
   if (!batNhacNen()) return null
   const [ds, cd] = await Promise.all([dsNhac().catch(() => []), docCaiDatNhac().catch((): CaiDatNhac => ({ amLuong: AM_LUONG_MAC_DINH, theoBai: {} }))])
-  if (!ds.length || cd.amLuong <= 0) return null
-  const rieng = cd.theoBai[baiId]
-  if (rieng === 'khong') return null
-  if (rieng && ds.some((n) => n.ten === rieng)) return { ten: rieng, amLuong: cd.amLuong }
+  if (!ds.length) return null
+  const raw = cd.theoBai[baiId]
+  const rieng = typeof raw === 'string' ? { ten: raw } : raw
+  const amLuong = rieng?.amLuong ?? cd.amLuong
+  if (rieng?.ten === 'khong' || amLuong <= 0) return null
+  if (rieng && ds.some((n) => n.ten === rieng.ten)) return { ten: rieng.ten, amLuong }
   const so = parseInt(createHash('sha256').update(baiId).digest('hex').slice(0, 8), 16)
-  return { ten: ds[so % ds.length].ten, amLuong: cd.amLuong }
+  return { ten: ds[so % ds.length].ten, amLuong }
+}
+
+// Lựa chọn đang lưu của một bài, để trang hiện đúng ô chọn ('tu_dong' / 'khong' / tên bản) và âm lượng riêng
+export function luaChonCuaBai(cd: CaiDatNhac, baiId: string) {
+  const raw = cd.theoBai[baiId]
+  const rieng = typeof raw === 'string' ? { ten: raw } : raw
+  return { chon: rieng?.ten ?? 'tu_dong', amLuong: rieng?.amLuong ?? cd.amLuong }
 }
 
 export async function taiNhac(ten: string) {

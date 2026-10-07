@@ -12,7 +12,7 @@ import XuHuong from './XuHuong'
 import TheTikTok from './TheTikTok'
 import DungSan from './DungSan'
 import NhacNen from './NhacNen'
-import { AM_LUONG_MAC_DINH, batNhacNen, docCaiDatNhac, dsNhac, type CaiDatNhac } from '@/lib/nhacNen'
+import { AM_LUONG_MAC_DINH, batNhacNen, docCaiDatNhac, dsNhac, luaChonCuaBai, type CaiDatNhac } from '@/lib/nhacNen'
 import { coVieNeu } from '@/lib/giongDoc'
 
 // Nút "Tổng hợp ngay" ở đầu trang chạy AI trong Server Action, cần thời gian dài
@@ -148,7 +148,7 @@ export default async function TrangTikTok({ searchParams }: PageProps<'/tiktok'>
                 hen={hen[b.id] ?? null}
                 gioVang={vang}
                 taiKhoan={taiKhoan && { khoaBinhLuan: taiKhoan.comment_disabled }}
-                nhac={{ ds: nhac.map((n) => n.ten), chon: caiDatNhac.theoBai[b.id] ?? 'tu_dong' }}
+                nhac={{ ds: nhac.map((n) => n.ten), ...luaChonCuaBai(caiDatNhac, b.id) }}
               />
             ))}
             {tong > dsBai.length && (

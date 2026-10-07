@@ -101,14 +101,14 @@ export default function NhacNen({ ds, bat, amLuong }: { ds: { ten: string; kichT
             onClick={() =>
               startTransition(async () => {
                 const kq = await luuAmLuongNhac(mucAm)
-                thongBao(kq.ok ? 'ok' : 'loi', kq.ok ? 'Đã lưu âm lượng nhạc. Video mới (và video xem lại) sẽ dựng theo mức này' : (kq.loi ?? 'Có lỗi'))
+                thongBao(kq.ok ? 'ok' : 'loi', kq.ok ? 'Đã lưu âm lượng nhạc. Bài nào chưa chỉnh riêng sẽ trộn theo mức này lúc đăng' : (kq.loi ?? 'Có lỗi'))
               })
             }
             className="btn btn-phu px-3 text-xs"
           >
             Lưu
           </button>
-          <span className="w-full text-xs text-slate-500">Mặc định 12%. Nhạc to hơn ~20% dễ át giọng đọc; đổi mức thì video dựng lại khi xem / đăng.</span>
+          <span className="w-full text-xs text-slate-500">Mặc định 12%. Nhạc to hơn ~20% dễ át giọng đọc. Chỉnh riêng từng bài (nghe ngay cùng video) ở ô Nhạc nền trong thẻ bài.</span>
         </div>
         {dangNghe && <audio src={dangNghe.url} autoPlay controls onEnded={() => setDangNghe(null)} className="w-full" />}
         <input ref={chonTep} type="file" accept="audio/*,.mp3,.m4a,.aac,.wav,.ogg" multiple hidden onChange={(e) => taiLen(e.target.files)} />

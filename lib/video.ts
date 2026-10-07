@@ -11,7 +11,7 @@ import { db, type BaiViet } from './db'
 import { GIONG, GIONG_DU_PHONG } from './dsGiong'
 import { coVieNeu, docBangVieNeu, docThanhGiong, mayNhaTat } from './giongDoc'
 import { batHoatHinh, choHoatHinh, datViecHoatHinh, tenVideoHoatHinh, trangThaiHoatHinh, uuTienHoatHinh, viTriHoatHinh } from './hoatHinh'
-import { chonNhac, maNhac, taiNhac, type Nhac } from './nhacNen'
+import { chonNhac, linkNgheNhac, maNhac, taiNhac, type Nhac } from './nhacNen'
 
 // Video dọc 1080x1920 cho TikTok: ảnh bài ở giữa trên nền mờ, giọng AI đọc bài, phụ đề chạy theo từng đoạn.
 const RONG = 1080
@@ -175,8 +175,15 @@ async function luuVideo(bai: BaiViet, ten: string, video: Buffer) {
 // Video lồng tiếng của bài: lấy bản đã lưu nếu bài chưa đổi, không thì dựng mới rồi lưu lại.
 // Video hoạt hình (lib/hoatHinh.ts) được ưu tiên: đã có thì dùng, chưa có thì nhờ máy nhà dựng và chờ tối đa
 // `choHoatHinh` giây (0: không chờ). Máy nhà tắt / chưa xong / lỗi thì dùng video thường bên dưới.
+// Video để đăng: bản trong kho (không nhạc) + trộn nhạc nền theo lựa chọn đã lưu của bài (tronNhac, vài giây).
 export async function taoVideoBai(bai: BaiViet, { choHoatHinh: cho = 200 }: { choHoatHinh?: number } = {}) {
-  const nhac = await chonNhac(bai.id)
+  const [goc, nhac] = await Promise.all([taoVideoGoc(bai, cho), chonNhac(bai.id)])
+  return tronNhac(goc, nhac).catch((e) => (console.error('Trộn nhạc nền lỗi, đăng không nhạc:', e), goc))
+}
+
+// Bản trong kho (hình + giọng đọc, không nhạc)
+async function taoVideoGoc(bai: BaiViet, cho: number) {
+  const nhac: Nhac = null
   if (batHoatHinh() && !(await mayNhaTat().catch(() => 'lỗi'))) {
     const tenHH = tenVideoHoatHinh(bai, chuDeDoc(bai), nhac)
     try {
@@ -205,7 +212,7 @@ const daCoVideo = async (bai: BaiViet, ten: string) => {
 // Không trả video về cho đỡ tốn băng thông.
 // Video hoạt hình: chỉ đặt việc cho máy nhà rồi thôi (trả 'dang_dung'), không chờ.
 export async function dungSanVideoBai(bai: BaiViet): Promise<'xong' | 'dang_dung'> {
-  const nhac = await chonNhac(bai.id)
+  const nhac: Nhac = null // video trong kho không có nhạc (trộn lúc đăng)
   if (batHoatHinh()) {
     const tat = await mayNhaTat()
     if (tat) throw new Error(tat)
@@ -230,14 +237,22 @@ async function linkVideo(bai: BaiViet, ten: string) {
 }
 
 // Video hoạt hình chưa xong thì trả { dangDung } (trình duyệt hỏi lại sau ít giây); máy nhà tắt / lỗi thì dùng video thường.
-export async function linkVideoBai(bai: BaiViet): Promise<{
+// Xem trước: video trong kho (không nhạc) + link bản nhạc đang chọn để trình duyệt phát cùng, chỉnh âm lượng nghe ngay
+export async function linkVideoBai(bai: BaiViet) {
+  const [kq, nhac] = await Promise.all([linkVideoGoc(bai), chonNhac(bai.id)])
+  if (!kq.url || !nhac) return { ...kq, nhac: null }
+  return { ...kq, nhac: { ...nhac, url: await linkNgheNhac(nhac.ten) } }
+}
+
+async function linkVideoGoc(bai: BaiViet): Promise<{
   url?: string
   urlTai?: string
+  nhac?: { ten: string; amLuong: number; url: string } | null // nhạc đang chọn của bài, trình duyệt phát song song
   dangDung?: { trangThai: 'cho' | 'dang_lam'; truoc?: number; phanTram?: number; buoc?: string }
   buoc?: Record<string, number> | null
   canhBao?: string
 }> {
-  const nhac = await chonNhac(bai.id)
+  const nhac: Nhac = null // video trong kho không có nhạc
   let canhBao: string | undefined
   if (batHoatHinh()) {
     const tat = await mayNhaTat()
@@ -414,4 +429,49 @@ export async function donKhoDaDang() {
   let so = 0
   for (const id of xoa) so += await xoaVideoBai(id).catch(() => 0)
   return so
+}
+
+// Trộn nhạc nền nhỏ dưới giọng đọc vào video có sẵn: chép nguyên hình, chỉ làm lại tiếng (vài giây).
+// Nhạc lặp cho đủ dài, to dần 1,5 giây đầu, nhỏ dần 2 giây cuối.
+export async function tronNhac(video: Buffer, nhac: Nhac) {
+  if (!nhac) return video
+  const nhacNen = await taiNhac(nhac.ten)
+  const thuMuc = await mkdtemp(join(tmpdir(), 'tron-'))
+  try {
+    const tepNhac = `nhac${nhac.ten.slice(nhac.ten.lastIndexOf('.'))}`
+    await Promise.all([writeFile(join(thuMuc, 'vao.mp4'), video), writeFile(join(thuMuc, tepNhac), nhacNen)])
+    const giay = await doDaiVideo(join(thuMuc, 'vao.mp4'))
+    await chayFfmpeg(
+      [
+        '-hide_banner', '-y',
+        '-i', 'vao.mp4',
+        '-stream_loop', '-1', '-i', tepNhac,
+        '-filter_complex',
+        `[1:a]volume=${(nhac.amLuong / 100).toFixed(2)},afade=t=in:d=1.5${giay ? `,afade=t=out:st=${Math.max(0, giay - 2).toFixed(2)}:d=2` : ''}[n];[0:a][n]amix=inputs=2:duration=first:normalize=0[a]`,
+        '-map', '0:v', '-map', '[a]',
+        '-c:v', 'copy', '-c:a', 'aac', '-b:a', '160k',
+        '-movflags', '+faststart',
+        'ra.mp4',
+      ],
+      thuMuc,
+    )
+    return await readFile(join(thuMuc, 'ra.mp4'))
+  } finally {
+    await rm(thuMuc, { recursive: true, force: true }).catch(() => {})
+  }
+}
+
+// Độ dài video (giây) đọc từ dòng "Duration: hh:mm:ss.xx" ffmpeg in ra
+function doDaiVideo(tep: string) {
+  return new Promise<number | null>((xong) => {
+    if (!ffmpeg) return xong(null)
+    const p = spawn(ffmpeg, ['-hide_banner', '-i', tep], { stdio: ['ignore', 'ignore', 'pipe'] })
+    let log = ''
+    p.stderr.on('data', (d: Buffer) => (log += d.toString()))
+    p.on('close', () => {
+      const m = log.match(/Duration: (\d+):(\d+):([\d.]+)/)
+      xong(m ? Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3]) : null)
+    })
+    p.on('error', () => xong(null))
+  })
 }

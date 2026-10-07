@@ -371,10 +371,10 @@ export async function luuAmLuongNhac(amLuong: number): Promise<KetQua> {
 }
 
 // Chọn nhạc nền riêng cho một bài: tên bản nhạc, 'khong' hoặc 'tu_dong'
-export async function chonNhacBai(id: string, chon: string): Promise<KetQua> {
+export async function chonNhacBai(id: string, chon: string, amLuong?: number): Promise<KetQua> {
   await chanChuaDangNhap()
   try {
-    await datNhacChoBai(id, chon)
+    await datNhacChoBai(id, chon, amLuong)
     lamMoi()
     return { ok: true }
   } catch (e) {

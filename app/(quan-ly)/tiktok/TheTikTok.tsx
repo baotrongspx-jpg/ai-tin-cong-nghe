@@ -7,13 +7,14 @@ import { ghepHashtagTikTok, urlAnh } from '@/lib/chuThich'
 import { gio, truoc } from '@/lib/thoiGian'
 import { GIONG, MO_TA_GIONG } from '@/lib/dsGiong'
 import { dichLoiTikTok } from '@/lib/loiTikTok'
-import { boDanhDauTikTok, chonNhacBai, dangCaHai, dangTikTok, xoaBai } from '@/app/actions'
+import { boDanhDauTikTok, dangCaHai, dangTikTok, xoaBai } from '@/app/actions'
 import { thongBao } from '@/app/ThongBao'
 import KhungHenGio from '@/app/KhungHenGio'
 import { Tags } from '@/app/TheBai'
 import { IconDongHo, IconFacebook, IconLai, IconNhac, IconTikTok, IconXoa, Xoay } from '@/app/BieuTuong'
 import { CotPhai, LuuY, NutQuyetDinh, ThongTinBai } from '@/app/PhanDuyet'
 import { choDungSan, useVideoSan } from './DungSan'
+import NhacXemTruoc from './NhacXemTruoc'
 
 type Viec = 'tt' | 'ca_hai' | 'bo_danh_dau' | 'xoa'
 
@@ -91,10 +92,11 @@ export default function TheTikTok({
   hen: string | null // giờ đã hẹn đăng TikTok
   gioVang: { gio: number[]; tuSoLieu: boolean }
   taiKhoan: { khoaBinhLuan: boolean } | null
-  nhac: { ds: string[]; chon: string } // các bản nhạc nền + lựa chọn của bài ('tu_dong' | 'khong' | tên bản)
+  nhac: { ds: string[]; chon: string; amLuong: number } // các bản nhạc nền + lựa chọn của bài ('tu_dong' | 'khong' | tên bản) + âm lượng
 }) {
-  const [chonNhac, setChonNhac] = useState(nhac.chon)
-  const [dangDoiNhac, startDoiNhac] = useTransition()
+  // Nhạc nền phát song song với video xem trước (video trong kho không có nhạc)
+  const [nhacMayChu, setNhacMayChu] = useState<{ ten: string; url: string } | null>(null)
+  const [theVideo, setTheVideo] = useState<HTMLVideoElement | null>(null)
   const [choBinhLuan, setChoBinhLuan] = useState(true)
   const [longTieng, setLongTieng] = useState(true)
   const [moRong, setMoRong] = useState(false)
@@ -122,10 +124,11 @@ export default function TheTikTok({
           // Quá 5 phút Vercel tự cắt và trả trang lỗi HTML
           throw new Error(res.status === 504 || loi.startsWith('<') ? `Dựng video quá lâu nên bị dừng (lỗi ${res.status}). Thử lại.` : loi || `Lỗi ${res.status}`)
         }
-        const kq: { url?: string; urlTai?: string; canhBao?: string; dangDung?: { trangThai: 'cho' | 'dang_lam'; truoc?: number; phanTram?: number; buoc?: string } } = await res.json()
+        const kq: { url?: string; urlTai?: string; canhBao?: string; nhac?: { ten: string; url: string } | null; dangDung?: { trangThai: 'cho' | 'dang_lam'; truoc?: number; phanTram?: number; buoc?: string } } = await res.json()
         if (kq.url) {
           setVideo(kq.url)
           setUrlTai(kq.urlTai ?? null)
+          setNhacMayChu(kq.nhac ?? null)
           if (kq.canhBao) setCanhBaoVideo(kq.canhBao)
           break
         }
@@ -164,7 +167,7 @@ export default function TheTikTok({
       <div className="grid min-w-0 grid-cols-1 content-start gap-3">
         <div className="relative">
           {video ? (
-            <video src={video} controls autoPlay playsInline className="aspect-[9/16] w-full rounded-xl bg-black" />
+            <video ref={setTheVideo} src={video} controls autoPlay playsInline className="aspect-[9/16] w-full rounded-xl bg-black" />
           ) : (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -201,36 +204,9 @@ export default function TheTikTok({
               </div>
             </div>
             {nhac.ds.length > 0 && (
-              <div className="grid min-w-0 grid-cols-1 gap-1">
-                <label htmlFor={`nhac-${bai.id}`} className="text-xs font-semibold text-slate-500">
-                  Nhạc nền
-                </label>
-                <select
-                  id={`nhac-${bai.id}`}
-                  value={chonNhac}
-                  disabled={dangDung || dangLam || dangDoiNhac}
-                  onChange={(e) => {
-                    const gt = e.target.value
-                    setChonNhac(gt)
-                    setVideo(null) // video đang xem là nhạc cũ
-                    startDoiNhac(async () => {
-                      const kq = await chonNhacBai(bai.id, gt)
-                      if (!kq.ok) thongBao('loi', kq.loi ?? 'Không đổi được nhạc')
-                    })
-                  }}
-                  className="w-full min-w-0 truncate rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-800"
-                >
-                  <option value="tu_dong">🎵 Tự chọn</option>
-                  {nhac.ds.map((ten) => (
-                    <option key={ten} value={ten}>
-                      {ten.replace(/\.[^.]+$/, '')}
-                    </option>
-                  ))}
-                  <option value="khong">🔇 Không nhạc</option>
-                </select>
-              </div>
+              <NhacXemTruoc baiId={bai.id} ds={nhac.ds} chonDau={nhac.chon} amLuongDau={nhac.amLuong} tuChon={nhacMayChu} videoEl={video ? theVideo : null} />
             )}
-            <button disabled={dangDung || dangLam || dangDoiNhac} onClick={video ? () => setVideo(null) : xemTruoc} className="btn btn-phu w-full">
+            <button disabled={dangDung || dangLam} onClick={video ? () => setVideo(null) : xemTruoc} className="btn btn-phu w-full">
               {dangDung ? <Xoay /> : null}
               {dangDung ? <>{mayNha?.trangThai === 'dang_lam' ? 'Máy nhà đang dựng hoạt hình…' : mayNha?.truoc ? `Xếp hàng: còn ${mayNha.truoc} video trước…` : mayNha ? 'Chờ máy nhà dựng hoạt hình…' : 'Đang dựng video…'} <DemGiay /></> : video ? 'Xem ảnh' : videoSan ? '▶ Xem video (đã dựng sẵn)' : '▶ Xem trước video'}
             </button>

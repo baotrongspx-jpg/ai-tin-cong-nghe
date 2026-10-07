@@ -135,6 +135,24 @@ for (let k = 1.7; k < TONG - 0.5; k += 3.1) {
 tw.push(`tl.from("#o-meo", { x: -700, duration: 0.6, ease: "back.out(1.4)" }, 0);`)
 tw.push(`tl.from("#o-robot", { x: 700, duration: 0.6, ease: "back.out(1.4)" }, 0.1);`)
 
+// ── Nhân vật phụ trên sân khấu: câu do nhân vật phụ nói, hoặc câu nhắc tới họ (AI chọn nhan_vat_phu).
+// Các câu liền nhau cùng một nhân vật phụ gom thành một lần xuất hiện; phuCuaCau[i] là id phần tử của họ ở câu i.
+const doanPhu = []
+loi.forEach((l, i) => {
+  const ten = NHAN_VAT_PHU[l.ai] ? l.ai : NHAN_VAT_PHU[l.nhan_vat_phu] ? l.nhan_vat_phu : null
+  if (!ten) return
+  const cuoi = doanPhu.at(-1)
+  if (cuoi && cuoi.ten === ten && cuoi.het === i - 1) cuoi.het = i
+  else doanPhu.push({ ten, tu: i, het: i })
+})
+const phuCuaCau = {}
+doanPhu.forEach((dp, k) => {
+  for (let i = dp.tu; i <= dp.het; i++) phuCuaCau[i] = `phu${k}`
+})
+const laPhu = (ai) => !!NHAN_VAT_PHU[ai]
+// Khung bao của nhân vật (để nhún, nhảy, phóng to khi nói)
+const khung = (p) => (p.startsWith('phu') ? `#${p}` : `#o-${p}`)
+
 // ── Từng câu thoại: nhép miệng theo giọng, cử chỉ theo cảm xúc, người nghe quay sang nhìn ─
 // Cử chỉ theo cảm xúc, dùng chung cho cả hai nhân vật (bộ phận cùng tên: <ai>-dau, <ai>-tay-trai...)
 const CU_CHI = {
@@ -145,8 +163,8 @@ const CU_CHI = {
   ],
   // Bất ngờ: nhảy lên, mắt to, hai tay giơ lên (mèo dựng tai)
   bat_ngo: (ai, t0) => [
-    `tl.to("#o-${ai}", { y: -110, duration: 0.25, yoyo: true, repeat: 1, ease: "power2.out" }, ${f(t0)});`,
-    `tl.to(["#${ai}-mat-trai", "#${ai}-mat-phai"], { scale: 1.25, duration: 0.2, ease: "back.out(3)" }, ${f(t0)});`,
+    `tl.to("${khung(ai)}", { y: -110, duration: 0.25, yoyo: true, repeat: 1, ease: "power2.out" }, ${f(t0)});`,
+    ...(ai.startsWith('phu') ? [] : [`tl.to(["#${ai}-mat-trai", "#${ai}-mat-phai"], { scale: 1.25, duration: 0.2, ease: "back.out(3)" }, ${f(t0)});`]),
     `tl.to(["#${ai}-tay-trai", "#${ai}-tay-phai"], { rotation: (i) => (i ? -160 : 160), duration: 0.3, ease: "back.out(2)" }, ${f(t0)});`,
     ...(ai === 'meo'
       ? [`tl.to("#meo-tai-trai", { rotation: -12, duration: 0.2 }, ${f(t0)});`, `tl.to("#meo-tai-phai", { rotation: 12, duration: 0.2 }, ${f(t0)});`]
@@ -164,7 +182,7 @@ const CU_CHI = {
   ],
   // Vui: nhún nhảy, vẫy hai tay (robot tim đập nhanh)
   vui: (ai, t0) => [
-    `tl.to("#o-${ai}", { y: -45, duration: 0.2, yoyo: true, repeat: 3, ease: "power1.out" }, ${f(t0)});`,
+    `tl.to("${khung(ai)}", { y: -45, duration: 0.2, yoyo: true, repeat: 3, ease: "power1.out" }, ${f(t0)});`,
     `tl.to(["#${ai}-tay-trai", "#${ai}-tay-phai"], { rotation: (i) => (i ? -120 : 120), duration: 0.25, ease: "back.out(2)" }, ${f(t0)});`,
     `tl.to(["#${ai}-tay-trai", "#${ai}-tay-phai"], { rotation: (i) => (i ? -95 : 95), duration: 0.2, yoyo: true, repeat: 3 }, ${f(t0 + 0.3)});`,
     ...(ai === 'robot' ? [`tl.to("#robot-tim", { scale: 1.4, duration: 0.15, yoyo: true, repeat: 5 }, ${f(t0)});`] : []),
@@ -173,8 +191,8 @@ const CU_CHI = {
   lo_lang: (ai, t0) => [
     `tl.to("#${ai}-dau", { rotation: 8, duration: 0.4 }, ${f(t0)});`,
     `tl.to(["#${ai}-tay-trai", "#${ai}-tay-phai"], { rotation: (i) => (i ? 25 : -25), duration: 0.4 }, ${f(t0)});`,
-    `tl.to(["#${ai}-mat-trai", "#${ai}-mat-phai"], { scale: 0.85, duration: 0.3 }, ${f(t0)});`,
-    `tl.to("#o-${ai}", { x: 6, duration: 0.06, yoyo: true, repeat: 7 }, ${f(t0 + 0.3)});`,
+    ...(ai.startsWith('phu') ? [] : [`tl.to(["#${ai}-mat-trai", "#${ai}-mat-phai"], { scale: 0.85, duration: 0.3 }, ${f(t0)});`]),
+    `tl.to("${khung(ai)}", { x: 6, duration: 0.06, yoyo: true, repeat: 7 }, ${f(t0 + 0.3)});`,
   ],
   // Suy nghĩ: nghiêng đầu ngược lại, tay chống cằm, mắt nhìn lên
   suy_nghi: (ai, t0) => [
@@ -184,8 +202,8 @@ const CU_CHI = {
   ],
 }
 // Về tư thế nghỉ (trước mỗi câu mới)
-const NGHI = (t0) => [
-  `tl.to(["#meo-dau", "#meo-tay-trai", "#meo-tay-phai", "#meo-tai-trai", "#meo-tai-phai", "#robot-dau", "#robot-tay-trai", "#robot-tay-phai"], { rotation: 0, duration: 0.35, ease: "power2.inOut" }, ${f(t0)});`,
+const NGHI = (t0, phu) => [
+  `tl.to(["#meo-dau", "#meo-tay-trai", "#meo-tay-phai", "#meo-tai-trai", "#meo-tai-phai", "#robot-dau", "#robot-tay-trai", "#robot-tay-phai"${phu ? `, "#${phu}-dau", "#${phu}-tay-trai", "#${phu}-tay-phai"` : ''}], { rotation: 0, duration: 0.35, ease: "power2.inOut" }, ${f(t0)});`,
   `tl.to(["#meo-mat-trai", "#meo-mat-phai", "#robot-mat-trai", "#robot-mat-phai"], { scale: 1, duration: 0.3 }, ${f(t0)});`,
   `tl.to(["#meo-con-ngoi-trai", "#meo-con-ngoi-phai"], { y: 0, duration: 0.3 }, ${f(t0)});`,
 ]
@@ -195,24 +213,29 @@ const amThanh = []
 loi.forEach((l, i) => {
   const t0 = batDau[i]
   const d = doDai[i]
-  const ai = l.ai
+  const ai = laPhu(l.ai) || l.ai === 'meo' ? l.ai : 'robot'
+  // p: tiền tố bộ phận của người nói (meo / robot / phu<k>)
+  const p = laPhu(ai) ? phuCuaCau[i] : ai
   const nghe = ai === 'meo' ? 'robot' : 'meo'
-  if (i) tw.push(...NGHI(t0 - 0.3))
-  tw.push(...(CU_CHI[l.cam_xuc] ?? CU_CHI[ai === 'meo' ? 'to_mo' : 'giai_thich'])(ai, t0))
+  if (i) tw.push(...NGHI(t0 - 0.3, phuCuaCau[i - 1] && phuCuaCau[i - 1] === phuCuaCau[i] ? phuCuaCau[i] : null))
+  tw.push(...(CU_CHI[l.cam_xuc] ?? CU_CHI[ai === 'meo' ? 'to_mo' : 'giai_thich'])(p, t0))
   // Người nghe nhìn sang người nói
   if (ai === 'robot') tw.push(`tl.to(["#meo-con-ngoi-trai", "#meo-con-ngoi-phai"], { x: 14, duration: 0.25 }, ${f(t0)});`)
   else tw.push(`tl.to(["#meo-con-ngoi-trai", "#meo-con-ngoi-phai"], { x: 0, duration: 0.25 }, ${f(t0)});`)
-  tw.push(`tl.to("#o-${nghe}", { scale: 0.96, duration: 0.3 }, ${f(t0)});`)
-  tw.push(`tl.to("#o-${ai}", { scale: 1.04, duration: 0.3 }, ${f(t0)});`)
+  if (laPhu(ai)) tw.push(`tl.to(["#o-meo", "#o-robot"], { scale: 0.96, duration: 0.3 }, ${f(t0)});`)
+  else {
+    tw.push(`tl.to("#o-${nghe}", { scale: 0.96, duration: 0.3 }, ${f(t0)});`)
+    tw.push(`tl.to("#o-${ai}", { scale: 1.04, duration: 0.3 }, ${f(t0)});`)
+  }
   // Nhép miệng: mỗi 1/15 giây đặt độ mở theo độ to của giọng
   const am = doTo(join(GOC, `hyperframes/assets/loi-${i}.wav`))
   am.forEach((v, k) => {
     const mo = v > 0.12 ? Math.min(1, 0.35 + v) : 0
-    tw.push(`tl.set("#${ai}-mieng-mo", { opacity: ${mo ? 1 : 0}, scaleY: ${f(mo || 0.3)} }, ${f(t0 + k / 15)});`)
-    tw.push(`tl.set("#${ai}-mieng-dong", { opacity: ${mo ? 0 : 1} }, ${f(t0 + k / 15)});`)
+    tw.push(`tl.set("#${p}-mieng-mo", { opacity: ${mo ? 1 : 0}, scaleY: ${f(mo || 0.3)} }, ${f(t0 + k / 15)});`)
+    tw.push(`tl.set("#${p}-mieng-dong", { opacity: ${mo ? 0 : 1} }, ${f(t0 + k / 15)});`)
   })
-  tw.push(`tl.set("#${ai}-mieng-mo", { opacity: 0 }, ${f(t0 + d)});`)
-  tw.push(`tl.set("#${ai}-mieng-dong", { opacity: 1 }, ${f(t0 + d)});`)
+  tw.push(`tl.set("#${p}-mieng-mo", { opacity: 0 }, ${f(t0 + d)});`)
+  tw.push(`tl.set("#${p}-mieng-dong", { opacity: 1 }, ${f(t0 + d)});`)
   amThanh.push(`<audio id="am-${i}" src="assets/loi-${i}.wav" data-start="${f(t0)}" data-duration="${f(d)}" data-track-index="${8 + i}" data-volume="1"></audio>`)
 
   // Phụ đề gọn sát đáy: câu chia thành từng đoạn tối đa 2 dòng, hiện đúng lúc đọc tới, chữ sáng dần theo giọng.
@@ -249,14 +272,18 @@ loi.forEach((l, i) => {
               const tw0 = batDauDoan + (w / kyTuDoan) * (ketThuc - batDauDoan) * 0.85
               w += chu.length
               const id = `pd${i}-${k}-${w}`
-              tw.push(`tl.to("#${id}", { color: "${ai === 'meo' ? '#fdba74' : '#67e8f9'}", duration: 0.08 }, ${f(tw0)});`)
+              tw.push(`tl.to("#${id}", { color: "${laPhu(ai) ? NHAN_VAT_PHU[ai].mau : ai === 'meo' ? '#fdba74' : '#67e8f9'}", duration: 0.08 }, ${f(tw0)});`)
               return `<span id="${id}" class="pd-tu">${esc(chu)}</span>`
             })
             .join(' ')}</div>`,
       )
       .join('')
     dem += kyTuDoan
-    const ten = k === 0 ? `<div class="pd-ten ${ai}">${ai === 'meo' ? '🐱' : '🤖'} ${esc(nhan_vat[ai].ten)}</div>` : ''
+    const ten = k === 0
+      ? laPhu(ai)
+        ? `<div class="pd-ten" style="background:${NHAN_VAT_PHU[ai].mau}">${NHAN_VAT_PHU[ai].bieu_tuong} ${esc(NHAN_VAT_PHU[ai].ten)}</div>`
+        : `<div class="pd-ten ${ai}">${ai === 'meo' ? '🐱' : '🤖'} ${esc(nhan_vat[ai].ten)}</div>`
+      : ''
     phuDe.push(`
     <div id="pd${i}-${k}" class="phu-de clip" data-start="${f(batDauDoan)}" data-duration="${f(ketThuc - batDauDoan)}" data-track-index="3">
       <div class="pd-khung">${ten}${dongHtml}</div>
@@ -323,14 +350,6 @@ const lia = (t, scale, ox, oy, giay, ease = 'power2.inOut', xoay = 0) => {
   tw.push(`tl.to("#camera-nen", { scale: ${f(1 + (scale - 1) * SAU_NEN)}, x: ${f(x * SAU_NEN)}, y: ${f(y * SAU_NEN)}, rotation: ${f(xoay * SAU_NEN)}, duration: ${f(giay)}, ease: "${ease}" }, ${f(t)});`)
 }
 // ── Nhân vật phụ (AI chọn khi lời thoại nhắc tới): đứng phía sau giữa hai nhân vật chính, vẫy tay / gật đầu ─
-const doanPhu = []
-loi.forEach((l, i) => {
-  const ten = NHAN_VAT_PHU[l.nhan_vat_phu] ? l.nhan_vat_phu : null
-  if (!ten) return
-  const cuoi = doanPhu.at(-1)
-  if (cuoi && cuoi.ten === ten && cuoi.het === i - 1) cuoi.het = i
-  else doanPhu.push({ ten, tu: i, het: i })
-})
 const daGioiThieu = new Set()
 const gioiThieu = new Set() // câu có nhân vật phụ lần đầu xuất hiện → máy quay quay sang giới thiệu
 const nvPhu = doanPhu.map((dp, k) => {
@@ -342,7 +361,7 @@ const nvPhu = doanPhu.map((dp, k) => {
     daGioiThieu.add(dp.ten)
     gioiThieu.add(dp.tu)
   }
-  tw.push(`gsap.set("#${id}-dau", { svgOrigin: "200 250" }); gsap.set("#${id}-tay-phai", { svgOrigin: "270 300" });`)
+  tw.push(`gsap.set("#${id}-dau", { svgOrigin: "200 250" }); gsap.set("#${id}-tay-phai", { svgOrigin: "270 300" }); gsap.set("#${id}-tay-trai", { svgOrigin: "130 300" }); gsap.set("#${id}-mieng-mo", { svgOrigin: "200 226" });`)
   tw.push(`tl.fromTo("#${id}", { opacity: 0, y: 90, scale: 0.85 }, { opacity: 1, y: 0, scale: 1, duration: 0.5, ease: "back.out(1.8)" }, ${f(t0 + 0.1)});`)
   tw.push(`tl.to("#${id}-tay-phai", { rotation: -140, duration: 0.3, ease: "back.out(2)" }, ${f(t0 + 0.5)});`)
   tw.push(`tl.to("#${id}-tay-phai", { rotation: -115, duration: 0.18, yoyo: true, repeat: 5, ease: "sine.inOut" }, ${f(t0 + 0.8)});`)
@@ -366,7 +385,11 @@ loi.forEach((l, i) => {
   const nghe = l.ai === 'meo' ? 'robot' : 'meo'
   const lui = truocDoiCanh.has(i) && d > 2.2 ? 0.7 : 0 // chừa cuối câu để lùi về cảnh rộng
   const conLai = Math.max(0.5, d - 0.5 - lui)
-  if (gioiThieu.has(i)) {
+  if (laPhu(l.ai)) {
+    // Nhân vật phụ đang nói: cận vừa vào họ (đứng giữa, phía sau), đẩy vào nhẹ
+    lia(Math.max(0, t0 - 0.2), 1.42, 540, 720, 0.6)
+    lia(t0 + 0.4, 1.47, 540 + (i % 2 ? 15 : -15), 715, conLai, 'sine.inOut')
+  } else if (gioiThieu.has(i)) {
     // Nhân vật phụ vừa xuất hiện: cận vào họ một nhịp, rồi về cảnh vừa nghiêng về người nói
     lia(Math.max(0, t0 - 0.1), 1.5, 540, 760, 0.5)
     lia(t0 + 0.45, 1.54, 540, 750, 0.9, 'sine.inOut')

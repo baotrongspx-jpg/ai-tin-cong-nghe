@@ -1,6 +1,7 @@
 // Nhân vật phụ (không nói, chỉ diễn) xuất hiện khi lời thoại nhắc tới: người phụ nữ, cảnh sát, hacker, doanh nhân,
 // nhà khoa học, người dùng. Cùng phong cách nét viền đậm với Mèo Mun / Robot Bit. viewBox 0 0 400 600, chân chạm y≈585.
-// Bộ phận có id để diễn: <id>-dau (xoay quanh cổ 200 250), <id>-tay-phai (vẫy, xoay quanh vai 270 300).
+// Bộ phận có id để diễn: <id>-dau (xoay quanh cổ 200 250), <id>-tay-phai / <id>-tay-trai (xoay quanh vai 270 300 / 130 300),
+// <id>-mieng-dong / <id>-mieng-mo (nhép miệng khi nhân vật phụ nói). `mau`: màu thẻ tên + phụ đề khi nói.
 // Tên phải khớp lib/ai.ts (NHAN_VAT_PHU).
 const VIEN = '#1f2937'
 
@@ -19,7 +20,8 @@ function nguoi(id, { da = '#fcd9b8', ao, quan = '#334155', tocSau = '', tocTruoc
     <circle cx="200" cy="180" r="82" fill="${da}" stroke="${VIEN}" stroke-width="7"/>
     ${tocTruoc}
     ${mat || `<circle cx="172" cy="185" r="10" fill="${VIEN}"/><circle cx="228" cy="185" r="10" fill="${VIEN}"/><circle cx="175" cy="181" r="3.5" fill="#fff"/><circle cx="231" cy="181" r="3.5" fill="#fff"/>`}
-    <path d="M180 220 Q200 236 220 220" fill="none" stroke="${VIEN}" stroke-width="6" stroke-linecap="round"/>
+    <g id="${id}-mieng-dong"><path d="M180 220 Q200 236 220 220" fill="none" stroke="${VIEN}" stroke-width="6" stroke-linecap="round"/></g>
+    <g id="${id}-mieng-mo" opacity="0"><ellipse cx="200" cy="226" rx="17" ry="15" fill="#7f1d1d" stroke="${VIEN}" stroke-width="4"/><ellipse cx="200" cy="234" rx="10" ry="5" fill="#fb7185"/></g>
     <ellipse cx="155" cy="210" rx="14" ry="8" fill="#fb718555"/><ellipse cx="245" cy="210" rx="14" ry="8" fill="#fb718555"/>
   </g>
   ${them}`
@@ -27,6 +29,8 @@ function nguoi(id, { da = '#fcd9b8', ao, quan = '#334155', tocSau = '', tocTruoc
 
 export const NHAN_VAT_PHU = {
   nguoi_phu_nu: {
+    mau: '#f472b6',
+    bieu_tuong: '👩',
     ten: 'Người phụ nữ',
     svg: (id) =>
       nguoi(id, {
@@ -37,6 +41,8 @@ export const NHAN_VAT_PHU = {
       }),
   },
   canh_sat: {
+    mau: '#60a5fa',
+    bieu_tuong: '👮',
     ten: 'Cảnh sát',
     svg: (id) =>
       nguoi(id, {
@@ -47,6 +53,8 @@ export const NHAN_VAT_PHU = {
       }),
   },
   hacker: {
+    mau: '#4ade80',
+    bieu_tuong: '🧑‍💻',
     ten: 'Hacker',
     svg: (id) =>
       nguoi(id, {
@@ -60,6 +68,8 @@ export const NHAN_VAT_PHU = {
       }),
   },
   doanh_nhan: {
+    mau: '#cbd5e1',
+    bieu_tuong: '👔',
     ten: 'Doanh nhân',
     svg: (id) =>
       nguoi(id, {
@@ -70,6 +80,8 @@ export const NHAN_VAT_PHU = {
       }),
   },
   nha_khoa_hoc: {
+    mau: '#a5f3fc',
+    bieu_tuong: '🧑‍🔬',
     ten: 'Nhà khoa học',
     svg: (id) =>
       nguoi(id, {
@@ -81,6 +93,8 @@ export const NHAN_VAT_PHU = {
       }),
   },
   nguoi_dung: {
+    mau: '#86efac',
+    bieu_tuong: '🙋',
     ten: 'Người dùng',
     svg: (id) =>
       nguoi(id, {

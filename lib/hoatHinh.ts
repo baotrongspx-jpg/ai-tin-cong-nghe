@@ -11,8 +11,18 @@ import { GIONG } from './dsGiong'
 export const batHoatHinh = () => process.env.VIDEO_HOAT_HINH !== '0'
 
 const KHO = 'video-tiktok' // cùng kho với video thường (lib/video.ts)
-const PHIEN_BAN = 3 // tăng khi đổi cách dựng để bỏ video hoạt hình cũ
-export const NHAN_VAT = { meo: { ten: 'Mèo Mun', giong: 'Ngọc Huyền' }, robot: { ten: 'Robot Bit', giong: GIONG } }
+const PHIEN_BAN = 4 // tăng khi đổi cách dựng để bỏ video hoạt hình cũ
+// Mỗi người nói một giọng VieNeu riêng (nhân vật phụ: may-nha/hoat-hinh/nhanVatPhu.mjs)
+export const NHAN_VAT = {
+  meo: { ten: 'Mèo Mun', giong: 'Ngọc Huyền' },
+  robot: { ten: 'Robot Bit', giong: GIONG },
+  nguoi_phu_nu: { ten: 'Người phụ nữ', giong: 'Đoan Trang' },
+  canh_sat: { ten: 'Cảnh sát', giong: 'Minh Đức' },
+  hacker: { ten: 'Hacker', giong: 'Adam bựa' },
+  doanh_nhan: { ten: 'Doanh nhân', giong: 'Quốc Tuấn' },
+  nha_khoa_hoc: { ten: 'Nhà khoa học', giong: 'Thiện Minh' },
+  nguoi_dung: { ten: 'Người dùng', giong: 'Phạm Tuyên' },
+}
 
 const bam = (x: unknown) => createHash('sha256').update(JSON.stringify(x)).digest('hex').slice(0, 16)
 const kho = () => db().storage.from(KHO)

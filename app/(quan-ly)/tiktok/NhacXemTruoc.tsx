@@ -31,6 +31,34 @@ export default function NhacXemTruoc({
   const [dangLuu, startLuu] = useTransition()
   const nhacRef = useRef<HTMLAudioElement>(null)
 
+  // iPhone/iPad bỏ qua audio.volume (luôn phát to hết cỡ) nên chỉnh âm qua Web Audio (GainNode), máy nào cũng nghe đúng.
+  // Chỉ gắn một lần cho thẻ <audio>, lúc người dùng bấm phát (trình duyệt điện thoại chỉ cho bật âm thanh sau khi bấm).
+  const boAm = useRef<{ ctx: AudioContext; gain: GainNode } | null>(null)
+  const ganBoChinhAm = () => {
+    const a = nhacRef.current
+    if (!a) return
+    if (!boAm.current) {
+      try {
+        // Safari mới: phát cả khi máy để im lặng, giống tiếng của video
+        const phien = (navigator as Navigator & { audioSession?: { type: string } }).audioSession
+        if (phien) phien.type = 'playback'
+        const ctx = new AudioContext()
+        const gain = ctx.createGain()
+        ctx.createMediaElementSource(a).connect(gain).connect(ctx.destination)
+        a.volume = 1
+        boAm.current = { ctx, gain }
+      } catch {
+        return // trình duyệt quá cũ: dùng audio.volume
+      }
+    }
+    boAm.current.gain.gain.value = amLuongRef.current / 100
+    if (boAm.current.ctx.state !== 'running') boAm.current.ctx.resume().catch(() => {})
+  }
+  const amLuongRef = useRef(amLuong)
+  useEffect(() => {
+    amLuongRef.current = amLuong
+  }, [amLuong])
+
   // Bản cần phát: 'khong' → không; 'tu_dong' → bản máy chủ tự chọn (chỉ biết khi lựa chọn đã lưu cũng là tự chọn); tên → bản đó
   const tenPhat = chon === 'khong' ? null : chon === 'tu_dong' ? (daLuu.chon === 'tu_dong' ? (tuChon?.ten ?? null) : null) : chon
   // Link nghe các bản đã xin (tên → link tạm), bản máy chủ trả kèm thì dùng luôn
@@ -51,6 +79,7 @@ export default function NhacXemTruoc({
     }
     const phat = () => {
       dongBo()
+      ganBoChinhAm()
       if (urlNhac) a.play().catch(() => {})
     }
     const dung = () => a.pause()
@@ -69,7 +98,8 @@ export default function NhacXemTruoc({
   }, [videoEl, urlNhac])
 
   useEffect(() => {
-    if (nhacRef.current) nhacRef.current.volume = Math.min(1, amLuong / 100)
+    if (boAm.current) boAm.current.gain.gain.value = amLuong / 100
+    else if (nhacRef.current) nhacRef.current.volume = Math.min(1, amLuong / 100)
   }, [amLuong, urlNhac])
 
   const thayDoi = chon !== daLuu.chon || amLuong !== daLuu.amLuong
@@ -138,7 +168,10 @@ export default function NhacXemTruoc({
           step={1}
           value={amLuong}
           disabled={chon === 'khong'}
-          onChange={(e) => setAmLuong(Number(e.target.value))}
+          onChange={(e) => {
+            setAmLuong(Number(e.target.value))
+            ganBoChinhAm() // chạm thanh kéo cũng là lúc được bật âm thanh trên điện thoại
+          }}
           aria-label="Âm lượng nhạc nền"
           className="min-w-0 flex-1 accent-violet-600"
         />
@@ -154,7 +187,7 @@ export default function NhacXemTruoc({
             : 'Đang phát cùng video: chỉnh là nghe ngay.'
           : 'Bấm Xem trước video để nghe nhạc cùng video.'}
       </p>
-      <audio ref={nhacRef} src={urlNhac ?? undefined} loop preload="auto" />
+      <audio ref={nhacRef} src={urlNhac ?? undefined} crossOrigin="anonymous" loop preload="auto" />
     </div>
   )
 }

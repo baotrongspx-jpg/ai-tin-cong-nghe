@@ -189,7 +189,7 @@ def dung_hoat_hinh(may, ds_giong, yc, td):
         chay(['node', str(HOAT_HINH / 'tao_video.mjs'), str(tm)], tm, 120)
         # 24 khung hình/giây (chuẩn phim hoạt hình): dựng nhanh hơn ~20% so với 30, mắt gần như không thấy khác
         td.bao(30, 'Dựng hình 0%', ep=True)
-        chay_theo_doi(['npx.cmd', '--yes', 'hyperframes', 'render', '--quality', 'standard', '--fps', '24', '-o', str(tm / 'video.mp4')],
+        chay_theo_doi(['npx.cmd', '--yes', 'hyperframes', 'render', '--quality', 'standard', '--fps', '30', '-o', str(tm / 'video.mp4')],
                       tm / 'hyperframes', 1500, lambda pt: td.bao(30 + 0.65 * pt, f'Dựng hình {pt}%'))
         ra = tm / 'video.mp4'
         # 3. Trộn nhạc nền nhỏ dưới lời thoại (lặp cho đủ dài, to dần đầu, nhỏ dần cuối)

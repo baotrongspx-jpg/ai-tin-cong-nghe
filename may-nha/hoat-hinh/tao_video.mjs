@@ -124,6 +124,9 @@ for (const [id, o] of Object.entries(XOAY)) tw.push(`gsap.set("#${id}", { svgOri
 // ── Chuyển động nền: thở, chớp mắt, đuôi, ăng-ten (suốt video, lặp hữu hạn) ─
 tw.push(`tl.to("#meo-than-tat", { scaleY: 1.025, duration: 1.1, yoyo: true, repeat: ${lap(TONG, 1.1)}, ease: "sine.inOut" }, 0);`)
 tw.push(`tl.to("#robot-than-tat", { scaleY: 1.02, duration: 1.3, yoyo: true, repeat: ${lap(TONG, 1.3)}, ease: "sine.inOut" }, 0.3);`)
+tw.push(`gsap.set(["#o-meo", "#o-robot"], { transformOrigin: "50% 100%" });`)
+tw.push(`tl.fromTo("#o-meo", { rotation: -1 }, { rotation: 1, duration: 2.3, yoyo: true, repeat: ${lap(TONG, 2.3)}, ease: "sine.inOut" }, 0);`)
+tw.push(`tl.fromTo("#o-robot", { rotation: 0.8 }, { rotation: -0.8, duration: 2.7, yoyo: true, repeat: ${lap(TONG, 2.7)}, ease: "sine.inOut" }, 0);`)
 tw.push(`tl.to("#meo-duoi", { rotation: 14, duration: 0.9, yoyo: true, repeat: ${lap(TONG, 0.9)}, ease: "sine.inOut" }, 0);`)
 tw.push(`tl.to("#robot-ang-ten", { fill: "#facc15", duration: 0.5, yoyo: true, repeat: ${lap(TONG, 0.5)}, ease: "none" }, 0);`)
 tw.push(`tl.to("#robot-tim", { scale: 1.18, duration: 0.45, yoyo: true, repeat: ${lap(TONG, 0.45)}, ease: "sine.inOut" }, 0);`)
@@ -159,54 +162,54 @@ const khung = (p) => (p.startsWith('phu') ? `#${p}` : `#o-${p}`)
 const CU_CHI = {
   // Tò mò: nghiêng đầu, tay lên cằm
   to_mo: (ai, t0) => [
-    `tl.to("#${ai}-dau", { rotation: -10, duration: 0.4, ease: "back.out(2)" }, ${f(t0)});`,
-    `tl.to("#${ai}-tay-phai", { rotation: -150, duration: 0.45, ease: "back.out(1.6)" }, ${f(t0 + 0.1)});`,
+    `tl.to("#${ai}-dau", { rotation: -10, duration: 0.4, ease: "back.out(1.3)" }, ${f(t0)});`,
+    `tl.to("#${ai}-tay-phai", { rotation: -150, duration: 0.45, ease: "back.out(1.2)" }, ${f(t0 + 0.1)});`,
   ],
   // Bất ngờ: nhảy lên, mắt to, hai tay giơ lên (mèo dựng tai)
   bat_ngo: (ai, t0) => [
-    `tl.to("${khung(ai)}", { y: -110, duration: 0.25, yoyo: true, repeat: 1, ease: "power2.out" }, ${f(t0)});`,
+    `tl.to("${khung(ai)}", { y: -90, duration: 0.3, yoyo: true, repeat: 1, ease: "sine.out" }, ${f(t0)});`,
     ...(ai.startsWith('phu') ? [] : [`tl.to(["#${ai}-mat-trai", "#${ai}-mat-phai"], { scale: 1.25, duration: 0.2, ease: "back.out(3)" }, ${f(t0)});`]),
-    `tl.to(["#${ai}-tay-trai", "#${ai}-tay-phai"], { rotation: (i) => (i ? -160 : 160), duration: 0.3, ease: "back.out(2)" }, ${f(t0)});`,
+    `tl.to(["#${ai}-tay-trai", "#${ai}-tay-phai"], { rotation: (i) => (i ? -160 : 160), duration: 0.38, ease: "back.out(1.3)" }, ${f(t0)});`,
     ...(ai === 'meo'
       ? [`tl.to("#meo-tai-trai", { rotation: -12, duration: 0.2 }, ${f(t0)});`, `tl.to("#meo-tai-phai", { rotation: 12, duration: 0.2 }, ${f(t0)});`]
       : []),
   ],
   // Giải thích: tay chỉ lên bảng tin, đầu nghiêng
   giai_thich: (ai, t0) => [
-    `tl.to("#${ai}-tay-trai", { rotation: 140, duration: 0.45, ease: "back.out(1.6)" }, ${f(t0)});`,
+    `tl.to("#${ai}-tay-trai", { rotation: 140, duration: 0.45, ease: "back.out(1.2)" }, ${f(t0)});`,
     `tl.to("#${ai}-dau", { rotation: -6, duration: 0.4 }, ${f(t0)});`,
   ],
   // Khẳng định: giơ tay, gật đầu
   khang_dinh: (ai, t0) => [
-    `tl.to("#${ai}-tay-phai", { rotation: -150, duration: 0.4, ease: "back.out(2)" }, ${f(t0)});`,
+    `tl.to("#${ai}-tay-phai", { rotation: -150, duration: 0.5, ease: "back.out(1.3)" }, ${f(t0)});`,
     `tl.to("#${ai}-dau", { rotation: 7, duration: 0.18, yoyo: true, repeat: 3 }, ${f(t0 + 0.4)});`,
   ],
   // Vui: nhún nhảy, vẫy hai tay (robot tim đập nhanh)
   vui: (ai, t0) => [
-    `tl.to("${khung(ai)}", { y: -45, duration: 0.2, yoyo: true, repeat: 3, ease: "power1.out" }, ${f(t0)});`,
-    `tl.to(["#${ai}-tay-trai", "#${ai}-tay-phai"], { rotation: (i) => (i ? -120 : 120), duration: 0.25, ease: "back.out(2)" }, ${f(t0)});`,
-    `tl.to(["#${ai}-tay-trai", "#${ai}-tay-phai"], { rotation: (i) => (i ? -95 : 95), duration: 0.2, yoyo: true, repeat: 3 }, ${f(t0 + 0.3)});`,
+    `tl.to("${khung(ai)}", { y: -40, duration: 0.24, yoyo: true, repeat: 3, ease: "sine.inOut" }, ${f(t0)});`,
+    `tl.to(["#${ai}-tay-trai", "#${ai}-tay-phai"], { rotation: (i) => (i ? -120 : 120), duration: 0.25, ease: "back.out(1.3)" }, ${f(t0)});`,
+    `tl.to(["#${ai}-tay-trai", "#${ai}-tay-phai"], { rotation: (i) => (i ? -95 : 95), duration: 0.24, yoyo: true, repeat: 3, ease: "sine.inOut" }, ${f(t0 + 0.3)});`,
     ...(ai === 'robot' ? [`tl.to("#robot-tim", { scale: 1.4, duration: 0.15, yoyo: true, repeat: 5 }, ${f(t0)});`] : []),
   ],
   // Lo lắng: cúi đầu, khép tay, mắt nhỏ lại, run nhẹ
   lo_lang: (ai, t0) => [
     `tl.to("#${ai}-dau", { rotation: 8, duration: 0.4 }, ${f(t0)});`,
-    `tl.to(["#${ai}-tay-trai", "#${ai}-tay-phai"], { rotation: (i) => (i ? 25 : -25), duration: 0.4 }, ${f(t0)});`,
+    `tl.to(["#${ai}-tay-trai", "#${ai}-tay-phai"], { rotation: (i) => (i ? 25 : -25), duration: 0.5, ease: "sine.inOut" }, ${f(t0)});`,
     ...(ai.startsWith('phu') ? [] : [`tl.to(["#${ai}-mat-trai", "#${ai}-mat-phai"], { scale: 0.85, duration: 0.3 }, ${f(t0)});`]),
-    `tl.to("${khung(ai)}", { x: 6, duration: 0.06, yoyo: true, repeat: 7 }, ${f(t0 + 0.3)});`,
+    `tl.to("${khung(ai)}", { x: 4, duration: 0.1, yoyo: true, repeat: 5, ease: "sine.inOut" }, ${f(t0 + 0.3)});`,
   ],
   // Suy nghĩ: nghiêng đầu ngược lại, tay chống cằm, mắt nhìn lên
   suy_nghi: (ai, t0) => [
     `tl.to("#${ai}-dau", { rotation: 9, duration: 0.45, ease: "power2.out" }, ${f(t0)});`,
-    `tl.to("#${ai}-tay-phai", { rotation: -130, duration: 0.45, ease: "back.out(1.4)" }, ${f(t0 + 0.1)});`,
+    `tl.to("#${ai}-tay-phai", { rotation: -130, duration: 0.45, ease: "back.out(1.1)" }, ${f(t0 + 0.1)});`,
     ...(ai === 'meo' ? [`tl.to(["#meo-con-ngoi-trai", "#meo-con-ngoi-phai"], { y: -12, duration: 0.3 }, ${f(t0)});`] : []),
   ],
 }
 // Về tư thế nghỉ (trước mỗi câu mới)
 const NGHI = (t0, phu) => [
-  `tl.to(["#meo-dau", "#meo-tay-trai", "#meo-tay-phai", "#meo-tai-trai", "#meo-tai-phai", "#robot-dau", "#robot-tay-trai", "#robot-tay-phai"${phu ? `, "#${phu}-dau", "#${phu}-tay-trai", "#${phu}-tay-phai"` : ''}], { rotation: 0, duration: 0.35, ease: "power2.inOut" }, ${f(t0)});`,
-  `tl.to(["#meo-mat-trai", "#meo-mat-phai", "#robot-mat-trai", "#robot-mat-phai"], { scale: 1, duration: 0.3 }, ${f(t0)});`,
-  `tl.to(["#meo-con-ngoi-trai", "#meo-con-ngoi-phai"], { y: 0, duration: 0.3 }, ${f(t0)});`,
+  `tl.to(["#meo-dau", "#meo-tay-trai", "#meo-tay-phai", "#meo-tai-trai", "#meo-tai-phai", "#robot-dau", "#robot-tay-trai", "#robot-tay-phai"${phu ? `, "#${phu}-dau", "#${phu}-tay-trai", "#${phu}-tay-phai"` : ''}], { rotation: 0, duration: 0.45, ease: "sine.inOut" }, ${f(t0)});`,
+  `tl.to(["#meo-mat-trai", "#meo-mat-phai", "#robot-mat-trai", "#robot-mat-phai"], { scale: 1, duration: 0.4, ease: "sine.inOut" }, ${f(t0)});`,
+  `tl.to(["#meo-con-ngoi-trai", "#meo-con-ngoi-phai"], { y: 0, duration: 0.4, ease: "sine.inOut" }, ${f(t0)});`,
 ]
 
 const phuDe = []
@@ -221,19 +224,27 @@ loi.forEach((l, i) => {
   if (i) tw.push(...NGHI(t0 - 0.3, phuCuaCau[i - 1] && phuCuaCau[i - 1] === phuCuaCau[i] ? phuCuaCau[i] : null))
   tw.push(...(CU_CHI[l.cam_xuc] ?? CU_CHI[ai === 'meo' ? 'to_mo' : 'giai_thich'])(p, t0))
   // Người nghe nhìn sang người nói
-  if (ai === 'robot') tw.push(`tl.to(["#meo-con-ngoi-trai", "#meo-con-ngoi-phai"], { x: 14, duration: 0.25 }, ${f(t0)});`)
-  else tw.push(`tl.to(["#meo-con-ngoi-trai", "#meo-con-ngoi-phai"], { x: 0, duration: 0.25 }, ${f(t0)});`)
-  if (laPhu(ai)) tw.push(`tl.to(["#o-meo", "#o-robot"], { scale: 0.96, duration: 0.3 }, ${f(t0)});`)
+  if (ai === 'robot') tw.push(`tl.to(["#meo-con-ngoi-trai", "#meo-con-ngoi-phai"], { x: 14, duration: 0.35, ease: "sine.inOut" }, ${f(t0)});`)
+  else tw.push(`tl.to(["#meo-con-ngoi-trai", "#meo-con-ngoi-phai"], { x: 0, duration: 0.35, ease: "sine.inOut" }, ${f(t0)});`)
+  if (laPhu(ai)) tw.push(`tl.to(["#o-meo", "#o-robot"], { scale: 0.96, duration: 0.45, ease: "sine.inOut" }, ${f(t0)});`)
   else {
-    tw.push(`tl.to("#o-${nghe}", { scale: 0.96, duration: 0.3 }, ${f(t0)});`)
-    tw.push(`tl.to("#o-${ai}", { scale: 1.04, duration: 0.3 }, ${f(t0)});`)
+    tw.push(`tl.to("#o-${nghe}", { scale: 0.96, duration: 0.45, ease: "sine.inOut" }, ${f(t0)});`)
+    tw.push(`tl.to("#o-${ai}", { scale: 1.04, duration: 0.45, ease: "sine.inOut" }, ${f(t0)});`)
   }
-  // Nhép miệng: mỗi 1/15 giây đặt độ mở theo độ to của giọng
+  // Nhép miệng mượt: độ to giọng mỗi 1/15 giây được làm mềm (mở nhanh, khép chậm dần); miệng chỉ đổi mở / khép khi
+  // vượt ngưỡng có trễ (không nháy liên tục), còn độ há trượt êm từ khung này sang khung sau.
   const am = doTo(join(GOC, `hyperframes/assets/loi-${i}.wav`))
+  let em = 0, dangMo = false
   am.forEach((v, k) => {
-    const mo = v > 0.12 ? Math.min(1, 0.35 + v) : 0
-    tw.push(`tl.set("#${p}-mieng-mo", { opacity: ${mo ? 1 : 0}, scaleY: ${f(mo || 0.3)} }, ${f(t0 + k / 15)});`)
-    tw.push(`tl.set("#${p}-mieng-dong", { opacity: ${mo ? 0 : 1} }, ${f(t0 + k / 15)});`)
+    em = Math.max(v, em * 0.62)
+    const tk = t0 + k / 15
+    const mo = dangMo ? em > 0.08 : em > 0.16
+    if (mo !== dangMo) {
+      dangMo = mo
+      tw.push(`tl.set("#${p}-mieng-mo", { opacity: ${mo ? 1 : 0}${mo ? ', scaleY: 0.3' : ''} }, ${f(tk)});`)
+      tw.push(`tl.set("#${p}-mieng-dong", { opacity: ${mo ? 0 : 1} }, ${f(tk)});`)
+    }
+    if (mo) tw.push(`tl.to("#${p}-mieng-mo", { scaleY: ${f(Math.min(1, 0.3 + em * 0.8))}, duration: 0.066, ease: "sine.inOut" }, ${f(tk)});`)
   })
   tw.push(`tl.set("#${p}-mieng-mo", { opacity: 0 }, ${f(t0 + d)});`)
   tw.push(`tl.set("#${p}-mieng-dong", { opacity: 1 }, ${f(t0 + d)});`)
@@ -318,10 +329,10 @@ const nenCanh = doanCanh.map((dc, k) => {
       tw.push(`tl.fromTo("#bc${k}", { opacity: 0, scale: 1.35 }, { opacity: 1, scale: 1, duration: 0.6, ease: "power2.out" }, ${f(t0)});`)
     } else if (kieu === 'quet') {
       // Quét nhanh (whip pan): cảnh vụt sang ngang, vệt sáng lướt qua
-      tw.push(`tl.fromTo("#bc${k}", { opacity: 1, x: 1080 }, { opacity: 1, x: 0, duration: 0.28, ease: "power4.inOut" }, ${f(t0 + 0.05)});`)
-      tw.push(`tl.to("${truoc}", { x: -1080, duration: 0.28, ease: "power4.inOut" }, ${f(t0 + 0.05)});`)
-      tw.push(`tl.fromTo("#vet-quet", { opacity: 0, x: 900 }, { opacity: 0.7, x: -900, duration: 0.34, ease: "power2.inOut" }, ${f(t0)});`)
-      tw.push(`tl.set("#vet-quet", { opacity: 0 }, ${f(t0 + 0.36)});`)
+      tw.push(`tl.fromTo("#bc${k}", { opacity: 1, x: 1080 }, { opacity: 1, x: 0, duration: 0.4, ease: "power3.inOut" }, ${f(t0 + 0.05)});`)
+      tw.push(`tl.to("${truoc}", { x: -1080, duration: 0.4, ease: "power3.inOut" }, ${f(t0 + 0.05)});`)
+      tw.push(`tl.fromTo("#vet-quet", { opacity: 0, x: 900 }, { opacity: 0.6, x: -900, duration: 0.46, ease: "power2.inOut" }, ${f(t0)});`)
+      tw.push(`tl.set("#vet-quet", { opacity: 0 }, ${f(t0 + 0.48)});`)
     } else if (kieu === 'xuyen') {
       // Xuyên qua: máy quay lao vào cảnh cũ rồi bước ra cảnh mới
       tw.push(`tl.to("${truoc}", { scale: 2.4, opacity: 0, duration: 0.45, ease: "power3.in" }, ${f(t0 - 0.1)});`)
@@ -402,7 +413,7 @@ loi.forEach((l, i) => {
     lia(t0 + 0.4, 1.03, 540, 960, conLai, 'sine.inOut')
   } else if (l.cam_xuc === 'bat_ngo') {
     // Bất ngờ: cận mặt thật nhanh rồi đứng gần như yên
-    lia(t0 - 0.05, 1.6, tam.x, tam.y - 60, 0.3, 'power3.out')
+    lia(t0 - 0.1, 1.6, tam.x, tam.y - 60, 0.42, 'power2.out')
     lia(t0 + 0.35, 1.63, tam.x, tam.y - 60, conLai, 'sine.out')
   } else if (l.cam_xuc === 'lo_lang') {
     // Lo lắng: cận cảnh rồi tiến chậm dần vào mặt

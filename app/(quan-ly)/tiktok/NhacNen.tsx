@@ -3,7 +3,7 @@
 import { useRef, useState, useTransition } from 'react'
 import { luuAmLuongNhac, xinLinkNgheNhac, xinLinkTaiNhac, xoaNhacNen, xongTaiNhac } from '@/app/actions'
 import { thongBao } from '@/app/ThongBao'
-import { Xoay } from '@/app/BieuTuong'
+import { IconXoa, Xoay } from '@/app/BieuTuong'
 
 // Nhạc nền trộn nhỏ dưới giọng đọc trong video lồng tiếng. Mỗi bài tự chọn một bản trong danh sách.
 export default function NhacNen({ ds, bat, amLuong }: { ds: { ten: string; kichThuoc: number }[]; bat: boolean; amLuong: number }) {
@@ -72,9 +72,10 @@ export default function NhacNen({ ds, bat, amLuong }: { ds: { ten: string; kichT
                       thongBao(kq.ok ? 'ok' : 'loi', kq.ok ? `Đã xóa ${ten}` : (kq.loi ?? 'Có lỗi'))
                     })
                   }
-                  className="text-xs font-semibold text-red-600 hover:underline"
+                  title={`Xóa ${ten}`}
+                  className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-red-600 ring-1 ring-red-200 hover:bg-red-50"
                 >
-                  Xóa
+                  <IconXoa className="h-3.5 w-3.5" /> Xóa
                 </button>
               </li>
             ))}

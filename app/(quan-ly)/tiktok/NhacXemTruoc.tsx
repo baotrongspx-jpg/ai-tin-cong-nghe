@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect, useRef, useState, useTransition } from 'react'
-import { chonNhacBai, xinLinkNgheNhac } from '@/app/actions'
+import { chonNhacBai, xinLinkNgheNhac, xoaNhacNen } from '@/app/actions'
 import { thongBao } from '@/app/ThongBao'
+import { IconXoa } from '@/app/BieuTuong'
 
 // Chỉnh nhạc nền nghe ngay: video trong kho không có nhạc, trình duyệt phát bản nhạc song song khớp thời gian với video
 // đang xem trước. Đổi bản nhạc / kéo âm lượng là nghe ngay, không dựng lại video; bấm Lưu thì lúc đăng sẽ trộn đúng như vậy.
@@ -21,9 +22,11 @@ export default function NhacXemTruoc({
   tuChon: { ten: string; url: string } | null // bản máy chủ đang dùng cho bài (trả kèm lúc Xem trước)
   videoEl: HTMLVideoElement | null // video xem trước đang hiện
 }) {
-  const [chon, setChon] = useState(chonDau)
+  // Bản đã lưu mà bị xóa khỏi kho thì coi như Tự chọn (máy chủ cũng làm vậy)
+  const dauHopLe = ds.includes(chonDau) || chonDau === 'khong' ? chonDau : 'tu_dong'
+  const [chon, setChon] = useState(dauHopLe)
   const [amLuong, setAmLuong] = useState(amLuongDau)
-  const [daLuu, setDaLuu] = useState({ chon: chonDau, amLuong: amLuongDau })
+  const [daLuu, setDaLuu] = useState({ chon: dauHopLe, amLuong: amLuongDau })
   const [dsLink, setDsLink] = useState<Record<string, string | null>>({})
   const [dangLuu, startLuu] = useTransition()
   const nhacRef = useRef<HTMLAudioElement>(null)
@@ -79,26 +82,53 @@ export default function NhacXemTruoc({
       } else thongBao('loi', kq.loi ?? 'Không lưu được nhạc')
     })
 
+  const [dangXoa, startXoa] = useTransition()
+  const xoa = () => {
+    if (!confirm(`Xóa hẳn bản nhạc "${chon}" khỏi kho? Các bài đang dùng bản này sẽ chuyển về Tự chọn.`)) return
+    const ten = chon
+    startXoa(async () => {
+      const kq = await xoaNhacNen(ten)
+      if (kq.ok) {
+        setChon('tu_dong')
+        setDaLuu((d) => ({ ...d, chon: 'tu_dong' })) // bản đã xóa thì máy chủ cũng tự chọn bản khác
+        thongBao('ok', `Đã xóa nhạc ${ten}`)
+      } else thongBao('loi', kq.loi ?? 'Không xóa được nhạc')
+    })
+  }
+
   return (
     <div className="grid min-w-0 grid-cols-1 gap-1.5 rounded-xl bg-violet-50 p-2.5 ring-1 ring-violet-200">
       <div className="flex items-center justify-between text-xs font-semibold text-violet-800">
         <label htmlFor={`nhac-${baiId}`}>🎵 Nhạc nền</label>
         {thayDoi && <span className="text-amber-600">chưa lưu</span>}
       </div>
-      <select
-        id={`nhac-${baiId}`}
-        value={chon}
-        onChange={(e) => setChon(e.target.value)}
-        className="w-full min-w-0 truncate rounded-lg border border-violet-200 bg-white px-2 py-1.5 text-sm text-slate-800"
-      >
-        <option value="tu_dong">🎵 Tự chọn</option>
-        {ds.map((ten) => (
-          <option key={ten} value={ten}>
-            {ten.replace(/\.[^.]+$/, '')}
-          </option>
-        ))}
-        <option value="khong">🔇 Không nhạc</option>
-      </select>
+      <div className="flex min-w-0 items-center gap-1.5">
+        <select
+          id={`nhac-${baiId}`}
+          value={chon}
+          onChange={(e) => setChon(e.target.value)}
+          className="w-full min-w-0 flex-1 truncate rounded-lg border border-violet-200 bg-white px-2 py-1.5 text-sm text-slate-800"
+        >
+          <option value="tu_dong">🎵 Tự chọn</option>
+          {ds.map((ten) => (
+            <option key={ten} value={ten}>
+              {ten.replace(/\.[^.]+$/, '')}
+            </option>
+          ))}
+          <option value="khong">🔇 Không nhạc</option>
+        </select>
+        {/* Xóa hẳn bản nhạc đang chọn khỏi kho (mọi bài đang dùng bản này sẽ chuyển về Tự chọn) */}
+        <button
+          type="button"
+          disabled={!ds.includes(chon) || dangXoa}
+          onClick={xoa}
+          title="Xóa bản nhạc này khỏi kho"
+          aria-label="Xóa bản nhạc này khỏi kho"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-red-600 ring-1 ring-red-200 hover:bg-red-50 disabled:opacity-30"
+        >
+          <IconXoa className="h-4 w-4" />
+        </button>
+      </div>
       <div className="flex items-center gap-2">
         <span className="text-sm">🔊</span>
         <input

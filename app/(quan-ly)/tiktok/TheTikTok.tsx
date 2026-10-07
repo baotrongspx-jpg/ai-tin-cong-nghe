@@ -314,7 +314,7 @@ export default function TheTikTok({
                     </span>
                   }
                   ten="Đăng cả Facebook + TikTok"
-                  moTa={viec === 'ca_hai' ? 'Đang đăng… (~1-2 phút)' : 'Đăng ngay lên 2 nền tảng'}
+                  moTa={viec === 'ca_hai' ? 'Đang đăng… (~1-2 phút)' : longTieng ? 'Cùng một video lồng tiếng lên 2 nền tảng' : 'Đăng ảnh ngay lên 2 nền tảng'}
                   disabled={dangLam}
                   dangChay={viec === 'ca_hai'}
                   onClick={() => {

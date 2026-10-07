@@ -2,22 +2,29 @@ import 'server-only'
 import { db, type BaiViet } from './db'
 import { veAnhBai } from './anh'
 import { taoChuThich, taoChuThichTikTok } from './chuThich'
-import { dangAnhLenPage } from './facebook'
+import { dangAnhLenPage, dangVideoLenPage } from './facebook'
 import { batLongTieng, dangAnhLenTikTok, dangVideoLenTikTok, urlWeb, type TuyChonDang } from './tiktok'
 import { taoVideoBai } from './video'
 import { layHashtagXuHuong } from './xuHuong'
 
-// Vẽ ảnh, đăng lên Fanpage rồi đánh dấu bài đã đăng. Lỗi thì ghi vào cột `loi` và ném lỗi ra.
+// Đăng lên Fanpage rồi đánh dấu bài đã đăng. Lỗi thì ghi vào cột `loi` và ném lỗi ra.
+// `video` (mặc định bật, tắt bằng FB_VIDEO=0): đăng video lồng tiếng (dùng chung video với TikTok, dựng một lần);
+// dựng video lỗi thì đăng ảnh như cũ, lý do nằm ở `canhBao`.
 // `henLuc`: Facebook tự đăng vào giờ đó; `dang_luc` ghi giờ hẹn (ở tương lai nghĩa là đang chờ đăng).
-export async function dangLenFacebook(bai: BaiViet, henLuc?: Date) {
+export async function dangLenFacebook(bai: BaiViet, henLuc?: Date, video = process.env.FB_VIDEO !== '0') {
   try {
-    const anh = await (await veAnhBai(bai)).blob()
-    const postId = await dangAnhLenPage(anh, taoChuThich(bai), henLuc)
+    let postId: string | null = null
+    let canhBao: string | undefined
+    if (video) {
+      const v = await taoVideoBai(bai).catch((e: Error) => void (canhBao = `Dựng video lỗi, Facebook đã đăng dạng ảnh: ${e.message}`))
+      if (v) postId = await dangVideoLenPage(v, taoChuThich(bai), henLuc)
+    }
+    postId ??= await dangAnhLenPage(await (await veAnhBai(bai)).blob(), taoChuThich(bai), henLuc)
     await db()
       .from('bai_viet')
       .update({ trang_thai: 'da_dang', fb_post_id: postId, dang_luc: (henLuc ?? new Date()).toISOString(), loi: null })
       .eq('id', bai.id)
-    return postId
+    return { postId, canhBao }
   } catch (e) {
     const loi = e instanceof Error ? e.message : String(e)
     await db().from('bai_viet').update({ loi }).eq('id', bai.id)

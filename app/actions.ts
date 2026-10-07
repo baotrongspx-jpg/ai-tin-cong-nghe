@@ -94,9 +94,9 @@ export async function dangBai(id: string, sua: SuaBai): Promise<KetQua> {
   if (bai.fb_post_id) return { ok: false, loi: 'Bài này đã đăng Facebook rồi' }
 
   try {
-    await dangLenFacebook(bai)
+    const { canhBao } = await dangLenFacebook(bai)
     lamMoi()
-    return { ok: true }
+    return { ok: true, canhBao }
   } catch (e) {
     return { ok: false, loi: e instanceof Error ? e.message : String(e) }
   }
@@ -150,10 +150,16 @@ export async function dangCaHai(id: string, sua: SuaBai, tuyChon: TuyChonDang): 
     if (daCo) return
     await viec().catch((e: Error) => loi.push(`${ten}: ${e.message}`))
   }
-  await chay('Facebook', !!bai.fb_post_id, () => dangLenFacebook(bai))
+  const canhBaoFb: string[] = []
+  // Ô "Lồng tiếng AI đọc bài" áp dụng cho cả hai nơi: Facebook đăng video thì TikTok dùng lại đúng video đó
+  await chay('Facebook', !!bai.fb_post_id, async () => {
+    const kq = await dangLenFacebook(bai, undefined, tuyChon.longTieng ?? undefined)
+    if (kq.canhBao) canhBaoFb.push(kq.canhBao)
+  })
   await chay('TikTok', !!bai.tiktok_publish_id, async () => ({ canhBao } = await dangLenTikTok(bai, tuyChon)))
   lamMoi()
-  return loi.length ? { ok: false, loi: loi.join(' · ') } : { ok: true, canhBao }
+  const tatCaCanhBao = [...canhBaoFb, canhBao].filter(Boolean).join(' · ') || undefined
+  return loi.length ? { ok: false, loi: loi.join(' · ') } : { ok: true, canhBao: tatCaCanhBao }
 }
 
 // Nút "Tìm lại" trên trang TikTok: tìm hashtag xu hướng mới ngay, không chờ hết 24 giờ

@@ -92,8 +92,12 @@ export async function tongHopTin(
       daViet++
       // Facebook và TikTok đăng độc lập: bên này lỗi không chặn bên kia
       if (dangFb) {
-        await dangLenFacebook(moi).then(
-          () => daDang++,
+        // Đã chạy lâu thì đăng ảnh cho nhanh, kẻo dựng video lồng tiếng làm quá 300 giây (TikTok dùng lại video này)
+        await dangLenFacebook(moi, undefined, Date.now() - batDau > 150_000 ? false : undefined).then(
+          ({ canhBao }) => {
+            daDang++
+            if (canhBao) loi.push(`${t.tieuDe} (Facebook): ${canhBao}`)
+          },
           (e: Error) => loi.push(`${t.tieuDe} (Facebook): ${e.message}`),
         )
       }

@@ -286,7 +286,7 @@ export default function TheBai({
               mau="xanhLa"
               icon={<IconXongTron className="h-5 w-5" />}
               ten="Duyệt & đăng Facebook"
-              moTa="Đăng ngay lên Fanpage"
+              moTa={viec === 'fb' ? 'Đang dựng video… (~1 phút)' : 'Video lồng tiếng lên Fanpage'}
               disabled={dangLam}
               dangChay={viec === 'fb'}
               onClick={() => {

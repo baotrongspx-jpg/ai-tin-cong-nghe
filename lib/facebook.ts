@@ -27,6 +27,33 @@ export async function dangAnhLenPage(anh: Blob, chuThich: string, henLuc?: Date)
   return data.post_id ?? data.id ?? ''
 }
 
+// Đăng video (video lồng tiếng như TikTok) lên Fanpage, gửi thẳng file. Trả mã bài viết (dạng <page>_<bài>) để
+// thống kê / bình luận dùng như bài ảnh; Facebook chưa kịp tạo bài (đang xử lý, hẹn giờ) thì trả mã video.
+export async function dangVideoLenPage(video: Buffer, moTa: string, henLuc?: Date): Promise<string> {
+  const form = new FormData()
+  form.append('source', new Blob([new Uint8Array(video)], { type: 'video/mp4' }), 'video.mp4')
+  form.append('description', moTa)
+  form.append('access_token', process.env.FB_PAGE_TOKEN!)
+  if (henLuc) {
+    form.append('published', 'false')
+    form.append('scheduled_publish_time', String(Math.floor(henLuc.getTime() / 1000)))
+  }
+  const res = await fetch(`https://graph-video.facebook.com/${PHIEN_BAN}/${process.env.FB_PAGE_ID}/videos`, {
+    method: 'POST',
+    body: form,
+    signal: AbortSignal.timeout(120_000),
+  })
+  const data = (await res.json()) as { id?: string; error?: { message: string } }
+  if (!res.ok || data.error || !data.id) throw new Error(data.error?.message ?? `Facebook trả lỗi ${res.status}`)
+  for (let i = 0; i < 4; i++) {
+    const { post_id } = await goiFb<{ post_id?: string }>(`${data.id}?fields=post_id`).catch(() => ({ post_id: undefined }))
+    if (post_id) return post_id.includes('_') ? post_id : `${process.env.FB_PAGE_ID}_${post_id}`
+    if (henLuc) break
+    await new Promise((r) => setTimeout(r, 2500))
+  }
+  return data.id
+}
+
 // Xóa bài (dùng để hủy bài đã hẹn giờ mà Facebook chưa đăng)
 export async function xoaBaiFb(postId: string) {
   const res = await fetch(`https://graph.facebook.com/${PHIEN_BAN}/${postId}?access_token=${process.env.FB_PAGE_TOKEN}`, {

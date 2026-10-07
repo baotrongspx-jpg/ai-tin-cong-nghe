@@ -296,13 +296,13 @@ const THOAI_SYSTEM = `You write scripts for "Công Nghệ 24H", a Vietnamese Tik
 - "meo" (Mèo Mun): a curious, playful orange cat. Asks the questions ordinary viewers would ask, reacts with surprise, worry or joy, sometimes sums up in simple words.
 - "robot" (Robot Bit): a friendly, smart robot. Explains the facts clearly and simply.
 
-Turn the article in the user turn into a short dialogue between them, in natural spoken Vietnamese (casual, warm, like friends chatting; no slang that sounds forced). Rules:
+Turn the article in the user turn into a short dialogue between them, in natural spoken Vietnamese (casual, warm, like friends chatting; no slang that sounds forced). Always write proper Vietnamese with full diacritics (tiếng Việt có dấu đầy đủ), never unaccented Vietnamese. Rules:
 - 8 to 14 lines, alternating speakers most of the time. Start with Mèo Mun asking a hook question about the most surprising point. End with one line inviting viewers to follow Công Nghệ 24H.
 - Cover every important fact of the article (who, what, where, numbers, why it matters) without inventing anything that is not in the article.
-- Each line at most 30 words, written to be read aloud: spell out symbols, no emoji, no hashtags, no URLs.
+- Each line at most 30 words, written to be read aloud: no emoji, no hashtags, no URLs. Keep the channel name exactly as "Công Nghệ 24H".
 - cam_xuc: the speaker's emotion and gesture for that line. Mèo Mun uses to_mo, bat_ngo, vui, lo_lang or suy_nghi. Robot Bit uses giai_thich, khang_dinh, vui, lo_lang or suy_nghi.
 - boi_canh: the backdrop that fits the line: truong_quay (news studio, default for general talk, intro and outro), pho_florida (a sunny city street, use for any outdoor or city or "in country X" moment), may_chu (AI / data center / servers / technology inside), don_canh_sat (police, crime, law, court), phong_khach (home, everyday users, phones and apps at home). Keep the same backdrop for consecutive lines about the same thing; change it only when the topic moves.
-- bang: a small sign shown behind the characters: one emoji in bieu_tuong and at most 6 Vietnamese words in chu summing up the line.`
+- bang: a small sign shown behind the characters: bieu_tuong is exactly one emoji character (for example 🤖 🚨 📱 🔒 💡), never a word; chu is at most 6 Vietnamese words with diacritics summing up the line.`
 
 const ThoaiSchema = z.object({
   loi: z
@@ -320,7 +320,34 @@ const ThoaiSchema = z.object({
 })
 export type LoiThoai = z.infer<typeof ThoaiSchema>['loi']
 
+// Model dự phòng nhẹ đôi khi viết tiếng Việt không dấu: kiểm tra rồi bắt viết lại (tối đa 3 lần)
+const CO_DAU = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/giu
+const coDauDu = (loi: LoiThoai) => {
+  const chu = loi.map((l) => l.chu).join(' ')
+  return (chu.match(CO_DAU)?.length ?? 0) / Math.max(1, chu.replace(/\s/g, '').length) > 0.08
+}
+// Biểu tượng bảng tin phải là emoji; AI ghi chữ thì thay bằng emoji theo bối cảnh
+const EMOJI_BOI_CANH: Record<(typeof BOI_CANH)[number], string> = {
+  truong_quay: '📺', pho_florida: '🏙️', may_chu: '🤖', don_canh_sat: '🚓', phong_khach: '📱',
+}
+
 export async function vietLoiThoai(bai: { tieu_de_anh: string; noi_dung: string; nguon_ten: string }): Promise<LoiThoai | null> {
+  for (let lan = 0; lan < 3; lan++) {
+    const loi = await vietLoiThoaiMotLan(bai)
+    if (!loi) continue
+    if (!coDauDu(loi)) {
+      console.error('Lời thoại AI viết thiếu dấu, viết lại')
+      continue
+    }
+    return loi.map((l) => ({
+      ...l,
+      bang: { ...l.bang, bieu_tuong: /\p{Extended_Pictographic}/u.test(l.bang.bieu_tuong) ? l.bang.bieu_tuong : EMOJI_BOI_CANH[l.boi_canh] },
+    }))
+  }
+  return null
+}
+
+async function vietLoiThoaiMotLan(bai: { tieu_de_anh: string; noi_dung: string; nguon_ten: string }): Promise<LoiThoai | null> {
   const kq = await goiJson({
     system: THOAI_SYSTEM,
     noiDung: `<article>\nTitle: ${bai.tieu_de_anh}\nSource: ${bai.nguon_ten}\n\n${bai.noi_dung}\n</article>`,

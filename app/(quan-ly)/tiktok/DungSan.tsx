@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useSyncExternalStore } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 
 // Dựng sẵn video lồng tiếng cho các bài chưa đăng khi mở trang TikTok, lần lượt từng bài (máy đọc giọng mỗi lần
 // chỉ đọc một bài). Bấm Xem trước lúc bài đang dựng dở thì chờ bản đó xong rồi lấy, không dựng lại lần nữa.
@@ -19,20 +19,25 @@ export const useVideoSan = (id: string) =>
 
 export default function DungSan({ ds }: { ds: string[] }) {
   const khoa = ds.join(',')
+  const [loi, setLoi] = useState('')
   useEffect(() => {
     let dung = false
     ;(async () => {
       for (const id of khoa.split(',').filter(Boolean)) {
         if (dung) return
         if (daSan.has(id) || dangDung.has(id)) continue
+        let baoLoi = ''
         const viec = fetch(`/api/video/${id}?san=1`, { cache: 'no-store' })
-          .then((r) => r.ok)
-          .catch(() => false)
+          .then(async (r) => (r.ok ? true : ((baoLoi = (await r.text()).slice(0, 300) || `lỗi ${r.status}`), false)))
+          .catch((e: Error) => ((baoLoi = e.message), false))
         dangDung.set(id, viec)
         const ok = await viec
         dangDung.delete(id)
-        // Máy đọc giọng không chạy (máy nhà tắt) thì thôi, khỏi thử các bài sau
-        if (!ok) return
+        // Máy đọc giọng không chạy (máy nhà tắt...) thì báo lên và thôi, khỏi thử các bài sau
+        if (!ok) {
+          if (!dung) setLoi(baoLoi.startsWith('<') ? 'máy chủ trả lỗi' : baoLoi)
+          return
+        }
         daSan.add(id)
         window.dispatchEvent(new Event('video-san'))
       }
@@ -41,5 +46,10 @@ export default function DungSan({ ds }: { ds: string[] }) {
       dung = true
     }
   }, [khoa])
-  return null
+  if (!loi) return null
+  return (
+    <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+      ⚠ Chưa dựng sẵn được video: {loi}. Bấm Xem trước ở từng bài sẽ đọc tạm bằng giọng dự phòng.
+    </p>
+  )
 }

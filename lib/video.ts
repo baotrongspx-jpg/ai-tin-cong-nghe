@@ -111,7 +111,8 @@ export async function damBaoKho() {
   return kho.from(KHO)
 }
 
-type GiongBai = { wav: Buffer; doDai: number[] | null; luu: boolean } // doDai: giây mỗi câu (chỉ VieNeu có)
+// doDai: giây mỗi câu (chỉ VieNeu có); canhBao: lý do phải đọc bằng giọng dự phòng
+type GiongBai = { wav: Buffer; doDai: number[] | null; luu: boolean; canhBao?: string }
 
 // Giọng đọc đã lưu của bài (WAV + thời lượng từng câu). Chưa có thì đọc một lần rồi lưu lại, bỏ các bản đọc cũ của bài.
 // Giọng chính VieNeu; VieNeu lỗi thì đọc tạm bằng Gemini và không lưu (`luu: false`), lần sau thử lại VieNeu.
@@ -136,7 +137,9 @@ async function layGiongBai(bai: BaiViet, chu: string, cau: string[], chiGiongChi
     }
     if (chiGiongChinh) throw e
     try {
-      kq = { wav: await docThanhGiong(chu), doDai: null, luu: !vieNeu }
+      // Không chờ khi Gemini báo hết lượt theo phút: đang có người chờ xem trước
+      kq = { wav: await docThanhGiong(chu, false), doDai: null, luu: !vieNeu }
+      if (loiVieNeu) kq.canhBao = `Đọc tạm bằng giọng dự phòng ${GIONG_DU_PHONG} vì ${loiVieNeu}`
     } catch (e2) {
       throw new Error([loiVieNeu, e2 instanceof Error ? e2.message : String(e2)].filter(Boolean).join(' · Dự phòng: '))
     }
@@ -189,21 +192,22 @@ export async function dungSanVideoBai(bai: BaiViet) {
 export async function linkVideoBai(bai: BaiViet) {
   let ten = tenTep(bai)
   let buoc: Record<string, number> | null = null
-  if (!(await daCoVideo(bai, ten))) ({ ten, buoc } = await dungVaLuu(bai, ten, false, true))
+  let canhBao: string | undefined
+  if (!(await daCoVideo(bai, ten))) ({ ten, buoc, canhBao } = await dungVaLuu(bai, ten, false, true))
   const { data, error } = await db().storage.from(KHO).createSignedUrl(ten, 3600)
   if (error || !data) throw new Error(`Không tạo được link video: ${error?.message ?? 'lỗi'}`)
-  return { url: data.signedUrl, buoc }
+  return { url: data.signedUrl, buoc, canhBao }
 }
 
 // `batBuocLuu`: lưu được mới thôi (xem trước cần link từ kho). Video đọc bằng giọng dự phòng lưu tên "-tam",
 // lần sau không khớp tên chính nên dựng lại bằng giọng chính.
 async function dungVaLuu(bai: BaiViet, ten: string, chiGiongChinh = false, batBuocLuu = false) {
-  const { video, luu, buoc } = await dungVideo(bai, chiGiongChinh)
+  const { video, luu, buoc, canhBao } = await dungVideo(bai, chiGiongChinh)
   const tenLuu = luu ? ten : ten.replace(/.mp4$/, '-tam.mp4')
   const viec = luuVideo(bai, tenLuu, video)
   if (batBuocLuu) await viec
   else await viec.catch((e) => console.error('Không lưu được video TikTok:', e))
-  return { video, ten: tenLuu, buoc }
+  return { video, ten: tenLuu, buoc, canhBao }
 }
 
 // WAV → MP3 nhỏ gọn (giọng mẫu để nghe thử)
@@ -250,7 +254,7 @@ async function dungVideo(bai: BaiViet, chiGiongChinh = false) {
       }),
     )
   }
-  const [{ wav, doDai, luu }, khungHinh] = await Promise.all([layGiongBai(bai, chu, cau, chiGiongChinh), veKhung()])
+  const [{ wav, doDai, luu, canhBao }, khungHinh] = await Promise.all([layGiongBai(bai, chu, cau, chiGiongChinh), veKhung()])
   const tong = doDaiWav(wav)
   ghi('giong_va_khung_hinh')
 
@@ -291,7 +295,7 @@ async function dungVideo(bai: BaiViet, chiGiongChinh = false) {
       thuMuc,
     )
     ghi('ffmpeg')
-    return { video: await readFile(join(thuMuc, 'video.mp4')), luu, buoc }
+    return { video: await readFile(join(thuMuc, 'video.mp4')), luu, buoc, canhBao }
   } finally {
     await rm(thuMuc, { recursive: true, force: true }).catch(() => {})
   }

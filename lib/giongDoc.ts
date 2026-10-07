@@ -5,11 +5,11 @@ import { GIONG, GIONG_DU_PHONG } from './dsGiong'
 // VIENEU_URL: link máy chủ (vd https://xxx.ngrok-free.dev), VIENEU_KHOA: khóa trùng biến KHOA của máy chủ.
 export const coVieNeu = () => !!process.env.VIENEU_URL?.trim()
 
-// Đọc từng câu, trả WAV 48 kHz và thời lượng (giây) mỗi câu để canh phụ đề. Space ngủ (lâu không dùng) thì
-// lần gọi đầu phải chờ nó khởi động: thử lại vài lần trong khoảng 2 phút.
+// Đọc từng câu, trả WAV 48 kHz và thời lượng (giây) mỗi câu để canh phụ đề.
+// Lỗi thì báo ngay lý do dễ hiểu; chỉ chờ (tối đa 1 phút) khi ngrok chạy mà máy đọc giọng còn đang khởi động (502).
 export async function docBangVieNeu(cau: string[]): Promise<{ wav: Buffer; doDai: number[] }> {
   const url = process.env.VIENEU_URL!.trim().replace(/\/+$/, '')
-  const hetGio = Date.now() + 120_000
+  const hetGio = Date.now() + 60_000
   for (;;) {
     const res = await fetch(`${url}/doc`, {
       method: 'POST',
@@ -24,10 +24,18 @@ export async function docBangVieNeu(cau: string[]): Promise<{ wav: Buffer; doDai
       if (doDai.length !== cau.length || doDai.some((x) => !(x > 0))) throw new Error('VieNeu trả thời lượng không khớp số câu')
       return { wav: Buffer.from(await res.arrayBuffer()), doDai }
     }
-    const dangKhoiDong = !(res instanceof Response) || res.status === 503 || res.status === 502 || res.status === 404
-    if (!dangKhoiDong || Date.now() > hetGio)
-      throw new Error(`VieNeu lỗi: ${res instanceof Response ? `${res.status} ${(await res.text()).slice(0, 200)}` : res.message}`)
-    await new Promise((r) => setTimeout(r, 10_000))
+    if (!(res instanceof Response)) throw new Error(`Không gọi được máy đọc giọng: ${res.message}`)
+    const noiDung = (await res.text()).slice(0, 2000)
+    if (/ERR_NGROK_3200|is offline/i.test(noiDung))
+      throw new Error('Máy đọc giọng ở nhà chưa mở được: cửa sổ ngrok đang tắt (hoặc máy nhà đang tắt)')
+    if (res.status === 401) throw new Error('Máy đọc giọng từ chối: VIENEU_KHOA trên Vercel không khớp khóa trong chay-vieneu.bat')
+    if (res.status !== 502 || Date.now() > hetGio)
+      throw new Error(
+        res.status === 502
+          ? 'Máy đọc giọng VieNeu ở nhà chưa chạy (ngrok vẫn mở): mở chay-vieneu.bat'
+          : `Máy đọc giọng lỗi ${res.status}: ${noiDung.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 200)}`,
+      )
+    await new Promise((r) => setTimeout(r, 5_000))
   }
 }
 

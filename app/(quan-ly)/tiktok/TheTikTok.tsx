@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useSyncExternalStore, useTransition } from 'react'
+import { useEffect, useState, useSyncExternalStore, useTransition } from 'react'
 import Link from 'next/link'
 import type { BaiViet } from '@/lib/db'
 import { ghepHashtagTikTok, urlAnh } from '@/lib/chuThich'
@@ -67,6 +67,16 @@ function NutNgheThu() {
   )
 }
 
+// Đếm số giây đã chờ dựng video (hiện khi đang dựng)
+function DemGiay() {
+  const [giay, setGiay] = useState(0)
+  useEffect(() => {
+    const t = setInterval(() => setGiay((g) => g + 1), 1000)
+    return () => clearInterval(t)
+  }, [])
+  return <>{giay}s</>
+}
+
 // `taiKhoan`: null khi chưa kết nối TikTok → chỉ xem trước, không đăng được
 export default function TheTikTok({
   bai,
@@ -88,16 +98,24 @@ export default function TheTikTok({
   const [video, setVideo] = useState<string | null>(null)
   const [dangDung, setDangDung] = useState(false)
   const [loiVideo, setLoiVideo] = useState('')
+  const [canhBaoVideo, setCanhBaoVideo] = useState('')
   const videoSan = useVideoSan(bai.id)
 
   const xemTruoc = async () => {
     setDangDung(true)
     setLoiVideo('')
+    setCanhBaoVideo('')
     try {
       await choDungSan(bai.id) // đang dựng sẵn trong nền thì chờ bản đó, khỏi dựng hai lần
       const res = await fetch(`/api/video/${bai.id}`, { cache: 'no-store' })
-      if (!res.ok) throw new Error((await res.text()) || `Lỗi ${res.status}`)
-      setVideo((await res.json()).url)
+      if (!res.ok) {
+        const loi = await res.text()
+        // Quá 5 phút Vercel tự cắt và trả trang lỗi HTML
+        throw new Error(res.status === 504 || loi.startsWith('<') ? `Dựng video quá lâu nên bị dừng (lỗi ${res.status}). Thử lại.` : loi || `Lỗi ${res.status}`)
+      }
+      const kq: { url: string; canhBao?: string } = await res.json()
+      setVideo(kq.url)
+      if (kq.canhBao) setCanhBaoVideo(kq.canhBao)
     } catch (e) {
       setLoiVideo(e instanceof Error ? e.message : 'Dựng video lỗi')
     } finally {
@@ -166,9 +184,10 @@ export default function TheTikTok({
             </div>
             <button disabled={dangDung || dangLam} onClick={video ? () => setVideo(null) : xemTruoc} className="btn btn-phu w-full">
               {dangDung ? <Xoay /> : null}
-              {dangDung ? 'Đang dựng video… (~1 phút)' : video ? 'Xem ảnh' : videoSan ? '▶ Xem video (đã dựng sẵn)' : '▶ Xem trước video'}
+              {dangDung ? <>Đang dựng video… <DemGiay /></> : video ? 'Xem ảnh' : videoSan ? '▶ Xem video (đã dựng sẵn)' : '▶ Xem trước video'}
             </button>
-            {loiVideo && <p className="text-xs text-red-600">{loiVideo}</p>}
+            {loiVideo && <p className="text-xs text-red-600">Không dựng được video: {loiVideo}</p>}
+            {canhBaoVideo && <p className="text-xs text-amber-700">⚠ {canhBaoVideo}</p>}
             {video && <p className="text-xs text-slate-400">Bấm Đăng (có lồng tiếng) sẽ dùng đúng video này. Sửa bài thì video tự dựng lại.</p>}
           </>
         )}

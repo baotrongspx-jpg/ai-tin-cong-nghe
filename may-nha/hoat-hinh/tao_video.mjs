@@ -6,9 +6,10 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { BOI_CANH } from './boiCanh.mjs'
 import { NHAN_VAT_PHU } from './nhanVatPhu.mjs'
+import { CSS_MINH_HOA, MINH_HOA, mocMoDau } from './minhHoa.mjs'
 
 const GOC = resolve(process.argv[2] ?? '.')
-const { nhan_vat, loi, kenh = 'Công Nghệ 24H', chu_de = 'AI' } = JSON.parse(readFileSync(join(GOC, 'artifacts/loi_thoai.json'), 'utf8'))
+const { nhan_vat, loi, moc, kenh = 'Công Nghệ 24H', chu_de = 'AI' } = JSON.parse(readFileSync(join(GOC, 'artifacts/loi_thoai.json'), 'utf8'))
 const doDai = JSON.parse(readFileSync(join(GOC, 'artifacts/do_dai.json'), 'utf8'))
 const RONG = 1080
 const CAO = 1920
@@ -455,6 +456,29 @@ const hat = [...Array(16)].map((_, k) => {
   return `<div id="hat${k}" class="hat" style="left:${x}px;top:${y}px;width:${r * 2}px;height:${r * 2}px;opacity:${0.5 + (k % 3) * 0.15}"></div>`
 })
 
+// ── Câu giật tít 2 giây đầu + minh hoạ chèn đúng lúc giọng đọc tới chi tiết (con số, địa điểm, lời trích...) ─
+const gtMoc = Math.min(2.2, batDau[0] + doDai[0])
+const giatTit = mocMoDau(moc, gtMoc)
+tw.push(...giatTit.tw)
+const minhHoa = []
+loi.forEach((l, i) => {
+  const m = l.minh_hoa
+  const ve = MINH_HOA[m?.kieu]
+  if (!ve) return
+  const t0 = batDau[i]
+  const d = doDai[i]
+  // Vị trí từ khoá trong câu → thời điểm giọng đọc tới (chia theo số ký tự)
+  const vt = m.tu_khoa ? l.chu.toLowerCase().indexOf(String(m.tu_khoa).toLowerCase()) : -1
+  let bd = t0 + (vt >= 0 ? (vt / l.chu.length) * (d - 0.25) : d * 0.3) - 0.1
+  bd = Math.max(bd, t0 + 0.2, i === 0 && moc?.chu ? gtMoc + 0.1 : 0)
+  const kt = Math.min(bd + 2.3, t0 + d + 0.35)
+  if (kt - bd < 1.3) return
+  const id = `mh${i}`
+  const mh = ve(id, m)
+  tw.push(...mh.tw(bd, kt - bd))
+  minhHoa.push(`<div id="${id}" class="mh">${mh.html}</div>`)
+})
+
 // Bảng tin phía sau đổi theo lời thoại
 const bang = loi.map((l, i) => {
   const t0 = batDau[i]
@@ -480,7 +504,7 @@ const trang = `<!doctype html>
       body { margin: 0; background: #0b1020; color: #fff; font-family: "BVP", "Emoji", sans-serif; }
       #root { position: relative; width: ${RONG}px; height: ${CAO}px; overflow: hidden; }
       .clip { position: absolute; inset: 0; }
-      .camera { position: absolute; inset: 0; transform-origin: 540px 960px; }
+      .camera { position: absolute; inset: 0; transform-origin: 540px 960px; }${CSS_MINH_HOA}
       /* Nền hơi nhoè như ống kính lấy nét vào nhân vật; nhân vật có viền sáng và bóng đổ mềm */
       #camera-nen { filter: blur(1.6px) saturate(1.08); }
       #toi-chuyen { position: absolute; inset: 0; background: #000; opacity: 0; }
@@ -535,7 +559,8 @@ const trang = `<!doctype html>
           ${daoCu.join('')}
         </div>
       </div>
-      <div id="vien-toi" class="clip" data-start="0" data-duration="${f(TONG)}" data-track-index="5"></div>${phuDe.join('')}
+      <div id="vien-toi" class="clip" data-start="0" data-duration="${f(TONG)}" data-track-index="5"></div>
+      <div id="lop-minh-hoa" class="clip" data-start="0" data-duration="${f(TONG)}" data-track-index="7">${minhHoa.join('')}${giatTit.html}</div>${phuDe.join('')}
       ${amThanh.join('\n      ')}
     </div>
     <script>

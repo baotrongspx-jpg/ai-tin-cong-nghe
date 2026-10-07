@@ -11,7 +11,7 @@ import { GIONG } from './dsGiong'
 export const batHoatHinh = () => process.env.VIDEO_HOAT_HINH !== '0'
 
 const KHO = 'video-tiktok' // cùng kho với video thường (lib/video.ts)
-const PHIEN_BAN = 4 // tăng khi đổi cách dựng để bỏ video hoạt hình cũ
+const PHIEN_BAN = 5 // tăng khi đổi cách dựng để bỏ video hoạt hình cũ
 // Mỗi người nói một giọng VieNeu riêng (nhân vật phụ: may-nha/hoat-hinh/nhanVatPhu.mjs)
 export const NHAN_VAT = {
   meo: { ten: 'Mèo Mun', giong: 'Ngọc Huyền' },
@@ -71,9 +71,9 @@ export async function datViecHoatHinh(bai: BaiViet, ten: string, nhac: string | 
   const ma = maViec(ten)
   if (tt.loai === 'loi') await kho().remove([`hang-doi/xong/${ma}.json`])
   const viet = async () => {
-    const loi = await vietLoiThoai(bai)
-    if (!loi) throw new Error('AI không viết được lời thoại cho bài này')
-    const viec = { loai: 'hoat_hinh', ten, nhac, loi_thoai: { kenh: 'Công Nghệ 24H', chu_de: bai.chu_de, nhan_vat: NHAN_VAT, loi } }
+    const kb = await vietLoiThoai(bai)
+    if (!kb) throw new Error('AI không viết được lời thoại cho bài này')
+    const viec = { loai: 'hoat_hinh', ten, nhac, loi_thoai: { kenh: 'Công Nghệ 24H', chu_de: bai.chu_de, nhan_vat: NHAN_VAT, ...kb } }
     const { error } = await kho().upload(`hang-doi/viec/${ma}.json`, JSON.stringify(viec), { contentType: 'application/json', upsert: true })
     if (error) throw new Error(`Không gửi được việc cho máy nhà: ${error.message}`)
   }

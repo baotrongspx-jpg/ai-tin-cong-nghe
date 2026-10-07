@@ -1,5 +1,6 @@
 import 'server-only'
 import { createHash } from 'node:crypto'
+import { after } from 'next/server'
 import { vietLoiThoai } from './ai'
 import { db, type BaiViet } from './db'
 import { GIONG } from './dsGiong'
@@ -35,31 +36,52 @@ export type TrangThaiHoatHinh = { loai: 'xong' | 'dang_lam' | 'cho' | 'chua' } |
 export async function trangThaiHoatHinh(ten: string): Promise<TrangThaiHoatHinh> {
   const [thuMuc, tep] = ten.split('/')
   const ma = maViec(ten)
-  const [xong, kq, cho, dangLam] = await Promise.all([
+  const [xong, kq, cho, dangViet, dangLam] = await Promise.all([
     coTep(thuMuc, tep),
     docJson<{ loi?: string }>(`hang-doi/xong/${ma}.json`),
     coTep('hang-doi/viec', `${ma}.json`),
+    docJson<{ luc?: number }>(`hang-doi/viet/${ma}.json`),
     docJson<{ ten?: string; luc?: number }>('hang-doi/dang-lam.json'),
   ])
   if (xong) return { loai: 'xong' }
   if (kq?.loi) return { loai: 'loi', loi: kq.loi }
-  if (cho) return { loai: 'cho' }
+  // AI đang viết lời thoại (chạy ngầm, gói Gemini miễn phí có lúc mất vài phút)
+  if (cho || (dangViet && Date.now() - (dangViet.luc ?? 0) < 6 * 60_000)) return { loai: 'cho' }
   // Thợ dựng một video mất vài phút; quá 15 phút chưa xong coi như đã hỏng
   if (dangLam?.ten === ten && Date.now() - (dangLam.luc ?? 0) < 15 * 60_000) return { loai: 'dang_lam' }
   return { loai: 'chua' }
 }
 
 // Đặt việc dựng video hoạt hình (nếu chưa có ai làm). Lần trước lỗi thì xóa lỗi và đặt lại.
-export async function datViecHoatHinh(bai: BaiViet, ten: string, nhac: string | null, tt?: TrangThaiHoatHinh) {
+// `ngam` (mặc định): trả lời ngay, AI viết lời thoại sau khi đã trả lời (next/server after); lỗi ghi vào hang-doi/xong.
+// Chỗ phải chờ có video ngay trong lượt (bấm Đăng) đặt ngam = false: after chỉ chạy khi lượt đó kết thúc.
+export async function datViecHoatHinh(bai: BaiViet, ten: string, nhac: string | null, tt?: TrangThaiHoatHinh, ngam = true) {
   tt ??= await trangThaiHoatHinh(ten)
   if (tt.loai !== 'chua' && tt.loai !== 'loi') return tt
   const ma = maViec(ten)
   if (tt.loai === 'loi') await kho().remove([`hang-doi/xong/${ma}.json`])
-  const loi = await vietLoiThoai(bai)
-  if (!loi) throw new Error('AI không viết được lời thoại cho bài này')
-  const viec = { loai: 'hoat_hinh', ten, nhac, loi_thoai: { kenh: 'Công Nghệ 24H', chu_de: bai.chu_de, nhan_vat: NHAN_VAT, loi } }
-  const { error } = await kho().upload(`hang-doi/viec/${ma}.json`, JSON.stringify(viec), { contentType: 'application/json', upsert: true })
-  if (error) throw new Error(`Không gửi được việc cho máy nhà: ${error.message}`)
+  const viet = async () => {
+    const loi = await vietLoiThoai(bai)
+    if (!loi) throw new Error('AI không viết được lời thoại cho bài này')
+    const viec = { loai: 'hoat_hinh', ten, nhac, loi_thoai: { kenh: 'Công Nghệ 24H', chu_de: bai.chu_de, nhan_vat: NHAN_VAT, loi } }
+    const { error } = await kho().upload(`hang-doi/viec/${ma}.json`, JSON.stringify(viec), { contentType: 'application/json', upsert: true })
+    if (error) throw new Error(`Không gửi được việc cho máy nhà: ${error.message}`)
+  }
+  if (!ngam) {
+    await viet()
+    return { loai: 'cho' } as const
+  }
+  await kho().upload(`hang-doi/viet/${ma}.json`, JSON.stringify({ luc: Date.now() }), { contentType: 'application/json', upsert: true })
+  after(async () => {
+    try {
+      await viet()
+    } catch (e) {
+      const loi = e instanceof Error ? e.message : String(e)
+      await kho().upload(`hang-doi/xong/${ma}.json`, JSON.stringify({ loi }), { contentType: 'application/json', upsert: true })
+    } finally {
+      await kho().remove([`hang-doi/viet/${ma}.json`])
+    }
+  })
   return { loai: 'cho' } as const
 }
 

@@ -181,7 +181,7 @@ export async function taoVideoBai(bai: BaiViet, { choHoatHinh: cho = 200 }: { ch
     const tenHH = tenVideoHoatHinh(bai, chuDeDoc(bai), nhac)
     try {
       // Không chờ thì cũng không đặt việc mới (bài sẽ đăng bằng video thường ngay), chỉ dùng nếu đã có sẵn
-      const tt = cho > 0 ? await datViecHoatHinh(bai, tenHH, nhac) : await trangThaiHoatHinh(tenHH)
+      const tt = cho > 0 ? await datViecHoatHinh(bai, tenHH, nhac, undefined, false) : await trangThaiHoatHinh(tenHH)
       if (tt.loai === 'xong' || (cho > 0 && (await choHoatHinh(tenHH, cho)))) {
         const v = await layVideoDaLuu(tenHH)
         if (v) return v

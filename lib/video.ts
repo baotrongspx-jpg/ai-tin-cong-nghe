@@ -230,45 +230,43 @@ async function dungVideo(bai: BaiViet, chiGiongChinh = false) {
   const chu = chuDeDoc(bai)
   if (!chu) throw new Error('Bài không có chữ để đọc')
   const cau = tachCau(chu)
-  const [{ wav, doDai, luu }, anh] = await Promise.all([
-    layGiongBai(bai, chu, cau, chiGiongChinh),
-    veAnhBai(bai).then(async (r) => Buffer.from(await r.arrayBuffer())),
-  ])
-  const tong = doDaiWav(wav)
-  ghi('giong_va_anh')
+  const doanCau = cau.map(tachPhuDe)
 
-  const thuMuc = await mkdtemp(join(tmpdir(), 'video-'))
-  try {
-    // Khung nền vẽ sẵn một lần bằng sharp: ảnh phóng to làm mờ phủ kín, ảnh bài đặt giữa
+  // Khung hình không cần giọng nên vẽ cùng lúc với lúc máy đọc giọng:
+  // khung nền (ảnh bài phóng to làm mờ phủ kín, ảnh bài đặt giữa) + mỗi đoạn phụ đề là một khung hình tĩnh
+  const veKhung = async () => {
+    const anh = Buffer.from(await (await veAnhBai(bai)).arrayBuffer())
     const nen = await sharp(anh).resize(RONG, CAO, { fit: 'cover' }).blur(40).modulate({ brightness: 0.5 }).toBuffer()
     const khung = await sharp(nen)
       .composite([{ input: await sharp(anh).resize(RONG, RONG).toBuffer(), top: TREN, left: 0 }])
       .jpeg({ quality: 90 })
       .toBuffer()
+    const doan = doanCau.flat()
+    if (!doan.length) return [khung]
+    return Promise.all(
+      doan.map(async (dong) => {
+        const phuDe = Buffer.from(await (await vePhuDe(dong)).arrayBuffer())
+        return sharp(khung).composite([{ input: phuDe, top: DONG_DAU - 20, left: 0 }]).jpeg({ quality: 88 }).toBuffer()
+      }),
+    )
+  }
+  const [{ wav, doDai, luu }, khungHinh] = await Promise.all([layGiongBai(bai, chu, cau, chiGiongChinh), veKhung()])
+  const tong = doDaiWav(wav)
+  ghi('giong_va_khung_hinh')
 
+  const thuMuc = await mkdtemp(join(tmpdir(), 'video-'))
+  try {
     // Thời gian mỗi câu: VieNeu báo đúng từng câu; giọng dự phòng đọc cả bài một lần thì chia theo số chữ.
     // Trong một câu, mỗi đoạn phụ đề hiện trong khoảng thời gian tỉ lệ với số chữ (cộng chút cho chỗ ngắt).
-    const doanCau = cau.map(tachPhuDe)
     const nang = doanCau.map((ds) => ds.map((d) => d.join(' ').length + 6))
     const tongCau = nang.map((n) => n.reduce((a, b) => a + b, 0))
     const tongNang = tongCau.reduce((a, b) => a + b, 0)
     const giayCau = doDai ?? tongCau.map((n) => (n / tongNang) * tong)
-    // Mốc thời gian từng đoạn phụ đề; đoạn cuối kéo tới hết video
-    const lich: { dong: string[]; giay: number }[] = []
-    for (const [c, ds] of doanCau.entries())
-      for (const [k, dong] of ds.entries()) lich.push({ dong, giay: (nang[c][k] / tongCau[c]) * giayCau[c] })
+    // Mốc thời gian từng đoạn phụ đề (cùng thứ tự với khungHinh); đoạn cuối kéo tới hết video
+    const lich: { giay: number }[] = []
+    for (const [c, ds] of doanCau.entries()) for (const k of ds.keys()) lich.push({ giay: (nang[c][k] / tongCau[c]) * giayCau[c] })
     if (lich.length) lich[lich.length - 1].giay += Math.max(0, tong - lich.reduce((x, d) => x + d.giay, 0)) + DUOI
 
-    // Mỗi đoạn phụ đề là một khung hình tĩnh (khung nền + ảnh phụ đề), ffmpeg chỉ việc nối các khung theo thời gian
-    const khungHinh = lich.length
-      ? await Promise.all(
-          lich.map(async ({ dong }) => {
-            const phuDe = Buffer.from(await (await vePhuDe(dong)).arrayBuffer())
-            return sharp(khung).composite([{ input: phuDe, top: DONG_DAU - 20, left: 0 }]).jpeg({ quality: 88 }).toBuffer()
-          }),
-        )
-      : [khung]
-    ghi('phu_de')
     const ds = (lich.length ? lich : [{ giay: tong + DUOI }]).map((d, i) => `file 'f${i}.jpg'\nduration ${d.giay.toFixed(3)}`)
     ds.push(`file 'f${khungHinh.length - 1}.jpg'`) // concat cần nhắc lại khung cuối để giữ đúng thời lượng
 

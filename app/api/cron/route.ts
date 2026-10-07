@@ -3,7 +3,7 @@ import { capNhatSoLieu } from '@/lib/soLieu'
 import { guiTelegram, thoat } from '@/lib/telegram'
 import { db, type BaiViet } from '@/lib/db'
 import { coVieNeu } from '@/lib/giongDoc'
-import { dungSanVideoBai } from '@/lib/video'
+import { donKhoDaDang, dungSanVideoBai } from '@/lib/video'
 
 // Dựng sẵn video lồng tiếng cho các bài vừa soạn mà chưa lên TikTok, để mở trang TikTok là xem/đăng được ngay.
 // Chỉ dùng giọng VieNeu (máy nhà tắt thì bỏ qua, không tốn lượt Gemini), dừng khi gần hết thời gian của lượt chạy.
@@ -47,6 +47,8 @@ export async function GET(req: Request) {
     const soBai = Math.min(5, Math.max(1, Number(q.get('so_bai') ?? process.env.SO_BAI_MOI_LAN ?? 3) || 3))
     const kq = await tongHopTin(!chiSoan && process.env.TU_DONG_DANG !== '0', soBai)
     const dungSan = await dungSanBaiMoi(batDau).catch(() => 0)
+    // Xoá video còn sót của các bài đã lên TikTok
+    const daDon = await donKhoDaDang().catch(() => 0)
     // Tiện thể cập nhật lượt tương tác các bài 7 ngày gần đây cho trang Thống kê
     const soLieu = await capNhatSoLieu(7).catch((e: Error) => ({ soBai: 0, loi: e.message }))
 
@@ -58,7 +60,7 @@ export async function GET(req: Request) {
           kq.loi.slice(0, 5).map((l) => `• ${thoat(l.slice(0, 300))}`).join('\n'),
       )
     }
-    return Response.json({ ...kq, soLieu, dungSan })
+    return Response.json({ ...kq, soLieu, dungSan, daDon })
   } catch (e) {
     console.error(e)
     const loi = e instanceof Error ? e.message : String(e)

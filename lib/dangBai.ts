@@ -4,7 +4,7 @@ import { veAnhBai } from './anh'
 import { taoChuThich, taoChuThichTikTok } from './chuThich'
 import { dangAnhLenPage, dangVideoLenPage } from './facebook'
 import { batLongTieng, dangAnhLenTikTok, dangVideoLenTikTok, urlWeb, type TuyChonDang } from './tiktok'
-import { taoVideoBai } from './video'
+import { taoVideoBai, xoaVideoBai } from './video'
 import { layHashtagXuHuong } from './xuHuong'
 
 // Đăng lên Fanpage rồi đánh dấu bài đã đăng. Lỗi thì ghi vào cột `loi` và ném lỗi ra.
@@ -58,6 +58,8 @@ export async function dangLenTikTok(bai: BaiViet, tuyChon: TuyChonDang = {}) {
       .from('bai_viet')
       .update({ tiktok_publish_id: publishId, tiktok_dang_luc: luc, tiktok_loi: null })
       .eq('id', bai.id)
+    // Đã lên TikTok: xoá video + giọng đọc của bài khỏi kho ngay (lỗi thì lịch tự đăng dọn sau)
+    await xoaVideoBai(bai.id).catch((e) => console.error('Không xoá được video đã đăng:', e))
     return { publishId, canhBao }
   } catch (e) {
     const loi = e instanceof Error ? e.message : String(e)

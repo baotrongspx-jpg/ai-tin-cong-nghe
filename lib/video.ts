@@ -388,3 +388,24 @@ async function dungVideo(bai: BaiViet, nhac: string | null, chiGiongChinh = fals
     await rm(thuMuc, { recursive: true, force: true }).catch(() => {})
   }
 }
+
+// Bài đã lên TikTok: TikTok đã nhận file (FILE_UPLOAD) nên xoá mọi video + giọng đọc của bài khỏi kho cho đỡ đầy
+// (gói Supabase miễn phí 1 GB). Video hoạt hình vẫn còn bản lưu trên máy nhà (Desktop\Video-Hoat-Hinh).
+export async function xoaVideoBai(baiId: string) {
+  const kho = db().storage.from(KHO)
+  const [{ data: video }, { data: giong }] = await Promise.all([kho.list(baiId, { limit: 100 }), kho.list(`giong/${baiId}`, { limit: 100 })])
+  const xoa = [...(video ?? []).map((f) => `${baiId}/${f.name}`), ...(giong ?? []).map((f) => `giong/${baiId}/${f.name}`)]
+  if (xoa.length) await kho.remove(xoa)
+  return xoa.length
+}
+
+// Lưới an toàn (lịch tự đăng): xoá video còn sót của các bài đã lên TikTok (vd video dựng sẵn gửi lên sau khi đã đăng)
+export async function donKhoDaDang() {
+  const { data: thuMuc } = await db().storage.from(KHO).list('', { limit: 1000 })
+  const ids = (thuMuc ?? []).map((f) => f.name).filter((n) => /^[0-9a-f-]{36}$/i.test(n))
+  if (!ids.length) return 0
+  const { data } = await db().from('bai_viet').select('id').in('id', ids).not('tiktok_publish_id', 'is', null)
+  let so = 0
+  for (const { id } of (data ?? []) as { id: string }[]) so += await xoaVideoBai(id).catch(() => 0)
+  return so
+}

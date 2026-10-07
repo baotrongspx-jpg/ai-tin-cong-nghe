@@ -49,15 +49,18 @@ export async function uuTienHoatHinh(ten: string) {
 
 // Số video hoạt hình xếp hàng trước bài này (thợ làm việc ưu tiên trước, cùng nhóm thì việc đặt trước làm trước)
 export async function viTriHoatHinh(ten: string) {
-  const [{ data: viec }, { data: uu }] = await Promise.all([
+  const [{ data: viec }, { data: uu }, dangLam] = await Promise.all([
     kho().list('hang-doi/viec', { limit: 200, sortBy: { column: 'created_at', order: 'asc' } }),
     kho().list('hang-doi/uu-tien', { limit: 200 }),
+    docJson<{ ten?: string; luc?: number }>('hang-doi/dang-lam.json'),
   ])
   const uuTien = new Set((uu ?? []).map((f) => f.name))
   const ds = (viec ?? []).filter((f) => f.name.startsWith('hh-')).map((f) => f.name)
   const thuTu = [...ds.filter((n) => uuTien.has(n)), ...ds.filter((n) => !uuTien.has(n))]
   const vt = thuTu.indexOf(`${maViec(ten)}.json`)
-  return vt < 0 ? 0 : vt
+  // Video máy nhà đang dựng dở (đã rời hàng đợi) cũng phải xong mới tới lượt bài này
+  const dangDungKhac = dangLam?.ten && dangLam.ten !== ten && Date.now() - (dangLam.luc ?? 0) < 15 * 60_000 ? 1 : 0
+  return (vt < 0 ? 0 : vt) + dangDungKhac
 }
 
 // tienDo: phần trăm + bước đang làm (máy nhà ghi ở hang-doi/tien-do khi đang dựng; đang viết lời thoại / xếp hàng thì ước lượng)

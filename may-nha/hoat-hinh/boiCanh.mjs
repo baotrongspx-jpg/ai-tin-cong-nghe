@@ -82,33 +82,37 @@ export const BOI_CANH = {
       ${[...Array(56)].map((_, k) => `<circle id="${id}-den${k}" cx="${92 + (k % 4) * 250 + ((k * 3) % 6) * 28}" cy="${340 + Math.floor(k / 4) * 60}" r="8" fill="${['#22d3ee', '#4ade80', '#a78bfa', '#f472b6'][k % 4]}"/>`).join('')}
       ${san(id, '#0b2149', '#020617', '#22d3ee', '#67e8f9')}
       ${[...Array(9)].map((_, k) => `<line x1="${540 + (k - 4) * 60}" y1="1190" x2="${540 + (k - 4) * 260}" y2="1920" stroke="#22d3ee" stroke-opacity="0.18" stroke-width="3"/>`).join('')}
-      ${[0, 1, 2, 3, 4].map((k) => `<line x1="0" y1="${1240 + k * k * 34}" x2="1080" y2="${1240 + k * k * 34}" stroke="#22d3ee" stroke-opacity="0.15" stroke-width="3"/>`).join('')}`,
+      ${[0, 1, 2, 3, 4].map((k) => `<line x1="0" y1="${1240 + k * k * 34}" x2="1080" y2="${1240 + k * k * 34}" stroke="#22d3ee" stroke-opacity="0.15" stroke-width="3"/>`).join('')}
+      ${[0, 1, 2, 3].map((k) => `<g id="${id}-dl${k}">${[...Array(7)].map((_, j) => `<rect x="${236 + k * 250}" y="${300 + j * 130}" width="14" height="${40 + ((j * 37 + k * 11) % 60)}" rx="7" fill="#22d3ee" opacity="0.55"/>`).join('')}</g>`).join('')}`,
     tw: (t0, d) => [
       `tl.to("#${id}-quang-giua", { opacity: 0.5, duration: 1.2, yoyo: true, repeat: ${lap(d, 1.2)}, ease: "sine.inOut" }, ${f(t0)});`,
+      // Dòng dữ liệu chạy dọc theo tủ máy chủ
+      ...[0, 1, 2, 3].map((k) => `tl.fromTo("#${id}-dl${k}", { y: -130 }, { y: 0, duration: 0.9, repeat: ${lap(d, 0.9)}, ease: "none" }, ${f(t0 + k * 0.2)});`),
       ...[...Array(56)].map((_, k) => `tl.to("#${id}-den${k}", { opacity: 0.12, duration: ${f(0.2 + (k % 6) * 0.13)}, yoyo: true, repeat: ${lap(d, 0.2 + (k % 6) * 0.13)}, ease: "none" }, ${f(t0 + (k % 9) * 0.07)});`),
     ],
   }),
 
-  // Đồn cảnh sát buổi tối: trời sao, toà nhà có cột, biển POLICE, cửa sổ sáng, quầng đèn đỏ-xanh
+  // Phòng điều tra (cảnh sát, tội phạm, pháp luật): bảng ghim ảnh nối dây đỏ, cửa sổ trời sao, đèn bàn, quầng đèn đỏ-xanh
   don_canh_sat: (id) => ({
     svg: `
-      <defs><linearGradient id="${id}-troi" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0f172a"/><stop offset="1" stop-color="#1e3a8a"/></linearGradient></defs>
-      <rect width="1080" height="1920" fill="url(#${id}-troi)"/>
-      ${[...Array(30)].map((_, k) => `<circle cx="${(k * 337) % 1080}" cy="${80 + ((k * 151) % 380)}" r="${2 + (k % 3)}" fill="#e2e8f0" opacity="${0.4 + (k % 3) * 0.2}"/>`).join('')}
-      <circle cx="170" cy="330" r="56" fill="#f1f5f9"/>
-      <polygon points="100,560 540,410 980,560" fill="#94a3b8"/><rect x="130" y="550" width="820" height="30" fill="#cbd5e1"/>
-      <rect x="140" y="580" width="800" height="600" fill="#e2e8f0"/><rect x="900" y="580" width="40" height="600" fill="#00000018"/>
-      ${[0, 1, 2, 3, 4, 5].map((k) => `<rect x="${170 + k * 140}" y="600" width="34" height="580" fill="#cbd5e1"/>`).join('')}
-      <rect x="350" y="610" width="380" height="96" rx="14" fill="#1d4ed8"/>
-      <text x="540" y="678" text-anchor="middle" font-family="BVP, sans-serif" font-weight="700" font-size="62" fill="#fff">POLICE</text>
-      ${[0, 1, 2, 3].map((k) => `<rect x="${215 + k * 175}" y="760" width="105" height="150" rx="8" fill="#334155"/><rect x="${215 + k * 175}" y="760" width="105" height="40" fill="#fde68a" opacity="0.5"/>`).join('')}
-      <rect x="470" y="950" width="140" height="230" rx="10" fill="#475569"/>
-      <circle id="${id}-quang-do" cx="300" cy="900" r="320" fill="#ef4444" opacity="0.32"/>
-      <circle id="${id}-quang-xanh" cx="780" cy="900" r="320" fill="#3b82f6" opacity="0"/>
+      <defs><linearGradient id="${id}-tuong" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1e293b"/><stop offset="1" stop-color="#0f172a"/></linearGradient>
+      <radialGradient id="${id}-den" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#fde68a" stop-opacity="0.55"/><stop offset="1" stop-color="#fde68a" stop-opacity="0"/></radialGradient></defs>
+      <rect width="1080" height="1920" fill="url(#${id}-tuong)"/>
+      <rect x="690" y="270" width="330" height="440" rx="14" fill="#0b1026" stroke="#475569" stroke-width="14"/>
+      ${[...Array(18)].map((_, k) => `<circle cx="${710 + ((k * 97) % 290)}" cy="${290 + ((k * 151) % 400)}" r="${2 + (k % 3)}" fill="#e2e8f0" opacity="${0.5 + (k % 3) * 0.2}"/>`).join('')}
+      <circle cx="930" cy="360" r="40" fill="#f1f5f9"/><line x1="855" y1="270" x2="855" y2="710" stroke="#475569" stroke-width="10"/>
+      <rect x="60" y="300" width="580" height="420" rx="16" fill="#a16207"/><rect x="76" y="316" width="548" height="388" rx="10" fill="#ca8a04"/>
+      ${[[110, 350, '🕵️'], [300, 340, '💻'], [470, 360, '📍'], [140, 540, '📄'], [330, 560, '🚨'], [490, 540, '🤖']].map(([x, y, e], k) => `<rect x="${x}" y="${y}" width="120" height="130" fill="#fefce8" transform="rotate(${k % 2 ? 4 : -4} ${x + 60} ${y + 65})"/><text x="${x + 60}" y="${y + 92}" text-anchor="middle" font-size="64" font-family="Emoji">${e}</text><circle cx="${x + 60}" cy="${y + 8}" r="9" fill="#dc2626"/>`).join('')}
+      <polyline id="${id}-day" points="170,358 360,348 530,368 550,548 390,568 200,548 170,358" fill="none" stroke="#dc2626" stroke-width="5"/>
+      <ellipse cx="540" cy="1090" rx="420" ry="160" fill="url(#${id}-den)"/>
+      <rect x="380" y="1050" width="320" height="22" rx="8" fill="#334155"/><path d="M600 1050 L640 960 L700 975" stroke="#94a3b8" stroke-width="10" fill="none"/><path d="M670 950 L740 975 L720 1010 Z" fill="#fbbf24"/>
+      <circle id="${id}-quang-do" cx="250" cy="820" r="380" fill="#ef4444" opacity="0.28"/>
+      <circle id="${id}-quang-xanh" cx="830" cy="820" r="380" fill="#3b82f6" opacity="0"/>
       ${san(id, '#334155', '#0f172a', '#94a3b8', '#bfdbfe')}`,
     tw: (t0, d) => [
       `tl.to("#${id}-quang-do", { opacity: 0, duration: 0.3, yoyo: true, repeat: ${lap(d, 0.3)}, ease: "none" }, ${f(t0)});`,
-      `tl.to("#${id}-quang-xanh", { opacity: 0.32, duration: 0.3, yoyo: true, repeat: ${lap(d, 0.3)}, ease: "none" }, ${f(t0)});`,
+      `tl.to("#${id}-quang-xanh", { opacity: 0.28, duration: 0.3, yoyo: true, repeat: ${lap(d, 0.3)}, ease: "none" }, ${f(t0)});`,
+      `tl.fromTo("#${id}-day", { opacity: 0.3 }, { opacity: 1, duration: 0.8, yoyo: true, repeat: ${lap(d, 0.8)}, ease: "sine.inOut" }, ${f(t0)});`,
     ],
   }),
 
@@ -154,6 +158,8 @@ export const BOI_CANH = {
       <defs><radialGradient id="${id}-nen" cx="0.5" cy="0.35" r="0.8"><stop offset="0" stop-color="#312e81"/><stop offset="1" stop-color="#020617"/></radialGradient>
       <radialGradient id="${id}-dat" cx="0.35" cy="0.35" r="0.7"><stop offset="0" stop-color="#60a5fa"/><stop offset="1" stop-color="#1e3a8a"/></radialGradient></defs>
       <rect width="1080" height="1920" fill="url(#${id}-nen)"/>
+      <defs>${[["#a855f7", 0], ["#ec4899", 1], ["#06b6d4", 2]].map(([m, k]) => `<radialGradient id="${id}-tv${k}" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="${m}" stop-opacity="0.45"/><stop offset="1" stop-color="${m}" stop-opacity="0"/></radialGradient>`).join("")}</defs>
+      <g id="${id}-tinh-van"><ellipse cx="300" cy="620" rx="420" ry="260" fill="url(#${id}-tv0)"/><ellipse cx="760" cy="300" rx="380" ry="220" fill="url(#${id}-tv1)"/><ellipse cx="560" cy="980" rx="460" ry="200" fill="url(#${id}-tv2)"/></g>
       ${[...Array(60)].map((_, k) => `<circle id="${id}-sao${k}" cx="${(k * 181) % 1080}" cy="${40 + ((k * 263) % 1120)}" r="${1.5 + (k % 4)}" fill="#fff" opacity="${0.4 + (k % 4) * 0.15}"/>`).join('')}
       <circle cx="800" cy="520" r="210" fill="url(#${id}-dat)"/><path d="M640 470 Q700 420 760 470 Q800 520 740 560 Q690 600 650 560 Z M820 380 Q880 360 900 420 Q870 460 830 440 Z" fill="#22c55e" opacity="0.85"/>
       <ellipse cx="800" cy="520" rx="300" ry="60" fill="none" stroke="#c4b5fd" stroke-opacity="0.5" stroke-width="10" transform="rotate(-18 800 520)"/>
@@ -163,6 +169,7 @@ export const BOI_CANH = {
       ${[0, 1, 2, 3].map((k) => `<ellipse cx="${150 + k * 260}" cy="${1300 + (k % 2) * 90}" rx="${70 - k * 8}" ry="22" fill="#475569"/>`).join('')}`,
     tw: (t0, d) => [
       ...[...Array(20)].map((_, j) => `tl.to("#${id}-sao${j * 3}", { opacity: 0.1, duration: ${f(0.5 + (j % 5) * 0.2)}, yoyo: true, repeat: ${lap(d, 0.5 + (j % 5) * 0.2)}, ease: "sine.inOut" }, ${f(t0 + (j % 7) * 0.1)});`),
+      `tl.to("#${id}-tinh-van", { x: 40, y: -30, duration: ${f(d)}, ease: "sine.inOut" }, ${f(t0)});`,
       `tl.fromTo("#${id}-sao-bang", { x: -300, y: -120, opacity: 0 }, { x: 700, y: 280, opacity: 1, duration: 1.1, ease: "power1.in" }, ${f(t0 + 0.8)});`,
     ],
   }),
@@ -172,7 +179,10 @@ export const BOI_CANH = {
     svg: `
       <defs><linearGradient id="${id}-tuong" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f5f3ff"/><stop offset="1" stop-color="#ddd6fe"/></linearGradient></defs>
       <rect width="1080" height="1180" fill="url(#${id}-tuong)"/>
-      <rect x="0" y="230" width="1080" height="70" fill="#7c3aed"/><text x="540" y="282" text-anchor="middle" font-family="BVP, sans-serif" font-weight="700" font-size="46" fill="#fff">TECH STORE</text>
+      <defs><filter id="${id}-neon" x="-20%" y="-50%" width="140%" height="200%"><feGaussianBlur stdDeviation="9"/></filter></defs>
+      <rect id="${id}-neon-sau" x="20" y="222" width="1040" height="86" rx="20" fill="none" stroke="#e879f9" stroke-width="16" filter="url(#${id}-neon)"/>
+      <rect x="0" y="230" width="1080" height="70" fill="#7c3aed"/>
+      <rect x="20" y="222" width="1040" height="86" rx="20" fill="none" stroke="#f5d0fe" stroke-width="4"/><text x="540" y="282" text-anchor="middle" font-family="BVP, sans-serif" font-weight="700" font-size="46" fill="#fff">TECH STORE</text>
       ${[0, 1, 2].map((r) => `<rect x="70" y="${400 + r * 230}" width="940" height="24" rx="8" fill="#a78bfa"/><rect x="70" y="${424 + r * 230}" width="940" height="10" fill="#7c3aed55"/>`).join('')}
       ${[...Array(15)].map((_, k) => {
         const r = Math.floor(k / 5), c = k % 5, x = 110 + c * 185, y = 400 + r * 230
@@ -184,6 +194,7 @@ export const BOI_CANH = {
       ${san(id, '#e9d5ff', '#a78bfa', '#c4b5fd', '#ffffff')}`,
     tw: (t0, d) => [
       `gsap.set("#${id}-sale", { svgOrigin: "920 375" });`,
+      `tl.to("#${id}-neon-sau", { opacity: 0.35, duration: 0.7, yoyo: true, repeat: ${lap(d, 0.7)}, ease: "sine.inOut" }, ${f(t0)});`,
       `tl.to("#${id}-sale", { scale: 1.1, rotation: -6, duration: 0.5, yoyo: true, repeat: ${lap(d, 0.5)}, ease: "sine.inOut" }, ${f(t0)});`,
       ...[...Array(15)].map((_, k) => `tl.to("#${id}-mh${k}", { opacity: 0.55, duration: ${f(0.7 + (k % 4) * 0.25)}, yoyo: true, repeat: ${lap(d, 0.7 + (k % 4) * 0.25)}, ease: "sine.inOut" }, ${f(t0 + (k % 5) * 0.15)});`),
     ],

@@ -256,10 +256,15 @@ const nenCanh = doanCanh.map((dc, k) => {
       tw.push(`tl.to("${truoc}", { x: -500, duration: 0.6, ease: "power3.inOut" }, ${f(t0)});`)
     } else if (kieu === 'phong') {
       tw.push(`tl.fromTo("#bc${k}", { opacity: 0, scale: 1.35 }, { opacity: 1, scale: 1, duration: 0.6, ease: "power2.out" }, ${f(t0)});`)
-    } else tw.push(`tl.fromTo("#bc${k}", { opacity: 0 }, { opacity: 1, duration: 0.5, ease: "power1.inOut" }, ${f(t0)});`)
+    } else {
+      // Tối dần kiểu điện ảnh: khung tối lại, đổi cảnh trong bóng tối, sáng lên cảnh mới
+      tw.push(`tl.to("#toi-chuyen", { opacity: 0.85, duration: 0.3, ease: "power1.in" }, ${f(t0 - 0.05)});`)
+      tw.push(`tl.set("#bc${k}", { opacity: 1 }, ${f(t0 + 0.25)});`)
+      tw.push(`tl.to("#toi-chuyen", { opacity: 0, duration: 0.45, ease: "power1.out" }, ${f(t0 + 0.3)});`)
+    }
     tw.push(`tl.set("${truoc}", { opacity: 0 }, ${f(t0 + 0.65)});`)
-    // Hai nhân vật nhún nhẹ khi đổi cảnh
-    tw.push(`tl.to(["#o-meo", "#o-robot"], { y: -28, duration: 0.18, yoyo: true, repeat: 1, ease: "power1.out" }, ${f(t0 + 0.1)});`)
+    // Hai nhân vật nhún nhẹ khi đổi cảnh (khoảng 3% chiều cao)
+    tw.push(`tl.to(["#o-meo", "#o-robot"], { y: -22, duration: 0.18, yoyo: true, repeat: 1, ease: "power1.out" }, ${f(t0 + 0.1)});`)
   }
   return `<div id="bc${k}" class="lop-nen"${k ? ' style="opacity:0"' : ''}><svg class="nen-svg" viewBox="0 0 1080 1920" width="1080" height="1920">${bc.svg}</svg></div>`
 })
@@ -268,27 +273,52 @@ const nenCanh = doanCanh.map((dc, k) => {
 // Điểm nhìn (toạ độ khung hình) của từng nhân vật khi cận cảnh
 const TAM = { meo: { x: 290, y: 930 }, robot: { x: 790, y: 930 } }
 const SAU_NEN = 0.55 // nền dịch chuyển bằng 55% nhân vật
-const lia = (t, scale, ox, oy, giay, ease = 'power2.inOut') => {
-  // đưa điểm (ox, oy) về giữa khung với độ phóng `scale` (gốc biến đổi ở giữa khung 540, 960)
+const lia = (t, scale, ox, oy, giay, ease = 'power2.inOut', xoay = 0) => {
+  // đưa điểm (ox, oy) về giữa khung với độ phóng `scale` (gốc biến đổi ở giữa khung 540, 960), nghiêng `xoay` độ
   const x = scale === 1 ? 0 : -(ox - 540) * scale
   const y = scale === 1 ? 0 : -(oy - 960) * scale
-  tw.push(`tl.to("#camera-nv", { scale: ${f(scale)}, x: ${f(x)}, y: ${f(y)}, duration: ${f(giay)}, ease: "${ease}" }, ${f(t)});`)
-  tw.push(`tl.to("#camera-nen", { scale: ${f(1 + (scale - 1) * SAU_NEN)}, x: ${f(x * SAU_NEN)}, y: ${f(y * SAU_NEN)}, duration: ${f(giay)}, ease: "${ease}" }, ${f(t)});`)
+  tw.push(`tl.to("#camera-nv", { scale: ${f(scale)}, x: ${f(x)}, y: ${f(y)}, rotation: ${f(xoay)}, duration: ${f(giay)}, ease: "${ease}" }, ${f(t)});`)
+  tw.push(`tl.to("#camera-nen", { scale: ${f(1 + (scale - 1) * SAU_NEN)}, x: ${f(x * SAU_NEN)}, y: ${f(y * SAU_NEN)}, rotation: ${f(xoay * SAU_NEN)}, duration: ${f(giay)}, ease: "${ease}" }, ${f(t)});`)
 }
-const MANH = new Set(['bat_ngo', 'lo_lang', 'vui'])
+// Câu cuối của mỗi đoạn bối cảnh (sắp đổi cảnh): máy quay lùi về cảnh rộng để có điểm nghỉ
+const truocDoiCanh = new Set(doanCanh.slice(0, -1).map((dc) => dc.het))
 loi.forEach((l, i) => {
   const t0 = batDau[i]
   const d = doDai[i]
   const tam = TAM[l.ai] ?? TAM.robot
-  let canh // [scale, ox, oy]
-  if (i === 0 || i === loi.length - 1) canh = [1, 540, 960] // mở đầu, kết thúc: cảnh rộng
-  else if (MANH.has(l.cam_xuc)) canh = [1.55, tam.x, tam.y - 60] // cảm xúc mạnh: cận mặt
-  else if (i % 3 === 1) canh = [1.25, (tam.x + 540) / 2, 980] // cảnh vừa nghiêng về người nói
-  else canh = [1.08, 540, 980]
-  lia(Math.max(0, t0 - 0.2), ...canh, 0.6)
-  // Trôi nhẹ trong suốt câu cho khung hình không đứng yên
-  const [s, ox, oy] = canh
-  lia(t0 + 0.45, s + 0.04, ox + (i % 2 ? 18 : -18), oy, Math.max(0.5, d - 0.7), 'sine.inOut')
+  const nghe = l.ai === 'meo' ? 'robot' : 'meo'
+  const lui = truocDoiCanh.has(i) && d > 2.2 ? 0.7 : 0 // chừa cuối câu để lùi về cảnh rộng
+  const conLai = Math.max(0.5, d - 0.5 - lui)
+  if (i === 0 || i === loi.length - 1) {
+    // Mở đầu / kết thúc: cảnh rộng, đẩy vào rất chậm 3%
+    lia(Math.max(0, t0 - 0.2), 1, 540, 960, 0.6)
+    lia(t0 + 0.4, 1.03, 540, 960, conLai, 'sine.inOut')
+  } else if (l.cam_xuc === 'bat_ngo') {
+    // Bất ngờ: cận mặt thật nhanh rồi đứng gần như yên
+    lia(t0 - 0.05, 1.6, tam.x, tam.y - 60, 0.3, 'power3.out')
+    lia(t0 + 0.35, 1.63, tam.x, tam.y - 60, conLai, 'sine.out')
+  } else if (l.cam_xuc === 'lo_lang') {
+    // Lo lắng: cận cảnh rồi tiến chậm dần vào mặt
+    lia(Math.max(0, t0 - 0.2), 1.45, tam.x, tam.y - 50, 0.6)
+    lia(t0 + 0.4, 1.62, tam.x, tam.y - 60, conLai, 'sine.inOut')
+  } else if (l.cam_xuc === 'vui') {
+    // Vui: cận cảnh, máy quay nâng nhẹ lên
+    lia(Math.max(0, t0 - 0.2), 1.45, tam.x, tam.y - 20, 0.6)
+    lia(t0 + 0.4, 1.5, tam.x, tam.y - 110, conLai, 'sine.inOut')
+  } else if (l.cam_xuc === 'suy_nghi') {
+    // Suy nghĩ: cận vừa, máy quay xoay vòng nhẹ quanh người nói
+    lia(Math.max(0, t0 - 0.2), 1.32, tam.x + (l.ai === 'meo' ? 60 : -60), tam.y - 30, 0.6, 'power2.inOut', -1.2)
+    lia(t0 + 0.4, 1.36, tam.x + (l.ai === 'meo' ? -20 : 20), tam.y - 40, conLai, 'sine.inOut', 1.2)
+  } else {
+    // Nói bình thường: cảnh vừa nghiêng về người nói, đẩy vào / kéo ra 2–5%
+    const s = i % 2 ? 1.22 : 1.15
+    const ox = (tam.x + 540) / 2
+    lia(Math.max(0, t0 - 0.2), s, ox, 980, 0.6)
+    lia(t0 + 0.4, s + (i % 3 ? 0.04 : -0.03), ox + (i % 2 ? 20 : -20), 980, conLai, 'sine.inOut')
+  }
+  if (lui) lia(t0 + d - lui, 1, 540, 960, lui, 'power2.inOut')
+  // Nhịp giữa câu dài: người nghe gật đầu, đạo cụ / biểu cảm đã lo phần đầu câu
+  if (d > 4.5) tw.push(`tl.to("#${nghe}-dau", { rotation: 6, duration: 0.2, yoyo: true, repeat: 3, ease: "sine.inOut" }, ${f(t0 + d / 2)});`)
 })
 
 // ── Đạo cụ: hiện bên cạnh người nói theo nội dung câu (AI chọn), bay nhẹ rồi biến mất ─
@@ -297,6 +327,7 @@ const DAO_CU = {
   chip: '🔌', o_to: '🚗', ten_lua: '🚀', bong_den: '💡', o_khoa: '🔒', the_ngan_hang: '💳', robot: '🤖',
   tai_lieu: '📄', dong_ho: '⏰', trai_dat: '🌍', tay_cam_game: '🎮', may_anh: '📷', tai_nghe: '🎧',
   cup: '🏆', tin_nhan: '💬', canh_bao: '⚠️', vu_tru: '🛰️', pin: '🔋', mang: '📶',
+  internet: '🌐', tin_nong: '📰', toc_do: '⚡',
 }
 const daoCu = []
 loi.forEach((l, i) => {
@@ -344,11 +375,15 @@ const trang = `<!doctype html>
       #root { position: relative; width: ${RONG}px; height: ${CAO}px; overflow: hidden; }
       .clip { position: absolute; inset: 0; }
       .camera { position: absolute; inset: 0; transform-origin: 540px 960px; }
+      /* Nền hơi nhoè như ống kính lấy nét vào nhân vật; nhân vật có viền sáng và bóng đổ mềm */
+      #camera-nen { filter: blur(1.6px) saturate(1.08); }
+      #toi-chuyen { position: absolute; inset: 0; background: #000; opacity: 0; }
+      .nv { filter: drop-shadow(0 0 10px #ffffff66) drop-shadow(0 24px 30px #0000008c); }
       .lop-nen { position: absolute; inset: 0; }
       .nen-svg { display: block; }
       .hat { position: absolute; border-radius: 50%; background: radial-gradient(circle, #ffffffcc, #ffffff00 70%); }
       #vien-toi { background: radial-gradient(ellipse 85% 70% at 50% 45%, transparent 55%, #00000099 100%); }
-      .dao-cu { position: absolute; top: 640px; width: 190px; height: 190px; display: flex; align-items: center; justify-content: center; font-size: 150px; line-height: 1; font-family: "Emoji", sans-serif; filter: drop-shadow(0 18px 24px #0008); opacity: 0; }
+      .dao-cu { position: absolute; top: 560px; width: 190px; height: 190px; display: flex; align-items: center; justify-content: center; font-size: 150px; line-height: 1; font-family: "Emoji", sans-serif; filter: drop-shadow(0 18px 24px #0008); opacity: 0; }
       .dao-cu.meo { left: 400px; }
       .dao-cu.robot { left: 490px; }
       .dau-trang { height: 200px; background: linear-gradient(#000000aa, transparent); display: flex; align-items: center; justify-content: space-between; padding: 0 64px; box-sizing: border-box; }
@@ -377,6 +412,7 @@ const trang = `<!doctype html>
     <div id="root" data-composition-id="main" data-width="${RONG}" data-height="${CAO}" data-duration="${f(TONG)}">
       <div id="canh" class="clip" data-start="0" data-duration="${f(TONG)}" data-track-index="0">
         <div id="camera-nen" class="camera">${nenCanh.join('')}${hat.join('')}</div>
+        <div id="toi-chuyen"></div>
       </div>
       <div id="dau-trang" class="dau-trang clip" data-start="0" data-duration="${f(TONG)}" data-track-index="6">
         <div class="kenh"><span class="vach"></span>${esc(kenh)}</div><div class="chude">${esc(chu_de)}</div>

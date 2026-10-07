@@ -1,7 +1,36 @@
 import 'server-only'
-import { GIONG } from './dsGiong'
+import { GIONG, GIONG_DU_PHONG } from './dsGiong'
 
-// Giọng AI đọc tiếng Việt bằng Gemini TTS (dùng chung GEMINI_API_KEY). Trả về WAV 24 kHz, mono, 16-bit.
+// Giọng chính: VieNeu-TTS chạy trên Hugging Face Spaces (thư mục hf-space/), miễn phí, không giới hạn lượt.
+// VIENEU_URL: link Space (https://<tên>-<space>.hf.space), VIENEU_KHOA: khóa đặt ở mục Secrets của Space.
+export const coVieNeu = () => !!process.env.VIENEU_URL?.trim()
+
+// Đọc từng câu, trả WAV 48 kHz và thời lượng (giây) mỗi câu để canh phụ đề. Space ngủ (lâu không dùng) thì
+// lần gọi đầu phải chờ nó khởi động: thử lại vài lần trong khoảng 2 phút.
+export async function docBangVieNeu(cau: string[]): Promise<{ wav: Buffer; doDai: number[] }> {
+  const url = process.env.VIENEU_URL!.trim().replace(/\/+$/, '')
+  const hetGio = Date.now() + 120_000
+  for (;;) {
+    const res = await fetch(`${url}/doc`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${process.env.VIENEU_KHOA?.trim() ?? ''}` },
+      body: JSON.stringify({ cau, giong: GIONG }),
+      signal: AbortSignal.timeout(240_000),
+      cache: 'no-store',
+    }).catch((e: Error) => e)
+    if (res instanceof Response && res.ok) {
+      const doDai = (res.headers.get('x-do-dai') ?? '').split(',').map(Number)
+      if (doDai.length !== cau.length || doDai.some((x) => !(x > 0))) throw new Error('VieNeu trả thời lượng không khớp số câu')
+      return { wav: Buffer.from(await res.arrayBuffer()), doDai }
+    }
+    const dangKhoiDong = !(res instanceof Response) || res.status === 503 || res.status === 502 || res.status === 404
+    if (!dangKhoiDong || Date.now() > hetGio)
+      throw new Error(`VieNeu lỗi: ${res instanceof Response ? `${res.status} ${(await res.text()).slice(0, 200)}` : res.message}`)
+    await new Promise((r) => setTimeout(r, 10_000))
+  }
+}
+
+// Giọng dự phòng: Gemini TTS (dùng chung GEMINI_API_KEY). Trả về WAV 24 kHz, mono, 16-bit.
 const MODEL = () => process.env.GEMINI_TTS_MODEL?.trim() || 'gemini-3.8-flash-lite-tts'
 
 // Tìm chuỗi base64 âm thanh trong kết quả (cấu trúc trả về có thể khác nhau giữa các phiên bản API)
@@ -47,7 +76,7 @@ export async function docThanhGiong(chu: string, thuLai = true): Promise<Buffer>
       model: MODEL(),
       input: [{ type: 'user_input', content: [{ type: 'text', text: chu }] }],
       response_format: { type: 'audio' },
-      generation_config: { speech_config: [{ voice: GIONG }] },
+      generation_config: { speech_config: [{ voice: GIONG_DU_PHONG }] },
     }),
     signal: AbortSignal.timeout(90_000),
     cache: 'no-store',

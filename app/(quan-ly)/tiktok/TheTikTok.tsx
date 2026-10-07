@@ -16,7 +16,7 @@ import { CotPhai, LuuY, NutQuyetDinh, ThongTinBai } from '@/app/PhanDuyet'
 
 type Viec = 'tt' | 'ca_hai' | 'bo_danh_dau'
 
-// Nghe thử giọng: mẫu tạo một lần rồi lưu lại (lần đầu tốn 1 lượt Gemini, sau đó miễn phí).
+// Nghe thử giọng: mẫu tạo một lần rồi lưu lại, lần sau phát ngay.
 // Một trình phát chung cho cả trang: bấm nghe ở thẻ khác thì bản đang phát tự dừng.
 let trinhPhat: HTMLAudioElement | null = null
 let daTai: string | null = null // link blob giọng mẫu đã tải trong phiên này
@@ -259,7 +259,7 @@ export default function TheTikTok({
                 Xác nhận sử dụng âm nhạc
               </a>{' '}
               của TikTok. Bài có thể mất vài phút mới hiện trên hồ sơ.
-              {longTieng && ' Lồng tiếng: video dọc, ảnh bài + giọng AI đọc + phụ đề (tốn 1 lượt giọng Gemini). Giọng lỗi thì tự đăng dạng ảnh.'}
+              {longTieng && ' Lồng tiếng: video dọc, ảnh bài + giọng AI đọc + phụ đề (miễn phí, đọc một lần rồi lưu lại). Giọng lỗi thì tự đăng dạng ảnh.'}
             </p>
           </div>
         )}
@@ -339,7 +339,7 @@ export default function TheTikTok({
             />
           )}
         </section>
-        <LuuY>Nghe thử giọng và xem trước video trước khi đăng. Gói Gemini miễn phí chỉ đọc được khoảng 10 lần mỗi ngày.</LuuY>
+        <LuuY>Nghe thử giọng và xem trước video trước khi đăng. Máy đọc giọng lâu không dùng sẽ ngủ, lần đầu có thể chờ thêm 1–2 phút.</LuuY>
       </CotPhai>
     </article>
   )

@@ -8,8 +8,8 @@ import ffmpeg from 'ffmpeg-static'
 import sharp from 'sharp'
 import { veAnhBai } from './anh'
 import { db, type BaiViet } from './db'
-import { GIONG } from './dsGiong'
-import { docThanhGiong } from './giongDoc'
+import { GIONG, GIONG_DU_PHONG } from './dsGiong'
+import { coVieNeu, docBangVieNeu, docThanhGiong } from './giongDoc'
 
 // Video dọc 1080x1920 cho TikTok: ảnh bài ở giữa trên nền mờ, giọng AI đọc bài, phụ đề chạy theo từng đoạn.
 const RONG = 1080
@@ -37,25 +37,26 @@ export function chuDeDoc(b: Pick<BaiViet, 'tieu_de_anh' | 'noi_dung'>) {
   return cuoiCau > 800 ? cat.slice(0, cuoiCau + 1) : cat
 }
 
-// Chia chữ thành các đoạn phụ đề, mỗi đoạn tối đa 2 dòng, không vắt qua hai câu
-function tachPhuDe(chu: string) {
+// Tách chữ thành từng câu (VieNeu đọc từng câu, phụ đề không vắt qua hai câu)
+const tachCau = (chu: string) => chu.split(/(?<=[.!?…])\s+|\n+/).map((c) => c.trim()).filter((c) => /[\p{L}\p{N}]/u.test(c))
+
+// Chia một câu thành các đoạn phụ đề, mỗi đoạn tối đa 2 dòng
+function tachPhuDe(cau: string) {
   const doan: string[][] = []
-  for (const cau of chu.split(/(?<=[.!?…])\s+|\n+/)) {
-    let dong: string[] = []
-    let hienTai = ''
-    for (const tu of cau.trim().split(/\s+/).filter(Boolean)) {
-      if (hienTai && `${hienTai} ${tu}`.length > MAX_KY_TU) {
-        dong.push(hienTai)
-        hienTai = tu
-        if (dong.length === 2) {
-          doan.push(dong)
-          dong = []
-        }
-      } else hienTai = hienTai ? `${hienTai} ${tu}` : tu
-    }
-    if (hienTai) dong.push(hienTai)
-    if (dong.length) doan.push(dong)
+  let dong: string[] = []
+  let hienTai = ''
+  for (const tu of cau.split(/\s+/).filter(Boolean)) {
+    if (hienTai && `${hienTai} ${tu}`.length > MAX_KY_TU) {
+      dong.push(hienTai)
+      hienTai = tu
+      if (dong.length === 2) {
+        doan.push(dong)
+        dong = []
+      }
+    } else hienTai = hienTai ? `${hienTai} ${tu}` : tu
   }
+  if (hienTai) dong.push(hienTai)
+  if (dong.length) doan.push(dong)
   return doan
 }
 
@@ -88,8 +89,8 @@ function chayFfmpeg(args: string[], cwd: string) {
 }
 
 // Video đã dựng được lưu ở Supabase Storage (kho riêng tư), tên gồm mã băm của mọi thứ làm video thay đổi:
-// xem trước rồi bấm Đăng dùng lại đúng video đó, không tốn thêm lượt giọng Gemini. Sửa bài thì tự dựng lại.
-// Giọng đọc lưu riêng (theo chữ được đọc): đổi ảnh, chủ đề, cách dựng video... thì dựng lại mà không gọi Gemini nữa.
+// xem trước rồi bấm Đăng dùng lại đúng video đó, không phải đọc lại. Sửa bài thì tự dựng lại.
+// Giọng đọc lưu riêng (theo chữ được đọc): đổi ảnh, chủ đề, cách dựng video... thì dựng lại mà không phải đọc lại.
 export const KHO = 'video-tiktok'
 const PHIEN_BAN = 1 // tăng khi đổi cách dựng video để bỏ video cũ
 
@@ -111,23 +112,45 @@ export async function damBaoKho() {
   return kho.from(KHO)
 }
 
-// Giọng đọc đã lưu của bài (WAV). Chưa có thì nhờ Gemini đọc một lần rồi lưu lại, bỏ các bản đọc cũ của bài.
-async function layGiongBai(bai: BaiViet, chu: string) {
+type GiongBai = { wav: Buffer; doDai: number[] | null; luu: boolean } // doDai: giây mỗi câu (chỉ VieNeu có)
+
+// Giọng đọc đã lưu của bài (WAV + thời lượng từng câu). Chưa có thì đọc một lần rồi lưu lại, bỏ các bản đọc cũ của bài.
+// Giọng chính VieNeu; VieNeu lỗi thì đọc tạm bằng Gemini và không lưu (`luu: false`), lần sau thử lại VieNeu.
+async function layGiongBai(bai: BaiViet, chu: string, cau: string[]): Promise<GiongBai> {
   const thuMuc = `giong/${bai.id}`
-  const ten = `${thuMuc}/${bam([GIONG, chu])}.wav`
-  const daLuu = await layVideoDaLuu(ten).catch(() => null)
-  if (daLuu) return daLuu
-  const wav = await docThanhGiong(chu)
+  const vieNeu = coVieNeu()
+  const ten = `${thuMuc}/${vieNeu ? bam(['vieneu', GIONG, cau]) : bam([GIONG_DU_PHONG, chu])}`
+  const [wav, meta] = await Promise.all([layVideoDaLuu(`${ten}.wav`), layVideoDaLuu(`${ten}.json`)]).catch(() => [null, null])
+  if (wav && meta) return { wav, doDai: JSON.parse(meta.toString()).doDai ?? null, luu: true }
+
+  let kq: GiongBai
+  let loiVieNeu = ''
   try {
-    const kho = await damBaoKho()
-    const { data: cu } = await kho.list(thuMuc)
-    const xoa = (cu ?? []).map((f) => `${thuMuc}/${f.name}`).filter((t) => t !== ten)
-    if (xoa.length) await kho.remove(xoa)
-    await kho.upload(ten, wav, { contentType: 'audio/wav', upsert: true })
+    if (!vieNeu) throw null
+    kq = { ...(await docBangVieNeu(cau)), luu: true }
   } catch (e) {
-    console.error('Không lưu được giọng đọc:', e)
+    if (e) {
+      loiVieNeu = e instanceof Error ? e.message : String(e)
+      console.error(loiVieNeu)
+    }
+    try {
+      kq = { wav: await docThanhGiong(chu), doDai: null, luu: !vieNeu }
+    } catch (e2) {
+      throw new Error([loiVieNeu, e2 instanceof Error ? e2.message : String(e2)].filter(Boolean).join(' · Dự phòng: '))
+    }
   }
-  return wav
+  if (kq.luu)
+    try {
+      const kho = await damBaoKho()
+      const { data: cu } = await kho.list(thuMuc)
+      const xoa = (cu ?? []).map((f) => `${thuMuc}/${f.name}`).filter((t) => !t.startsWith(`${ten}.`))
+      if (xoa.length) await kho.remove(xoa)
+      await kho.upload(`${ten}.wav`, kq.wav, { contentType: 'audio/wav', upsert: true })
+      await kho.upload(`${ten}.json`, JSON.stringify({ doDai: kq.doDai }), { contentType: 'application/json', upsert: true })
+    } catch (e) {
+      console.error('Không lưu được giọng đọc:', e)
+    }
+  return kq
 }
 
 async function luuVideo(bai: BaiViet, ten: string, video: Buffer) {
@@ -145,8 +168,9 @@ export async function taoVideoBai(bai: BaiViet) {
   const ten = tenTep(bai)
   const daLuu = await layVideoDaLuu(ten).catch(() => null)
   if (daLuu) return daLuu
-  const video = await dungVideo(bai)
-  await luuVideo(bai, ten, video).catch((e) => console.error('Không lưu được video TikTok:', e))
+  const { video, luu } = await dungVideo(bai)
+  // Video đọc bằng giọng dự phòng thì không lưu, lần sau dựng lại bằng giọng chính
+  if (luu) await luuVideo(bai, ten, video).catch((e) => console.error('Không lưu được video TikTok:', e))
   return video
 }
 
@@ -166,7 +190,11 @@ export async function wavSangMp3(wav: Buffer) {
 async function dungVideo(bai: BaiViet) {
   const chu = chuDeDoc(bai)
   if (!chu) throw new Error('Bài không có chữ để đọc')
-  const [wav, anh] = await Promise.all([layGiongBai(bai, chu), veAnhBai(bai).then(async (r) => Buffer.from(await r.arrayBuffer()))])
+  const cau = tachCau(chu)
+  const [{ wav, doDai, luu }, anh] = await Promise.all([
+    layGiongBai(bai, chu, cau),
+    veAnhBai(bai).then(async (r) => Buffer.from(await r.arrayBuffer())),
+  ])
   const tong = doDaiWav(wav)
 
   const thuMuc = await mkdtemp(join(tmpdir(), 'video-'))
@@ -178,23 +206,31 @@ async function dungVideo(bai: BaiViet) {
       .jpeg({ quality: 90 })
       .toBuffer()
 
-    // Mỗi đoạn phụ đề hiện trong khoảng thời gian tỉ lệ với số chữ (cộng chút cho chỗ ngắt)
-    const doan = tachPhuDe(chu)
-    const nang = doan.map((d) => d.join(' ').length + 6)
-    const tongNang = nang.reduce((a, b) => a + b, 0)
+    // Thời gian mỗi câu: VieNeu báo đúng từng câu; giọng dự phòng đọc cả bài một lần thì chia theo số chữ.
+    // Trong một câu, mỗi đoạn phụ đề hiện trong khoảng thời gian tỉ lệ với số chữ (cộng chút cho chỗ ngắt).
+    const doanCau = cau.map(tachPhuDe)
+    const nang = doanCau.map((ds) => ds.map((d) => d.join(' ').length + 6))
+    const tongCau = nang.map((n) => n.reduce((a, b) => a + b, 0))
+    const tongNang = tongCau.reduce((a, b) => a + b, 0)
+    const giayCau = doDai ?? tongCau.map((n) => (n / tongNang) * tong)
+    const doan = doanCau.flat()
     const loc: string[] = []
     let moc = 0
-    for (const [i, dong] of doan.entries()) {
-      const den = moc + (nang[i] / tongNang) * tong
-      for (const [j, d] of dong.entries()) {
-        const tep = `c${i}_${j}.txt`
-        await writeFile(join(thuMuc, tep), d)
-        loc.push(
-          `drawtext=fontfile=font.ttf:textfile=${tep}:expansion=none:fontsize=58:fontcolor=white:borderw=6:bordercolor=black@0.85` +
-            `:x=(w-text_w)/2:y=${DONG_DAU + j * CAO_DONG}:enable='between(t,${moc.toFixed(2)},${(i === doan.length - 1 ? tong + DUOI : den).toFixed(2)})'`,
-        )
+    let i = 0
+    for (const [c, ds] of doanCau.entries()) {
+      for (const [k, dong] of ds.entries()) {
+        const den = moc + (nang[c][k] / tongCau[c]) * giayCau[c]
+        for (const [j, d] of dong.entries()) {
+          const tep = `c${i}_${j}.txt`
+          await writeFile(join(thuMuc, tep), d)
+          loc.push(
+            `drawtext=fontfile=font.ttf:textfile=${tep}:expansion=none:fontsize=58:fontcolor=white:borderw=6:bordercolor=black@0.85` +
+              `:x=(w-text_w)/2:y=${DONG_DAU + j * CAO_DONG}:enable='between(t,${moc.toFixed(2)},${(i === doan.length - 1 ? tong + DUOI : den).toFixed(2)})'`,
+          )
+        }
+        moc = den
+        i++
       }
-      moc = den
     }
 
     await Promise.all([
@@ -218,7 +254,7 @@ async function dungVideo(bai: BaiViet) {
       ],
       thuMuc,
     )
-    return await readFile(join(thuMuc, 'video.mp4'))
+    return { video: await readFile(join(thuMuc, 'video.mp4')), luu }
   } finally {
     await rm(thuMuc, { recursive: true, force: true }).catch(() => {})
   }

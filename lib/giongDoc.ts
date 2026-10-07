@@ -1,14 +1,8 @@
 import 'server-only'
-import { giongHopLe } from './dsGiong'
+import { GIONG } from './dsGiong'
 
 // Giọng AI đọc tiếng Việt bằng Gemini TTS (dùng chung GEMINI_API_KEY). Trả về WAV 24 kHz, mono, 16-bit.
 const MODEL = () => process.env.GEMINI_TTS_MODEL?.trim() || 'gemini-3.8-flash-lite-tts'
-
-// Giọng mặc định cho lịch tự đăng / hẹn giờ (danh sách ở lib/dsGiong.ts)
-export const giongMacDinh = () => {
-  const g = process.env.TIKTOK_GIONG?.trim()
-  return giongHopLe(g) ? g : 'Kore'
-}
 
 // Tìm chuỗi base64 âm thanh trong kết quả (cấu trúc trả về có thể khác nhau giữa các phiên bản API)
 function timAmThanh(x: unknown): string | null {
@@ -43,7 +37,7 @@ function bocWav(pcm: Buffer) {
 
 // Gói miễn phí giới hạn 3 lần đọc mỗi phút và 10 lần mỗi ngày. Chạm giới hạn theo phút (429) thì chờ theo lời Gemini báo
 // (tối đa 60 giây) rồi thử lại một lần; hết lượt trong ngày thì báo lỗi dễ hiểu.
-export async function docThanhGiong(chu: string, giong = giongMacDinh(), thuLai = true): Promise<Buffer> {
+export async function docThanhGiong(chu: string, thuLai = true): Promise<Buffer> {
   const khoa = process.env.GEMINI_API_KEY?.trim()
   if (!khoa) throw new Error('Chưa cài GEMINI_API_KEY nên không lồng tiếng được')
   const res = await fetch('https://generativelanguage.googleapis.com/v1beta/interactions', {
@@ -53,7 +47,7 @@ export async function docThanhGiong(chu: string, giong = giongMacDinh(), thuLai 
       model: MODEL(),
       input: [{ type: 'user_input', content: [{ type: 'text', text: chu }] }],
       response_format: { type: 'audio' },
-      generation_config: { speech_config: [{ voice: giong }] },
+      generation_config: { speech_config: [{ voice: GIONG }] },
     }),
     signal: AbortSignal.timeout(90_000),
     cache: 'no-store',
@@ -67,7 +61,7 @@ export async function docThanhGiong(chu: string, giong = giongMacDinh(), thuLai 
     const giay = Number(loi.match(/retry in ([\d.]+)s\b/i)?.[1] ?? Infinity)
     if (giay <= 60) {
       await new Promise((r) => setTimeout(r, (giay + 1) * 1000))
-      return docThanhGiong(chu, giong, false)
+      return docThanhGiong(chu, false)
     }
   }
   if (!res.ok) throw new Error(`Giọng đọc Gemini lỗi: ${json.error?.message ?? res.status}`)

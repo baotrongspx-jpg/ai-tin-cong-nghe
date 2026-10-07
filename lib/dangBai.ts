@@ -41,7 +41,7 @@ export async function dangLenTikTok(bai: BaiViet, tuyChon: TuyChonDang = {}) {
     let publishId: string | null = null
     let canhBao: string | undefined
     if (batLongTieng(tuyChon)) {
-      const video = await taoVideoBai(bai, tuyChon.giong).catch((e: Error) => void (canhBao = `Lồng tiếng lỗi, đã đăng dạng ảnh: ${e.message}`))
+      const video = await taoVideoBai(bai).catch((e: Error) => void (canhBao = `Lồng tiếng lỗi, đã đăng dạng ảnh: ${e.message}`))
       if (video) publishId = await dangVideoLenTikTok(video, moTaVideo(bai, xuHuong), tuyChon)
     }
     // ?v= để TikTok không lấy phải ảnh cũ còn trong bộ nhớ đệm khi vừa sửa tiêu đề

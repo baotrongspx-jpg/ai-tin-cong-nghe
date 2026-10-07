@@ -5,7 +5,7 @@ import Link from 'next/link'
 import type { BaiViet } from '@/lib/db'
 import { ghepHashtagTikTok, urlAnh } from '@/lib/chuThich'
 import { gio, truoc } from '@/lib/thoiGian'
-import { DS_GIONG } from '@/lib/dsGiong'
+import { GIONG, MO_TA_GIONG } from '@/lib/dsGiong'
 import { dichLoiTikTok } from '@/lib/loiTikTok'
 import { boDanhDauTikTok, dangCaHai, dangTikTok } from '@/app/actions'
 import { thongBao } from '@/app/ThongBao'
@@ -16,49 +16,20 @@ import { CotPhai, LuuY, NutQuyetDinh, ThongTinBai } from '@/app/PhanDuyet'
 
 type Viec = 'tt' | 'ca_hai' | 'bo_danh_dau'
 
-// Giọng đọc chọn lần trước, nhớ trên trình duyệt này và dùng chung cho mọi thẻ bài
-const GIONG_DAU = 'Kore'
-const KHOA_GIONG = 'giong_tiktok'
-let giongTam = GIONG_DAU // khi trình duyệt chặn localStorage (chế độ riêng tư) vẫn đổi giọng được
-const docGiong = () => {
-  try {
-    const g = localStorage.getItem(KHOA_GIONG)
-    return g && DS_GIONG.some(([ma]) => ma === g) ? g : giongTam
-  } catch {
-    return giongTam
-  }
-}
-const ngheGiong = (bao: () => void) => {
-  window.addEventListener('doi-giong', bao)
-  window.addEventListener('storage', bao)
-  return () => {
-    window.removeEventListener('doi-giong', bao)
-    window.removeEventListener('storage', bao)
-  }
-}
-const luuGiong = (g: string) => {
-  giongTam = g
-  try {
-    localStorage.setItem(KHOA_GIONG, g)
-  } catch {}
-  window.dispatchEvent(new Event('doi-giong'))
-}
-
-// Nghe thử giọng: mẫu tạo một lần cho mỗi giọng rồi lưu lại (lần đầu tốn 1 lượt Gemini, sau đó miễn phí).
-// Một trình phát chung cho cả trang: bấm nghe giọng khác thì giọng đang phát tự dừng.
+// Nghe thử giọng: mẫu tạo một lần rồi lưu lại (lần đầu tốn 1 lượt Gemini, sau đó miễn phí).
+// Một trình phát chung cho cả trang: bấm nghe ở thẻ khác thì bản đang phát tự dừng.
 let trinhPhat: HTMLAudioElement | null = null
-const daTai = new Map<string, string>() // giọng → link blob đã tải trong phiên này
+let daTai: string | null = null // link blob giọng mẫu đã tải trong phiên này
 const ngheTrinhPhat = (bao: () => void) => {
   window.addEventListener('doi-mau-giong', bao)
   return () => window.removeEventListener('doi-mau-giong', bao)
 }
-const dangPhat = () => (trinhPhat && !trinhPhat.paused ? trinhPhat.dataset.giong ?? null : null)
+const dangPhat = () => !!trinhPhat && !trinhPhat.paused
 const baoDoi = () => window.dispatchEvent(new Event('doi-mau-giong'))
 
-function NutNgheThu({ giong }: { giong: string }) {
-  const phat = useSyncExternalStore(ngheTrinhPhat, dangPhat, () => null)
+function NutNgheThu() {
+  const dangNghe = useSyncExternalStore(ngheTrinhPhat, dangPhat, () => false)
   const [dangTai, setDangTai] = useState(false)
-  const dangNghe = phat === giong
   const bam = async () => {
     if (!trinhPhat) {
       trinhPhat = new Audio()
@@ -66,23 +37,20 @@ function NutNgheThu({ giong }: { giong: string }) {
     }
     if (dangNghe) return trinhPhat.pause()
     trinhPhat.pause()
-    let link = daTai.get(giong)
-    if (!link) {
+    if (!daTai) {
       setDangTai(true)
       try {
-        const res = await fetch(`/api/giong-mau/${giong}`)
+        const res = await fetch('/api/giong-mau')
         if (!res.ok) throw new Error((await res.text()) || `Lỗi ${res.status}`)
-        link = URL.createObjectURL(await res.blob())
-        daTai.set(giong, link)
+        daTai = URL.createObjectURL(await res.blob())
       } catch (e) {
-        thongBao('loi', `Chưa nghe thử được giọng ${giong}: ${e instanceof Error ? e.message : 'lỗi'}`)
+        thongBao('loi', `Chưa nghe thử được giọng ${GIONG}: ${e instanceof Error ? e.message : 'lỗi'}`)
         return
       } finally {
         setDangTai(false)
       }
     }
-    trinhPhat.src = link
-    trinhPhat.dataset.giong = giong
+    trinhPhat.src = daTai
     trinhPhat.play().catch(() => thongBao('loi', 'Không phát được giọng mẫu'))
   }
   return (
@@ -90,7 +58,7 @@ function NutNgheThu({ giong }: { giong: string }) {
       type="button"
       onClick={bam}
       disabled={dangTai}
-      title={dangNghe ? 'Dừng' : `Nghe thử giọng ${giong}`}
+      title={dangNghe ? 'Dừng' : `Nghe thử giọng ${GIONG}`}
       className="btn btn-nhat shrink-0 px-3"
     >
       {dangTai ? <Xoay /> : dangNghe ? '■' : '▶'} <span className="text-xs">{dangNghe ? 'Dừng' : 'Nghe'}</span>
@@ -114,11 +82,6 @@ export default function TheTikTok({
 }) {
   const [choBinhLuan, setChoBinhLuan] = useState(true)
   const [longTieng, setLongTieng] = useState(true)
-  const giong = useSyncExternalStore(ngheGiong, docGiong, () => GIONG_DAU)
-  const chonGiong = (g: string) => {
-    luuGiong(g)
-    setVideo(null) // video đang xem là giọng cũ
-  }
   const [moRong, setMoRong] = useState(false)
   // Xem trước video lồng tiếng: link blob của video, đang dựng, lỗi
   const [video, setVideo] = useState<string | null>(null)
@@ -130,7 +93,7 @@ export default function TheTikTok({
     setDangDung(true)
     setLoiVideo('')
     try {
-      const res = await fetch(`/api/video/${bai.id}?giong=${giong}`, { cache: 'no-store' })
+      const res = await fetch(`/api/video/${bai.id}`, { cache: 'no-store' })
       if (!res.ok) throw new Error((await res.text()) || `Lỗi ${res.status}`)
       setVideo(URL.createObjectURL(await res.blob()))
     } catch (e) {
@@ -159,7 +122,7 @@ export default function TheTikTok({
 
   return (
     <article className="the grid gap-5 p-4 sm:p-5 md:grid-cols-[250px_minmax(0,1fr)] xl:grid-cols-[250px_minmax(0,1fr)_290px]">
-      {/* Cột 1: ảnh / video xem trước + giọng đọc. min-w-0 + grid-cols-1: chữ dài trong ô chọn giọng không làm cột phình ra */}
+      {/* Cột 1: ảnh / video xem trước + giọng đọc. min-w-0 + grid-cols-1: chữ dài không làm cột phình ra */}
       <div className="grid min-w-0 grid-cols-1 content-start gap-3">
         <div className="relative">
           {video ? (
@@ -191,24 +154,12 @@ export default function TheTikTok({
         {!daDang && (
           <>
             <div className="grid min-w-0 grid-cols-1 gap-1">
-              <label htmlFor={`giong-${bai.id}`} className="text-xs font-semibold text-slate-500">
-                Giọng đọc
-              </label>
-              <div className="flex min-w-0 gap-1.5">
-                <select
-                  id={`giong-${bai.id}`}
-                  value={giong}
-                  disabled={dangDung || dangLam}
-                  onChange={(e) => chonGiong(e.target.value)}
-                  className="w-full min-w-0 flex-1 truncate rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-800"
-                >
-                  {DS_GIONG.map(([ma, mo]) => (
-                    <option key={ma} value={ma}>
-                      {ma} — {mo}
-                    </option>
-                  ))}
-                </select>
-                <NutNgheThu giong={giong} />
+              <span className="text-xs font-semibold text-slate-500">Giọng đọc</span>
+              <div className="flex min-w-0 items-center gap-1.5">
+                <span className="min-w-0 flex-1 truncate rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-sm text-slate-800">
+                  {GIONG} — {MO_TA_GIONG}
+                </span>
+                <NutNgheThu />
               </div>
             </div>
             <button disabled={dangDung || dangLam} onClick={video ? () => setVideo(null) : xemTruoc} className="btn btn-phu w-full">
@@ -326,10 +277,10 @@ export default function TheTikTok({
                 mau="tt"
                 icon={<IconTikTok className="h-5 w-5" />}
                 ten="Đăng TikTok"
-                moTa={viec === 'tt' ? (longTieng ? 'Đang dựng video… (~1-2 phút)' : 'Đang đăng… (~15 giây)') : longTieng ? `Video lồng tiếng giọng ${giong}` : 'Bài ảnh, TikTok tự thêm nhạc'}
+                moTa={viec === 'tt' ? (longTieng ? 'Đang dựng video… (~1-2 phút)' : 'Đang đăng… (~15 giây)') : longTieng ? `Video lồng tiếng giọng ${GIONG}` : 'Bài ảnh, TikTok tự thêm nhạc'}
                 disabled={dangLam}
                 dangChay={viec === 'tt'}
-                onClick={() => chay('tt', () => dangTikTok(bai.id, { tatBinhLuan: !choBinhLuan, longTieng, giong }), 'Đã gửi lên TikTok')}
+                onClick={() => chay('tt', () => dangTikTok(bai.id, { tatBinhLuan: !choBinhLuan, longTieng }), 'Đã gửi lên TikTok')}
               />
               {/* Bài chờ duyệt chưa lên Facebook: đăng luôn cả hai nơi */}
               {bai.trang_thai === 'nhap' && !bai.fb_post_id && (
@@ -347,7 +298,7 @@ export default function TheTikTok({
                   dangChay={viec === 'ca_hai'}
                   onClick={() => {
                     if (confirm('Đăng bài này lên cả Facebook và TikTok?'))
-                      chay('ca_hai', () => dangCaHai(bai.id, suaGoc, { tatBinhLuan: !choBinhLuan, longTieng, giong }), 'Đã đăng lên Facebook và TikTok')
+                      chay('ca_hai', () => dangCaHai(bai.id, suaGoc, { tatBinhLuan: !choBinhLuan, longTieng }), 'Đã đăng lên Facebook và TikTok')
                   }}
                 />
               )}

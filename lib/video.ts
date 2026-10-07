@@ -8,8 +8,8 @@ import ffmpeg from 'ffmpeg-static'
 import sharp from 'sharp'
 import { veAnhBai } from './anh'
 import { db, type BaiViet } from './db'
-import { giongHopLe } from './dsGiong'
-import { docThanhGiong, giongMacDinh } from './giongDoc'
+import { GIONG } from './dsGiong'
+import { docThanhGiong } from './giongDoc'
 
 // Video dọc 1080x1920 cho TikTok: ảnh bài ở giữa trên nền mờ, giọng AI đọc bài, phụ đề chạy theo từng đoạn.
 const RONG = 1080
@@ -89,14 +89,14 @@ function chayFfmpeg(args: string[], cwd: string) {
 
 // Video đã dựng được lưu ở Supabase Storage (kho riêng tư), tên gồm mã băm của mọi thứ làm video thay đổi:
 // xem trước rồi bấm Đăng dùng lại đúng video đó, không tốn thêm lượt giọng Gemini. Sửa bài thì tự dựng lại.
+// Giọng đọc lưu riêng (theo chữ được đọc): đổi ảnh, chủ đề, cách dựng video... thì dựng lại mà không gọi Gemini nữa.
 export const KHO = 'video-tiktok'
 const PHIEN_BAN = 1 // tăng khi đổi cách dựng video để bỏ video cũ
 
-const tenTep = (bai: BaiViet, giong: string) =>
-  `${bai.id}/${createHash('sha256')
-    .update(JSON.stringify([PHIEN_BAN, giong, chuDeDoc(bai), bai.chu_de, bai.mau_anh, bai.anh_nen ?? null, bai.nguon_ten, bai.ngay_bao]))
-    .digest('hex')
-    .slice(0, 16)}.mp4`
+const bam = (x: unknown) => createHash('sha256').update(JSON.stringify(x)).digest('hex').slice(0, 16)
+
+const tenTep = (bai: BaiViet) =>
+  `${bai.id}/${bam([PHIEN_BAN, GIONG, chuDeDoc(bai), bai.chu_de, bai.mau_anh, bai.anh_nen ?? null, bai.nguon_ten, bai.ngay_bao])}.mp4`
 
 async function layVideoDaLuu(ten: string) {
   const { data } = await db().storage.from(KHO).download(ten)
@@ -111,6 +111,25 @@ export async function damBaoKho() {
   return kho.from(KHO)
 }
 
+// Giọng đọc đã lưu của bài (WAV). Chưa có thì nhờ Gemini đọc một lần rồi lưu lại, bỏ các bản đọc cũ của bài.
+async function layGiongBai(bai: BaiViet, chu: string) {
+  const thuMuc = `giong/${bai.id}`
+  const ten = `${thuMuc}/${bam([GIONG, chu])}.wav`
+  const daLuu = await layVideoDaLuu(ten).catch(() => null)
+  if (daLuu) return daLuu
+  const wav = await docThanhGiong(chu)
+  try {
+    const kho = await damBaoKho()
+    const { data: cu } = await kho.list(thuMuc)
+    const xoa = (cu ?? []).map((f) => `${thuMuc}/${f.name}`).filter((t) => t !== ten)
+    if (xoa.length) await kho.remove(xoa)
+    await kho.upload(ten, wav, { contentType: 'audio/wav', upsert: true })
+  } catch (e) {
+    console.error('Không lưu được giọng đọc:', e)
+  }
+  return wav
+}
+
 async function luuVideo(bai: BaiViet, ten: string, video: Buffer) {
   const kho = db().storage
   await damBaoKho()
@@ -121,14 +140,12 @@ async function luuVideo(bai: BaiViet, ten: string, video: Buffer) {
   await kho.from(KHO).upload(ten, video, { contentType: 'video/mp4', upsert: true })
 }
 
-// Video lồng tiếng của bài: lấy bản đã lưu nếu bài và giọng chưa đổi, không thì dựng mới rồi lưu lại.
-// `giong` không hợp lệ / bỏ trống thì dùng giọng mặc định (TIKTOK_GIONG).
-export async function taoVideoBai(bai: BaiViet, giong?: string | null) {
-  const g = giongHopLe(giong) ? giong : giongMacDinh()
-  const ten = tenTep(bai, g)
+// Video lồng tiếng của bài: lấy bản đã lưu nếu bài chưa đổi, không thì dựng mới rồi lưu lại.
+export async function taoVideoBai(bai: BaiViet) {
+  const ten = tenTep(bai)
   const daLuu = await layVideoDaLuu(ten).catch(() => null)
   if (daLuu) return daLuu
-  const video = await dungVideo(bai, g)
+  const video = await dungVideo(bai)
   await luuVideo(bai, ten, video).catch((e) => console.error('Không lưu được video TikTok:', e))
   return video
 }
@@ -146,10 +163,10 @@ export async function wavSangMp3(wav: Buffer) {
 }
 
 // Dựng video MP4 (H.264 + AAC) lồng tiếng AI cho một bài
-async function dungVideo(bai: BaiViet, giong: string) {
+async function dungVideo(bai: BaiViet) {
   const chu = chuDeDoc(bai)
   if (!chu) throw new Error('Bài không có chữ để đọc')
-  const [wav, anh] = await Promise.all([docThanhGiong(chu, giong), veAnhBai(bai).then(async (r) => Buffer.from(await r.arrayBuffer()))])
+  const [wav, anh] = await Promise.all([layGiongBai(bai, chu), veAnhBai(bai).then(async (r) => Buffer.from(await r.arrayBuffer()))])
   const tong = doDaiWav(wav)
 
   const thuMuc = await mkdtemp(join(tmpdir(), 'video-'))

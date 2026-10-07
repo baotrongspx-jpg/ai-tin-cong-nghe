@@ -1,13 +1,55 @@
 import 'server-only'
+import { randomUUID } from 'node:crypto'
+import { db } from './db'
 import { GIONG, GIONG_DU_PHONG } from './dsGiong'
 
-// Giọng chính: VieNeu-TTS (máy chủ ở thư mục hf-space/: chạy trên máy nhà qua ngrok, hoặc Hugging Face Spaces), miễn phí, không giới hạn lượt.
-// VIENEU_URL: link máy chủ (vd https://xxx.ngrok-free.dev), VIENEU_KHOA: khóa trùng biến KHOA của máy chủ.
-export const coVieNeu = () => !!process.env.VIENEU_URL?.trim()
+// Giọng chính: VieNeu-TTS (giọng Hải Đăng), miễn phí, không giới hạn lượt. Hai cách chạy:
+// - Mặc định: "thợ đọc giọng" trên máy nhà (may-nha/tho_doc.py) tự lấy phiếu việc trong kho Supabase, không cần mở cổng.
+// - VIENEU_CHE_DO=url: gọi thẳng máy chủ hf-space/ ở VIENEU_URL (Hugging Face Spaces, ngrok...) kèm khóa VIENEU_KHOA.
+// VIENEU_TAT=1: tắt hẳn VieNeu, chỉ đọc bằng giọng dự phòng.
+export const coVieNeu = () => process.env.VIENEU_TAT !== '1'
+const quaUrl = () => process.env.VIENEU_CHE_DO === 'url' && !!process.env.VIENEU_URL?.trim()
 
-// Đọc từng câu, trả WAV 48 kHz và thời lượng (giây) mỗi câu để canh phụ đề.
-// Lỗi thì báo ngay lý do dễ hiểu; chỉ chờ (tối đa 1 phút) khi ngrok chạy mà máy đọc giọng còn đang khởi động (502).
-export async function docBangVieNeu(cau: string[]): Promise<{ wav: Buffer; doDai: number[] }> {
+export const docBangVieNeu = (cau: string[]) => (quaUrl() ? docQuaUrl(cau) : docQuaMayNha(cau))
+
+// Phiếu việc cho thợ đọc giọng ở máy nhà, cùng kho với video (lib/video.ts)
+const HANG_DOI = 'hang-doi'
+const nghi = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+async function docQuaMayNha(cau: string[]): Promise<{ wav: Buffer; doDai: number[] }> {
+  const kho = db().storage.from('video-tiktok')
+  // Thợ đọc giọng cứ 20 giây báo một lần; quá 90 giây không báo coi như máy nhà đang tắt
+  const { data: song } = await kho.download(`${HANG_DOI}/song.json`)
+  const luc = song ? Number(JSON.parse(await song.text()).luc) || 0 : 0
+  if (Date.now() - luc > 90_000)
+    throw new Error(
+      luc
+        ? `Máy nhà đang tắt hoặc máy đọc giọng không chạy (báo lần cuối ${Math.round((Date.now() - luc) / 60_000)} phút trước)`
+        : 'Máy đọc giọng ở máy nhà chưa chạy lần nào (mở chay-vieneu.bat)',
+    )
+  const ma = randomUUID()
+  const { error } = await kho.upload(`${HANG_DOI}/viec/${ma}.json`, JSON.stringify({ cau, giong: GIONG }), { contentType: 'application/json' })
+  if (error) throw new Error(`Không gửi được việc cho máy nhà: ${error.message}`)
+  const xong = [`${HANG_DOI}/xong/${ma}.json`, `${HANG_DOI}/xong/${ma}.wav`]
+  // Máy nhà mỗi lần đọc một bài, có thể đang bận bài khác: chờ tối đa 3 phút
+  const hetGio = Date.now() + 180_000
+  while (Date.now() < hetGio) {
+    await nghi(1500)
+    const { data: kq } = await kho.download(xong[0])
+    if (!kq) continue
+    const j: { doDai?: number[]; loi?: string } = JSON.parse(await kq.text())
+    const { data: wav } = j.loi ? { data: null } : await kho.download(xong[1])
+    await kho.remove(xong)
+    if (j.loi || !wav || !j.doDai) throw new Error(`Máy đọc giọng lỗi: ${j.loi ?? 'không có âm thanh'}`)
+    if (j.doDai.length !== cau.length) throw new Error('Máy đọc giọng trả thời lượng không khớp số câu')
+    return { wav: Buffer.from(await wav.arrayBuffer()), doDai: j.doDai }
+  }
+  await kho.remove([`${HANG_DOI}/viec/${ma}.json`])
+  throw new Error('Máy nhà chưa đọc xong sau 3 phút (đang bận hoặc vừa tắt)')
+}
+
+// Gọi thẳng máy chủ hf-space/: lỗi thì báo ngay lý do dễ hiểu; chỉ chờ (tối đa 1 phút) khi máy chủ còn đang khởi động (502).
+async function docQuaUrl(cau: string[]): Promise<{ wav: Buffer; doDai: number[] }> {
   const url = process.env.VIENEU_URL!.trim().replace(/\/+$/, '')
   const hetGio = Date.now() + 60_000
   for (;;) {

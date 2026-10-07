@@ -285,3 +285,74 @@ export async function goiYTuKhoaAnh(tieuDe: string, noiDung: string): Promise<st
   })
   return kq?.tu_khoa_anh.trim() ?? null
 }
+
+// ---------- Video hoạt hình: viết bài thành lời thoại Mèo Mun hỏi, Robot Bit giải thích ----------
+
+// Phải khớp với may-nha/hoat-hinh (tao_video.mjs: cử chỉ, boiCanh.mjs: bối cảnh)
+export const CAM_XUC = ['to_mo', 'bat_ngo', 'giai_thich', 'khang_dinh', 'vui', 'lo_lang', 'suy_nghi'] as const
+export const BOI_CANH = ['truong_quay', 'pho_florida', 'may_chu', 'don_canh_sat', 'phong_khach'] as const
+
+const THOAI_SYSTEM = `You write scripts for "Công Nghệ 24H", a Vietnamese TikTok channel that explains tech news with two cartoon mascots:
+- "meo" (Mèo Mun): a curious, playful orange cat. Asks the questions ordinary viewers would ask, reacts with surprise, worry or joy, sometimes sums up in simple words.
+- "robot" (Robot Bit): a friendly, smart robot. Explains the facts clearly and simply.
+
+Turn the article in the user turn into a short dialogue between them, in natural spoken Vietnamese (casual, warm, like friends chatting; no slang that sounds forced). Rules:
+- 8 to 14 lines, alternating speakers most of the time. Start with Mèo Mun asking a hook question about the most surprising point. End with one line inviting viewers to follow Công Nghệ 24H.
+- Cover every important fact of the article (who, what, where, numbers, why it matters) without inventing anything that is not in the article.
+- Each line at most 30 words, written to be read aloud: spell out symbols, no emoji, no hashtags, no URLs.
+- cam_xuc: the speaker's emotion and gesture for that line. Mèo Mun uses to_mo, bat_ngo, vui, lo_lang or suy_nghi. Robot Bit uses giai_thich, khang_dinh, vui, lo_lang or suy_nghi.
+- boi_canh: the backdrop that fits the line: truong_quay (news studio, default for general talk, intro and outro), pho_florida (a sunny city street, use for any outdoor or city or "in country X" moment), may_chu (AI / data center / servers / technology inside), don_canh_sat (police, crime, law, court), phong_khach (home, everyday users, phones and apps at home). Keep the same backdrop for consecutive lines about the same thing; change it only when the topic moves.
+- bang: a small sign shown behind the characters: one emoji in bieu_tuong and at most 6 Vietnamese words in chu summing up the line.`
+
+const ThoaiSchema = z.object({
+  loi: z
+    .array(
+      z.object({
+        ai: z.enum(['meo', 'robot']),
+        chu: z.string().min(1),
+        cam_xuc: z.enum(CAM_XUC),
+        boi_canh: z.enum(BOI_CANH),
+        bang: z.object({ bieu_tuong: z.string(), chu: z.string() }),
+      }),
+    )
+    .min(4)
+    .max(18),
+})
+export type LoiThoai = z.infer<typeof ThoaiSchema>['loi']
+
+export async function vietLoiThoai(bai: { tieu_de_anh: string; noi_dung: string; nguon_ten: string }): Promise<LoiThoai | null> {
+  const kq = await goiJson({
+    system: THOAI_SYSTEM,
+    noiDung: `<article>\nTitle: ${bai.tieu_de_anh}\nSource: ${bai.nguon_ten}\n\n${bai.noi_dung}\n</article>`,
+    effort: 'medium',
+    kiemTra: ThoaiSchema,
+    schema: {
+      type: 'object',
+      properties: {
+        loi: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              ai: { type: 'string', enum: ['meo', 'robot'] },
+              chu: { type: 'string' },
+              cam_xuc: { type: 'string', enum: [...CAM_XUC] },
+              boi_canh: { type: 'string', enum: [...BOI_CANH] },
+              bang: {
+                type: 'object',
+                properties: { bieu_tuong: { type: 'string' }, chu: { type: 'string' } },
+                required: ['bieu_tuong', 'chu'],
+                additionalProperties: false,
+              },
+            },
+            required: ['ai', 'chu', 'cam_xuc', 'boi_canh', 'bang'],
+            additionalProperties: false,
+          },
+        },
+      },
+      required: ['loi'],
+      additionalProperties: false,
+    },
+  })
+  return kq?.loi ?? null
+}

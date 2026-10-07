@@ -15,8 +15,9 @@ export async function GET(req: Request, ctx: RouteContext<'/api/video/[id]'>) {
   const { data: bai } = await db().from('bai_viet').select('*').eq('id', id).maybeSingle<BaiViet>()
   if (!bai) return new Response('Không tìm thấy', { status: 404 })
   if (new URL(req.url).searchParams.get('san') === '1')
+    // 204: video đã có; 202: đã nhờ máy nhà dựng video hoạt hình, chưa xong
     return dungSanVideoBai(bai).then(
-      () => new Response(null, { status: 204 }),
+      (kq) => new Response(null, { status: kq === 'xong' ? 204 : 202 }),
       (e) => new Response(e instanceof Error ? e.message : 'Dựng video lỗi', { status: 503 }),
     )
   try {

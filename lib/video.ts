@@ -9,7 +9,8 @@ import sharp from 'sharp'
 import { veAnhBai, vePhuDe } from './anh'
 import { db, type BaiViet } from './db'
 import { GIONG, GIONG_DU_PHONG } from './dsGiong'
-import { coVieNeu, docBangVieNeu, docThanhGiong } from './giongDoc'
+import { coVieNeu, docBangVieNeu, docThanhGiong, mayNhaTat } from './giongDoc'
+import { batHoatHinh, choHoatHinh, datViecHoatHinh, tenVideoHoatHinh, trangThaiHoatHinh } from './hoatHinh'
 import { chonNhac, taiNhac } from './nhacNen'
 
 // Video dọc 1080x1920 cho TikTok: ảnh bài ở giữa trên nền mờ, giọng AI đọc bài, phụ đề chạy theo từng đoạn.
@@ -165,14 +166,30 @@ async function luuVideo(bai: BaiViet, ten: string, video: Buffer) {
   await damBaoKho()
   // Bỏ các bản cũ của bài này (trước khi sửa bài) cho đỡ tốn dung lượng
   const { data: cu } = await kho.from(KHO).list(bai.id)
-  const xoa = (cu ?? []).map((f) => `${bai.id}/${f.name}`).filter((t) => t !== ten)
+  // Giữ video hoạt hình (hh-...) do máy nhà dựng, chỉ bỏ các bản video thường cũ
+  const xoa = (cu ?? []).filter((f) => !f.name.startsWith('hh-')).map((f) => `${bai.id}/${f.name}`).filter((t) => t !== ten)
   if (xoa.length) await kho.from(KHO).remove(xoa)
   await kho.from(KHO).upload(ten, video, { contentType: 'video/mp4', upsert: true })
 }
 
 // Video lồng tiếng của bài: lấy bản đã lưu nếu bài chưa đổi, không thì dựng mới rồi lưu lại.
-export async function taoVideoBai(bai: BaiViet) {
+// Video hoạt hình (lib/hoatHinh.ts) được ưu tiên: đã có thì dùng, chưa có thì nhờ máy nhà dựng và chờ tối đa
+// `choHoatHinh` giây (0: không chờ). Máy nhà tắt / chưa xong / lỗi thì dùng video thường bên dưới.
+export async function taoVideoBai(bai: BaiViet, { choHoatHinh: cho = 200 }: { choHoatHinh?: number } = {}) {
   const nhac = await chonNhac(bai.id)
+  if (batHoatHinh() && !(await mayNhaTat().catch(() => 'lỗi'))) {
+    const tenHH = tenVideoHoatHinh(bai, chuDeDoc(bai), nhac)
+    try {
+      // Không chờ thì cũng không đặt việc mới (bài sẽ đăng bằng video thường ngay), chỉ dùng nếu đã có sẵn
+      const tt = cho > 0 ? await datViecHoatHinh(bai, tenHH, nhac) : await trangThaiHoatHinh(tenHH)
+      if (tt.loai === 'xong' || (cho > 0 && (await choHoatHinh(tenHH, cho)))) {
+        const v = await layVideoDaLuu(tenHH)
+        if (v) return v
+      }
+    } catch (e) {
+      console.error('Video hoạt hình lỗi, dùng video thường:', e)
+    }
+  }
   const ten = tenTep(bai, nhac)
   const daLuu = await layVideoDaLuu(ten).catch(() => null)
   if (daLuu) return daLuu
@@ -186,22 +203,57 @@ const daCoVideo = async (bai: BaiViet, ten: string) => {
 
 // Dựng sẵn trong nền (mở trang TikTok): đã có video thì thôi, chưa có thì dựng bằng giọng chính rồi lưu.
 // Không trả video về cho đỡ tốn băng thông.
-export async function dungSanVideoBai(bai: BaiViet) {
+// Video hoạt hình: chỉ đặt việc cho máy nhà rồi thôi (trả 'dang_dung'), không chờ.
+export async function dungSanVideoBai(bai: BaiViet): Promise<'xong' | 'dang_dung'> {
   const nhac = await chonNhac(bai.id)
+  if (batHoatHinh()) {
+    const tat = await mayNhaTat()
+    if (tat) throw new Error(tat)
+    const tt = await datViecHoatHinh(bai, tenVideoHoatHinh(bai, chuDeDoc(bai), nhac), nhac)
+    return tt.loai === 'xong' ? 'xong' : 'dang_dung'
+  }
   const ten = tenTep(bai, nhac)
   if (!(await daCoVideo(bai, ten))) await dungVaLuu(bai, ten, nhac, true)
+  return 'xong'
 }
 
 // Xem trước: link tạm (1 giờ) tải thẳng video từ kho, vì Vercel chỉ cho trả tối đa 4,5 MB mỗi lần
-export async function linkVideoBai(bai: BaiViet) {
+// Video hoạt hình chưa xong thì trả { dangDung } (trình duyệt hỏi lại sau ít giây); máy nhà tắt / lỗi thì dùng video thường.
+export async function linkVideoBai(bai: BaiViet): Promise<{
+  url?: string
+  dangDung?: { trangThai: 'cho' | 'dang_lam' }
+  buoc?: Record<string, number> | null
+  canhBao?: string
+}> {
   const nhac = await chonNhac(bai.id)
+  let canhBao: string | undefined
+  if (batHoatHinh()) {
+    const tat = await mayNhaTat()
+    if (!tat) {
+      const tenHH = tenVideoHoatHinh(bai, chuDeDoc(bai), nhac)
+      const tt = await trangThaiHoatHinh(tenHH)
+      if (tt.loai === 'xong') {
+        const { data, error } = await db().storage.from(KHO).createSignedUrl(tenHH, 3600)
+        if (error || !data) throw new Error(`Không tạo được link video: ${error?.message ?? 'lỗi'}`)
+        return { url: data.signedUrl }
+      }
+      if (tt.loai === 'cho' || tt.loai === 'dang_lam') return { dangDung: { trangThai: tt.loai } }
+      try {
+        const moi = await datViecHoatHinh(bai, tenHH, nhac, tt)
+        if (moi.loai === 'cho' || moi.loai === 'dang_lam') return { dangDung: { trangThai: moi.loai } }
+      } catch (e) {
+        canhBao = `Chưa dựng được video hoạt hình (${e instanceof Error ? e.message : 'lỗi'}), đang xem video thường`
+      }
+      if (tt.loai === 'loi') canhBao = `Lần trước dựng video hoạt hình lỗi: ${tt.loi}. Đã gửi dựng lại; đang xem video thường`
+    } else canhBao = `Video hoạt hình cần máy nhà: ${tat}. Đang xem video thường`
+  }
   let ten = tenTep(bai, nhac)
   let buoc: Record<string, number> | null = null
-  let canhBao: string | undefined
-  if (!(await daCoVideo(bai, ten))) ({ ten, buoc, canhBao } = await dungVaLuu(bai, ten, nhac, false, true))
+  let canhBaoThuong: string | undefined
+  if (!(await daCoVideo(bai, ten))) ({ ten, buoc, canhBao: canhBaoThuong } = await dungVaLuu(bai, ten, nhac, false, true))
   const { data, error } = await db().storage.from(KHO).createSignedUrl(ten, 3600)
   if (error || !data) throw new Error(`Không tạo được link video: ${error?.message ?? 'lỗi'}`)
-  return { url: data.signedUrl, buoc, canhBao }
+  return { url: data.signedUrl, buoc, canhBao: [canhBao, canhBaoThuong].filter(Boolean).join(' · ') || undefined }
 }
 
 // `batBuocLuu`: lưu được mới thôi (xem trước cần link từ kho). Video đọc bằng giọng dự phòng lưu tên "-tam",

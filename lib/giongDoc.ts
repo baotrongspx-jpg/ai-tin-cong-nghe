@@ -16,17 +16,20 @@ export const docBangVieNeu = (cau: string[]) => (quaUrl() ? docQuaUrl(cau) : doc
 const HANG_DOI = 'hang-doi'
 const nghi = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
+// Thợ ở máy nhà cứ 20 giây báo một lần; quá 90 giây không báo coi như máy nhà đang tắt. Trả lý do khi tắt, null khi đang chạy.
+export async function mayNhaTat(): Promise<string | null> {
+  const { data: song } = await db().storage.from('video-tiktok').download(`${HANG_DOI}/song.json`)
+  const luc = song ? Number(JSON.parse(await song.text()).luc) || 0 : 0
+  if (Date.now() - luc <= 90_000) return null
+  return luc
+    ? `Máy nhà đang tắt hoặc máy đọc giọng không chạy (báo lần cuối ${Math.round((Date.now() - luc) / 60_000)} phút trước)`
+    : 'Máy đọc giọng ở máy nhà chưa chạy lần nào (mở chay-vieneu.bat)'
+}
+
 async function docQuaMayNha(cau: string[]): Promise<{ wav: Buffer; doDai: number[] }> {
   const kho = db().storage.from('video-tiktok')
-  // Thợ đọc giọng cứ 20 giây báo một lần; quá 90 giây không báo coi như máy nhà đang tắt
-  const { data: song } = await kho.download(`${HANG_DOI}/song.json`)
-  const luc = song ? Number(JSON.parse(await song.text()).luc) || 0 : 0
-  if (Date.now() - luc > 90_000)
-    throw new Error(
-      luc
-        ? `Máy nhà đang tắt hoặc máy đọc giọng không chạy (báo lần cuối ${Math.round((Date.now() - luc) / 60_000)} phút trước)`
-        : 'Máy đọc giọng ở máy nhà chưa chạy lần nào (mở chay-vieneu.bat)',
-    )
+  const tat = await mayNhaTat()
+  if (tat) throw new Error(tat)
   const ma = randomUUID()
   const { error } = await kho.upload(`${HANG_DOI}/viec/${ma}.json`, JSON.stringify({ cau, giong: GIONG }), { contentType: 'application/json' })
   if (error) throw new Error(`Không gửi được việc cho máy nhà: ${error.message}`)

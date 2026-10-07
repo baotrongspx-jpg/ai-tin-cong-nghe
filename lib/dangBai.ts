@@ -11,12 +11,12 @@ import { layHashtagXuHuong } from './xuHuong'
 // `video` (mặc định bật, tắt bằng FB_VIDEO=0): đăng video lồng tiếng (dùng chung video với TikTok, dựng một lần);
 // dựng video lỗi thì đăng ảnh như cũ, lý do nằm ở `canhBao`.
 // `henLuc`: Facebook tự đăng vào giờ đó; `dang_luc` ghi giờ hẹn (ở tương lai nghĩa là đang chờ đăng).
-export async function dangLenFacebook(bai: BaiViet, henLuc?: Date, video = process.env.FB_VIDEO !== '0') {
+export async function dangLenFacebook(bai: BaiViet, henLuc?: Date, video = process.env.FB_VIDEO !== '0', choHoatHinh?: number) {
   try {
     let postId: string | null = null
     let canhBao: string | undefined
     if (video) {
-      const v = await taoVideoBai(bai).catch((e: Error) => void (canhBao = `Dựng video lỗi, Facebook đã đăng dạng ảnh: ${e.message}`))
+      const v = await taoVideoBai(bai, { choHoatHinh }).catch((e: Error) => void (canhBao = `Dựng video lỗi, Facebook đã đăng dạng ảnh: ${e.message}`))
       if (v) postId = await dangVideoLenPage(v, taoChuThich(bai), henLuc)
     }
     postId ??= await dangAnhLenPage(await (await veAnhBai(bai)).blob(), taoChuThich(bai), henLuc)
@@ -48,7 +48,7 @@ export async function dangLenTikTok(bai: BaiViet, tuyChon: TuyChonDang = {}) {
     let publishId: string | null = null
     let canhBao: string | undefined
     if (batLongTieng(tuyChon)) {
-      const video = await taoVideoBai(bai).catch((e: Error) => void (canhBao = `Lồng tiếng lỗi, đã đăng dạng ảnh: ${e.message}`))
+      const video = await taoVideoBai(bai, { choHoatHinh: tuyChon.choHoatHinh }).catch((e: Error) => void (canhBao = `Lồng tiếng lỗi, đã đăng dạng ảnh: ${e.message}`))
       if (video) publishId = await dangVideoLenTikTok(video, moTaVideo(bai, xuHuong), tuyChon)
     }
     // ?v= để TikTok không lấy phải ảnh cũ còn trong bộ nhớ đệm khi vừa sửa tiêu đề

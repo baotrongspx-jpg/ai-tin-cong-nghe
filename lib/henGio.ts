@@ -47,7 +47,7 @@ export async function chayHenGioTikTok() {
     const b = bai.get(id)
     if (!b || b.tiktok_publish_id) continue // bài đã xóa hoặc đã đăng tay
     try {
-      const { canhBao } = await dangLenTikTok(b)
+      const { canhBao } = await dangLenTikTok(b, { choHoatHinh: 0 })
       if (canhBao) loi.push(`${b.tieu_de_anh}: ${canhBao}`)
       daDang++
     } catch (e) {

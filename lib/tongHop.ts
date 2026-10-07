@@ -93,7 +93,7 @@ export async function tongHopTin(
       // Facebook và TikTok đăng độc lập: bên này lỗi không chặn bên kia
       if (dangFb) {
         // Đã chạy lâu thì đăng ảnh cho nhanh, kẻo dựng video lồng tiếng làm quá 300 giây (TikTok dùng lại video này)
-        await dangLenFacebook(moi, undefined, Date.now() - batDau > 150_000 ? false : undefined).then(
+        await dangLenFacebook(moi, undefined, Date.now() - batDau > 150_000 ? false : undefined, 0).then(
           ({ canhBao }) => {
             daDang++
             if (canhBao) loi.push(`${t.tieuDe} (Facebook): ${canhBao}`)
@@ -103,7 +103,7 @@ export async function tongHopTin(
       }
       if (dangTikTok) {
         // Đã chạy lâu thì đăng dạng ảnh cho nhanh, kẻo dựng video lồng tiếng làm quá 300 giây
-        await dangLenTikTok(moi, Date.now() - batDau > 150_000 ? { longTieng: false } : {}).then(
+        await dangLenTikTok(moi, Date.now() - batDau > 150_000 ? { longTieng: false } : { choHoatHinh: 0 }).then(
           ({ canhBao }) => {
             daDangTikTok++
             if (canhBao) loi.push(`${t.tieuDe} (TikTok): ${canhBao}`)

@@ -103,14 +103,14 @@ export default function TheTikTok({
   const videoSan = useVideoSan(bai.id)
 
   // Video hoạt hình do máy nhà dựng mất vài phút: máy chủ trả { dangDung } thì hỏi lại sau 8 giây (tối đa 10 phút)
-  const [mayNha, setMayNha] = useState<'cho' | 'dang_lam' | null>(null)
+  const [mayNha, setMayNha] = useState<{ trangThai: 'cho' | 'dang_lam'; truoc?: number } | null>(null)
   const xemTruoc = async () => {
     setDangDung(true)
     setLoiVideo('')
     setCanhBaoVideo('')
     try {
       await choDungSan(bai.id) // đang dựng sẵn trong nền thì chờ bản đó, khỏi dựng hai lần
-      const het = Date.now() + 10 * 60_000
+      const het = Date.now() + 25 * 60_000
       for (;;) {
         const res = await fetch(`/api/video/${bai.id}`, { cache: 'no-store' })
         if (!res.ok) {
@@ -118,15 +118,15 @@ export default function TheTikTok({
           // Quá 5 phút Vercel tự cắt và trả trang lỗi HTML
           throw new Error(res.status === 504 || loi.startsWith('<') ? `Dựng video quá lâu nên bị dừng (lỗi ${res.status}). Thử lại.` : loi || `Lỗi ${res.status}`)
         }
-        const kq: { url?: string; urlTai?: string; canhBao?: string; dangDung?: { trangThai: 'cho' | 'dang_lam' } } = await res.json()
+        const kq: { url?: string; urlTai?: string; canhBao?: string; dangDung?: { trangThai: 'cho' | 'dang_lam'; truoc?: number } } = await res.json()
         if (kq.url) {
           setVideo(kq.url)
           setUrlTai(kq.urlTai ?? null)
           if (kq.canhBao) setCanhBaoVideo(kq.canhBao)
           break
         }
-        if (Date.now() > het) throw new Error('Máy nhà dựng video hoạt hình quá 10 phút. Bấm lại sau.')
-        setMayNha(kq.dangDung?.trangThai ?? 'cho')
+        if (Date.now() > het) throw new Error('Máy nhà dựng video hoạt hình quá 25 phút. Bấm lại sau.')
+        setMayNha(kq.dangDung ?? { trangThai: 'cho' })
         await new Promise((r) => setTimeout(r, 8000))
       }
     } catch (e) {
@@ -198,7 +198,7 @@ export default function TheTikTok({
             </div>
             <button disabled={dangDung || dangLam} onClick={video ? () => setVideo(null) : xemTruoc} className="btn btn-phu w-full">
               {dangDung ? <Xoay /> : null}
-              {dangDung ? <>{mayNha === 'dang_lam' ? 'Máy nhà đang dựng hoạt hình…' : mayNha === 'cho' ? 'Chờ máy nhà dựng hoạt hình…' : 'Đang dựng video…'} <DemGiay /></> : video ? 'Xem ảnh' : videoSan ? '▶ Xem video (đã dựng sẵn)' : '▶ Xem trước video'}
+              {dangDung ? <>{mayNha?.trangThai === 'dang_lam' ? 'Máy nhà đang dựng hoạt hình…' : mayNha?.truoc ? `Xếp hàng: còn ${mayNha.truoc} video trước…` : mayNha ? 'Chờ máy nhà dựng hoạt hình…' : 'Đang dựng video…'} <DemGiay /></> : video ? 'Xem ảnh' : videoSan ? '▶ Xem video (đã dựng sẵn)' : '▶ Xem trước video'}
             </button>
             {loiVideo && <p className="text-xs text-red-600">Không dựng được video: {loiVideo}</p>}
             {canhBaoVideo && <p className="text-xs text-amber-700">⚠ {canhBaoVideo}</p>}

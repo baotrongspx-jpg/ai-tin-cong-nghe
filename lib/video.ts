@@ -10,7 +10,7 @@ import { veAnhBai, vePhuDe } from './anh'
 import { db, type BaiViet } from './db'
 import { GIONG, GIONG_DU_PHONG } from './dsGiong'
 import { coVieNeu, docBangVieNeu, docThanhGiong, mayNhaTat } from './giongDoc'
-import { batHoatHinh, choHoatHinh, datViecHoatHinh, tenVideoHoatHinh, trangThaiHoatHinh } from './hoatHinh'
+import { batHoatHinh, choHoatHinh, datViecHoatHinh, tenVideoHoatHinh, trangThaiHoatHinh, uuTienHoatHinh, viTriHoatHinh } from './hoatHinh'
 import { chonNhac, taiNhac } from './nhacNen'
 
 // Video dọc 1080x1920 cho TikTok: ảnh bài ở giữa trên nền mờ, giọng AI đọc bài, phụ đề chạy theo từng đoạn.
@@ -233,7 +233,7 @@ async function linkVideo(bai: BaiViet, ten: string) {
 export async function linkVideoBai(bai: BaiViet): Promise<{
   url?: string
   urlTai?: string
-  dangDung?: { trangThai: 'cho' | 'dang_lam' }
+  dangDung?: { trangThai: 'cho' | 'dang_lam'; truoc?: number }
   buoc?: Record<string, number> | null
   canhBao?: string
 }> {
@@ -247,10 +247,18 @@ export async function linkVideoBai(bai: BaiViet): Promise<{
       if (tt.loai === 'xong') {
         return linkVideo(bai, tenHH)
       }
-      if (tt.loai === 'cho' || tt.loai === 'dang_lam') return { dangDung: { trangThai: tt.loai } }
+      // Xem trước: chen bài này lên đầu hàng đợi, báo còn bao nhiêu video phía trước
+      if (tt.loai === 'cho') {
+        await uuTienHoatHinh(tenHH)
+        return { dangDung: { trangThai: 'cho', truoc: await viTriHoatHinh(tenHH) } }
+      }
+      if (tt.loai === 'dang_lam') return { dangDung: { trangThai: 'dang_lam' } }
       try {
         const moi = await datViecHoatHinh(bai, tenHH, nhac, tt)
-        if (moi.loai === 'cho' || moi.loai === 'dang_lam') return { dangDung: { trangThai: moi.loai } }
+        if (moi.loai === 'cho' || moi.loai === 'dang_lam') {
+          await uuTienHoatHinh(tenHH)
+          return { dangDung: { trangThai: moi.loai } }
+        }
       } catch (e) {
         canhBao = `Chưa dựng được video hoạt hình (${e instanceof Error ? e.message : 'lỗi'}), đang xem video thường`
       }

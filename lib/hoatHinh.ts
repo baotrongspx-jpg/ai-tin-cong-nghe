@@ -41,6 +41,24 @@ const docJson = async <T>(duong: string): Promise<T | null> => {
   return data ? (JSON.parse(await data.text()) as T) : null
 }
 
+// Người dùng đang bấm Xem trước bài này: đánh dấu để thợ máy nhà làm trước các video dựng sẵn trong nền
+export async function uuTienHoatHinh(ten: string) {
+  await kho().upload(`hang-doi/uu-tien/${maViec(ten)}.json`, JSON.stringify({ luc: Date.now() }), { contentType: 'application/json', upsert: true })
+}
+
+// Số video hoạt hình xếp hàng trước bài này (thợ làm việc ưu tiên trước, cùng nhóm thì việc đặt trước làm trước)
+export async function viTriHoatHinh(ten: string) {
+  const [{ data: viec }, { data: uu }] = await Promise.all([
+    kho().list('hang-doi/viec', { limit: 200, sortBy: { column: 'created_at', order: 'asc' } }),
+    kho().list('hang-doi/uu-tien', { limit: 200 }),
+  ])
+  const uuTien = new Set((uu ?? []).map((f) => f.name))
+  const ds = (viec ?? []).filter((f) => f.name.startsWith('hh-')).map((f) => f.name)
+  const thuTu = [...ds.filter((n) => uuTien.has(n)), ...ds.filter((n) => !uuTien.has(n))]
+  const vt = thuTu.indexOf(`${maViec(ten)}.json`)
+  return vt < 0 ? 0 : vt
+}
+
 export type TrangThaiHoatHinh = { loai: 'xong' | 'dang_lam' | 'cho' | 'chua' } | { loai: 'loi'; loi: string }
 
 export async function trangThaiHoatHinh(ten: string): Promise<TrangThaiHoatHinh> {

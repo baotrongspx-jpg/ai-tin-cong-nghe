@@ -53,16 +53,30 @@ def xoa(*duong):
     s.delete(f'{URL}/{KHO}', json={'prefixes': list(duong)}, timeout=30)
 
 
-def liet_ke(thu_muc):
-    r = s.post(f'{URL}/list/{KHO}', json={'prefix': thu_muc, 'limit': 100, 'sortBy': {'column': 'created_at', 'order': 'asc'}}, timeout=30)
+def liet_ke(thu_muc, day_du=False):
+    r = s.post(f'{URL}/list/{KHO}', json={'prefix': thu_muc, 'limit': 200, 'sortBy': {'column': 'created_at', 'order': 'asc'}}, timeout=30)
     r.raise_for_status()
-    return [f['name'] for f in r.json()]
+    return r.json() if day_du else [f['name'] for f in r.json()]
 
 
 def ds_viec():
-    # Việc đọc giọng (ngắn, có người đang chờ) làm trước việc dựng hoạt hình (vài phút)
+    # Thứ tự: đọc giọng (ngắn, có người đang chờ) → video hoạt hình người dùng đang bấm Xem trước (hang-doi/uu-tien)
+    # → video hoạt hình dựng sẵn trong nền; cùng nhóm thì việc nào đặt trước làm trước
     ten = [n for n in liet_ke('hang-doi/viec') if n.endswith('.json')]
-    return sorted(ten, key=lambda n: n.startswith('hh-'))
+    uu_tien = set(liet_ke('hang-doi/uu-tien'))
+    return sorted(ten, key=lambda n: 0 if not n.startswith('hh-') else 1 if n in uu_tien else 2)
+
+
+def don_rac():
+    # Kết quả đọc giọng không ai lấy (trang web đã thôi chờ) và dấu ưu tiên cũ: xoá sau 1 giờ
+    cu = []
+    for thu_muc in ('hang-doi/xong', 'hang-doi/uu-tien'):
+        for f in liet_ke(thu_muc, day_du=True):
+            luc = f.get('created_at') or ''
+            if luc and time.time() - time.mktime(time.strptime(luc[:19], '%Y-%m-%dT%H:%M:%S')) + time.timezone > 3600:
+                cu.append(f'{thu_muc}/{f["name"]}')
+    if cu:
+        xoa(*cu)
 
 
 def doc(may, ds_giong, cau, giong):
@@ -117,7 +131,8 @@ def dung_hoat_hinh(may, ds_giong, yc):
         (tm / 'artifacts' / 'do_dai.json').write_text(json.dumps(do_dai), encoding='utf-8')
         # 2. Sinh trang HyperFrames rồi dựng video
         chay(['node', str(HOAT_HINH / 'tao_video.mjs'), str(tm)], tm, 120)
-        chay(['npx.cmd', '--yes', 'hyperframes', 'render', '--quality', 'standard', '-o', str(tm / 'video.mp4')], tm / 'hyperframes', 1200)
+        # 24 khung hình/giây (chuẩn phim hoạt hình): dựng nhanh hơn ~20% so với 30, mắt gần như không thấy khác
+        chay(['npx.cmd', '--yes', 'hyperframes', 'render', '--quality', 'standard', '--fps', '24', '-o', str(tm / 'video.mp4')], tm / 'hyperframes', 1500)
         ra = tm / 'video.mp4'
         # 3. Trộn nhạc nền nhỏ dưới lời thoại (lặp cho đủ dài, to dần đầu, nhỏ dần cuối)
         if yc.get('nhac'):
@@ -158,8 +173,12 @@ def main():
     may.infer('Xin chào.', voice=GIONG_MAC_DINH)  # làm nóng: lần đọc đầu tiên chậm gấp đôi
     threading.Thread(target=bao_song, daemon=True).start()
     print('Sẵn sàng. Để cửa sổ này chạy (thu nhỏ được).', flush=True)
+    lan_don = 0.0
     while True:
         try:
+            if time.time() - lan_don > 600:
+                don_rac()
+                lan_don = time.time()
             viec = ds_viec()
             if not viec:
                 time.sleep(2)
@@ -167,8 +186,8 @@ def main():
             ten = viec[0]
             ma = ten[:-5]
             r = s.get(f'{URL}/{KHO}/hang-doi/viec/{ten}', timeout=30)
-            # Nhận việc: xóa phiếu trước để không làm trùng
-            xoa(f'hang-doi/viec/{ten}')
+            # Nhận việc: xóa phiếu (và dấu ưu tiên) trước để không làm trùng
+            xoa(f'hang-doi/viec/{ten}', f'hang-doi/uu-tien/{ten}')
             if not r.ok:
                 continue
             yc = r.json()

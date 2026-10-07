@@ -218,9 +218,21 @@ export async function dungSanVideoBai(bai: BaiViet): Promise<'xong' | 'dang_dung
 }
 
 // Xem trước: link tạm (1 giờ) tải thẳng video từ kho, vì Vercel chỉ cho trả tối đa 4,5 MB mỗi lần
+// Link tạm (1 giờ) để xem và để tải về máy (kèm tên tệp theo tiêu đề bài, không dấu)
+async function linkVideo(bai: BaiViet, ten: string) {
+  const tenTai = `${bai.tieu_de_anh.normalize('NFD').replace(/\p{M}/gu, '').replace(/đ/gi, 'd').replace(/[^\w]+/g, '-').replace(/^-|-$/g, '').slice(0, 60) || 'video'}${ten.includes('/hh-') ? '-hoat-hinh' : ''}.mp4`
+  const [xem, tai] = await Promise.all([
+    db().storage.from(KHO).createSignedUrl(ten, 3600),
+    db().storage.from(KHO).createSignedUrl(ten, 3600, { download: tenTai }),
+  ])
+  if (xem.error || !xem.data || tai.error || !tai.data) throw new Error(`Không tạo được link video: ${(xem.error ?? tai.error)?.message ?? 'lỗi'}`)
+  return { url: xem.data.signedUrl, urlTai: tai.data.signedUrl }
+}
+
 // Video hoạt hình chưa xong thì trả { dangDung } (trình duyệt hỏi lại sau ít giây); máy nhà tắt / lỗi thì dùng video thường.
 export async function linkVideoBai(bai: BaiViet): Promise<{
   url?: string
+  urlTai?: string
   dangDung?: { trangThai: 'cho' | 'dang_lam' }
   buoc?: Record<string, number> | null
   canhBao?: string
@@ -233,9 +245,7 @@ export async function linkVideoBai(bai: BaiViet): Promise<{
       const tenHH = tenVideoHoatHinh(bai, chuDeDoc(bai), nhac)
       const tt = await trangThaiHoatHinh(tenHH)
       if (tt.loai === 'xong') {
-        const { data, error } = await db().storage.from(KHO).createSignedUrl(tenHH, 3600)
-        if (error || !data) throw new Error(`Không tạo được link video: ${error?.message ?? 'lỗi'}`)
-        return { url: data.signedUrl }
+        return linkVideo(bai, tenHH)
       }
       if (tt.loai === 'cho' || tt.loai === 'dang_lam') return { dangDung: { trangThai: tt.loai } }
       try {
@@ -251,9 +261,7 @@ export async function linkVideoBai(bai: BaiViet): Promise<{
   let buoc: Record<string, number> | null = null
   let canhBaoThuong: string | undefined
   if (!(await daCoVideo(bai, ten))) ({ ten, buoc, canhBao: canhBaoThuong } = await dungVaLuu(bai, ten, nhac, false, true))
-  const { data, error } = await db().storage.from(KHO).createSignedUrl(ten, 3600)
-  if (error || !data) throw new Error(`Không tạo được link video: ${error?.message ?? 'lỗi'}`)
-  return { url: data.signedUrl, buoc, canhBao: [canhBao, canhBaoThuong].filter(Boolean).join(' · ') || undefined }
+  return { ...(await linkVideo(bai, ten)), buoc, canhBao: [canhBao, canhBaoThuong].filter(Boolean).join(' · ') || undefined }
 }
 
 // `batBuocLuu`: lưu được mới thôi (xem trước cần link từ kho). Video đọc bằng giọng dự phòng lưu tên "-tam",

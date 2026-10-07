@@ -96,6 +96,7 @@ export default function TheTikTok({
   const [moRong, setMoRong] = useState(false)
   // Xem trước video lồng tiếng: link tạm của video trong kho, đang dựng, lỗi
   const [video, setVideo] = useState<string | null>(null)
+  const [urlTai, setUrlTai] = useState<string | null>(null)
   const [dangDung, setDangDung] = useState(false)
   const [loiVideo, setLoiVideo] = useState('')
   const [canhBaoVideo, setCanhBaoVideo] = useState('')
@@ -117,9 +118,10 @@ export default function TheTikTok({
           // Quá 5 phút Vercel tự cắt và trả trang lỗi HTML
           throw new Error(res.status === 504 || loi.startsWith('<') ? `Dựng video quá lâu nên bị dừng (lỗi ${res.status}). Thử lại.` : loi || `Lỗi ${res.status}`)
         }
-        const kq: { url?: string; canhBao?: string; dangDung?: { trangThai: 'cho' | 'dang_lam' } } = await res.json()
+        const kq: { url?: string; urlTai?: string; canhBao?: string; dangDung?: { trangThai: 'cho' | 'dang_lam' } } = await res.json()
         if (kq.url) {
           setVideo(kq.url)
+          setUrlTai(kq.urlTai ?? null)
           if (kq.canhBao) setCanhBaoVideo(kq.canhBao)
           break
         }
@@ -200,6 +202,11 @@ export default function TheTikTok({
             </button>
             {loiVideo && <p className="text-xs text-red-600">Không dựng được video: {loiVideo}</p>}
             {canhBaoVideo && <p className="text-xs text-amber-700">⚠ {canhBaoVideo}</p>}
+            {video && urlTai && (
+              <a href={urlTai} download className="btn btn-nhat w-full">
+                ⬇ Tải video về máy
+              </a>
+            )}
             {video && <p className="text-xs text-slate-400">Bấm Đăng (có lồng tiếng) sẽ dùng đúng video này. Sửa bài thì video tự dựng lại.</p>}
           </>
         )}

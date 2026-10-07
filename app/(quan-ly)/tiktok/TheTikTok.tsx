@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useSyncExternalStore, useTransition } from 'react'
+import { useState, useSyncExternalStore, useTransition } from 'react'
 import Link from 'next/link'
 import type { BaiViet } from '@/lib/db'
 import { ghepHashtagTikTok, urlAnh } from '@/lib/chuThich'
@@ -84,12 +84,11 @@ export default function TheTikTok({
   const [choBinhLuan, setChoBinhLuan] = useState(true)
   const [longTieng, setLongTieng] = useState(true)
   const [moRong, setMoRong] = useState(false)
-  // Xem trước video lồng tiếng: link blob của video, đang dựng, lỗi
+  // Xem trước video lồng tiếng: link tạm của video trong kho, đang dựng, lỗi
   const [video, setVideo] = useState<string | null>(null)
   const [dangDung, setDangDung] = useState(false)
   const [loiVideo, setLoiVideo] = useState('')
   const videoSan = useVideoSan(bai.id)
-  useEffect(() => () => void (video && URL.revokeObjectURL(video)), [video])
 
   const xemTruoc = async () => {
     setDangDung(true)
@@ -98,7 +97,7 @@ export default function TheTikTok({
       await choDungSan(bai.id) // đang dựng sẵn trong nền thì chờ bản đó, khỏi dựng hai lần
       const res = await fetch(`/api/video/${bai.id}`, { cache: 'no-store' })
       if (!res.ok) throw new Error((await res.text()) || `Lỗi ${res.status}`)
-      setVideo(URL.createObjectURL(await res.blob()))
+      setVideo((await res.json()).url)
     } catch (e) {
       setLoiVideo(e instanceof Error ? e.message : 'Dựng video lỗi')
     } finally {

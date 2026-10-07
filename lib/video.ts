@@ -1,12 +1,12 @@
 import 'server-only'
 import { spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { copyFile, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import ffmpeg from 'ffmpeg-static'
 import sharp from 'sharp'
-import { veAnhBai } from './anh'
+import { veAnhBai, vePhuDe } from './anh'
 import { db, type BaiViet } from './db'
 import { GIONG, GIONG_DU_PHONG } from './dsGiong'
 import { coVieNeu, docBangVieNeu, docThanhGiong } from './giongDoc'
@@ -15,8 +15,7 @@ import { coVieNeu, docBangVieNeu, docThanhGiong } from './giongDoc'
 const RONG = 1080
 const CAO = 1920
 const TREN = 330 // mép trên của ảnh bài (ảnh vuông 1080)
-const DONG_DAU = 1530 // vị trí dòng phụ đề đầu tiên
-const CAO_DONG = 78
+const DONG_DAU = 1530 // vị trí dòng phụ đề đầu tiên (ảnh phụ đề ở lib/anh.tsx)
 const MAX_KY_TU = 26 // ký tự mỗi dòng phụ đề
 const DUOI = 0.8 // giây im lặng thêm ở cuối
 
@@ -92,7 +91,7 @@ function chayFfmpeg(args: string[], cwd: string) {
 // xem trước rồi bấm Đăng dùng lại đúng video đó, không phải đọc lại. Sửa bài thì tự dựng lại.
 // Giọng đọc lưu riêng (theo chữ được đọc): đổi ảnh, chủ đề, cách dựng video... thì dựng lại mà không phải đọc lại.
 export const KHO = 'video-tiktok'
-const PHIEN_BAN = 1 // tăng khi đổi cách dựng video để bỏ video cũ
+const PHIEN_BAN = 3 // tăng khi đổi cách dựng video để bỏ video cũ
 
 const bam = (x: unknown) => createHash('sha256').update(JSON.stringify(x)).digest('hex').slice(0, 16)
 
@@ -171,23 +170,39 @@ export async function taoVideoBai(bai: BaiViet) {
   const ten = tenTep(bai)
   const daLuu = await layVideoDaLuu(ten).catch(() => null)
   if (daLuu) return daLuu
-  return dungVaLuu(bai, ten)
+  return (await dungVaLuu(bai, ten)).video
+}
+
+const daCoVideo = async (bai: BaiViet, ten: string) => {
+  const { data } = await db().storage.from(KHO).list(bai.id, { search: ten.slice(bai.id.length + 1) })
+  return !!data?.some((f) => `${bai.id}/${f.name}` === ten)
 }
 
 // Dựng sẵn trong nền (mở trang TikTok): đã có video thì thôi, chưa có thì dựng bằng giọng chính rồi lưu.
 // Không trả video về cho đỡ tốn băng thông.
 export async function dungSanVideoBai(bai: BaiViet) {
   const ten = tenTep(bai)
-  const { data } = await db().storage.from(KHO).list(bai.id, { search: ten.slice(bai.id.length + 1) })
-  if (data?.some((f) => `${bai.id}/${f.name}` === ten)) return
-  await dungVaLuu(bai, ten, true)
+  if (!(await daCoVideo(bai, ten))) await dungVaLuu(bai, ten, true)
 }
 
-async function dungVaLuu(bai: BaiViet, ten: string, chiGiongChinh = false) {
+// Xem trước: link tạm (1 giờ) tải thẳng video từ kho, vì Vercel chỉ cho trả tối đa 4,5 MB mỗi lần
+export async function linkVideoBai(bai: BaiViet) {
+  let ten = tenTep(bai)
+  if (!(await daCoVideo(bai, ten))) ten = (await dungVaLuu(bai, ten, false, true)).ten
+  const { data, error } = await db().storage.from(KHO).createSignedUrl(ten, 3600)
+  if (error || !data) throw new Error(`Không tạo được link video: ${error?.message ?? 'lỗi'}`)
+  return data.signedUrl
+}
+
+// `batBuocLuu`: lưu được mới thôi (xem trước cần link từ kho). Video đọc bằng giọng dự phòng lưu tên "-tam",
+// lần sau không khớp tên chính nên dựng lại bằng giọng chính.
+async function dungVaLuu(bai: BaiViet, ten: string, chiGiongChinh = false, batBuocLuu = false) {
   const { video, luu } = await dungVideo(bai, chiGiongChinh)
-  // Video đọc bằng giọng dự phòng thì không lưu, lần sau dựng lại bằng giọng chính
-  if (luu) await luuVideo(bai, ten, video).catch((e) => console.error('Không lưu được video TikTok:', e))
-  return video
+  const tenLuu = luu ? ten : ten.replace(/.mp4$/, '-tam.mp4')
+  const viec = luuVideo(bai, tenLuu, video)
+  if (batBuocLuu) await viec
+  else await viec.catch((e) => console.error('Không lưu được video TikTok:', e))
+  return { video, ten: tenLuu }
 }
 
 // WAV → MP3 nhỏ gọn (giọng mẫu để nghe thử)
@@ -229,41 +244,38 @@ async function dungVideo(bai: BaiViet, chiGiongChinh = false) {
     const tongCau = nang.map((n) => n.reduce((a, b) => a + b, 0))
     const tongNang = tongCau.reduce((a, b) => a + b, 0)
     const giayCau = doDai ?? tongCau.map((n) => (n / tongNang) * tong)
-    const doan = doanCau.flat()
-    const loc: string[] = []
-    let moc = 0
-    let i = 0
-    for (const [c, ds] of doanCau.entries()) {
-      for (const [k, dong] of ds.entries()) {
-        const den = moc + (nang[c][k] / tongCau[c]) * giayCau[c]
-        for (const [j, d] of dong.entries()) {
-          const tep = `c${i}_${j}.txt`
-          await writeFile(join(thuMuc, tep), d)
-          loc.push(
-            `drawtext=fontfile=font.ttf:textfile=${tep}:expansion=none:fontsize=58:fontcolor=white:borderw=6:bordercolor=black@0.85` +
-              `:x=(w-text_w)/2:y=${DONG_DAU + j * CAO_DONG}:enable='between(t,${moc.toFixed(2)},${(i === doan.length - 1 ? tong + DUOI : den).toFixed(2)})'`,
-          )
-        }
-        moc = den
-        i++
-      }
-    }
+    // Mốc thời gian từng đoạn phụ đề; đoạn cuối kéo tới hết video
+    const lich: { dong: string[]; giay: number }[] = []
+    for (const [c, ds] of doanCau.entries())
+      for (const [k, dong] of ds.entries()) lich.push({ dong, giay: (nang[c][k] / tongCau[c]) * giayCau[c] })
+    if (lich.length) lich[lich.length - 1].giay += Math.max(0, tong - lich.reduce((x, d) => x + d.giay, 0)) + DUOI
+
+    // Mỗi đoạn phụ đề là một khung hình tĩnh (khung nền + ảnh phụ đề), ffmpeg chỉ việc nối các khung theo thời gian
+    const khungHinh = lich.length
+      ? await Promise.all(
+          lich.map(async ({ dong }) => {
+            const phuDe = Buffer.from(await (await vePhuDe(dong)).arrayBuffer())
+            return sharp(khung).composite([{ input: phuDe, top: DONG_DAU - 20, left: 0 }]).jpeg({ quality: 88 }).toBuffer()
+          }),
+        )
+      : [khung]
+    const ds = (lich.length ? lich : [{ giay: tong + DUOI }]).map((d, i) => `file 'f${i}.jpg'\nduration ${d.giay.toFixed(3)}`)
+    ds.push(`file 'f${khungHinh.length - 1}.jpg'`) // concat cần nhắc lại khung cuối để giữ đúng thời lượng
 
     await Promise.all([
-      writeFile(join(thuMuc, 'khung.jpg'), khung),
+      ...khungHinh.map((k, i) => writeFile(join(thuMuc, `f${i}.jpg`), k)),
       writeFile(join(thuMuc, 'giong.wav'), wav),
-      copyFile(join(process.cwd(), 'assets/fonts/BeVietnamPro-Bold.ttf'), join(thuMuc, 'font.ttf')),
-      writeFile(join(thuMuc, 'loc.txt'), `[0:v]${loc.length ? loc.join(',') : 'null'}[v];[1:a]apad=pad_dur=${DUOI}[a]`),
+      writeFile(join(thuMuc, 'ds.txt'), ds.join('\n')),
     ])
     await chayFfmpeg(
       [
         '-hide_banner', '-y',
-        '-loop', '1', '-framerate', '24', '-i', 'khung.jpg',
+        '-f', 'concat', '-safe', '0', '-i', 'ds.txt',
         '-i', 'giong.wav',
-        '-filter_complex_script', 'loc.txt',
-        '-map', '[v]', '-map', '[a]',
+        '-map', '0:v', '-map', '1:a',
+        '-af', `apad=pad_dur=${DUOI}`,
         '-t', (tong + DUOI).toFixed(2),
-        '-c:v', 'libx264', '-preset', 'ultrafast', '-tune', 'stillimage', '-crf', '23', '-pix_fmt', 'yuv420p', '-r', '24', '-g', '48',
+        '-c:v', 'libx264', '-preset', 'veryfast', '-tune', 'stillimage', '-crf', '23', '-pix_fmt', 'yuv420p', '-r', '24', '-g', '48',
         '-c:a', 'aac', '-b:a', '128k', '-ar', '44100',
         '-movflags', '+faststart',
         'video.mp4',

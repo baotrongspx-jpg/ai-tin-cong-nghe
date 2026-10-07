@@ -161,3 +161,32 @@ export async function veAnh(d: DuLieuAnh) {
     },
   )
 }
+
+// Một đoạn phụ đề (1–2 dòng) cho video TikTok: chữ trắng viền đen trên nền trong suốt, rộng bằng video.
+// Vẽ thành ảnh ở đây vì ffmpeg trên Vercel không có bộ lọc vẽ chữ (drawtext).
+export const CAO_PHU_DE = 220
+export async function vePhuDe(dong: string[]) {
+  const vien = '#000'
+  return new ImageResponse(
+    (
+      <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 20 }}>
+        {dong.map((d, i) => (
+          <div
+            key={i}
+            style={{
+              fontFamily: 'BVP',
+              fontWeight: 700,
+              fontSize: 58,
+              lineHeight: '78px',
+              color: '#fff',
+              textShadow: `4px 0 0 ${vien}, -4px 0 0 ${vien}, 0 4px 0 ${vien}, 0 -4px 0 ${vien}, 3px 3px 0 ${vien}, -3px -3px 0 ${vien}, 3px -3px 0 ${vien}, -3px 3px 0 ${vien}`,
+            }}
+          >
+            {d}
+          </div>
+        ))}
+      </div>
+    ),
+    { width: 1080, height: CAO_PHU_DE, fonts: [{ name: 'BVP', data: await fontDam, weight: 700, style: 'normal' }] },
+  )
+}

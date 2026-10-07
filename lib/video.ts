@@ -11,7 +11,7 @@ import { db, type BaiViet } from './db'
 import { GIONG, GIONG_DU_PHONG } from './dsGiong'
 import { coVieNeu, docBangVieNeu, docThanhGiong, mayNhaTat } from './giongDoc'
 import { batHoatHinh, choHoatHinh, datViecHoatHinh, tenVideoHoatHinh, trangThaiHoatHinh, uuTienHoatHinh, viTriHoatHinh } from './hoatHinh'
-import { chonNhac, taiNhac } from './nhacNen'
+import { chonNhac, maNhac, taiNhac, type Nhac } from './nhacNen'
 
 // Video dọc 1080x1920 cho TikTok: ảnh bài ở giữa trên nền mờ, giọng AI đọc bài, phụ đề chạy theo từng đoạn.
 const RONG = 1080
@@ -98,8 +98,8 @@ const PHIEN_BAN = 3 // tăng khi đổi cách dựng video để bỏ video cũ
 const bam = (x: unknown) => createHash('sha256').update(JSON.stringify(x)).digest('hex').slice(0, 16)
 
 // `nhac`: bản nhạc nền (lib/nhacNen.ts), đổi nhạc thì video dựng lại
-const tenTep = (bai: BaiViet, nhac: string | null) =>
-  `${bai.id}/${bam([PHIEN_BAN, GIONG, chuDeDoc(bai), bai.chu_de, bai.mau_anh, bai.anh_nen ?? null, bai.nguon_ten, bai.ngay_bao, nhac])}.mp4`
+const tenTep = (bai: BaiViet, nhac: Nhac) =>
+  `${bai.id}/${bam([PHIEN_BAN, GIONG, chuDeDoc(bai), bai.chu_de, bai.mau_anh, bai.anh_nen ?? null, bai.nguon_ten, bai.ngay_bao, maNhac(nhac)])}.mp4`
 
 async function layVideoDaLuu(ten: string) {
   const { data } = await db().storage.from(KHO).download(ten)
@@ -274,7 +274,7 @@ export async function linkVideoBai(bai: BaiViet): Promise<{
 
 // `batBuocLuu`: lưu được mới thôi (xem trước cần link từ kho). Video đọc bằng giọng dự phòng lưu tên "-tam",
 // lần sau không khớp tên chính nên dựng lại bằng giọng chính.
-async function dungVaLuu(bai: BaiViet, ten: string, nhac: string | null, chiGiongChinh = false, batBuocLuu = false) {
+async function dungVaLuu(bai: BaiViet, ten: string, nhac: Nhac, chiGiongChinh = false, batBuocLuu = false) {
   const { video, luu, buoc, canhBao } = await dungVideo(bai, nhac, chiGiongChinh)
   const tenLuu = luu ? ten : ten.replace(/.mp4$/, '-tam.mp4')
   const viec = luuVideo(bai, tenLuu, video)
@@ -296,9 +296,9 @@ export async function wavSangMp3(wav: Buffer) {
 }
 
 // Dựng video MP4 (H.264 + AAC) lồng tiếng AI cho một bài
-async function dungVideo(bai: BaiViet, nhac: string | null, chiGiongChinh = false) {
+async function dungVideo(bai: BaiViet, nhac: Nhac, chiGiongChinh = false) {
   // Tải nhạc nền song song với các bước khác; lỗi thì dựng không nhạc
-  const taiNhacNen = nhac ? taiNhac(nhac).catch(() => null) : Promise.resolve(null)
+  const taiNhacNen = nhac ? taiNhac(nhac.ten).catch(() => null) : Promise.resolve(null)
   // Thời gian từng bước (giây), trả kèm link xem trước để biết chậm ở đâu
   const buoc: Record<string, number> = {}
   let luc = Date.now()
@@ -350,7 +350,7 @@ async function dungVideo(bai: BaiViet, nhac: string | null, chiGiongChinh = fals
     ds.push(`file 'f${khungHinh.length - 1}.jpg'`) // concat cần nhắc lại khung cuối để giữ đúng thời lượng
 
     const nhacNen = await taiNhacNen
-    const tepNhac = nhac && nhacNen ? `nhac${nhac.slice(nhac.lastIndexOf('.'))}` : null
+    const tepNhac = nhac && nhacNen ? `nhac${nhac.ten.slice(nhac.ten.lastIndexOf('.'))}` : null
     await Promise.all([
       ...khungHinh.map((k, i) => writeFile(join(thuMuc, `f${i}.jpg`), k)),
       writeFile(join(thuMuc, 'giong.wav'), wav),
@@ -363,7 +363,7 @@ async function dungVideo(bai: BaiViet, nhac: string | null, chiGiongChinh = fals
       ? [
           '-stream_loop', '-1', '-i', tepNhac,
           '-filter_complex',
-          `[1:a]apad=pad_dur=${DUOI}[g];[2:a]volume=0.12,afade=t=in:d=1.5,afade=t=out:st=${Math.max(0, het - 2).toFixed(2)}:d=2[n];` +
+          `[1:a]apad=pad_dur=${DUOI}[g];[2:a]volume=${((nhac?.amLuong ?? 12) / 100).toFixed(2)},afade=t=in:d=1.5,afade=t=out:st=${Math.max(0, het - 2).toFixed(2)}:d=2[n];` +
             '[g][n]amix=inputs=2:duration=first:normalize=0[a]',
           '-map', '0:v', '-map', '[a]',
         ]

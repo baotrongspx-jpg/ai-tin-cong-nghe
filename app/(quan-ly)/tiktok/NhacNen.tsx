@@ -1,12 +1,13 @@
 'use client'
 
 import { useRef, useState, useTransition } from 'react'
-import { xinLinkNgheNhac, xinLinkTaiNhac, xoaNhacNen, xongTaiNhac } from '@/app/actions'
+import { luuAmLuongNhac, xinLinkNgheNhac, xinLinkTaiNhac, xoaNhacNen, xongTaiNhac } from '@/app/actions'
 import { thongBao } from '@/app/ThongBao'
 import { Xoay } from '@/app/BieuTuong'
 
 // Nhạc nền trộn nhỏ dưới giọng đọc trong video lồng tiếng. Mỗi bài tự chọn một bản trong danh sách.
-export default function NhacNen({ ds, bat }: { ds: { ten: string; kichThuoc: number }[]; bat: boolean }) {
+export default function NhacNen({ ds, bat, amLuong }: { ds: { ten: string; kichThuoc: number }[]; bat: boolean; amLuong: number }) {
+  const [mucAm, setMucAm] = useState(amLuong)
   const chonTep = useRef<HTMLInputElement>(null)
   const [dangTai, setDangTai] = useState('')
   const [dangLam, startTransition] = useTransition()
@@ -79,6 +80,36 @@ export default function NhacNen({ ds, bat }: { ds: { ten: string; kichThuoc: num
             ))}
           </ul>
         )}
+        <div className="flex flex-wrap items-center gap-3 rounded-xl bg-slate-50 px-3 py-2.5 ring-1 ring-slate-200">
+          <label htmlFor="am-luong-nhac" className="text-sm font-semibold text-slate-700">
+            🔊 Âm lượng nhạc
+          </label>
+          <input
+            id="am-luong-nhac"
+            type="range"
+            min={0}
+            max={40}
+            step={1}
+            value={mucAm}
+            onChange={(e) => setMucAm(Number(e.target.value))}
+            className="min-w-40 flex-1 accent-violet-600"
+          />
+          <span className="w-24 text-sm font-semibold text-slate-700">{mucAm === 0 ? 'Tắt nhạc' : `${mucAm}% giọng`}</span>
+          <button
+            type="button"
+            disabled={dangLam || mucAm === amLuong}
+            onClick={() =>
+              startTransition(async () => {
+                const kq = await luuAmLuongNhac(mucAm)
+                thongBao(kq.ok ? 'ok' : 'loi', kq.ok ? 'Đã lưu âm lượng nhạc. Video mới (và video xem lại) sẽ dựng theo mức này' : (kq.loi ?? 'Có lỗi'))
+              })
+            }
+            className="btn btn-phu px-3 text-xs"
+          >
+            Lưu
+          </button>
+          <span className="w-full text-xs text-slate-500">Mặc định 12%. Nhạc to hơn ~20% dễ át giọng đọc; đổi mức thì video dựng lại khi xem / đăng.</span>
+        </div>
         {dangNghe && <audio src={dangNghe.url} autoPlay controls onEnded={() => setDangNghe(null)} className="w-full" />}
         <input ref={chonTep} type="file" accept="audio/*,.mp3,.m4a,.aac,.wav,.ogg" multiple hidden onChange={(e) => taiLen(e.target.files)} />
         <button type="button" disabled={!!dangTai} onClick={() => chonTep.current?.click()} className="btn btn-phu">

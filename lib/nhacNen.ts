@@ -15,13 +15,46 @@ export async function dsNhac() {
   return (data ?? []).filter((f) => DUOI_NHAC.test(f.name)).map((f) => ({ ten: f.name, kichThuoc: Number(f.metadata?.size) || 0 }))
 }
 
-// Mỗi bài cố định một bản nhạc (theo mã bài) để video đã lưu không đổi nhạc giữa các lần xem
-export async function chonNhac(baiId: string) {
+// Cài đặt nhạc nền (bảng cai_dat): âm lượng chung (% so với giọng đọc) + lựa chọn riêng từng bài
+// (tên bản nhạc, hoặc 'khong' = không nhạc; không có thì tự chọn theo mã bài)
+const KHOA_CAI_DAT = 'nhac_nen'
+export const AM_LUONG_MAC_DINH = 12
+export type CaiDatNhac = { amLuong: number; theoBai: Record<string, string> }
+export async function docCaiDatNhac(): Promise<CaiDatNhac> {
+  const { data } = await db().from('cai_dat').select('gia_tri').eq('khoa', KHOA_CAI_DAT).maybeSingle()
+  const g = (data?.gia_tri ?? {}) as Partial<CaiDatNhac>
+  return { amLuong: Number.isFinite(g.amLuong) ? Number(g.amLuong) : AM_LUONG_MAC_DINH, theoBai: g.theoBai ?? {} }
+}
+async function luuCaiDatNhac(cd: CaiDatNhac) {
+  const { error } = await db().from('cai_dat').upsert({ khoa: KHOA_CAI_DAT, gia_tri: cd, cap_nhat_luc: new Date().toISOString() })
+  if (error) throw new Error(error.message)
+}
+export async function datAmLuongNhac(amLuong: number) {
+  const cd = await docCaiDatNhac()
+  await luuCaiDatNhac({ ...cd, amLuong: Math.round(Math.min(40, Math.max(0, amLuong))) })
+}
+// `chon`: tên bản nhạc, 'khong' (không nhạc) hoặc 'tu_dong' (bỏ lựa chọn riêng)
+export async function datNhacChoBai(baiId: string, chon: string) {
+  const cd = await docCaiDatNhac()
+  const theoBai = { ...cd.theoBai }
+  if (chon === 'tu_dong') delete theoBai[baiId]
+  else theoBai[baiId] = chon
+  await luuCaiDatNhac({ ...cd, theoBai })
+}
+
+// Nhạc nền của một video: bản nhạc + âm lượng (cả hai nằm trong mã tên video: đổi nhạc / âm lượng thì dựng lại)
+export type Nhac = { ten: string; amLuong: number } | null
+
+// Bài có chọn riêng thì theo lựa chọn; không thì cố định một bản theo mã bài để video đã lưu không đổi nhạc
+export async function chonNhac(baiId: string): Promise<Nhac> {
   if (!batNhacNen()) return null
-  const ds = await dsNhac().catch(() => [])
-  if (!ds.length) return null
+  const [ds, cd] = await Promise.all([dsNhac().catch(() => []), docCaiDatNhac().catch((): CaiDatNhac => ({ amLuong: AM_LUONG_MAC_DINH, theoBai: {} }))])
+  if (!ds.length || cd.amLuong <= 0) return null
+  const rieng = cd.theoBai[baiId]
+  if (rieng === 'khong') return null
+  if (rieng && ds.some((n) => n.ten === rieng)) return { ten: rieng, amLuong: cd.amLuong }
   const so = parseInt(createHash('sha256').update(baiId).digest('hex').slice(0, 8), 16)
-  return ds[so % ds.length].ten
+  return { ten: ds[so % ds.length].ten, amLuong: cd.amLuong }
 }
 
 export async function taiNhac(ten: string) {
@@ -60,3 +93,6 @@ export async function linkNgheNhac(ten: string) {
   if (error || !data) throw new Error(`Không mở được nhạc: ${error?.message ?? 'lỗi'}`)
   return data.signedUrl
 }
+
+// Phần nhạc trong mã tên video: âm lượng mặc định giữ đúng mã cũ (chỉ tên bản nhạc) để video đã dựng không phải dựng lại
+export const maNhac = (nhac: Nhac) => (nhac ? (nhac.amLuong === AM_LUONG_MAC_DINH ? nhac.ten : `${nhac.ten}@${nhac.amLuong}`) : null)

@@ -12,7 +12,7 @@ import XuHuong from './XuHuong'
 import TheTikTok from './TheTikTok'
 import DungSan from './DungSan'
 import NhacNen from './NhacNen'
-import { batNhacNen, dsNhac } from '@/lib/nhacNen'
+import { AM_LUONG_MAC_DINH, batNhacNen, docCaiDatNhac, dsNhac, type CaiDatNhac } from '@/lib/nhacNen'
 import { coVieNeu } from '@/lib/giongDoc'
 
 // Nút "Tổng hợp ngay" ở đầu trang chạy AI trong Server Action, cần thời gian dài
@@ -50,7 +50,7 @@ export default async function TrangTikTok({ searchParams }: PageProps<'/tiktok'>
     }
   }
 
-  const [ds, demChua, demDa, xuHuong, hen, vang, tk, nhac] = await Promise.all([
+  const [ds, demChua, demDa, xuHuong, hen, vang, tk, nhac, caiDatNhac] = await Promise.all([
     (dangXem === 'da'
       ? locDa(tuKhoa).order('tiktok_dang_luc', { ascending: false })
       : locChua(tuKhoa).order('tao_luc', { ascending: false })
@@ -62,6 +62,7 @@ export default async function TrangTikTok({ searchParams }: PageProps<'/tiktok'>
     gioVang(),
     docTaiKhoan(),
     dsNhac().catch(() => []),
+    docCaiDatNhac().catch((): CaiDatNhac => ({ amLuong: AM_LUONG_MAC_DINH, theoBai: {} })),
   ])
   const { ketNoi, taiKhoan, loi: loiTaiKhoan } = tk
   const dsBai = (ds.data ?? []) as BaiViet[]
@@ -116,7 +117,7 @@ export default async function TrangTikTok({ searchParams }: PageProps<'/tiktok'>
           ]}
         />
 
-        {dangXem === 'chua' && <NhacNen ds={nhac} bat={batNhacNen()} />}
+        {dangXem === 'chua' && <NhacNen ds={nhac} bat={batNhacNen()} amLuong={caiDatNhac.amLuong} />}
 
         {tuKhoa && (
           <p className="mb-4 text-sm text-slate-500">
@@ -147,6 +148,7 @@ export default async function TrangTikTok({ searchParams }: PageProps<'/tiktok'>
                 hen={hen[b.id] ?? null}
                 gioVang={vang}
                 taiKhoan={taiKhoan && { khoaBinhLuan: taiKhoan.comment_disabled }}
+                nhac={{ ds: nhac.map((n) => n.ten), chon: caiDatNhac.theoBai[b.id] ?? 'tu_dong' }}
               />
             ))}
             {tong > dsBai.length && (

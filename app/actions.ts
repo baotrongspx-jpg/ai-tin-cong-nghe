@@ -21,7 +21,7 @@ import { goiYTraLoi } from '@/lib/ai'
 import { anTay, hienLai, traLoi } from '@/lib/binhLuan'
 import { coPixabay } from '@/lib/pixabay'
 import { datAnhNen, timAnhChoBai } from '@/lib/anhNen'
-import { linkNgheNhac, linkTaiLenNhac, xoaNhac } from '@/lib/nhacNen'
+import { datAmLuongNhac, datNhacChoBai, linkNgheNhac, linkTaiLenNhac, xoaNhac } from '@/lib/nhacNen'
 
 type KetQua = { ok: boolean; loi?: string; canhBao?: string }
 
@@ -351,6 +351,30 @@ export async function xoaBai(id: string): Promise<KetQua> {
     await xoaVideoBai(id).catch(() => {})
     const { error } = await db().from('bai_viet').delete().eq('id', id)
     if (error) return { ok: false, loi: error.message }
+    lamMoi()
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, loi: e instanceof Error ? e.message : String(e) }
+  }
+}
+
+// Âm lượng nhạc nền chung (% so với giọng đọc, 0 = tắt nhạc)
+export async function luuAmLuongNhac(amLuong: number): Promise<KetQua> {
+  await chanChuaDangNhap()
+  try {
+    await datAmLuongNhac(amLuong)
+    lamMoi()
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, loi: e instanceof Error ? e.message : String(e) }
+  }
+}
+
+// Chọn nhạc nền riêng cho một bài: tên bản nhạc, 'khong' hoặc 'tu_dong'
+export async function chonNhacBai(id: string, chon: string): Promise<KetQua> {
+  await chanChuaDangNhap()
+  try {
+    await datNhacChoBai(id, chon)
     lamMoi()
     return { ok: true }
   } catch (e) {

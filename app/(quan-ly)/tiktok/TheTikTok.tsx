@@ -7,7 +7,7 @@ import { ghepHashtagTikTok, urlAnh } from '@/lib/chuThich'
 import { gio, truoc } from '@/lib/thoiGian'
 import { GIONG, MO_TA_GIONG } from '@/lib/dsGiong'
 import { dichLoiTikTok } from '@/lib/loiTikTok'
-import { boDanhDauTikTok, dangCaHai, dangTikTok, xoaBai } from '@/app/actions'
+import { boDanhDauTikTok, chonNhacBai, dangCaHai, dangTikTok, xoaBai } from '@/app/actions'
 import { thongBao } from '@/app/ThongBao'
 import KhungHenGio from '@/app/KhungHenGio'
 import { Tags } from '@/app/TheBai'
@@ -84,13 +84,17 @@ export default function TheTikTok({
   hen,
   gioVang,
   taiKhoan,
+  nhac,
 }: {
   bai: BaiViet
   xuHuong: string[]
   hen: string | null // giờ đã hẹn đăng TikTok
   gioVang: { gio: number[]; tuSoLieu: boolean }
   taiKhoan: { khoaBinhLuan: boolean } | null
+  nhac: { ds: string[]; chon: string } // các bản nhạc nền + lựa chọn của bài ('tu_dong' | 'khong' | tên bản)
 }) {
+  const [chonNhac, setChonNhac] = useState(nhac.chon)
+  const [dangDoiNhac, startDoiNhac] = useTransition()
   const [choBinhLuan, setChoBinhLuan] = useState(true)
   const [longTieng, setLongTieng] = useState(true)
   const [moRong, setMoRong] = useState(false)
@@ -196,7 +200,37 @@ export default function TheTikTok({
                 <NutNgheThu />
               </div>
             </div>
-            <button disabled={dangDung || dangLam} onClick={video ? () => setVideo(null) : xemTruoc} className="btn btn-phu w-full">
+            {nhac.ds.length > 0 && (
+              <div className="grid min-w-0 grid-cols-1 gap-1">
+                <label htmlFor={`nhac-${bai.id}`} className="text-xs font-semibold text-slate-500">
+                  Nhạc nền
+                </label>
+                <select
+                  id={`nhac-${bai.id}`}
+                  value={chonNhac}
+                  disabled={dangDung || dangLam || dangDoiNhac}
+                  onChange={(e) => {
+                    const gt = e.target.value
+                    setChonNhac(gt)
+                    setVideo(null) // video đang xem là nhạc cũ
+                    startDoiNhac(async () => {
+                      const kq = await chonNhacBai(bai.id, gt)
+                      if (!kq.ok) thongBao('loi', kq.loi ?? 'Không đổi được nhạc')
+                    })
+                  }}
+                  className="w-full min-w-0 truncate rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-800"
+                >
+                  <option value="tu_dong">🎵 Tự chọn</option>
+                  {nhac.ds.map((ten) => (
+                    <option key={ten} value={ten}>
+                      {ten.replace(/\.[^.]+$/, '')}
+                    </option>
+                  ))}
+                  <option value="khong">🔇 Không nhạc</option>
+                </select>
+              </div>
+            )}
+            <button disabled={dangDung || dangLam || dangDoiNhac} onClick={video ? () => setVideo(null) : xemTruoc} className="btn btn-phu w-full">
               {dangDung ? <Xoay /> : null}
               {dangDung ? <>{mayNha?.trangThai === 'dang_lam' ? 'Máy nhà đang dựng hoạt hình…' : mayNha?.truoc ? `Xếp hàng: còn ${mayNha.truoc} video trước…` : mayNha ? 'Chờ máy nhà dựng hoạt hình…' : 'Đang dựng video…'} <DemGiay /></> : video ? 'Xem ảnh' : videoSan ? '▶ Xem video (đã dựng sẵn)' : '▶ Xem trước video'}
             </button>

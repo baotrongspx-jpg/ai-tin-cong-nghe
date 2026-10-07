@@ -4,6 +4,7 @@ import { after } from 'next/server'
 import { vietLoiThoai } from './ai'
 import { db, type BaiViet } from './db'
 import { GIONG } from './dsGiong'
+import { maNhac, type Nhac } from './nhacNen'
 
 // Video hoạt hình nhân vật: Mèo Mun hỏi, Robot Bit giải thích, bối cảnh đổi theo lời thoại. Trang web nhờ AI viết lời
 // thoại rồi để phiếu việc trong kho; thợ ở máy nhà (may-nha/tho_doc.py + may-nha/hoat-hinh) đọc hai giọng, dựng bằng
@@ -28,8 +29,8 @@ const bam = (x: unknown) => createHash('sha256').update(JSON.stringify(x)).diges
 const kho = () => db().storage.from(KHO)
 
 // `chuDoc`: chữ được đọc (lib/video.ts chuDeDoc); `nhac`: bản nhạc nền. Sửa bài / đổi nhạc thì dựng lại.
-export const tenVideoHoatHinh = (bai: BaiViet, chuDoc: string, nhac: string | null) =>
-  `${bai.id}/hh-${bam([PHIEN_BAN, chuDoc, bai.chu_de, nhac])}.mp4`
+export const tenVideoHoatHinh = (bai: BaiViet, chuDoc: string, nhac: Nhac) =>
+  `${bai.id}/hh-${bam([PHIEN_BAN, chuDoc, bai.chu_de, maNhac(nhac)])}.mp4`
 const maViec = (ten: string) => `hh-${bam(ten)}`
 
 const coTep = async (thuMuc: string, ten: string) => {
@@ -91,7 +92,7 @@ export async function trangThaiHoatHinh(ten: string): Promise<TrangThaiHoatHinh>
 // Đặt việc dựng video hoạt hình (nếu chưa có ai làm). Lần trước lỗi thì xóa lỗi và đặt lại.
 // `ngam` (mặc định): trả lời ngay, AI viết lời thoại sau khi đã trả lời (next/server after); lỗi ghi vào hang-doi/xong.
 // Chỗ phải chờ có video ngay trong lượt (bấm Đăng) đặt ngam = false: after chỉ chạy khi lượt đó kết thúc.
-export async function datViecHoatHinh(bai: BaiViet, ten: string, nhac: string | null, tt?: TrangThaiHoatHinh, ngam = true) {
+export async function datViecHoatHinh(bai: BaiViet, ten: string, nhac: Nhac, tt?: TrangThaiHoatHinh, ngam = true) {
   tt ??= await trangThaiHoatHinh(ten)
   if (tt.loai !== 'chua' && tt.loai !== 'loi') return tt
   const ma = maViec(ten)
@@ -99,7 +100,7 @@ export async function datViecHoatHinh(bai: BaiViet, ten: string, nhac: string | 
   const viet = async () => {
     const kb = await vietLoiThoai(bai)
     if (!kb) throw new Error('AI không viết được lời thoại cho bài này')
-    const viec = { loai: 'hoat_hinh', ten, nhac, tieu_de: bai.tieu_de_anh, loi_thoai: { kenh: 'Công Nghệ 24H', chu_de: bai.chu_de, nhan_vat: NHAN_VAT, ...kb } }
+    const viec = { loai: 'hoat_hinh', ten, nhac: nhac?.ten ?? null, am_luong: nhac?.amLuong ?? 0, tieu_de: bai.tieu_de_anh, loi_thoai: { kenh: 'Công Nghệ 24H', chu_de: bai.chu_de, nhan_vat: NHAN_VAT, ...kb } }
     const { error } = await kho().upload(`hang-doi/viec/${ma}.json`, JSON.stringify(viec), { contentType: 'application/json', upsert: true })
     if (error) throw new Error(`Không gửi được việc cho máy nhà: ${error.message}`)
   }

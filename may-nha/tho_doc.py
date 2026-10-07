@@ -201,7 +201,7 @@ def dung_hoat_hinh(may, ds_giong, yc, td):
                 nhac.write_bytes(r.content)
                 tong = sum(do_dai) + 0.4 + 0.8
                 chay([str(FFMPEG), '-hide_banner', '-y', '-i', 'video.mp4', '-stream_loop', '-1', '-i', nhac.name,
-                      '-filter_complex', f'[1:a]volume=0.12,afade=t=in:d=1.5,afade=t=out:st={max(0, tong - 2):.2f}:d=2[n];[0:a][n]amix=inputs=2:duration=first:normalize=0[a]',
+                      '-filter_complex', f'[1:a]volume={yc.get("am_luong", 12) / 100:.2f},afade=t=in:d=1.5,afade=t=out:st={max(0, tong - 2):.2f}:d=2[n];[0:a][n]amix=inputs=2:duration=first:normalize=0[a]',
                       '-map', '0:v', '-map', '[a]', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '160k', '-movflags', '+faststart', 'co-nhac.mp4'], tm, 300)
                 ra = tm / 'co-nhac.mp4'
         # 4. Gửi lên kho đúng tên đã hẹn, bỏ các bản hoạt hình cũ của bài

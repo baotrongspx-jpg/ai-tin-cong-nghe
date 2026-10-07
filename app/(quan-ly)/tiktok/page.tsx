@@ -11,6 +11,8 @@ import { IconTikTok, IconXongTron, IconHop } from '@/app/BieuTuong'
 import XuHuong from './XuHuong'
 import TheTikTok from './TheTikTok'
 import DungSan from './DungSan'
+import NhacNen from './NhacNen'
+import { batNhacNen, dsNhac } from '@/lib/nhacNen'
 import { coVieNeu } from '@/lib/giongDoc'
 
 // Nút "Tổng hợp ngay" ở đầu trang chạy AI trong Server Action, cần thời gian dài
@@ -48,7 +50,7 @@ export default async function TrangTikTok({ searchParams }: PageProps<'/tiktok'>
     }
   }
 
-  const [ds, demChua, demDa, xuHuong, hen, vang, tk] = await Promise.all([
+  const [ds, demChua, demDa, xuHuong, hen, vang, tk, nhac] = await Promise.all([
     (dangXem === 'da'
       ? locDa(tuKhoa).order('tiktok_dang_luc', { ascending: false })
       : locChua(tuKhoa).order('tao_luc', { ascending: false })
@@ -59,6 +61,7 @@ export default async function TrangTikTok({ searchParams }: PageProps<'/tiktok'>
     dsHenTikTok(),
     gioVang(),
     docTaiKhoan(),
+    dsNhac().catch(() => []),
   ])
   const { ketNoi, taiKhoan, loi: loiTaiKhoan } = tk
   const dsBai = (ds.data ?? []) as BaiViet[]
@@ -112,6 +115,8 @@ export default async function TrangTikTok({ searchParams }: PageProps<'/tiktok'>
             { ma: 'da', ten: 'Đã đăng', Icon: IconXongTron, href: `/tiktok?${new URLSearchParams({ tt: 'da', ...(tuKhoa && { q: tuKhoa }) })}`, so: demDa.count ?? 0 },
           ]}
         />
+
+        {dangXem === 'chua' && <NhacNen ds={nhac} bat={batNhacNen()} />}
 
         {tuKhoa && (
           <p className="mb-4 text-sm text-slate-500">

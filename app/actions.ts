@@ -20,6 +20,7 @@ import { goiYTraLoi } from '@/lib/ai'
 import { anTay, hienLai, traLoi } from '@/lib/binhLuan'
 import { coPixabay } from '@/lib/pixabay'
 import { datAnhNen, timAnhChoBai } from '@/lib/anhNen'
+import { linkNgheNhac, linkTaiLenNhac, xoaNhac } from '@/lib/nhacNen'
 
 type KetQua = { ok: boolean; loi?: string; canhBao?: string }
 
@@ -295,6 +296,42 @@ export async function datAnhNenAction(id: string, anhNen: number): Promise<KetQu
     await datAnhNen(id, anhNen)
     lamMoi()
     return { ok: true }
+  } catch (e) {
+    return { ok: false, loi: e instanceof Error ? e.message : String(e) }
+  }
+}
+
+// Nhạc nền video: trình duyệt xin link rồi tải tệp nhạc thẳng lên kho (tệp thường nặng hơn giới hạn 4,5 MB của Vercel)
+export async function xinLinkTaiNhac(tenTep: string): Promise<KetQua & { url?: string }> {
+  await chanChuaDangNhap()
+  try {
+    return { ok: true, url: await linkTaiLenNhac(tenTep) }
+  } catch (e) {
+    return { ok: false, loi: e instanceof Error ? e.message : String(e) }
+  }
+}
+
+export async function xongTaiNhac(): Promise<KetQua> {
+  await chanChuaDangNhap()
+  lamMoi()
+  return { ok: true }
+}
+
+export async function xoaNhacNen(ten: string): Promise<KetQua> {
+  await chanChuaDangNhap()
+  try {
+    await xoaNhac(ten)
+    lamMoi()
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, loi: e instanceof Error ? e.message : String(e) }
+  }
+}
+
+export async function xinLinkNgheNhac(ten: string): Promise<KetQua & { url?: string }> {
+  await chanChuaDangNhap()
+  try {
+    return { ok: true, url: await linkNgheNhac(ten) }
   } catch (e) {
     return { ok: false, loi: e instanceof Error ? e.message : String(e) }
   }

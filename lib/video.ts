@@ -10,6 +10,7 @@ import { veAnhBai, vePhuDe } from './anh'
 import { db, type BaiViet } from './db'
 import { GIONG, GIONG_DU_PHONG } from './dsGiong'
 import { coVieNeu, docBangVieNeu, docThanhGiong } from './giongDoc'
+import { chonNhac, taiNhac } from './nhacNen'
 
 // Video dọc 1080x1920 cho TikTok: ảnh bài ở giữa trên nền mờ, giọng AI đọc bài, phụ đề chạy theo từng đoạn.
 const RONG = 1080
@@ -95,8 +96,9 @@ const PHIEN_BAN = 3 // tăng khi đổi cách dựng video để bỏ video cũ
 
 const bam = (x: unknown) => createHash('sha256').update(JSON.stringify(x)).digest('hex').slice(0, 16)
 
-const tenTep = (bai: BaiViet) =>
-  `${bai.id}/${bam([PHIEN_BAN, GIONG, chuDeDoc(bai), bai.chu_de, bai.mau_anh, bai.anh_nen ?? null, bai.nguon_ten, bai.ngay_bao])}.mp4`
+// `nhac`: bản nhạc nền (lib/nhacNen.ts), đổi nhạc thì video dựng lại
+const tenTep = (bai: BaiViet, nhac: string | null) =>
+  `${bai.id}/${bam([PHIEN_BAN, GIONG, chuDeDoc(bai), bai.chu_de, bai.mau_anh, bai.anh_nen ?? null, bai.nguon_ten, bai.ngay_bao, nhac])}.mp4`
 
 async function layVideoDaLuu(ten: string) {
   const { data } = await db().storage.from(KHO).download(ten)
@@ -170,10 +172,11 @@ async function luuVideo(bai: BaiViet, ten: string, video: Buffer) {
 
 // Video lồng tiếng của bài: lấy bản đã lưu nếu bài chưa đổi, không thì dựng mới rồi lưu lại.
 export async function taoVideoBai(bai: BaiViet) {
-  const ten = tenTep(bai)
+  const nhac = await chonNhac(bai.id)
+  const ten = tenTep(bai, nhac)
   const daLuu = await layVideoDaLuu(ten).catch(() => null)
   if (daLuu) return daLuu
-  return (await dungVaLuu(bai, ten)).video
+  return (await dungVaLuu(bai, ten, nhac)).video
 }
 
 const daCoVideo = async (bai: BaiViet, ten: string) => {
@@ -184,16 +187,18 @@ const daCoVideo = async (bai: BaiViet, ten: string) => {
 // Dựng sẵn trong nền (mở trang TikTok): đã có video thì thôi, chưa có thì dựng bằng giọng chính rồi lưu.
 // Không trả video về cho đỡ tốn băng thông.
 export async function dungSanVideoBai(bai: BaiViet) {
-  const ten = tenTep(bai)
-  if (!(await daCoVideo(bai, ten))) await dungVaLuu(bai, ten, true)
+  const nhac = await chonNhac(bai.id)
+  const ten = tenTep(bai, nhac)
+  if (!(await daCoVideo(bai, ten))) await dungVaLuu(bai, ten, nhac, true)
 }
 
 // Xem trước: link tạm (1 giờ) tải thẳng video từ kho, vì Vercel chỉ cho trả tối đa 4,5 MB mỗi lần
 export async function linkVideoBai(bai: BaiViet) {
-  let ten = tenTep(bai)
+  const nhac = await chonNhac(bai.id)
+  let ten = tenTep(bai, nhac)
   let buoc: Record<string, number> | null = null
   let canhBao: string | undefined
-  if (!(await daCoVideo(bai, ten))) ({ ten, buoc, canhBao } = await dungVaLuu(bai, ten, false, true))
+  if (!(await daCoVideo(bai, ten))) ({ ten, buoc, canhBao } = await dungVaLuu(bai, ten, nhac, false, true))
   const { data, error } = await db().storage.from(KHO).createSignedUrl(ten, 3600)
   if (error || !data) throw new Error(`Không tạo được link video: ${error?.message ?? 'lỗi'}`)
   return { url: data.signedUrl, buoc, canhBao }
@@ -201,8 +206,8 @@ export async function linkVideoBai(bai: BaiViet) {
 
 // `batBuocLuu`: lưu được mới thôi (xem trước cần link từ kho). Video đọc bằng giọng dự phòng lưu tên "-tam",
 // lần sau không khớp tên chính nên dựng lại bằng giọng chính.
-async function dungVaLuu(bai: BaiViet, ten: string, chiGiongChinh = false, batBuocLuu = false) {
-  const { video, luu, buoc, canhBao } = await dungVideo(bai, chiGiongChinh)
+async function dungVaLuu(bai: BaiViet, ten: string, nhac: string | null, chiGiongChinh = false, batBuocLuu = false) {
+  const { video, luu, buoc, canhBao } = await dungVideo(bai, nhac, chiGiongChinh)
   const tenLuu = luu ? ten : ten.replace(/.mp4$/, '-tam.mp4')
   const viec = luuVideo(bai, tenLuu, video)
   if (batBuocLuu) await viec
@@ -223,7 +228,9 @@ export async function wavSangMp3(wav: Buffer) {
 }
 
 // Dựng video MP4 (H.264 + AAC) lồng tiếng AI cho một bài
-async function dungVideo(bai: BaiViet, chiGiongChinh = false) {
+async function dungVideo(bai: BaiViet, nhac: string | null, chiGiongChinh = false) {
+  // Tải nhạc nền song song với các bước khác; lỗi thì dựng không nhạc
+  const taiNhacNen = nhac ? taiNhac(nhac).catch(() => null) : Promise.resolve(null)
   // Thời gian từng bước (giây), trả kèm link xem trước để biết chậm ở đâu
   const buoc: Record<string, number> = {}
   let luc = Date.now()
@@ -274,18 +281,31 @@ async function dungVideo(bai: BaiViet, chiGiongChinh = false) {
     const ds = (lich.length ? lich : [{ giay: tong + DUOI }]).map((d, i) => `file 'f${i}.jpg'\nduration ${d.giay.toFixed(3)}`)
     ds.push(`file 'f${khungHinh.length - 1}.jpg'`) // concat cần nhắc lại khung cuối để giữ đúng thời lượng
 
+    const nhacNen = await taiNhacNen
+    const tepNhac = nhac && nhacNen ? `nhac${nhac.slice(nhac.lastIndexOf('.'))}` : null
     await Promise.all([
       ...khungHinh.map((k, i) => writeFile(join(thuMuc, `f${i}.jpg`), k)),
       writeFile(join(thuMuc, 'giong.wav'), wav),
       writeFile(join(thuMuc, 'ds.txt'), ds.join('\n')),
+      tepNhac && nhacNen && writeFile(join(thuMuc, tepNhac), nhacNen),
     ])
+    const het = tong + DUOI
+    // Nhạc nền lặp lại cho đủ dài, nhỏ dưới giọng đọc, to dần ở đầu và nhỏ dần ở cuối
+    const amThanh = tepNhac
+      ? [
+          '-stream_loop', '-1', '-i', tepNhac,
+          '-filter_complex',
+          `[1:a]apad=pad_dur=${DUOI}[g];[2:a]volume=0.12,afade=t=in:d=1.5,afade=t=out:st=${Math.max(0, het - 2).toFixed(2)}:d=2[n];` +
+            '[g][n]amix=inputs=2:duration=first:normalize=0[a]',
+          '-map', '0:v', '-map', '[a]',
+        ]
+      : ['-map', '0:v', '-map', '1:a', '-af', `apad=pad_dur=${DUOI}`]
     await chayFfmpeg(
       [
         '-hide_banner', '-y',
         '-f', 'concat', '-safe', '0', '-i', 'ds.txt',
         '-i', 'giong.wav',
-        '-map', '0:v', '-map', '1:a',
-        '-af', `apad=pad_dur=${DUOI}`,
+        ...amThanh,
         '-t', (tong + DUOI).toFixed(2),
         '-c:v', 'libx264', '-preset', 'ultrafast', '-tune', 'stillimage', '-crf', '23', '-pix_fmt', 'yuv420p', '-r', '24', '-g', '48',
         '-c:a', 'aac', '-b:a', '128k', '-ar', '44100',

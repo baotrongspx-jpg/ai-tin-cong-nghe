@@ -13,6 +13,7 @@ import KhungHenGio from '@/app/KhungHenGio'
 import { Tags } from '@/app/TheBai'
 import { IconDongHo, IconFacebook, IconLai, IconNhac, IconTikTok, Xoay } from '@/app/BieuTuong'
 import { CotPhai, LuuY, NutQuyetDinh, ThongTinBai } from '@/app/PhanDuyet'
+import { choDungSan, useVideoSan } from './DungSan'
 
 type Viec = 'tt' | 'ca_hai' | 'bo_danh_dau'
 
@@ -87,12 +88,14 @@ export default function TheTikTok({
   const [video, setVideo] = useState<string | null>(null)
   const [dangDung, setDangDung] = useState(false)
   const [loiVideo, setLoiVideo] = useState('')
+  const videoSan = useVideoSan(bai.id)
   useEffect(() => () => void (video && URL.revokeObjectURL(video)), [video])
 
   const xemTruoc = async () => {
     setDangDung(true)
     setLoiVideo('')
     try {
+      await choDungSan(bai.id) // đang dựng sẵn trong nền thì chờ bản đó, khỏi dựng hai lần
       const res = await fetch(`/api/video/${bai.id}`, { cache: 'no-store' })
       if (!res.ok) throw new Error((await res.text()) || `Lỗi ${res.status}`)
       setVideo(URL.createObjectURL(await res.blob()))
@@ -164,7 +167,7 @@ export default function TheTikTok({
             </div>
             <button disabled={dangDung || dangLam} onClick={video ? () => setVideo(null) : xemTruoc} className="btn btn-phu w-full">
               {dangDung ? <Xoay /> : null}
-              {dangDung ? 'Đang dựng video… (~1 phút)' : video ? 'Xem ảnh' : '▶ Xem trước video'}
+              {dangDung ? 'Đang dựng video… (~1 phút)' : video ? 'Xem ảnh' : videoSan ? '▶ Xem video (đã dựng sẵn)' : '▶ Xem trước video'}
             </button>
             {loiVideo && <p className="text-xs text-red-600">{loiVideo}</p>}
             {video && <p className="text-xs text-slate-400">Bấm Đăng (có lồng tiếng) sẽ dùng đúng video này. Sửa bài thì video tự dựng lại.</p>}

@@ -17,9 +17,12 @@ GIONG_MAC_DINH = 'Hải Đăng'
 NGAT = 0.25  # giây im lặng sau mỗi câu
 
 app = FastAPI()
-may = Vieneu()
+# int8 nhanh hơn ~1,4 lần nhưng cần CPU có VNNI (Intel đời 12 trở lên...), máy cũ hơn đặt DO_CHINH_XAC=fp32
+may = Vieneu(precision=os.environ.get('DO_CHINH_XAC', 'int8'))
 khoa_may = threading.Lock()  # mỗi lần chỉ đọc một bài, đỡ tràn RAM
 DS_GIONG = {ten for _, ten in may.list_preset_voices()}
+# Làm nóng: lần đọc đầu tiên sau khi bật chậm gấp đôi, đọc thử một câu ngay lúc khởi động
+may.infer('Xin chào.', voice=GIONG_MAC_DINH)
 
 
 class YeuCau(BaseModel):

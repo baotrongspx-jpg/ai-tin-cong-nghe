@@ -116,9 +116,11 @@ type GiongBai = { wav: Buffer; doDai: number[] | null; luu: boolean } // doDai: 
 
 // Giọng đọc đã lưu của bài (WAV + thời lượng từng câu). Chưa có thì đọc một lần rồi lưu lại, bỏ các bản đọc cũ của bài.
 // Giọng chính VieNeu; VieNeu lỗi thì đọc tạm bằng Gemini và không lưu (`luu: false`), lần sau thử lại VieNeu.
-async function layGiongBai(bai: BaiViet, chu: string, cau: string[]): Promise<GiongBai> {
+// `chiGiongChinh`: không dùng giọng dự phòng (dựng sẵn trong nền, không tốn lượt Gemini).
+async function layGiongBai(bai: BaiViet, chu: string, cau: string[], chiGiongChinh = false): Promise<GiongBai> {
   const thuMuc = `giong/${bai.id}`
   const vieNeu = coVieNeu()
+  if (chiGiongChinh && !vieNeu) throw new Error('Chưa cài giọng VieNeu')
   const ten = `${thuMuc}/${vieNeu ? bam(['vieneu', GIONG, cau]) : bam([GIONG_DU_PHONG, chu])}`
   const [wav, meta] = await Promise.all([layVideoDaLuu(`${ten}.wav`), layVideoDaLuu(`${ten}.json`)]).catch(() => [null, null])
   if (wav && meta) return { wav, doDai: JSON.parse(meta.toString()).doDai ?? null, luu: true }
@@ -133,6 +135,7 @@ async function layGiongBai(bai: BaiViet, chu: string, cau: string[]): Promise<Gi
       loiVieNeu = e instanceof Error ? e.message : String(e)
       console.error(loiVieNeu)
     }
+    if (chiGiongChinh) throw e
     try {
       kq = { wav: await docThanhGiong(chu), doDai: null, luu: !vieNeu }
     } catch (e2) {
@@ -168,7 +171,20 @@ export async function taoVideoBai(bai: BaiViet) {
   const ten = tenTep(bai)
   const daLuu = await layVideoDaLuu(ten).catch(() => null)
   if (daLuu) return daLuu
-  const { video, luu } = await dungVideo(bai)
+  return dungVaLuu(bai, ten)
+}
+
+// Dựng sẵn trong nền (mở trang TikTok): đã có video thì thôi, chưa có thì dựng bằng giọng chính rồi lưu.
+// Không trả video về cho đỡ tốn băng thông.
+export async function dungSanVideoBai(bai: BaiViet) {
+  const ten = tenTep(bai)
+  const { data } = await db().storage.from(KHO).list(bai.id, { search: ten.slice(bai.id.length + 1) })
+  if (data?.some((f) => `${bai.id}/${f.name}` === ten)) return
+  await dungVaLuu(bai, ten, true)
+}
+
+async function dungVaLuu(bai: BaiViet, ten: string, chiGiongChinh = false) {
+  const { video, luu } = await dungVideo(bai, chiGiongChinh)
   // Video đọc bằng giọng dự phòng thì không lưu, lần sau dựng lại bằng giọng chính
   if (luu) await luuVideo(bai, ten, video).catch((e) => console.error('Không lưu được video TikTok:', e))
   return video
@@ -187,12 +203,12 @@ export async function wavSangMp3(wav: Buffer) {
 }
 
 // Dựng video MP4 (H.264 + AAC) lồng tiếng AI cho một bài
-async function dungVideo(bai: BaiViet) {
+async function dungVideo(bai: BaiViet, chiGiongChinh = false) {
   const chu = chuDeDoc(bai)
   if (!chu) throw new Error('Bài không có chữ để đọc')
   const cau = tachCau(chu)
   const [{ wav, doDai, luu }, anh] = await Promise.all([
-    layGiongBai(bai, chu, cau),
+    layGiongBai(bai, chu, cau, chiGiongChinh),
     veAnhBai(bai).then(async (r) => Buffer.from(await r.arrayBuffer())),
   ])
   const tong = doDaiWav(wav)
@@ -247,7 +263,7 @@ async function dungVideo(bai: BaiViet) {
         '-filter_complex_script', 'loc.txt',
         '-map', '[v]', '-map', '[a]',
         '-t', (tong + DUOI).toFixed(2),
-        '-c:v', 'libx264', '-preset', 'veryfast', '-tune', 'stillimage', '-crf', '23', '-pix_fmt', 'yuv420p', '-r', '24', '-g', '48',
+        '-c:v', 'libx264', '-preset', 'ultrafast', '-tune', 'stillimage', '-crf', '23', '-pix_fmt', 'yuv420p', '-r', '24', '-g', '48',
         '-c:a', 'aac', '-b:a', '128k', '-ar', '44100',
         '-movflags', '+faststart',
         'video.mp4',

@@ -10,6 +10,7 @@ import { CanhBao, ThanhLoc, TieuDeTrang, Trong } from '@/app/DauTrang'
 import { IconTikTok, IconXongTron, IconHop } from '@/app/BieuTuong'
 import XuHuong from './XuHuong'
 import TheTikTok from './TheTikTok'
+import DungSan from './DungSan'
 
 // Nút "Tổng hợp ngay" ở đầu trang chạy AI trong Server Action, cần thời gian dài
 export const maxDuration = 300
@@ -130,6 +131,8 @@ export default async function TrangTikTok({ searchParams }: PageProps<'/tiktok'>
           )
         ) : (
           <div className="space-y-5">
+            {/* Dựng sẵn video cho 6 bài chưa đăng đầu tiên (chỉ khi có máy đọc giọng VieNeu) */}
+            {dangXem === 'chua' && process.env.VIENEU_URL && <DungSan ds={dsBai.slice(0, 6).map((b) => b.id)} />}
             {dsBai.map((b) => (
               <TheTikTok
                 key={`${b.id}-${b.tiktok_publish_id}-${hen[b.id]}`}

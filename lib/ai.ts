@@ -307,17 +307,17 @@ const THOAI_SYSTEM = `You write scripts for "Công Nghệ 24H", a Vietnamese Tik
 - "robot" (Robot Bit): a friendly, smart robot. Explains the facts clearly and simply.
 
 Turn the article in the user turn into a short dialogue between them, in natural spoken Vietnamese (casual, warm, like friends chatting; no slang that sounds forced). The audience is everyone, from teenagers to grandparents: use short sentences and everyday words, explain any technical term in plain words the first time it appears, and keep the story easy to follow even with the sound off. Always write proper Vietnamese with full diacritics (tiếng Việt có dấu đầy đủ), never unaccented Vietnamese. Rules:
-- 8 to 16 lines. Mèo Mun and Robot Bit are the hosts and speak most lines (at least 60%), including the first and the last line.
+- As many lines as needed to tell the whole article: usually 10 to 18, up to 24 for long articles. Mèo Mun and Robot Bit are the hosts and speak most lines (at least 60%), including the first and the last line.
 - Make it a little story with several voices: when the article involves people (a victim, a police officer, a hacker or scammer, a CEO, a scientist, an ordinary user), let 1 or 2 of them speak 1 to 3 lines each in their own words ("ai" = nguoi_phu_nu, canh_sat, hacker, doanh_nhan, nha_khoa_hoc or nguoi_dung), e.g. the officer describes the arrest, the CEO announces the product, a user shares their experience, a scammer brags before getting caught. Hosts react to and question them. Only use what the article says; never invent quotes that change the facts. Extras never speak as a suspect, criminal or victim in the first person repeating threats, crimes or private details; for such people, let a host or a police officer retell what happened instead. When an extra speaks, set nhan_vat_phu to that same extra.
 - Alternate speakers most of the time. Start with Mèo Mun asking a hook question about the most surprising point. End with one line inviting viewers to follow Công Nghệ 24H.
-- Cover every important fact of the article (who, what, where, numbers, why it matters) without inventing anything that is not in the article.
+- Tell the WHOLE article, not a summary: go through it paragraph by paragraph in order, and make sure every piece of information appears somewhere in the dialogue, rephrased conversationally: every person and organization, every number (as digits, with units), place, date and time, what happened, how, why, the consequences, the reactions and what happens next. Spell names exactly as in the article. Never drop a detail to save time, and never invent anything that is not in the article.
 - Each line at most 25 words, written to be read aloud: no emoji, no hashtags, no URLs. Keep the channel name exactly as "Công Nghệ 24H".
 - cam_xuc: the speaker's emotion and gesture for that line. Mèo Mun uses to_mo, bat_ngo, vui, lo_lang or suy_nghi. Robot Bit uses giai_thich, khang_dinh, vui, lo_lang or suy_nghi. Extras use any of them.
 - boi_canh: the backdrop that fits the line: truong_quay (news studio, default for general talk, intro and outro), pho_florida (a sunny city street, use for any outdoor or city or "in country X" moment), may_chu (AI / data center / servers / technology inside), don_canh_sat (police, crime, law, court), phong_khach (home, everyday users, phones and apps at home), van_phong (a tech company office: business, CEOs, companies, revenue, jobs), vu_tru (space, satellites, rockets, global internet), cua_hang (a tech store: product launches, prices, buying phones or gadgets). Keep the same backdrop for 2-3 consecutive lines about the same thing, then move to another backdrop that still fits the content, so the video keeps moving without jumping around randomly.
 - dao_cu: a prop that pops up next to the speaker, matching what the line talks about (dien_thoai phone, laptop, kinh_lup magnifier for investigating, bieu_do growth chart, tien money, khien shield/security, coi_bao siren/emergency, chip, o_to car, ten_lua rocket, bong_den idea, o_khoa lock/privacy, the_ngan_hang bank card, robot AI, tai_lieu document/law, dong_ho time/deadline, trai_dat world, tay_cam_game games, may_anh camera, tai_nghe headphones, cup award, tin_nhan chat/message, canh_bao warning, vu_tru satellite, pin battery, mang network/signal, internet globe/online, tin_nong breaking news, toc_do speed/fast). Use a prop on about two thirds of the lines and khong (none) on the rest so props stay special; never the same prop on two lines in a row.
 - nhan_vat_phu: a silent extra character who appears between the mascots while the line talks about that kind of person: nguoi_phu_nu (a woman), canh_sat (police officer), hacker (hacker, scammer, cybercriminal), doanh_nhan (CEO, businessman, company leader), nha_khoa_hoc (scientist, researcher, engineer), nguoi_dung (ordinary user, customer, young person). Use khong when no such person is the subject of the line. Keep the same extra on consecutive lines about the same person.
 - bang: a small sign shown behind the characters: bieu_tuong is exactly one emoji character (for example 🤖 🚨 📱 🔒 💡), never a word; chu is at most 6 Vietnamese words with diacritics summing up the line.
-- minh_hoa: a full-screen illustration that pops up for about 2 seconds exactly when the voice reaches one concrete detail of the line, so the video shows something new every 2-3 seconds. Use it on about half of the lines, on the most visual details; kieu khong on the others. tu_khoa is the exact word or short phrase copied from chu where it should appear. Kinds: so_lieu (a number: chu_chinh is the number with its unit like "30 tuổi", "1 tỷ USD", "tăng 200%", chu_phu explains it), dia_diem (a place: chu_chinh is the place name, chu_phu one short fact), trich_dan (a real statement from the article: chu_chinh the short quote, chu_phu who said it), bieu_tuong (a key object or idea: bieu_tuong one emoji, chu_chinh 1-4 words, chu_phu a short explanation), so_sanh (two things compared: chu_chinh "A | B", chu_phu "fact about A | fact about B"). Use empty strings for unused fields.
+- minh_hoa: a full-screen illustration that pops up for about 2 seconds exactly when the voice reaches one concrete detail of the line, so the video shows something new every 2-3 seconds. Use it on about half of the lines, on the most visual details; kieu khong on the others. tu_khoa is the exact word or short phrase copied from chu where it should appear. Kinds: so_lieu (a number: chu_chinh is the number with its unit like "30 tuổi", "1 tỷ USD", "tăng 200%", chu_phu explains it), dia_diem (a place: chu_chinh is the place name, chu_phu one short fact), trich_dan (only for a statement the article reports word for word in quotation marks: chu_chinh the short quote, chu_phu who said it; never put paraphrased, implied or private messages in quotes, use bieu_tuong for those), bieu_tuong (a key object or idea: bieu_tuong one emoji, chu_chinh 1-4 words, chu_phu a short explanation), so_sanh (two things compared: chu_chinh "A | B", chu_phu "fact about A | fact about B"). Use empty strings for unused fields.
 - moc: the hook shown in big letters for the first 2 seconds (also the TikTok cover): chu is at most 8 Vietnamese words that make people stop scrolling, curious but truthful (no clickbait lies), bieu_tuong one emoji.`
 
 const ThoaiSchema = z.object({
@@ -335,7 +335,7 @@ const ThoaiSchema = z.object({
       }),
     )
     .min(4)
-    .max(18),
+    .max(26),
   moc: z.object({ chu: z.string(), bieu_tuong: z.string() }),
 })
 export type KichBan = z.infer<typeof ThoaiSchema>
@@ -353,32 +353,58 @@ const EMOJI_BOI_CANH: Record<(typeof BOI_CANH)[number], string> = {
   van_phong: '🏢', vu_tru: '🚀', cua_hang: '🛍️',
 }
 
-// Kịch bản video: lời thoại + câu giật tít mở đầu
+// Chi tiết cụ thể của bài phải có trong lời thoại: tên riêng (cụm chữ viết hoa giữa câu) và con số.
+// Viết thường để so khớp; bỏ tên kênh / từ chung chung.
+const BO_QUA = new Set(['ai', 'công nghệ 24h', 'mèo mun', 'robot bit'])
+function chiTietBai(noiDung: string) {
+  const ds = new Set<string>()
+  const sach = noiDung.replace(/https?:\/\/\S+|#[\p{L}\p{N}_]+|[\p{Extended_Pictographic}\u{FE0F}\u{200D}]/gu, ' ')
+  // Tên riêng: chuỗi từ viết hoa đứng sau một từ khác (không phải đầu câu)
+  for (const m of sach.matchAll(/(?<=[\p{Ll}\p{N},;:)"”] )(\p{Lu}[\p{L}\p{N}]*(?: \p{Lu}[\p{L}\p{N}]*)*)/gu)) ds.add(m[1].toLowerCase())
+  for (const m of sach.matchAll(/\d+(?:[.,]\d+)*/g)) ds.add(m[0])
+  return [...ds].filter((t) => !BO_QUA.has(t) && t.length > 1)
+}
+const thieuChiTiet = (chiTiet: string[], loi: LoiThoai) => {
+  const chu = loi.map((l) => l.chu).join(' ').toLowerCase()
+  return chiTiet.filter((t) => !chu.includes(t))
+}
+
+// Kịch bản video: lời thoại + câu giật tít mở đầu. Lời thoại phải chuyển tải đủ nội dung bài: thiếu tên riêng /
+// con số của bài thì bắt AI viết lại và chỉ rõ chi tiết còn thiếu (giữ bản đầy đủ nhất nếu vẫn chưa đủ).
 export async function vietLoiThoai(bai: { tieu_de_anh: string; noi_dung: string; nguon_ten: string }): Promise<KichBan | null> {
   const laEmoji = (x: string) => /\p{Extended_Pictographic}/u.test(x)
+  const chiTiet = chiTietBai(`${bai.tieu_de_anh}. ${bai.noi_dung}`)
+  let totNhat: { kb: KichBan; thieu: string[] } | null = null
+  let nhacThem = ''
   for (let lan = 0; lan < 3; lan++) {
-    const kb = await vietLoiThoaiMotLan(bai)
+    const kb = await vietLoiThoaiMotLan(bai, nhacThem)
     if (!kb) continue
     if (!coDauDu(kb.loi)) {
       console.error('Lời thoại AI viết thiếu dấu, viết lại')
       continue
     }
-    return {
-      moc: { chu: kb.moc.chu, bieu_tuong: laEmoji(kb.moc.bieu_tuong) ? kb.moc.bieu_tuong : '🔥' },
-      loi: kb.loi.map((l) => ({
-        ...l,
-        bang: { ...l.bang, bieu_tuong: laEmoji(l.bang.bieu_tuong) ? l.bang.bieu_tuong : EMOJI_BOI_CANH[l.boi_canh] },
-        minh_hoa: { ...l.minh_hoa, bieu_tuong: laEmoji(l.minh_hoa.bieu_tuong) ? l.minh_hoa.bieu_tuong : l.bang.bieu_tuong },
-      })),
-    }
+    const thieu = thieuChiTiet(chiTiet, kb.loi)
+    if (!totNhat || thieu.length < totNhat.thieu.length) totNhat = { kb, thieu }
+    if (thieu.length <= Math.floor(chiTiet.length * 0.1)) break
+    console.error(`Lời thoại thiếu chi tiết của bài (${thieu.join(', ')}), viết lại`)
+    nhacThem = `\n\nYour previous script left out these details from the article: ${thieu.join(', ')}. Write the full script again and include every one of them (numbers as digits, names spelled exactly as in the article), together with everything else the article says.`
   }
-  return null
+  if (!totNhat) return null
+  const kb = totNhat.kb
+  return {
+    moc: { chu: kb.moc.chu, bieu_tuong: laEmoji(kb.moc.bieu_tuong) ? kb.moc.bieu_tuong : '🔥' },
+    loi: kb.loi.map((l) => ({
+      ...l,
+      bang: { ...l.bang, bieu_tuong: laEmoji(l.bang.bieu_tuong) ? l.bang.bieu_tuong : EMOJI_BOI_CANH[l.boi_canh] },
+      minh_hoa: { ...l.minh_hoa, bieu_tuong: laEmoji(l.minh_hoa.bieu_tuong) ? l.minh_hoa.bieu_tuong : l.bang.bieu_tuong },
+    })),
+  }
 }
 
-async function vietLoiThoaiMotLan(bai: { tieu_de_anh: string; noi_dung: string; nguon_ten: string }): Promise<KichBan | null> {
+async function vietLoiThoaiMotLan(bai: { tieu_de_anh: string; noi_dung: string; nguon_ten: string }, nhacThem = ''): Promise<KichBan | null> {
   const kq = await goiJson({
     system: THOAI_SYSTEM,
-    noiDung: `<article>\nTitle: ${bai.tieu_de_anh}\nSource: ${bai.nguon_ten}\n\n${bai.noi_dung}\n</article>`,
+    noiDung: `<article>\nTitle: ${bai.tieu_de_anh}\nSource: ${bai.nguon_ten}\n\n${bai.noi_dung}\n</article>${nhacThem}`,
     effort: 'medium',
     kiemTra: ThoaiSchema,
     schema: {

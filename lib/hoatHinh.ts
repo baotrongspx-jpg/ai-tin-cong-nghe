@@ -11,7 +11,7 @@ import { GIONG } from './dsGiong'
 export const batHoatHinh = () => process.env.VIDEO_HOAT_HINH !== '0'
 
 const KHO = 'video-tiktok' // cùng kho với video thường (lib/video.ts)
-const PHIEN_BAN = 5 // tăng khi đổi cách dựng để bỏ video hoạt hình cũ
+const PHIEN_BAN = 6 // tăng khi đổi cách dựng để bỏ video hoạt hình cũ
 // Mỗi người nói một giọng VieNeu riêng (nhân vật phụ: may-nha/hoat-hinh/nhanVatPhu.mjs)
 export const NHAN_VAT = {
   meo: { ten: 'Mèo Mun', giong: 'Ngọc Huyền' },

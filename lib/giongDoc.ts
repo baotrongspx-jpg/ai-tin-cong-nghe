@@ -1,8 +1,8 @@
 import 'server-only'
 import { GIONG, GIONG_DU_PHONG } from './dsGiong'
 
-// Giọng chính: VieNeu-TTS chạy trên Hugging Face Spaces (thư mục hf-space/), miễn phí, không giới hạn lượt.
-// VIENEU_URL: link Space (https://<tên>-<space>.hf.space), VIENEU_KHOA: khóa đặt ở mục Secrets của Space.
+// Giọng chính: VieNeu-TTS (máy chủ ở thư mục hf-space/: chạy trên máy nhà qua ngrok, hoặc Hugging Face Spaces), miễn phí, không giới hạn lượt.
+// VIENEU_URL: link máy chủ (vd https://xxx.ngrok-free.dev), VIENEU_KHOA: khóa trùng biến KHOA của máy chủ.
 export const coVieNeu = () => !!process.env.VIENEU_URL?.trim()
 
 // Đọc từng câu, trả WAV 48 kHz và thời lượng (giây) mỗi câu để canh phụ đề. Space ngủ (lâu không dùng) thì
@@ -13,7 +13,8 @@ export async function docBangVieNeu(cau: string[]): Promise<{ wav: Buffer; doDai
   for (;;) {
     const res = await fetch(`${url}/doc`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json', authorization: `Bearer ${process.env.VIENEU_KHOA?.trim() ?? ''}` },
+      // ngrok-skip-browser-warning: chạy VieNeu trên máy nhà qua ngrok (gói miễn phí) thì bỏ qua trang cảnh báo của ngrok
+      headers: { 'content-type': 'application/json', 'ngrok-skip-browser-warning': '1', authorization: `Bearer ${process.env.VIENEU_KHOA?.trim() ?? ''}` },
       body: JSON.stringify({ cau, giong: GIONG }),
       signal: AbortSignal.timeout(240_000),
       cache: 'no-store',

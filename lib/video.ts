@@ -233,7 +233,7 @@ async function linkVideo(bai: BaiViet, ten: string) {
 export async function linkVideoBai(bai: BaiViet): Promise<{
   url?: string
   urlTai?: string
-  dangDung?: { trangThai: 'cho' | 'dang_lam'; truoc?: number }
+  dangDung?: { trangThai: 'cho' | 'dang_lam'; truoc?: number; phanTram?: number; buoc?: string }
   buoc?: Record<string, number> | null
   canhBao?: string
 }> {
@@ -250,14 +250,14 @@ export async function linkVideoBai(bai: BaiViet): Promise<{
       // Xem trước: chen bài này lên đầu hàng đợi, báo còn bao nhiêu video phía trước
       if (tt.loai === 'cho') {
         await uuTienHoatHinh(tenHH)
-        return { dangDung: { trangThai: 'cho', truoc: await viTriHoatHinh(tenHH) } }
+        return { dangDung: { trangThai: 'cho', truoc: await viTriHoatHinh(tenHH), ...tt.tienDo } }
       }
-      if (tt.loai === 'dang_lam') return { dangDung: { trangThai: 'dang_lam' } }
+      if (tt.loai === 'dang_lam') return { dangDung: { trangThai: 'dang_lam', ...tt.tienDo } }
       try {
         const moi = await datViecHoatHinh(bai, tenHH, nhac, tt)
         if (moi.loai === 'cho' || moi.loai === 'dang_lam') {
           await uuTienHoatHinh(tenHH)
-          return { dangDung: { trangThai: moi.loai } }
+          return { dangDung: { trangThai: moi.loai, phanTram: 5, buoc: 'AI đang viết lời thoại' } }
         }
       } catch (e) {
         canhBao = `Chưa dựng được video hoạt hình (${e instanceof Error ? e.message : 'lỗi'}), đang xem video thường`

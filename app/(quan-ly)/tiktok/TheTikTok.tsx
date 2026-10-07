@@ -103,7 +103,7 @@ export default function TheTikTok({
   const videoSan = useVideoSan(bai.id)
 
   // Video hoạt hình do máy nhà dựng mất vài phút: máy chủ trả { dangDung } thì hỏi lại sau 8 giây (tối đa 10 phút)
-  const [mayNha, setMayNha] = useState<{ trangThai: 'cho' | 'dang_lam'; truoc?: number } | null>(null)
+  const [mayNha, setMayNha] = useState<{ trangThai: 'cho' | 'dang_lam'; truoc?: number; phanTram?: number; buoc?: string } | null>(null)
   const xemTruoc = async () => {
     setDangDung(true)
     setLoiVideo('')
@@ -118,7 +118,7 @@ export default function TheTikTok({
           // Quá 5 phút Vercel tự cắt và trả trang lỗi HTML
           throw new Error(res.status === 504 || loi.startsWith('<') ? `Dựng video quá lâu nên bị dừng (lỗi ${res.status}). Thử lại.` : loi || `Lỗi ${res.status}`)
         }
-        const kq: { url?: string; urlTai?: string; canhBao?: string; dangDung?: { trangThai: 'cho' | 'dang_lam'; truoc?: number } } = await res.json()
+        const kq: { url?: string; urlTai?: string; canhBao?: string; dangDung?: { trangThai: 'cho' | 'dang_lam'; truoc?: number; phanTram?: number; buoc?: string } } = await res.json()
         if (kq.url) {
           setVideo(kq.url)
           setUrlTai(kq.urlTai ?? null)
@@ -127,7 +127,7 @@ export default function TheTikTok({
         }
         if (Date.now() > het) throw new Error('Máy nhà dựng video hoạt hình quá 25 phút. Bấm lại sau.')
         setMayNha(kq.dangDung ?? { trangThai: 'cho' })
-        await new Promise((r) => setTimeout(r, 8000))
+        await new Promise((r) => setTimeout(r, 4000))
       }
     } catch (e) {
       setLoiVideo(e instanceof Error ? e.message : 'Dựng video lỗi')
@@ -200,6 +200,17 @@ export default function TheTikTok({
               {dangDung ? <Xoay /> : null}
               {dangDung ? <>{mayNha?.trangThai === 'dang_lam' ? 'Máy nhà đang dựng hoạt hình…' : mayNha?.truoc ? `Xếp hàng: còn ${mayNha.truoc} video trước…` : mayNha ? 'Chờ máy nhà dựng hoạt hình…' : 'Đang dựng video…'} <DemGiay /></> : video ? 'Xem ảnh' : videoSan ? '▶ Xem video (đã dựng sẵn)' : '▶ Xem trước video'}
             </button>
+            {dangDung && mayNha && (
+              <div className="grid gap-1">
+                <div className="flex justify-between text-xs font-semibold text-slate-600">
+                  <span>{mayNha.truoc ? `Xếp hàng: còn ${mayNha.truoc} video trước` : (mayNha.buoc ?? 'Đang dựng')}</span>
+                  <span>{mayNha.phanTram ?? 0}%</span>
+                </div>
+                <div className="h-2.5 overflow-hidden rounded-full bg-slate-200">
+                  <div className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 transition-all duration-700" style={{ width: `${mayNha.phanTram ?? 0}%` }} />
+                </div>
+              </div>
+            )}
             {loiVideo && <p className="text-xs text-red-600">Không dựng được video: {loiVideo}</p>}
             {canhBaoVideo && <p className="text-xs text-amber-700">⚠ {canhBaoVideo}</p>}
             {video && urlTai && (

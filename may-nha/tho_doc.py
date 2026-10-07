@@ -10,7 +10,9 @@
 import io
 import json
 import os
+import re
 import shutil
+import unicodedata
 import subprocess
 import sys
 import threading
@@ -42,6 +44,8 @@ HOAT_HINH = REPO / 'may-nha' / 'hoat-hinh'
 FFMPEG = REPO / 'node_modules' / 'ffmpeg-static' / 'ffmpeg.exe'
 FFPROBE_DIR = Path(os.environ.get('FFPROBE_DIR', r'C:\Users\Admin\VieNeu-TTS\cong-cu\node_modules\ffprobe-static\bin\win32\x64'))
 THU_MUC_TAM = Path(os.environ.get('HOAT_HINH_TAM', r'C:\Users\Admin\VieNeu-TTS\hoat-hinh-tam'))
+# Mỗi video dựng xong lưu thêm một bản trên máy nhà, tên theo ngày + tiêu đề bài
+THU_MUC_LUU = Path(os.environ.get('HOAT_HINH_LUU', r'C:\Users\Admin\OneDrive\Desktop\Video-Hoat-Hinh'))
 
 
 def gui(duong, du_lieu, kieu):
@@ -70,7 +74,7 @@ def ds_viec():
 def don_rac():
     # Kết quả đọc giọng không ai lấy (trang web đã thôi chờ) và dấu ưu tiên cũ: xoá sau 1 giờ
     cu = []
-    for thu_muc in ('hang-doi/xong', 'hang-doi/uu-tien'):
+    for thu_muc in ('hang-doi/xong', 'hang-doi/uu-tien', 'hang-doi/tien-do'):
         for f in liet_ke(thu_muc, day_du=True):
             luc = f.get('created_at') or ''
             if luc and time.time() - time.mktime(time.strptime(luc[:19], '%Y-%m-%dT%H:%M:%S')) + time.timezone > 3600:
@@ -99,6 +103,57 @@ def doc(may, ds_giong, cau, giong):
     return buf.getvalue(), do_dai
 
 
+def ten_tep(tieu_de):
+    # Tiêu đề → tên tệp không dấu, an toàn cho Windows
+    t = unicodedata.normalize('NFD', tieu_de or 'video').replace('đ', 'd').replace('Đ', 'D')
+    t = ''.join(c for c in t if unicodedata.category(c) != 'Mn')
+    t = re.sub(r'[^A-Za-z0-9]+', '-', t).strip('-')[:70]
+    return t or 'video'
+
+
+class TienDo:
+    # Ghi tiến độ (phần trăm + bước đang làm) lên kho để trang web vẽ thanh chạy; tối đa 3 giây ghi một lần
+    def __init__(self, ma):
+        self.duong = f'hang-doi/tien-do/{ma}.json'
+        self.lan = 0.0
+        self.cuoi = None
+
+    def bao(self, phan_tram, buoc, ep=False):
+        phan_tram = int(max(0, min(100, phan_tram)))
+        if not ep and (self.cuoi == (phan_tram, buoc) or time.time() - self.lan < 3):
+            return
+        self.lan, self.cuoi = time.time(), (phan_tram, buoc)
+        try:
+            gui(self.duong, json.dumps({'phanTram': phan_tram, 'buoc': buoc, 'luc': int(time.time() * 1000)}, ensure_ascii=False), 'application/json')
+        except Exception:
+            traceback.print_exc()
+
+    def xong(self):
+        xoa(self.duong)
+
+
+def chay_theo_doi(lenh, cwd, gioi_han, khi_co_phan_tram):
+    # Chạy lệnh, đọc đầu ra từng đoạn, thấy "NN%" thì báo (thanh tiến độ của HyperFrames ghi đè dòng bằng \r)
+    moi_truong = dict(os.environ)
+    moi_truong['PATH'] = os.pathsep.join([str(FFMPEG.parent), str(FFPROBE_DIR), moi_truong.get('PATH', '')])
+    p = subprocess.Popen(lenh, cwd=cwd, env=moi_truong, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    het_gio = time.time() + gioi_han
+    duoi = ''
+    while True:
+        khuc = p.stdout.read1(4096)
+        if not khuc:
+            break
+        duoi = (duoi + khuc.decode('utf-8', 'replace'))[-3000:]
+        so = re.findall(r'(\d{1,3})%', duoi[-200:])
+        if so:
+            khi_co_phan_tram(int(so[-1]))
+        if time.time() > het_gio:
+            p.kill()
+            raise RuntimeError(f'{lenh[0]} chạy quá {gioi_han} giây')
+    if p.wait() != 0:
+        raise RuntimeError(f'{lenh[0]} lỗi: {duoi[-500:]}')
+
+
 def chay(lenh, cwd, gioi_han):
     moi_truong = dict(os.environ)
     moi_truong['PATH'] = os.pathsep.join([str(FFMPEG.parent), str(FFPROBE_DIR), moi_truong.get('PATH', '')])
@@ -108,7 +163,7 @@ def chay(lenh, cwd, gioi_han):
     return kq.stdout
 
 
-def dung_hoat_hinh(may, ds_giong, yc):
+def dung_hoat_hinh(may, ds_giong, yc, td):
     ten = yc['ten']
     bai_id = ten.split('/')[0]
     lt = yc['loi_thoai']
@@ -124,6 +179,7 @@ def dung_hoat_hinh(may, ds_giong, yc):
         # 1. Đọc từng câu thoại bằng giọng của nhân vật nói câu đó
         do_dai = []
         for i, l in enumerate(lt['loi']):
+            td.bao(10 + 20 * i / len(lt['loi']), f'Đọc giọng câu {i + 1}/{len(lt["loi"])}')
             wav, dd = doc(may, ds_giong, [l['chu']], lt['nhan_vat'][l['ai']]['giong'])
             (tai_san / f'loi-{i}.wav').write_bytes(wav)
             do_dai.append(dd[0])
@@ -132,9 +188,12 @@ def dung_hoat_hinh(may, ds_giong, yc):
         # 2. Sinh trang HyperFrames rồi dựng video
         chay(['node', str(HOAT_HINH / 'tao_video.mjs'), str(tm)], tm, 120)
         # 24 khung hình/giây (chuẩn phim hoạt hình): dựng nhanh hơn ~20% so với 30, mắt gần như không thấy khác
-        chay(['npx.cmd', '--yes', 'hyperframes', 'render', '--quality', 'standard', '--fps', '24', '-o', str(tm / 'video.mp4')], tm / 'hyperframes', 1500)
+        td.bao(30, 'Dựng hình 0%', ep=True)
+        chay_theo_doi(['npx.cmd', '--yes', 'hyperframes', 'render', '--quality', 'standard', '--fps', '24', '-o', str(tm / 'video.mp4')],
+                      tm / 'hyperframes', 1500, lambda pt: td.bao(30 + 0.65 * pt, f'Dựng hình {pt}%'))
         ra = tm / 'video.mp4'
         # 3. Trộn nhạc nền nhỏ dưới lời thoại (lặp cho đủ dài, to dần đầu, nhỏ dần cuối)
+        td.bao(96, 'Trộn nhạc và lưu', ep=True)
         if yc.get('nhac'):
             r = s.get(f'{URL}/{KHO}/nhac/{yc["nhac"]}', timeout=120)
             if r.ok:
@@ -147,6 +206,12 @@ def dung_hoat_hinh(may, ds_giong, yc):
                 ra = tm / 'co-nhac.mp4'
         # 4. Gửi lên kho đúng tên đã hẹn, bỏ các bản hoạt hình cũ của bài
         gui(ten, ra.read_bytes(), 'video/mp4')
+        # Lưu thêm một bản trên máy nhà (lỗi thì thôi, video vẫn đã lên kho)
+        try:
+            THU_MUC_LUU.mkdir(parents=True, exist_ok=True)
+            shutil.copy(ra, THU_MUC_LUU / f'{time.strftime("%Y-%m-%d")}-{ten_tep(yc.get("tieu_de"))}.mp4')
+        except Exception:
+            traceback.print_exc()
         cu = [f'{bai_id}/{n}' for n in liet_ke(bai_id) if n.startswith('hh-') and f'{bai_id}/{n}' != ten]
         if cu:
             xoa(*cu)
@@ -196,7 +261,11 @@ def main():
                 if yc.get('loai') == 'hoat_hinh':
                     gui('hang-doi/dang-lam.json', json.dumps({'ten': yc['ten'], 'luc': int(time.time() * 1000)}), 'application/json')
                     print(f'Dựng video hoạt hình {yc["ten"]} ({len(yc["loi_thoai"]["loi"])} câu thoại)...', flush=True)
-                    giay = dung_hoat_hinh(may, ds_giong, yc)
+                    td = TienDo(ma)
+                    try:
+                        giay = dung_hoat_hinh(may, ds_giong, yc, td)
+                    finally:
+                        td.xong()
                     print(f'Xong video hoạt hình {giay:.0f}s trong {time.time() - bat_dau:.0f}s', flush=True)
                 else:
                     wav, do_dai = doc(may, ds_giong, [c for c in yc['cau'] if c.strip()], yc.get('giong'))

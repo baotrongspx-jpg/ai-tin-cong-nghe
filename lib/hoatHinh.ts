@@ -59,24 +59,32 @@ export async function viTriHoatHinh(ten: string) {
   return vt < 0 ? 0 : vt
 }
 
-export type TrangThaiHoatHinh = { loai: 'xong' | 'dang_lam' | 'cho' | 'chua' } | { loai: 'loi'; loi: string }
+// tienDo: phần trăm + bước đang làm (máy nhà ghi ở hang-doi/tien-do khi đang dựng; đang viết lời thoại / xếp hàng thì ước lượng)
+export type TienDo = { phanTram: number; buoc: string }
+export type TrangThaiHoatHinh =
+  | { loai: 'xong' | 'chua' }
+  | { loai: 'dang_lam' | 'cho'; tienDo?: TienDo }
+  | { loai: 'loi'; loi: string }
 
 export async function trangThaiHoatHinh(ten: string): Promise<TrangThaiHoatHinh> {
   const [thuMuc, tep] = ten.split('/')
   const ma = maViec(ten)
-  const [xong, kq, cho, dangViet, dangLam] = await Promise.all([
+  const [xong, kq, cho, dangViet, dangLam, tienDo] = await Promise.all([
     coTep(thuMuc, tep),
     docJson<{ loi?: string }>(`hang-doi/xong/${ma}.json`),
     coTep('hang-doi/viec', `${ma}.json`),
     docJson<{ luc?: number }>(`hang-doi/viet/${ma}.json`),
     docJson<{ ten?: string; luc?: number }>('hang-doi/dang-lam.json'),
+    docJson<TienDo & { luc?: number }>(`hang-doi/tien-do/${ma}.json`),
   ])
   if (xong) return { loai: 'xong' }
   if (kq?.loi) return { loai: 'loi', loi: kq.loi }
   // AI đang viết lời thoại (chạy ngầm, gói Gemini miễn phí có lúc mất vài phút)
-  if (cho || (dangViet && Date.now() - (dangViet.luc ?? 0) < 6 * 60_000)) return { loai: 'cho' }
+  if (cho) return { loai: 'cho', tienDo: { phanTram: 10, buoc: 'Chờ máy nhà' } }
+  if (dangViet && Date.now() - (dangViet.luc ?? 0) < 6 * 60_000) return { loai: 'cho', tienDo: { phanTram: 5, buoc: 'AI đang viết lời thoại' } }
   // Thợ dựng một video mất vài phút; quá 15 phút chưa xong coi như đã hỏng
-  if (dangLam?.ten === ten && Date.now() - (dangLam.luc ?? 0) < 15 * 60_000) return { loai: 'dang_lam' }
+  if (dangLam?.ten === ten && Date.now() - (dangLam.luc ?? 0) < 15 * 60_000)
+    return { loai: 'dang_lam', tienDo: tienDo ? { phanTram: tienDo.phanTram, buoc: tienDo.buoc } : { phanTram: 10, buoc: 'Máy nhà bắt đầu dựng' } }
   return { loai: 'chua' }
 }
 
@@ -91,7 +99,7 @@ export async function datViecHoatHinh(bai: BaiViet, ten: string, nhac: string | 
   const viet = async () => {
     const kb = await vietLoiThoai(bai)
     if (!kb) throw new Error('AI không viết được lời thoại cho bài này')
-    const viec = { loai: 'hoat_hinh', ten, nhac, loi_thoai: { kenh: 'Công Nghệ 24H', chu_de: bai.chu_de, nhan_vat: NHAN_VAT, ...kb } }
+    const viec = { loai: 'hoat_hinh', ten, nhac, tieu_de: bai.tieu_de_anh, loi_thoai: { kenh: 'Công Nghệ 24H', chu_de: bai.chu_de, nhan_vat: NHAN_VAT, ...kb } }
     const { error } = await kho().upload(`hang-doi/viec/${ma}.json`, JSON.stringify(viec), { contentType: 'application/json', upsert: true })
     if (error) throw new Error(`Không gửi được việc cho máy nhà: ${error.message}`)
   }

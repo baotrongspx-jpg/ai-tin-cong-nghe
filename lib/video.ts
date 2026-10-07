@@ -248,7 +248,7 @@ async function linkVideoGoc(bai: BaiViet): Promise<{
   url?: string
   urlTai?: string
   nhac?: { ten: string; amLuong: number; url: string } | null // nhạc đang chọn của bài, trình duyệt phát song song
-  dangDung?: { trangThai: 'cho' | 'dang_lam'; truoc?: number; phanTram?: number; buoc?: string }
+  dangDung?: { trangThai: 'cho' | 'dang_lam'; truoc?: number; phanTramTruoc?: number; phanTram?: number; buoc?: string }
   buoc?: Record<string, number> | null
   canhBao?: string
 }> {
@@ -265,7 +265,7 @@ async function linkVideoGoc(bai: BaiViet): Promise<{
       // Xem trước: chen bài này lên đầu hàng đợi, báo còn bao nhiêu video phía trước
       if (tt.loai === 'cho') {
         await uuTienHoatHinh(tenHH)
-        return { dangDung: { trangThai: 'cho', truoc: await viTriHoatHinh(tenHH), ...tt.tienDo } }
+        return { dangDung: { trangThai: 'cho', ...tt.tienDo, ...(await viTriHoatHinh(tenHH)) } }
       }
       if (tt.loai === 'dang_lam') return { dangDung: { trangThai: 'dang_lam', ...tt.tienDo } }
       try {

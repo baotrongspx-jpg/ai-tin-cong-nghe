@@ -109,7 +109,7 @@ export default function TheTikTok({
   const videoSan = useVideoSan(bai.id)
 
   // Video hoạt hình do máy nhà dựng mất vài phút: máy chủ trả { dangDung } thì hỏi lại sau 8 giây (tối đa 10 phút)
-  const [mayNha, setMayNha] = useState<{ trangThai: 'cho' | 'dang_lam'; truoc?: number; phanTram?: number; buoc?: string } | null>(null)
+  const [mayNha, setMayNha] = useState<{ trangThai: 'cho' | 'dang_lam'; truoc?: number; phanTramTruoc?: number; phanTram?: number; buoc?: string } | null>(null)
   const xemTruoc = async () => {
     setDangDung(true)
     setLoiVideo('')
@@ -124,7 +124,7 @@ export default function TheTikTok({
           // Quá 5 phút Vercel tự cắt và trả trang lỗi HTML
           throw new Error(res.status === 504 || loi.startsWith('<') ? `Dựng video quá lâu nên bị dừng (lỗi ${res.status}). Thử lại.` : loi || `Lỗi ${res.status}`)
         }
-        const kq: { url?: string; urlTai?: string; canhBao?: string; nhac?: { ten: string; url: string } | null; dangDung?: { trangThai: 'cho' | 'dang_lam'; truoc?: number; phanTram?: number; buoc?: string } } = await res.json()
+        const kq: { url?: string; urlTai?: string; canhBao?: string; nhac?: { ten: string; url: string } | null; dangDung?: { trangThai: 'cho' | 'dang_lam'; truoc?: number; phanTramTruoc?: number; phanTram?: number; buoc?: string } } = await res.json()
         if (kq.url) {
           setVideo(kq.url)
           setUrlTai(kq.urlTai ?? null)
@@ -219,6 +219,18 @@ export default function TheTikTok({
                 <div className="h-2.5 overflow-hidden rounded-full bg-slate-200">
                   <div className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 transition-all duration-700" style={{ width: `${mayNha.phanTram ?? 0}%` }} />
                 </div>
+                {/* Đang chờ: hiện tiến độ của video máy nhà đang dựng phía trước để thấy hàng đợi vẫn chạy */}
+                {mayNha.trangThai === 'cho' && mayNha.phanTramTruoc !== undefined && (
+                  <>
+                    <div className="flex justify-between text-[11px] text-slate-500">
+                      <span>Máy nhà đang dựng video phía trước</span>
+                      <span>{mayNha.phanTramTruoc}%</span>
+                    </div>
+                    <div className="h-1.5 overflow-hidden rounded-full bg-slate-200">
+                      <div className="h-full rounded-full bg-slate-400 transition-all duration-700" style={{ width: `${mayNha.phanTramTruoc}%` }} />
+                    </div>
+                  </>
+                )}
               </div>
             )}
             {loiVideo && <p className="text-xs text-red-600">Không dựng được video: {loiVideo}</p>}

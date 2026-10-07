@@ -58,9 +58,11 @@ export async function viTriHoatHinh(ten: string) {
   const ds = (viec ?? []).filter((f) => f.name.startsWith('hh-')).map((f) => f.name)
   const thuTu = [...ds.filter((n) => uuTien.has(n)), ...ds.filter((n) => !uuTien.has(n))]
   const vt = thuTu.indexOf(`${maViec(ten)}.json`)
-  // Video máy nhà đang dựng dở (đã rời hàng đợi) cũng phải xong mới tới lượt bài này
-  const dangDungKhac = dangLam?.ten && dangLam.ten !== ten && Date.now() - (dangLam.luc ?? 0) < 15 * 60_000 ? 1 : 0
-  return (vt < 0 ? 0 : vt) + dangDungKhac
+  // Video máy nhà đang dựng dở (đã rời hàng đợi) cũng phải xong mới tới lượt bài này; kèm % của nó để trang hiện
+  // "video phía trước đang dựng X%" thay vì đứng yên ở 10%
+  const khac = dangLam?.ten && dangLam.ten !== ten && Date.now() - (dangLam.luc ?? 0) < 15 * 60_000 ? dangLam.ten : null
+  const tdKhac = khac ? await docJson<{ phanTram?: number }>(`hang-doi/tien-do/${maViec(khac)}.json`) : null
+  return { truoc: (vt < 0 ? 0 : vt) + (khac ? 1 : 0), phanTramTruoc: khac ? (tdKhac?.phanTram ?? 0) : undefined }
 }
 
 // tienDo: phần trăm + bước đang làm (máy nhà ghi ở hang-doi/tien-do khi đang dựng; đang viết lời thoại / xếp hàng thì ước lượng)

@@ -296,6 +296,7 @@ export const DAO_CU = [
   'the_ngan_hang', 'robot', 'tai_lieu', 'dong_ho', 'trai_dat', 'tay_cam_game', 'may_anh', 'tai_nghe', 'cup', 'tin_nhan', 'canh_bao', 'vu_tru', 'pin', 'mang',
   'internet', 'tin_nong', 'toc_do',
 ] as const
+export const NHAN_VAT_PHU = ['khong', 'nguoi_phu_nu', 'canh_sat', 'hacker', 'doanh_nhan', 'nha_khoa_hoc', 'nguoi_dung'] as const
 
 const THOAI_SYSTEM = `You write scripts for "Công Nghệ 24H", a Vietnamese TikTok channel that explains tech news with two cartoon mascots:
 - "meo" (Mèo Mun): a curious, playful orange cat. Asks the questions ordinary viewers would ask, reacts with surprise, worry or joy, sometimes sums up in simple words.
@@ -308,6 +309,7 @@ Turn the article in the user turn into a short dialogue between them, in natural
 - cam_xuc: the speaker's emotion and gesture for that line. Mèo Mun uses to_mo, bat_ngo, vui, lo_lang or suy_nghi. Robot Bit uses giai_thich, khang_dinh, vui, lo_lang or suy_nghi.
 - boi_canh: the backdrop that fits the line: truong_quay (news studio, default for general talk, intro and outro), pho_florida (a sunny city street, use for any outdoor or city or "in country X" moment), may_chu (AI / data center / servers / technology inside), don_canh_sat (police, crime, law, court), phong_khach (home, everyday users, phones and apps at home), van_phong (a tech company office: business, CEOs, companies, revenue, jobs), vu_tru (space, satellites, rockets, global internet), cua_hang (a tech store: product launches, prices, buying phones or gadgets). Keep the same backdrop for 2-3 consecutive lines about the same thing, then move to another backdrop that still fits the content, so the video keeps moving without jumping around randomly.
 - dao_cu: a prop that pops up next to the speaker, matching what the line talks about (dien_thoai phone, laptop, kinh_lup magnifier for investigating, bieu_do growth chart, tien money, khien shield/security, coi_bao siren/emergency, chip, o_to car, ten_lua rocket, bong_den idea, o_khoa lock/privacy, the_ngan_hang bank card, robot AI, tai_lieu document/law, dong_ho time/deadline, trai_dat world, tay_cam_game games, may_anh camera, tai_nghe headphones, cup award, tin_nhan chat/message, canh_bao warning, vu_tru satellite, pin battery, mang network/signal, internet globe/online, tin_nong breaking news, toc_do speed/fast). Use a prop on about two thirds of the lines and khong (none) on the rest so props stay special; never the same prop on two lines in a row.
+- nhan_vat_phu: a silent extra character who appears between the mascots while the line talks about that kind of person: nguoi_phu_nu (a woman), canh_sat (police officer), hacker (hacker, scammer, cybercriminal), doanh_nhan (CEO, businessman, company leader), nha_khoa_hoc (scientist, researcher, engineer), nguoi_dung (ordinary user, customer, young person). Use khong when no such person is the subject of the line. Keep the same extra on consecutive lines about the same person.
 - bang: a small sign shown behind the characters: bieu_tuong is exactly one emoji character (for example 🤖 🚨 📱 🔒 💡), never a word; chu is at most 6 Vietnamese words with diacritics summing up the line.`
 
 const ThoaiSchema = z.object({
@@ -319,6 +321,7 @@ const ThoaiSchema = z.object({
         cam_xuc: z.enum(CAM_XUC),
         boi_canh: z.enum(BOI_CANH),
         dao_cu: z.enum(DAO_CU),
+        nhan_vat_phu: z.enum(NHAN_VAT_PHU),
         bang: z.object({ bieu_tuong: z.string(), chu: z.string() }),
       }),
     )
@@ -374,6 +377,7 @@ async function vietLoiThoaiMotLan(bai: { tieu_de_anh: string; noi_dung: string; 
               cam_xuc: { type: 'string', enum: [...CAM_XUC] },
               boi_canh: { type: 'string', enum: [...BOI_CANH] },
               dao_cu: { type: 'string', enum: [...DAO_CU] },
+              nhan_vat_phu: { type: 'string', enum: [...NHAN_VAT_PHU] },
               bang: {
                 type: 'object',
                 properties: { bieu_tuong: { type: 'string' }, chu: { type: 'string' } },
@@ -381,7 +385,7 @@ async function vietLoiThoaiMotLan(bai: { tieu_de_anh: string; noi_dung: string; 
                 additionalProperties: false,
               },
             },
-            required: ['ai', 'chu', 'cam_xuc', 'boi_canh', 'dao_cu', 'bang'],
+            required: ['ai', 'chu', 'cam_xuc', 'boi_canh', 'dao_cu', 'nhan_vat_phu', 'bang'],
             additionalProperties: false,
           },
         },

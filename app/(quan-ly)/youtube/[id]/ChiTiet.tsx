@@ -187,7 +187,7 @@ export default function ChiTiet({ dau, ttDau }: { dau: DuAnYT; ttDau: TrangThaiD
               </div>
               <button type="button" onClick={() => dung()} disabled={dangLam || !daVietDu || !!dangViet || !(coViecDung || choGhep)} className="btn bg-red-600 px-5 py-2.5 text-white hover:bg-red-700">
                 {dangLam ? <Xoay /> : <IconYouTube className="h-4 w-4" />}
-                {soXong || tt.phan.some((p) => p.loai === 'cho' || p.loai === 'dang_lam') ? 'Dựng các phần còn lại' : 'Dựng video'}
+                {!coViecDung && !choGhep && tt.phan.some((p) => p.loai === 'cho' || p.loai === 'dang_lam') ? 'Đang dựng…' : soXong || tt.phan.some((p) => p.loai === 'cho' || p.loai === 'dang_lam') ? 'Dựng các phần còn lại' : 'Dựng video'}
               </button>
             </div>
             <div className="h-2.5 overflow-hidden rounded-full bg-slate-200">

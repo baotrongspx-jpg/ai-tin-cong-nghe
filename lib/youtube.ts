@@ -15,7 +15,7 @@ const kho = () => db().storage.from(KHO)
 const thuMuc = (id: string) => `youtube/${id}`
 const tenViec = (id: string, k: number) => `yt-${id}-${k}.json`
 
-// Mỗi phần ~3 phút; giọng đọc khoảng 7 giây một câu thoại
+// Mỗi phần ~3 phút; giọng VieNeu đọc khoảng 4,5 giây một câu thoại (đo trên video thật)
 export const PHUT_MOI_PHAN = 3
 export const soPhanCho = (phut: number) => Math.min(8, Math.max(1, Math.round(phut / PHUT_MOI_PHAN)))
 export const DS_PHUT = [3, 5, 10, 15, 20] as const
@@ -105,7 +105,7 @@ export async function vietLoiPhan(id: string, k: number) {
     nguon: d.nguon_chu,
     danY: d,
     k,
-    soCau: Math.round(((d.phut / d.phan.length) * 60) / 7),
+    soCau: Math.round(((d.phut / d.phan.length) * 60) / 4.5),
     noiTiep: truoc.slice(-4).map((l) => `${l.ai}: ${l.chu}`),
   })
   if (!kb) throw new Error(`AI chưa viết được phần ${k}, thử lại sau ít phút`)
@@ -201,5 +201,5 @@ export async function xoaDuAn(id: string) {
   ])
 }
 
-// Ước lượng độ dài (giây) theo số chữ của lời thoại (~14 ký tự mỗi giây + nghỉ giữa câu)
-export const uocGiay = (loi: LoiThoai | null) => (loi ? loi.reduce((t, l) => t + l.chu.length / 14 + 0.25, 0) : 0)
+// Ước lượng độ dài (giây) theo số chữ của lời thoại (~19 ký tự mỗi giây + nghỉ giữa câu, đo trên video thật)
+export const uocGiay = (loi: LoiThoai | null) => (loi ? loi.reduce((t, l) => t + l.chu.length / 19 + 0.25, 0) : 0)

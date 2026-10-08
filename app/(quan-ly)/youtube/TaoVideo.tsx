@@ -61,7 +61,7 @@ export default function TaoVideo({ bai }: { bai: { id: string; tieu_de_anh: stri
           ))}
         </div>
         <p className="mt-1.5 text-xs text-slate-400">
-          Chia thành {Math.min(8, Math.max(1, Math.round(phut / 3)))} phần, máy nhà dựng lần lượt từng phần rồi ghép. Video dài thì dựng lâu (có thể vài giờ).
+          Chia thành {Math.min(8, Math.max(1, Math.round(phut / 3)))} phần, máy nhà dựng lần lượt từng phần rồi ghép. Dựng mất khoảng 3–4 lần độ dài video (video 20 phút khoảng 1–1,5 giờ).
         </p>
       </div>
 

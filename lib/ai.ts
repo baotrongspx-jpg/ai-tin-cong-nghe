@@ -534,7 +534,7 @@ export async function vietPhanYouTube(o: {
   const system = `${YT_DAU}
 
 Rules for the dialogue:
-- Write ${o.soCau} lines for this part, not fewer (it must last about ${Math.round((o.soCau * 7) / 60)} minutes when read aloud). Mèo Mun and Robot Bit are the hosts and speak most lines (at least 60%). Alternate speakers most of the time.
+- Write ${o.soCau} lines for this part, not fewer (it must last about ${Math.round((o.soCau * 4.5) / 60)} minutes when read aloud). Mèo Mun and Robot Bit are the hosts and speak most lines (at least 60%). Alternate speakers most of the time.
 - Let 1 or 2 extras speak a few lines each in their own words when the content involves such people; hosts react to and question them. Extras never speak as a suspect, criminal or victim in the first person repeating threats, crimes or private details; for such people, let a host or a police officer retell what happened instead. When an extra speaks, set nhan_vat_phu to that same extra.
 - Cover only what this part of the plan says, in order, with all its details (numbers as digits with units, names spelled exactly as in the source). Do not repeat what earlier parts already told.
 - Each line at most 25 words, written to be read aloud: no emoji, no hashtags, no URLs. Keep the channel name exactly as "Công Nghệ 24H".

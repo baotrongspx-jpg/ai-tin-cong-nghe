@@ -20,8 +20,8 @@ const NGUOI: Record<string, string> = {
   nguoi_dung: '🙂 Người dùng',
 }
 
-// Ước lượng độ dài theo số chữ (~14 ký tự mỗi giây + nghỉ giữa câu), giống lib/youtube.ts
-const uocGiay = (loi: LoiThoai | null) => (loi ? loi.reduce((t, l) => t + l.chu.length / 14 + 0.25, 0) : 0)
+// Ước lượng độ dài theo số chữ (~19 ký tự mỗi giây + nghỉ giữa câu), giống lib/youtube.ts
+const uocGiay = (loi: LoiThoai | null) => (loi ? loi.reduce((t, l) => t + l.chu.length / 19 + 0.25, 0) : 0)
 const phutGiay = (giay: number) => `${Math.floor(giay / 60)}:${String(Math.round(giay % 60)).padStart(2, '0')}`
 
 const NHAN: Record<TrangThaiPhan['loai'], [string, string]> = {
@@ -206,7 +206,7 @@ export default function ChiTiet({ dau, ttDau }: { dau: DuAnYT; ttDau: TrangThaiD
               </p>
             )}
             <p className="text-xs text-slate-400">
-              Mỗi phần khoảng {Math.round(d.phut / d.phan.length)} phút video có thể mất 20–60 phút dựng tuỳ máy. Có thể đóng trang, máy nhà vẫn làm tiếp; video TikTok vẫn được ưu tiên làm trước.
+              Mỗi phần khoảng {Math.round(d.phut / d.phan.length)} phút video mất khoảng 10–20 phút dựng. Có thể đóng trang, máy nhà vẫn làm tiếp; video TikTok vẫn được ưu tiên làm trước.
             </p>
           </>
         )}

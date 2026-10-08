@@ -302,6 +302,15 @@ export const MINH_HOA = ['khong', 'so_lieu', 'dia_diem', 'trich_dan', 'bieu_tuon
 // Người nói: hai nhân vật chính hoặc một nhân vật phụ (có giọng riêng, lib/hoatHinh.ts)
 export const NGUOI_NOI = ['meo', 'robot', ...NHAN_VAT_PHU.filter((n) => n !== 'khong')] as const
 
+// Luật chọn hình ảnh cho từng câu thoại (dùng chung cho video TikTok và video YouTube dài)
+const LUAT_HINH = `- cam_xuc: the speaker's emotion and gesture for that line. Mèo Mun uses to_mo, bat_ngo, vui, lo_lang or suy_nghi. Robot Bit uses giai_thich, khang_dinh, vui, lo_lang or suy_nghi. Extras use any of them.
+- boi_canh: the backdrop that fits the line: truong_quay (news studio, default for general talk, intro and outro), pho_florida (a sunny city street, use for any outdoor or city or "in country X" moment), may_chu (AI / data center / servers / technology inside), don_canh_sat (police, crime, law, court), phong_khach (home, everyday users, phones and apps at home), van_phong (a tech company office: business, CEOs, companies, revenue, jobs), vu_tru (space, satellites, rockets, global internet), cua_hang (a tech store: product launches, prices, buying phones or gadgets). Keep the same backdrop for 2-3 consecutive lines about the same thing, then move to another backdrop that still fits the content, so the video keeps moving without jumping around randomly.
+- dao_cu: a prop that pops up next to the speaker, matching what the line talks about (dien_thoai phone, laptop, kinh_lup magnifier for investigating, bieu_do growth chart, tien money, khien shield/security, coi_bao siren/emergency, chip, o_to car, ten_lua rocket, bong_den idea, o_khoa lock/privacy, the_ngan_hang bank card, robot AI, tai_lieu document/law, dong_ho time/deadline, trai_dat world, tay_cam_game games, may_anh camera, tai_nghe headphones, cup award, tin_nhan chat/message, canh_bao warning, vu_tru satellite, pin battery, mang network/signal, internet globe/online, tin_nong breaking news, toc_do speed/fast). Use a prop on about two thirds of the lines and khong (none) on the rest so props stay special; never the same prop on two lines in a row.
+- nhan_vat_phu: a silent extra character who appears between the mascots while the line talks about that kind of person: nguoi_phu_nu (a woman), canh_sat (police officer), hacker (hacker, scammer, cybercriminal), doanh_nhan (CEO, businessman, company leader), nha_khoa_hoc (scientist, researcher, engineer), nguoi_dung (ordinary user, customer, young person). Use khong when no such person is the subject of the line. Keep the same extra on consecutive lines about the same person.
+- bang: a small sign shown behind the characters: bieu_tuong is exactly one emoji character (for example 🤖 🚨 📱 🔒 💡), never a word; chu is at most 6 Vietnamese words with diacritics summing up the line.
+- minh_hoa: a full-screen illustration that pops up for about 2 seconds exactly when the voice reaches one concrete detail of the line, so the video shows something new every 2-3 seconds. Use it on about half of the lines, on the most visual details; kieu khong on the others. tu_khoa is the exact word or short phrase copied from chu where it should appear. Kinds: so_lieu (a number: chu_chinh is the number with its unit like "30 tuổi", "1 tỷ USD", "tăng 200%", chu_phu explains it), dia_diem (a place: chu_chinh is the place name, chu_phu one short fact), trich_dan (only for a statement the article reports word for word in quotation marks: chu_chinh the short quote, chu_phu who said it; never put paraphrased, implied or private messages in quotes, use bieu_tuong for those), bieu_tuong (a key object or idea: bieu_tuong one emoji, chu_chinh 1-4 words, chu_phu a short explanation), so_sanh (two things compared: chu_chinh "A | B", chu_phu "fact about A | fact about B"). Use empty strings for unused fields.
+`
+
 const THOAI_SYSTEM = `You write scripts for "Công Nghệ 24H", a Vietnamese TikTok channel that explains tech news with two cartoon mascots:
 - "meo" (Mèo Mun): a curious, playful orange cat. Asks the questions ordinary viewers would ask, reacts with surprise, worry or joy, sometimes sums up in simple words.
 - "robot" (Robot Bit): a friendly, smart robot. Explains the facts clearly and simply.
@@ -312,32 +321,59 @@ Turn the article in the user turn into a short dialogue between them, in natural
 - Alternate speakers most of the time. Start with Mèo Mun asking a hook question about the most surprising point. End with one line inviting viewers to follow Công Nghệ 24H.
 - Tell the WHOLE article, not a summary: go through it paragraph by paragraph in order, and make sure every piece of information appears somewhere in the dialogue, rephrased conversationally: every person and organization, every number (as digits, with units), place, date and time, what happened, how, why, the consequences, the reactions and what happens next. Spell names exactly as in the article. Never drop a detail to save time, and never invent anything that is not in the article.
 - Each line at most 25 words, written to be read aloud: no emoji, no hashtags, no URLs. Keep the channel name exactly as "Công Nghệ 24H".
-- cam_xuc: the speaker's emotion and gesture for that line. Mèo Mun uses to_mo, bat_ngo, vui, lo_lang or suy_nghi. Robot Bit uses giai_thich, khang_dinh, vui, lo_lang or suy_nghi. Extras use any of them.
-- boi_canh: the backdrop that fits the line: truong_quay (news studio, default for general talk, intro and outro), pho_florida (a sunny city street, use for any outdoor or city or "in country X" moment), may_chu (AI / data center / servers / technology inside), don_canh_sat (police, crime, law, court), phong_khach (home, everyday users, phones and apps at home), van_phong (a tech company office: business, CEOs, companies, revenue, jobs), vu_tru (space, satellites, rockets, global internet), cua_hang (a tech store: product launches, prices, buying phones or gadgets). Keep the same backdrop for 2-3 consecutive lines about the same thing, then move to another backdrop that still fits the content, so the video keeps moving without jumping around randomly.
-- dao_cu: a prop that pops up next to the speaker, matching what the line talks about (dien_thoai phone, laptop, kinh_lup magnifier for investigating, bieu_do growth chart, tien money, khien shield/security, coi_bao siren/emergency, chip, o_to car, ten_lua rocket, bong_den idea, o_khoa lock/privacy, the_ngan_hang bank card, robot AI, tai_lieu document/law, dong_ho time/deadline, trai_dat world, tay_cam_game games, may_anh camera, tai_nghe headphones, cup award, tin_nhan chat/message, canh_bao warning, vu_tru satellite, pin battery, mang network/signal, internet globe/online, tin_nong breaking news, toc_do speed/fast). Use a prop on about two thirds of the lines and khong (none) on the rest so props stay special; never the same prop on two lines in a row.
-- nhan_vat_phu: a silent extra character who appears between the mascots while the line talks about that kind of person: nguoi_phu_nu (a woman), canh_sat (police officer), hacker (hacker, scammer, cybercriminal), doanh_nhan (CEO, businessman, company leader), nha_khoa_hoc (scientist, researcher, engineer), nguoi_dung (ordinary user, customer, young person). Use khong when no such person is the subject of the line. Keep the same extra on consecutive lines about the same person.
-- bang: a small sign shown behind the characters: bieu_tuong is exactly one emoji character (for example 🤖 🚨 📱 🔒 💡), never a word; chu is at most 6 Vietnamese words with diacritics summing up the line.
-- minh_hoa: a full-screen illustration that pops up for about 2 seconds exactly when the voice reaches one concrete detail of the line, so the video shows something new every 2-3 seconds. Use it on about half of the lines, on the most visual details; kieu khong on the others. tu_khoa is the exact word or short phrase copied from chu where it should appear. Kinds: so_lieu (a number: chu_chinh is the number with its unit like "30 tuổi", "1 tỷ USD", "tăng 200%", chu_phu explains it), dia_diem (a place: chu_chinh is the place name, chu_phu one short fact), trich_dan (only for a statement the article reports word for word in quotation marks: chu_chinh the short quote, chu_phu who said it; never put paraphrased, implied or private messages in quotes, use bieu_tuong for those), bieu_tuong (a key object or idea: bieu_tuong one emoji, chu_chinh 1-4 words, chu_phu a short explanation), so_sanh (two things compared: chu_chinh "A | B", chu_phu "fact about A | fact about B"). Use empty strings for unused fields.
-- moc: the hook shown in big letters for the first 2 seconds (also the TikTok cover): chu is at most 8 Vietnamese words that make people stop scrolling, curious but truthful (no clickbait lies), bieu_tuong one emoji.`
+${LUAT_HINH}- moc: the hook shown in big letters for the first 2 seconds (also the TikTok cover): chu is at most 8 Vietnamese words that make people stop scrolling, curious but truthful (no clickbait lies), bieu_tuong one emoji.`
 
-const ThoaiSchema = z.object({
-  loi: z
-    .array(
-      z.object({
-        ai: z.enum(NGUOI_NOI),
-        chu: z.string().min(1),
-        cam_xuc: z.enum(CAM_XUC),
-        boi_canh: z.enum(BOI_CANH),
-        dao_cu: z.enum(DAO_CU),
-        nhan_vat_phu: z.enum(NHAN_VAT_PHU),
-        bang: z.object({ bieu_tuong: z.string(), chu: z.string() }),
-        minh_hoa: z.object({ kieu: z.enum(MINH_HOA), tu_khoa: z.string(), chu_chinh: z.string(), chu_phu: z.string(), bieu_tuong: z.string() }),
-      }),
-    )
-    .min(4)
-    .max(26),
-  moc: z.object({ chu: z.string(), bieu_tuong: z.string() }),
+// Một câu thoại (zod để kiểm tra, JSON schema để ép AI trả đúng dạng); dùng chung cho video TikTok và YouTube
+const CauSchema = z.object({
+  ai: z.enum(NGUOI_NOI),
+  chu: z.string().min(1),
+  cam_xuc: z.enum(CAM_XUC),
+  boi_canh: z.enum(BOI_CANH),
+  dao_cu: z.enum(DAO_CU),
+  nhan_vat_phu: z.enum(NHAN_VAT_PHU),
+  bang: z.object({ bieu_tuong: z.string(), chu: z.string() }),
+  minh_hoa: z.object({ kieu: z.enum(MINH_HOA), tu_khoa: z.string(), chu_chinh: z.string(), chu_phu: z.string(), bieu_tuong: z.string() }),
 })
+const MocSchema = z.object({ chu: z.string(), bieu_tuong: z.string() })
+const JSON_CAU = {
+  type: 'object',
+  properties: {
+    ai: { type: 'string', enum: [...NGUOI_NOI] },
+    chu: { type: 'string' },
+    cam_xuc: { type: 'string', enum: [...CAM_XUC] },
+    boi_canh: { type: 'string', enum: [...BOI_CANH] },
+    dao_cu: { type: 'string', enum: [...DAO_CU] },
+    nhan_vat_phu: { type: 'string', enum: [...NHAN_VAT_PHU] },
+    bang: {
+      type: 'object',
+      properties: { bieu_tuong: { type: 'string' }, chu: { type: 'string' } },
+      required: ['bieu_tuong', 'chu'],
+      additionalProperties: false,
+    },
+    minh_hoa: {
+      type: 'object',
+      properties: {
+        kieu: { type: 'string', enum: [...MINH_HOA] },
+        tu_khoa: { type: 'string' },
+        chu_chinh: { type: 'string' },
+        chu_phu: { type: 'string' },
+        bieu_tuong: { type: 'string' },
+      },
+      required: ['kieu', 'tu_khoa', 'chu_chinh', 'chu_phu', 'bieu_tuong'],
+      additionalProperties: false,
+    },
+  },
+  required: ['ai', 'chu', 'cam_xuc', 'boi_canh', 'dao_cu', 'nhan_vat_phu', 'bang', 'minh_hoa'],
+  additionalProperties: false,
+}
+const JSON_MOC = {
+  type: 'object',
+  properties: { chu: { type: 'string' }, bieu_tuong: { type: 'string' } },
+  required: ['chu', 'bieu_tuong'],
+  additionalProperties: false,
+}
+
+const ThoaiSchema = z.object({ loi: z.array(CauSchema).min(4).max(26), moc: MocSchema })
 export type KichBan = z.infer<typeof ThoaiSchema>
 export type LoiThoai = KichBan['loi']
 
@@ -409,51 +445,135 @@ async function vietLoiThoaiMotLan(bai: { tieu_de_anh: string; noi_dung: string; 
     kiemTra: ThoaiSchema,
     schema: {
       type: 'object',
-      properties: {
-        loi: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              ai: { type: 'string', enum: [...NGUOI_NOI] },
-              chu: { type: 'string' },
-              cam_xuc: { type: 'string', enum: [...CAM_XUC] },
-              boi_canh: { type: 'string', enum: [...BOI_CANH] },
-              dao_cu: { type: 'string', enum: [...DAO_CU] },
-              nhan_vat_phu: { type: 'string', enum: [...NHAN_VAT_PHU] },
-              bang: {
-                type: 'object',
-                properties: { bieu_tuong: { type: 'string' }, chu: { type: 'string' } },
-                required: ['bieu_tuong', 'chu'],
-                additionalProperties: false,
-              },
-              minh_hoa: {
-                type: 'object',
-                properties: {
-                  kieu: { type: 'string', enum: [...MINH_HOA] },
-                  tu_khoa: { type: 'string' },
-                  chu_chinh: { type: 'string' },
-                  chu_phu: { type: 'string' },
-                  bieu_tuong: { type: 'string' },
-                },
-                required: ['kieu', 'tu_khoa', 'chu_chinh', 'chu_phu', 'bieu_tuong'],
-                additionalProperties: false,
-              },
-            },
-            required: ['ai', 'chu', 'cam_xuc', 'boi_canh', 'dao_cu', 'nhan_vat_phu', 'bang', 'minh_hoa'],
-            additionalProperties: false,
-          },
-        },
-        moc: {
-          type: 'object',
-          properties: { chu: { type: 'string' }, bieu_tuong: { type: 'string' } },
-          required: ['chu', 'bieu_tuong'],
-          additionalProperties: false,
-        },
-      },
+      properties: { loi: { type: 'array', items: JSON_CAU }, moc: JSON_MOC },
       required: ['loi', 'moc'],
       additionalProperties: false,
     },
   })
   return kq ?? null
+}
+
+// ---------- Video YouTube dài (trang /youtube): dàn ý nhiều phần, rồi viết lời thoại từng phần ----------
+
+const YT_DAU = `You write long videos for "Công Nghệ 24H", a Vietnamese YouTube channel (horizontal 16:9 videos, several minutes long) where two cartoon mascots talk:
+- "meo" (Mèo Mun): a curious, playful orange cat. Asks the questions ordinary viewers would ask, reacts with surprise, worry or joy, sometimes sums up in simple words.
+- "robot" (Robot Bit): a friendly, smart robot. Explains things clearly and simply.
+Extras can join with their own voice: nguoi_phu_nu (a woman), canh_sat (police officer), hacker (hacker, scammer), doanh_nhan (CEO, businessman), nha_khoa_hoc (scientist, engineer), nguoi_dung (ordinary user, young person).
+
+The source in the user turn is either news articles from the channel, or an idea / story written by the channel owner, or both. For news articles: tell everything they say, never invent facts, quotes or numbers. For the owner's idea or story: develop it into a full, engaging story or explainer with scenes, examples and dialogue; you may invent story details and characters' lines, but never present invented things as real news, and keep any real-world facts truthful.
+Audience: everyone, from teenagers to grandparents. Natural spoken Vietnamese (casual, warm, like friends chatting), short sentences, everyday words, explain technical terms the first time. Always write proper Vietnamese with full diacritics (tiếng Việt có dấu đầy đủ), never unaccented Vietnamese.`
+
+const DanYSchema = z.object({
+  tieu_de: z.string().min(1),
+  mo_ta: z.string(),
+  the: z.array(z.string()),
+  chu_de: z.string(),
+  phan: z.array(z.object({ tieu_de: z.string().min(1), noi_dung: z.string().min(1) })).min(1).max(10),
+})
+export type DanYYouTube = z.infer<typeof DanYSchema>
+
+// Dàn ý: tiêu đề + mô tả YouTube, thẻ, và nội dung từng phần (mỗi phần ~3 phút, máy nhà dựng từng phần rồi ghép)
+export async function vietDanYYouTube(nguon: string, phut: number, soPhan: number): Promise<DanYYouTube | null> {
+  const kq = await goiJson({
+    system: `${YT_DAU}
+
+Plan a video of about ${phut} minutes, split into exactly ${soPhan} parts of about ${Math.round((phut / soPhan) * 10) / 10} minutes each that follow each other naturally (part 1 opens with a hook and greets viewers, the last part wraps up). Return:
+- tieu_de: the YouTube title in Vietnamese, at most 90 characters, catchy but truthful.
+- mo_ta: the YouTube description in Vietnamese, 3 to 6 sentences summing up what viewers will learn, then a line inviting them to subscribe to Công Nghệ 24H. No URLs.
+- the: 8 to 15 YouTube tags (Vietnamese and English keywords, without #).
+- chu_de: a short topic label of 1 or 2 words shown in the corner of the video (for example "AI", "Bảo mật", "Điện thoại").
+- phan: for each part, tieu_de (a short Vietnamese heading) and noi_dung (4 to 8 sentences in Vietnamese describing exactly what this part covers: which facts, story events, questions and examples, in order). Spread the source over the parts so that everything is covered once, without repeating, and the whole video stays interesting to the end.`,
+    noiDung: `<source>\n${nguon}\n</source>`,
+    effort: 'medium',
+    kiemTra: DanYSchema,
+    schema: {
+      type: 'object',
+      properties: {
+        tieu_de: { type: 'string' },
+        mo_ta: { type: 'string' },
+        the: { type: 'array', items: { type: 'string' } },
+        chu_de: { type: 'string' },
+        phan: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: { tieu_de: { type: 'string' }, noi_dung: { type: 'string' } },
+            required: ['tieu_de', 'noi_dung'],
+            additionalProperties: false,
+          },
+        },
+      },
+      required: ['tieu_de', 'mo_ta', 'the', 'chu_de', 'phan'],
+      additionalProperties: false,
+    },
+  })
+  if (!kq) return null
+  return { ...kq, phan: kq.phan.slice(0, soPhan) }
+}
+
+const PhanSchema = z.object({ loi: z.array(CauSchema).min(6).max(70), moc: MocSchema })
+
+// Lời thoại một phần (k bắt đầu từ 1). `noiTiep`: vài câu cuối của phần trước để nối mạch.
+export async function vietPhanYouTube(o: {
+  nguon: string
+  danY: { tieu_de: string; phan: { tieu_de: string; noi_dung: string }[] }
+  k: number
+  soCau: number
+  noiTiep: string[]
+}): Promise<KichBan | null> {
+  const { k, danY } = o
+  const n = danY.phan.length
+  const viTri =
+    n === 1
+      ? 'This is the whole video: start with Mèo Mun asking a hook question about the most surprising point and greeting viewers of Công Nghệ 24H, and end with one line inviting viewers to like and subscribe to Công Nghệ 24H.'
+      : k === 1
+        ? 'This is part 1: start with Mèo Mun asking a hook question about the most surprising point of the whole video and greeting viewers of Công Nghệ 24H. Do not say goodbye at the end; lead naturally into the next part.'
+        : k === n
+          ? 'This is the last part: continue right where the previous part stopped (no new greeting), then wrap up the whole video and end with one line inviting viewers to like and subscribe to Công Nghệ 24H.'
+          : `This is part ${k} of ${n}: continue right where the previous part stopped (no greeting, no goodbye) and lead naturally into the next part.`
+  const system = `${YT_DAU}
+
+Rules for the dialogue:
+- Write ${o.soCau} lines for this part, not fewer (it must last about ${Math.round((o.soCau * 7) / 60)} minutes when read aloud). Mèo Mun and Robot Bit are the hosts and speak most lines (at least 60%). Alternate speakers most of the time.
+- Let 1 or 2 extras speak a few lines each in their own words when the content involves such people; hosts react to and question them. Extras never speak as a suspect, criminal or victim in the first person repeating threats, crimes or private details; for such people, let a host or a police officer retell what happened instead. When an extra speaks, set nhan_vat_phu to that same extra.
+- Cover only what this part of the plan says, in order, with all its details (numbers as digits with units, names spelled exactly as in the source). Do not repeat what earlier parts already told.
+- Each line at most 25 words, written to be read aloud: no emoji, no hashtags, no URLs. Keep the channel name exactly as "Công Nghệ 24H".
+${LUAT_HINH}- moc: a hook shown in big letters for the first 2 seconds of the video: chu is at most 8 Vietnamese words, curious but truthful, bieu_tuong one emoji. (Only used for part 1, but always fill it.)`
+  const keHoach = danY.phan.map((p, i) => `Part ${i + 1}${i + 1 === k ? ' (WRITE THIS ONE)' : ''}: ${p.tieu_de}\n${p.noi_dung}`).join('\n\n')
+  const nhac = `${viTri}${o.noiTiep.length ? `\n\nThe previous part ended with these lines:\n${o.noiTiep.join('\n')}` : ''}`
+  // AI hay viết ngắn hơn yêu cầu: bản ngắn hơn 3/4 số câu thì bắt viết lại dài hơn (tối đa 3 lượt, giữ bản dài nhất)
+  let totNhat: KichBan | null = null
+  let nhacThem = ''
+  for (let lan = 0; lan < 3; lan++) {
+    const kq = await goiJson({
+      system,
+      noiDung: `<source>\n${o.nguon}\n</source>\n\n<plan title="${danY.tieu_de}">\n${keHoach}\n</plan>\n\n${nhac}${nhacThem}`,
+      effort: 'medium',
+      kiemTra: PhanSchema,
+      schema: {
+        type: 'object',
+        properties: { loi: { type: 'array', items: JSON_CAU }, moc: JSON_MOC },
+        required: ['loi', 'moc'],
+        additionalProperties: false,
+      },
+    })
+    if (!kq) continue
+    if (!coDauDu(kq.loi)) {
+      console.error('Lời thoại YouTube thiếu dấu, viết lại')
+      continue
+    }
+    if (!totNhat || kq.loi.length > totNhat.loi.length) totNhat = kq
+    if (kq.loi.length >= o.soCau * 0.75) break
+    nhacThem = `\n\nYour previous draft of this part had only ${kq.loi.length} lines, far too short. Write this part again with ${o.soCau} lines: go deeper into every point of this part of the plan with more back-and-forth questions, concrete examples, reactions and short explanations, while keeping each line short.`
+  }
+  if (!totNhat) return null
+  const laEmoji = (x: string) => /\p{Extended_Pictographic}/u.test(x)
+  return {
+    moc: { chu: totNhat.moc.chu, bieu_tuong: laEmoji(totNhat.moc.bieu_tuong) ? totNhat.moc.bieu_tuong : '🔥' },
+    loi: totNhat.loi.map((l) => ({
+      ...l,
+      bang: { ...l.bang, bieu_tuong: laEmoji(l.bang.bieu_tuong) ? l.bang.bieu_tuong : EMOJI_BOI_CANH[l.boi_canh] },
+      minh_hoa: { ...l.minh_hoa, bieu_tuong: laEmoji(l.minh_hoa.bieu_tuong) ? l.minh_hoa.bieu_tuong : l.bang.bieu_tuong },
+    })),
+  }
 }

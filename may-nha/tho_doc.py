@@ -46,6 +46,8 @@ FFPROBE_DIR = Path(os.environ.get('FFPROBE_DIR', r'C:\Users\Admin\VieNeu-TTS\con
 THU_MUC_TAM = Path(os.environ.get('HOAT_HINH_TAM', r'C:\Users\Admin\VieNeu-TTS\hoat-hinh-tam'))
 # Mỗi video dựng xong lưu thêm một bản trên máy nhà, tên theo ngày + tiêu đề bài
 THU_MUC_LUU = Path(os.environ.get('HOAT_HINH_LUU', r'C:\Users\Admin\OneDrive\Desktop\Video-Hoat-Hinh'))
+# Video YouTube dài (trang /youtube): dựng từng phần rồi ghép, chỉ lưu trên máy nhà (quá nặng để gửi lên kho)
+THU_MUC_YT = Path(os.environ.get('YOUTUBE_LUU', r'C:\Users\Admin\OneDrive\Desktop\Video-YouTube'))
 
 
 def gui(duong, du_lieu, kieu):
@@ -65,10 +67,11 @@ def liet_ke(thu_muc, day_du=False):
 
 def ds_viec():
     # Thứ tự: đọc giọng (ngắn, có người đang chờ) → video hoạt hình người dùng đang bấm Xem trước (hang-doi/uu-tien)
-    # → video hoạt hình dựng sẵn trong nền; cùng nhóm thì việc nào đặt trước làm trước
+    # → video hoạt hình dựng sẵn trong nền → từng phần video YouTube (yt-, lâu nhất, làm xen giữa các việc kia);
+    # cùng nhóm thì việc nào đặt trước làm trước
     ten = [n for n in liet_ke('hang-doi/viec') if n.endswith('.json')]
     uu_tien = set(liet_ke('hang-doi/uu-tien'))
-    return sorted(ten, key=lambda n: 0 if not n.startswith('hh-') else 1 if n in uu_tien else 2)
+    return sorted(ten, key=lambda n: 3 if n.startswith('yt-') else 0 if not n.startswith('hh-') else 1 if n in uu_tien else 2)
 
 
 def don_rac():
@@ -112,9 +115,11 @@ def ten_tep(tieu_de):
 
 
 class TienDo:
-    # Ghi tiến độ (phần trăm + bước đang làm) lên kho để trang web vẽ thanh chạy; tối đa 3 giây ghi một lần
-    def __init__(self, ma):
-        self.duong = f'hang-doi/tien-do/{ma}.json'
+    # Ghi tiến độ (phần trăm + bước đang làm) lên kho để trang web vẽ thanh chạy; tối đa 3 giây ghi một lần.
+    # `duong`: chỗ ghi khác (video YouTube ghi ở youtube/<dự án>/tien-do.json), `them`: thông tin kèm (phần đang dựng)
+    def __init__(self, ma, duong=None, them=None):
+        self.duong = duong or f'hang-doi/tien-do/{ma}.json'
+        self.them = them or {}
         self.lan = 0.0
         self.cuoi = None
 
@@ -124,7 +129,7 @@ class TienDo:
             return
         self.lan, self.cuoi = time.time(), (phan_tram, buoc)
         try:
-            gui(self.duong, json.dumps({'phanTram': phan_tram, 'buoc': buoc, 'luc': int(time.time() * 1000)}, ensure_ascii=False), 'application/json')
+            gui(self.duong, json.dumps({**self.them, 'phanTram': phan_tram, 'buoc': buoc, 'luc': int(time.time() * 1000)}, ensure_ascii=False), 'application/json')
         except Exception:
             traceback.print_exc()
 
@@ -163,11 +168,9 @@ def chay(lenh, cwd, gioi_han):
     return kq.stdout
 
 
-def dung_hoat_hinh(may, ds_giong, yc, td):
-    ten = yc['ten']
-    bai_id = ten.split('/')[0]
-    lt = yc['loi_thoai']
-    tm = THU_MUC_TAM / ten.replace('/', '_').replace('.mp4', '')
+def dung_video(may, ds_giong, lt, tm, td, fps=30, gioi_han=1500):
+    # Đọc từng câu thoại bằng giọng của nhân vật nói câu đó, sinh trang HyperFrames rồi dựng ra tm/video.mp4.
+    # Trả độ dài (giây) từng câu. Tiến độ: đọc giọng 10-30%, dựng hình 30-95%.
     shutil.rmtree(tm, ignore_errors=True)
     (tm / 'artifacts').mkdir(parents=True)
     tai_san = tm / 'hyperframes' / 'assets'
@@ -175,22 +178,64 @@ def dung_hoat_hinh(may, ds_giong, yc, td):
     for tep in ('BeVietnamPro-Bold.ttf', 'BeVietnamPro-Medium.ttf'):
         shutil.copy(REPO / 'assets' / 'fonts' / tep, tai_san / tep)
     shutil.copy(HOAT_HINH / 'gsap.min.js', tai_san / 'gsap.min.js')
+    do_dai = []
+    for i, l in enumerate(lt['loi']):
+        td.bao(10 + 20 * i / len(lt['loi']), f'Đọc giọng câu {i + 1}/{len(lt["loi"])}')
+        wav, dd = doc(may, ds_giong, [l['chu']], lt['nhan_vat'][l['ai']]['giong'])
+        (tai_san / f'loi-{i}.wav').write_bytes(wav)
+        do_dai.append(dd[0])
+    (tm / 'artifacts' / 'loi_thoai.json').write_text(json.dumps(lt, ensure_ascii=False), encoding='utf-8')
+    (tm / 'artifacts' / 'do_dai.json').write_text(json.dumps(do_dai), encoding='utf-8')
+    chay(['node', str(HOAT_HINH / 'tao_video.mjs'), str(tm)], tm, 120)
+    td.bao(30, 'Dựng hình 0%', ep=True)
+    chay_theo_doi(['npx.cmd', '--yes', 'hyperframes', 'render', '--quality', 'standard', '--fps', str(fps), '-o', str(tm / 'video.mp4')],
+                  tm / 'hyperframes', gioi_han, lambda pt: td.bao(30 + 0.65 * pt, f'Dựng hình {pt}%'))
+    return do_dai
+
+
+def dung_youtube(may, ds_giong, yc):
+    # Một phần của video YouTube dài (lib/youtube.ts): {"du_an", "tieu_de", "phan" (1, 2...), "ma_phan": [mã từng phần],
+    # "loi_thoai"}. Dựng xong lưu phan-<số>-<mã>.mp4 trong thư mục dự án ở máy nhà, báo youtube/<dự án>/phan-<số>.json.
+    # Đủ mọi phần (đúng mã hiện tại) thì ghép thành một video, báo youtube/<dự án>/xong.json.
+    du_an, k, ds_ma = yc['du_an'], yc['phan'], yc['ma_phan']
+    goc = f'youtube/{du_an}'
+    thu_muc = THU_MUC_YT / f'{ten_tep(yc.get("tieu_de"))}-{du_an[:6]}'
+    thu_muc.mkdir(parents=True, exist_ok=True)
+    tep = thu_muc / f'phan-{k:02d}-{ds_ma[k - 1]}.mp4'
+    td = TienDo(None, duong=f'{goc}/tien-do.json', them={'phan': k})
     try:
-        # 1. Đọc từng câu thoại bằng giọng của nhân vật nói câu đó
-        do_dai = []
-        for i, l in enumerate(lt['loi']):
-            td.bao(10 + 20 * i / len(lt['loi']), f'Đọc giọng câu {i + 1}/{len(lt["loi"])}')
-            wav, dd = doc(may, ds_giong, [l['chu']], lt['nhan_vat'][l['ai']]['giong'])
-            (tai_san / f'loi-{i}.wav').write_bytes(wav)
-            do_dai.append(dd[0])
-        (tm / 'artifacts' / 'loi_thoai.json').write_text(json.dumps(lt, ensure_ascii=False), encoding='utf-8')
-        (tm / 'artifacts' / 'do_dai.json').write_text(json.dumps(do_dai), encoding='utf-8')
-        # 2. Sinh trang HyperFrames rồi dựng video
-        chay(['node', str(HOAT_HINH / 'tao_video.mjs'), str(tm)], tm, 120)
-        # 24 khung hình/giây (chuẩn phim hoạt hình): dựng nhanh hơn ~20% so với 30, mắt gần như không thấy khác
-        td.bao(30, 'Dựng hình 0%', ep=True)
-        chay_theo_doi(['npx.cmd', '--yes', 'hyperframes', 'render', '--quality', 'standard', '--fps', '30', '-o', str(tm / 'video.mp4')],
-                      tm / 'hyperframes', 1500, lambda pt: td.bao(30 + 0.65 * pt, f'Dựng hình {pt}%'))
+        if not tep.exists():
+            tm = THU_MUC_TAM / f'yt-{du_an}-{k}'
+            try:
+                # Phần dài vài phút: 24 khung hình/giây cho nhanh, cho dựng tới ~40 giây mỗi giây video
+                uoc = sum(len(l['chu']) for l in yc['loi_thoai']['loi']) / 14
+                dung_video(may, ds_giong, yc['loi_thoai'], tm, td, fps=24, gioi_han=max(1800, int(uoc * 40)))
+                shutil.move(str(tm / 'video.mp4'), str(tep))
+            finally:
+                shutil.rmtree(tm, ignore_errors=True)
+        for cu in thu_muc.glob(f'phan-{k:02d}-*.mp4'):
+            if cu != tep:
+                cu.unlink(missing_ok=True)
+        gui(f'{goc}/phan-{k}.json', json.dumps({'xong': True, 'ma': ds_ma[k - 1], 'luc': int(time.time() * 1000)}), 'application/json')
+        cac_phan = [thu_muc / f'phan-{j + 1:02d}-{m}.mp4' for j, m in enumerate(ds_ma)]
+        if all(p.exists() for p in cac_phan):
+            td.bao(97, 'Ghép các phần thành một video', ep=True)
+            ra = thu_muc / f'{ten_tep(yc.get("tieu_de"))}.mp4'
+            (thu_muc / 'ds.txt').write_text('\n'.join(f"file '{p.name}'" for p in cac_phan), encoding='utf-8')
+            chay([str(FFMPEG), '-hide_banner', '-y', '-f', 'concat', '-safe', '0', '-i', 'ds.txt', '-c', 'copy', '-movflags', '+faststart', ra.name], thu_muc, 1800)
+            (thu_muc / 'ds.txt').unlink(missing_ok=True)
+            gui(f'{goc}/xong.json', json.dumps({'tep': str(ra), 'ma': ds_ma, 'luc': int(time.time() * 1000)}, ensure_ascii=False), 'application/json')
+    finally:
+        td.xong()
+
+
+def dung_hoat_hinh(may, ds_giong, yc, td):
+    ten = yc['ten']
+    bai_id = ten.split('/')[0]
+    lt = yc['loi_thoai']
+    tm = THU_MUC_TAM / ten.replace('/', '_').replace('.mp4', '')
+    try:
+        do_dai = dung_video(may, ds_giong, lt, tm, td)
         ra = tm / 'video.mp4'
         # 3. Trộn nhạc nền nhỏ dưới lời thoại (lặp cho đủ dài, to dần đầu, nhỏ dần cuối)
         td.bao(96, 'Trộn nhạc và lưu', ep=True)
@@ -267,13 +312,21 @@ def main():
                     finally:
                         td.xong()
                     print(f'Xong video hoạt hình {giay:.0f}s trong {time.time() - bat_dau:.0f}s', flush=True)
+                elif yc.get('loai') == 'youtube':
+                    print(f'Dựng video YouTube "{yc.get("tieu_de")}" phần {yc["phan"]}/{len(yc["ma_phan"])} ({len(yc["loi_thoai"]["loi"])} câu thoại)...', flush=True)
+                    dung_youtube(may, ds_giong, yc)
+                    print(f'Xong phần {yc["phan"]} trong {time.time() - bat_dau:.0f}s', flush=True)
                 else:
                     wav, do_dai = doc(may, ds_giong, [c for c in yc['cau'] if c.strip()], yc.get('giong'))
                     gui(f'hang-doi/xong/{ma}.wav', wav, 'audio/wav')
                     gui(f'hang-doi/xong/{ma}.json', json.dumps({'doDai': do_dai}), 'application/json')
                     print(f'Đọc xong {len(do_dai)} câu ({sum(do_dai):.0f}s âm thanh) trong {time.time() - bat_dau:.0f}s', flush=True)
             except Exception as e:
-                gui(f'hang-doi/xong/{ma}.json', json.dumps({'loi': str(e)[:300]}, ensure_ascii=False), 'application/json')
+                if yc.get('loai') == 'youtube':
+                    loi = {'loi': str(e)[:300], 'ma': yc['ma_phan'][yc['phan'] - 1], 'luc': int(time.time() * 1000)}
+                    gui(f'youtube/{yc["du_an"]}/phan-{yc["phan"]}.json', json.dumps(loi, ensure_ascii=False), 'application/json')
+                else:
+                    gui(f'hang-doi/xong/{ma}.json', json.dumps({'loi': str(e)[:300]}, ensure_ascii=False), 'application/json')
                 traceback.print_exc()
             finally:
                 if yc.get('loai') == 'hoat_hinh':

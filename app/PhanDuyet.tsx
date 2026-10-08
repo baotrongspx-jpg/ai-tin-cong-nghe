@@ -65,7 +65,6 @@ const MAU = {
   xanh: 'bg-white text-blue-700 ring-blue-200 hover:bg-blue-50',
   fb: 'bg-blue-600 text-white ring-blue-600 hover:bg-blue-700 shadow-md shadow-blue-600/20',
   tt: 'bg-slate-900 text-white ring-slate-900 hover:bg-black shadow-md shadow-slate-900/20',
-  yt: 'bg-white text-red-600 ring-red-200 hover:bg-red-50',
   caHai: 'bg-gradient-to-r from-blue-600 via-fuchsia-600 to-slate-900 text-white ring-transparent hover:brightness-110 shadow-md shadow-fuchsia-600/20',
   xam: 'bg-white text-slate-700 ring-slate-200 hover:bg-slate-50',
   do: 'bg-white text-red-600 ring-red-200 hover:bg-red-50',

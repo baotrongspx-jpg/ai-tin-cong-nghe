@@ -19,6 +19,7 @@ import {
   IconTep,
   IconThoat,
   IconTikTok,
+  IconYouTube,
   IconTimKiem,
   IconXongTron,
 } from './BieuTuong'
@@ -60,6 +61,7 @@ export default function KhungQuanLy({
   ]
   const nhomKenh: Muc[] = [
     { href: '/tiktok', ten: 'TikTok', Icon: IconTikTok, so: chuaTikTok, bat: duong.startsWith('/tiktok') },
+    { href: '/youtube', ten: 'YouTube', Icon: IconYouTube, bat: duong.startsWith('/youtube') },
     { href: '/binh-luan', ten: 'Bình luận', Icon: IconBinhLuan, bat: duong.startsWith('/binh-luan') },
     { href: '/thong-ke', ten: 'Thống kê', Icon: IconBieuDo, bat: duong.startsWith('/thong-ke') },
     { href: '/cv/doi-anh', ten: 'Trang CV', Icon: IconTep, bat: false },

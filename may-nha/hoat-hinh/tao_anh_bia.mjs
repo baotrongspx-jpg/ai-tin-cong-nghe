@@ -9,10 +9,12 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { BOI_CANH } from './boiCanh.mjs'
 import { meoSvg, robotSvg } from './nhanVatChinh.mjs'
-import { nguoiKeSvg } from './nhanVatPhu.mjs'
+import { nguoiKeSvg, nhanVatChinhSvg } from './nhanVatPhu.mjs'
 
 const [vao, ra] = process.argv.slice(2).map((x) => resolve(x))
-const { chu = '', chu_de = '', kenh = 'Công Nghệ 24H', boi_canh = 'truong_quay', nguoi_ke = false } = JSON.parse(readFileSync(vao, 'utf8'))
+// nhan_vat_chinh: hình nhân vật chính phim tiểu sử (nhanVatChinhSvg) — đứng giữa, to, có vầng sáng
+const { chu = '', chu_de = '', kenh = 'Công Nghệ 24H', boi_canh = 'truong_quay', nguoi_ke = false, nhan_vat_chinh = null } = JSON.parse(readFileSync(vao, 'utf8'))
+const chinh = nhan_vat_chinh ? nhanVatChinhSvg(nhan_vat_chinh) : null
 const GOC = dirname(fileURLToPath(import.meta.url))
 const FONT = pathToFileURL(join(GOC, '..', '..', 'assets', 'fonts', 'BeVietnamPro-Bold.ttf')).href
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -42,6 +44,7 @@ body { width: 1280px; height: 720px; overflow: hidden; font-family: B, sans-seri
 .meo { left: -50px; width: 470px; transform: rotate(-6deg); }
 .robot { right: -50px; width: 470px; transform: rotate(5deg) scaleX(-1); }
 .ke { left: 50%; margin-left: -150px; bottom: -40px; width: 300px; }
+.chinh { left: 50%; margin-left: -250px; bottom: -250px; width: 500px; }
 .chu { position: absolute; left: 80px; right: 80px; top: 120px; text-align: center; font-size: ${coChu}px; line-height: 1.08; color: #fff; text-transform: uppercase;
   -webkit-text-stroke: 14px #111; paint-order: stroke fill; text-shadow: 0 10px 0 #111, 0 18px 30px #000c; letter-spacing: -1px; }
 .chu div { white-space: nowrap; } .vang { color: #facc15; }
@@ -52,6 +55,7 @@ body { width: 1280px; height: 720px; overflow: hidden; font-family: B, sans-seri
 <div class="toi"></div><div class="tia"></div>
 <div class="nv meo">${mat(meoSvg, 'meo').replace(/width="\d+" height="\d+"/, 'width="100%"')}</div>
 <div class="nv robot">${mat(robotSvg, 'robot').replace(/width="\d+" height="\d+"/, 'width="100%"')}</div>
+${chinh ? `<div class="nv chinh"><svg viewBox="${chinh.viewBox}" width="100%">${chinh.svg('bia-chinh')}</svg></div>` : ''}
 ${nguoi_ke ? `<div class="nv ke"><svg viewBox="80 40 440 660" width="100%">${nguoiKeSvg('ke')}</svg></div>` : ''}
 ${chu_de ? `<div class="nhan">${esc(chu_de)}</div>` : ''}
 <div class="kenh">${esc(kenh)}</div>

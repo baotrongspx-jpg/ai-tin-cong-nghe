@@ -3,8 +3,8 @@ import { createHash, randomUUID } from 'node:crypto'
 import { db, type BaiViet } from './db'
 import { vietDanYYouTube, vietPhanYouTube, type LoiThoai } from './ai'
 import {
-  dongGoiYouTube, hoSoHinhAnh, nghienCuuNhanVat, phanCanhChuong, phatTrienCauChuyen, vietPhanPhim,
-  type CanhPhim, type CauChuyen, type CauPhim, type DongGoi, type HoSoHinhAnh, type NghienCuu,
+  dongGoiYouTube, hoSoHinhAnh, nghienCuuNhanVat, phanCanhChuong, phatTrienCauChuyen, thietKeNhanVatChinh, vietPhanPhim, TAO_HINH_MAC_DINH,
+  type CanhPhim, type CauChuyen, type CauPhim, type DongGoi, type HoSoHinhAnh, type NghienCuu, type TaoHinh,
 } from './aiPhim'
 import { nguonWiki } from './wiki'
 import { NHAN_VAT } from './hoatHinh'
@@ -17,7 +17,7 @@ import { kiemDinh, type KetQuaKiemDinh } from './kiemDinh'
 // video và chỉ lưu trên máy nhà (Desktop\Video-YouTube), vì video dài quá nặng để gửi lên kho.
 // Máy nhà báo kết quả: youtube/<id>/phan-<k>.json ({ xong, ma } hoặc { loi, ma }), tien-do.json, xong.json.
 const KHO = 'video-tiktok'
-const PHIEN_BAN = 7 // tăng khi đổi cách dựng để các phần dựng lại (2: thẻ minh hoạ / đạo cụ khung ngang; 3: giọng Mèo Mun; 4: nhịp chuyển cảnh mượt; 5: thẻ chương, màn kết, B-roll; 6: khung người kể, 7: người kể vẽ riêng)
+const PHIEN_BAN = 8 // tăng khi đổi cách dựng để các phần dựng lại (2: thẻ minh hoạ / đạo cụ khung ngang; 3: giọng Mèo Mun; 4: nhịp chuyển cảnh mượt; 5: thẻ chương, màn kết, B-roll; 6: khung người kể, 7: người kể vẽ riêng, 8: nhân vật chính phim tiểu sử)
 const kho = () => db().storage.from(KHO)
 const thuMuc = (id: string) => `youtube/${id}`
 const tenViec = (id: string, k: number) => `yt-${id}-${k}.json`
@@ -28,7 +28,12 @@ export const soPhanCho = (phut: number) => Math.min(8, Math.max(1, Math.round(ph
 export const DS_PHUT = [3, 5, 10, 15, 20] as const
 
 // Một câu thoại: video thường (Mèo & Bit + nhân vật phụ) hoặc phim tiểu sử (thêm người kể, thẻ năm / nơi, cờ tái hiện)
-export type CauYT = Omit<LoiThoai[number], 'ai'> & { ai: CauPhim['ai']; tai_hien?: boolean; the_moc?: string }
+export type CauYT = Omit<LoiThoai[number], 'ai' | 'nhan_vat_phu'> & {
+  ai: CauPhim['ai']
+  nhan_vat_phu: CauPhim['nhan_vat_phu']
+  tai_hien?: boolean
+  the_moc?: string
+}
 export type PhanYT = {
   tieu_de: string
   noi_dung: string
@@ -47,6 +52,7 @@ export type PhimTieuSu = {
   nghien_cuu?: NghienCuu
   cau_chuyen?: CauChuyen
   ho_so?: HoSoHinhAnh
+  tao_hinh?: TaoHinh // hình hoạt hình của người được kể (bước "Thiết kế nhân vật chính")
   dong_goi?: DongGoi
 }
 export type DuAnYT = {
@@ -68,7 +74,32 @@ export type DuAnYT = {
 
 const bam = (x: unknown) => createHash('sha256').update(JSON.stringify(x)).digest('hex').slice(0, 12)
 // Mã một phần: đổi lời thoại / cách dựng thì đổi mã, máy nhà dựng lại phần đó
-const maPhan = (d: DuAnYT, k: number) => bam([PHIEN_BAN, d.chu_de, d.phan[k - 1].loi, k === 1 ? d.phan[0].moc : null])
+const maPhan = (d: DuAnYT, k: number) =>
+  bam([PHIEN_BAN, d.chu_de, d.phan[k - 1].loi, k === 1 ? d.phan[0].moc : null, ...(d.loai === 'tieu_su' ? [hinhChuong(d, k)] : [])])
+
+// Phim tiểu sử: hình nhân vật chính dùng ở chương k (giai đoạn tuổi có tu_chuong lớn nhất mà <= k)
+function hinhChuong(d: DuAnYT, k: number) {
+  const th = d.phim?.tao_hinh ?? TAO_HINH_MAC_DINH
+  const gd = [...th.giai_doan].sort((a, b) => a.tu_chuong - b.tu_chuong).filter((g, i) => i === 0 || g.tu_chuong <= k).at(-1)!
+  return { gioi: th.gioi, da: th.da, ...gd }
+}
+// Giọng nhân vật chính theo giới tính (giọng kể chuyện còn trống trong bộ VieNeu)
+const GIONG_CHINH = { nam: 'Thiện Minh', nu: 'Mỹ Duyên' } as const
+
+// Lời thoại + nhân vật gửi máy nhà. Phim tiểu sử: thêm nhân vật chính (hình theo chương, giọng theo giới tính); câu người
+// kể không có ai trên sân khấu thì cho nhân vật chính đứng diễn (người xem luôn thấy người đang được kể)
+function loiThoaiGui(d: DuAnYT, k: number) {
+  const p = d.phan[k - 1]
+  const goc = { kho: 'ngang', kenh: 'Công Nghệ 24H', chu_de: d.chu_de, moc: k === 1 ? p.moc : null, the_chuong: { so: k, ten: p.tieu_de }, man_ket: k === d.phan.length }
+  if (d.loai !== 'tieu_su' || !d.phim) return { ...goc, nhan_vat: NHAN_VAT, loi: p.loi }
+  const hinh = hinhChuong(d, k)
+  return {
+    ...goc,
+    nhan_vat: { ...NHAN_VAT, nhan_vat_chinh: { ten: d.phim.ten, giong: GIONG_CHINH[hinh.gioi] } },
+    nhan_vat_chinh: { ten: d.phim.ten, hinh },
+    loi: (p.loi ?? []).map((l) => (l.ai === 'nguoi_ke' && (!l.nhan_vat_phu || l.nhan_vat_phu === 'khong') ? { ...l, nhan_vat_phu: 'nhan_vat_chinh' } : l)),
+  }
+}
 
 async function docJson<T>(duong: string): Promise<T | null> {
   const { data } = await kho().download(duong)
@@ -170,7 +201,9 @@ function anhBia(d: DuAnYT) {
   const dem: Record<string, number> = {}
   for (const l of d.phan[0]?.loi ?? []) dem[l.boi_canh] = (dem[l.boi_canh] ?? 0) + 1
   const boi_canh = Object.entries(dem).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'truong_quay'
-  return { chu, chu_de: d.chu_de, kenh: 'Công Nghệ 24H', boi_canh, nguoi_ke: d.phan.some((p) => p.loi?.some((l) => l.ai === 'nguoi_ke')) }
+  // Phim tiểu sử: nhân vật chính (hình giai đoạn cuối, lúc nổi tiếng nhất) đứng giữa thay cho người kể
+  const nhan_vat_chinh = d.loai === 'tieu_su' && d.phim ? hinhChuong(d, d.phan.length) : null
+  return { chu, chu_de: d.chu_de, kenh: 'Công Nghệ 24H', boi_canh, nguoi_ke: !nhan_vat_chinh && d.phan.some((p) => p.loi?.some((l) => l.ai === 'nguoi_ke')), nhan_vat_chinh }
 }
 
 // Bài nhạc nền sẽ dùng: bài đã chọn (nếu còn trong thư viện), không chọn thì bài đầu tiên; 'khong' thì không nhạc
@@ -252,7 +285,6 @@ export async function guiDung(d: DuAnYT, chiPhan?: number) {
     .map((_, i) => i + 1)
     .filter((k) => (chiPhan ? k === chiPhan : true) && ['chua_dung', 'loi'].includes(tt.phan[k - 1].loai))
   for (const k of can) {
-    const p = d.phan[k - 1]
     await kho().remove([`${thuMuc(d.id)}/phan-${k}.json`])
     await ghiJson(`hang-doi/viec/${tenViec(d.id, k)}`, {
       loai: 'youtube',
@@ -262,7 +294,7 @@ export async function guiDung(d: DuAnYT, chiPhan?: number) {
       ma_phan: ma,
       ...nhac,
       anh_bia: anhBia(d),
-      loi_thoai: { kho: 'ngang', kenh: 'Công Nghệ 24H', chu_de: d.chu_de, nhan_vat: NHAN_VAT, loi: p.loi, moc: k === 1 ? p.moc : null, the_chuong: { so: k, ten: p.tieu_de }, man_ket: k === d.phan.length },
+      loi_thoai: loiThoaiGui(d, k),
     })
   }
   // Mọi phần đã xong từ trước (vd sửa tiêu đề rồi bấm lại) nhưng chưa ghép: gửi lại phần cuối để máy nhà ghép
@@ -276,7 +308,7 @@ export async function guiDung(d: DuAnYT, chiPhan?: number) {
       ma_phan: ma,
       ...nhac,
       anh_bia: anhBia(d),
-      loi_thoai: { kho: 'ngang', kenh: 'Công Nghệ 24H', chu_de: d.chu_de, nhan_vat: NHAN_VAT, loi: d.phan[k - 1].loi, moc: k === 1 ? d.phan[0].moc : null, the_chuong: { so: k, ten: d.phan[k - 1].tieu_de }, man_ket: true },
+      loi_thoai: loiThoaiGui(d, k),
     })
     return 1
   }
@@ -323,7 +355,7 @@ export async function taoPhim(o: { ten: string; ghiChu: string; taiLieu: string;
   return d
 }
 
-export type BuocPhim = 'nghien_cuu' | 'cau_chuyen' | 'ho_so' | 'phan_canh' | 'dong_goi'
+export type BuocPhim = 'nghien_cuu' | 'cau_chuyen' | 'tao_hinh' | 'ho_so' | 'phan_canh' | 'dong_goi'
 
 // Chạy một giai đoạn (phan_canh cần số chương k). Trả dự án đã lưu.
 export async function chayBuocPhim(id: string, buoc: BuocPhim, k?: number) {
@@ -350,6 +382,10 @@ export async function chayBuocPhim(id: string, buoc: BuocPhim, k?: number) {
     d.the = kq.the.map((t) => t.replace(/^#/, '').trim()).filter(Boolean).slice(0, 20)
     d.mo_ta = kq.big_idea
     d.phan = kq.phan.map((x) => ({ tieu_de: x.tieu_de, noi_dung: x.noi_dung, nhip: x.nhip, loi: null, moc: null }))
+  } else if (buoc === 'tao_hinh') {
+    if (!p.nghien_cuu || !p.cau_chuyen) throw new Error('Chưa có nghiên cứu và câu chuyện')
+    // AI chưa làm được thì dùng hình mặc định để phim vẫn dựng được; bấm "Thiết kế lại" sau
+    p.tao_hinh = (await thietKeNhanVatChinh({ ten: p.ten, nghienCuu: p.nghien_cuu, cauChuyen: p.cau_chuyen })) ?? TAO_HINH_MAC_DINH
   } else if (buoc === 'ho_so') {
     if (!p.nghien_cuu || !p.cau_chuyen) throw new Error('Chưa có nghiên cứu và câu chuyện')
     const kq = await hoSoHinhAnh({ ten: p.ten, nghienCuu: p.nghien_cuu, cauChuyen: p.cau_chuyen })

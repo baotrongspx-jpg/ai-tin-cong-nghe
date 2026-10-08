@@ -1,6 +1,6 @@
 import 'server-only'
 import { z } from 'zod'
-import { CauSchema, EMOJI_BOI_CANH, JSON_CAU, JSON_MOC, LUAT_HINH, MO_TA_NHAN_VAT_PHU, MocSchema, NGUOI_NOI, damBaoDau, goiJson } from './ai'
+import { CauSchema, DAO_CU, EMOJI_BOI_CANH, JSON_CAU, JSON_MOC, LUAT_HINH, MO_TA_NHAN_VAT_PHU, MocSchema, NGUOI_NOI, NHAN_VAT_PHU, damBaoDau, goiJson } from './ai'
 
 // Phim tiểu sử (trang /youtube): AI làm đạo diễn phim tài liệu theo từng giai đoạn — nghiên cứu → phát triển câu
 // chuyện → kịch bản (giọng kể + Mèo Mun & Robot Bit xen vào) → hồ sơ hình ảnh → phân cảnh + prompt video AI →
@@ -118,14 +118,73 @@ STAGE 2 — STORY DEVELOPMENT for a film of about ${o.phut} minutes, based ONLY 
   return kq ? { ...kq, phan: kq.phan.slice(0, o.soPhan) } : null
 }
 
+// ---------- 2b. Tạo hình nhân vật chính (người được kể) cho bản hoạt hình ----------
+// Một nhân vật hoạt hình cố định suốt phim (không phải chân dung thật): giới tính, màu da, rồi từng giai đoạn tuổi
+// (từ chương nào) với kiểu tóc, màu tóc, trang phục, kính, râu, đồ vật đặc trưng. Máy nhà vẽ bằng khung người chung
+// (may-nha/hoat-hinh/nhanVatPhu.mjs: nhanVatChinhSvg).
+export const TUOI = ['tre_em', 'thanh_nien', 'trung_nien', 'gia'] as const
+export const KIEU_TOC = ['ngan', 're_ngoi', 'vuot', 'dai', 'buoi', 'hoi', 'xoan'] as const
+export const MAU_TOC = ['den', 'nau', 'vang', 'bac', 'do'] as const
+export const KIEU_AO = ['vest', 'so_mi', 'ao_thun', 'ao_khoac', 'ao_len', 'ao_dai', 'quan_phuc', 'ao_ba_ba'] as const
+export const RAU = ['khong', 'ria', 'quai_non', 'day'] as const
+const MAU = z.string().regex(/^#[0-9a-fA-F]{6}$/)
+const GiaiDoanHinhSchema = zDoi({
+  tu_chuong: z.number().int().min(1), tuoi: z.enum(TUOI), toc: z.enum(KIEU_TOC), mau_toc: z.enum(MAU_TOC), ao: z.enum(KIEU_AO),
+  mau_ao: MAU, mau_quan: MAU, kinh: z.boolean(), rau: z.enum(RAU), vat_dung: z.enum(DAO_CU), mo_ta: z.string(),
+})
+const TaoHinhSchema = zDoi({ gioi: z.enum(['nam', 'nu']), da: z.enum(['sang', 'trung_binh', 'ngam']), giai_doan: z.array(GiaiDoanHinhSchema).min(1).max(5) })
+export type TaoHinh = z.infer<typeof TaoHinhSchema> & { mac_dinh?: boolean }
+export const TAO_HINH_MAC_DINH: TaoHinh = {
+  gioi: 'nam',
+  da: 'sang',
+  mac_dinh: true,
+  giai_doan: [{ tu_chuong: 1, tuoi: 'trung_nien', toc: 're_ngoi', mau_toc: 'den', ao: 'vest', mau_ao: '#1e3a8a', mau_quan: '#1f2937', kinh: false, rau: 'khong', vat_dung: 'khong', mo_ta: 'Hình mặc định (AI chưa thiết kế được)' }],
+}
+
+export async function thietKeNhanVatChinh(o: { ten: string; nghienCuu: NghienCuu; cauChuyen: CauChuyen }): Promise<TaoHinh | null> {
+  const enumChuoi = (ds: readonly string[]) => ({ type: 'string', enum: [...ds] })
+  const chuong = o.cauChuyen.phan.map((p, i) => `${i + 1}. ${p.tieu_de}`).join(' | ')
+  return goiJson({
+    system: `${PHIM_DAU}
+
+STAGE 2b — CARTOON DESIGN of the protagonist for the animated version. The person appears as a simple, friendly chibi cartoon character on stage (the same style as the channel's cat and robot mascots), recognisable by a few signature traits, never a realistic likeness or a caricature that mocks them.
+- gioi: nam / nu. da: skin tone sang (light), trung_binh (medium), ngam (dark).
+- giai_doan: 1 to 4 life stages that the chapters actually show, in chapter order; tu_chuong = the chapter number (1..${o.cauChuyen.phan.length}) from which this look is used (the first stage has tu_chuong 1). For each: tuoi (tre_em child, thanh_nien young adult, trung_nien middle-aged, gia elderly), toc (ngan short, re_ngoi side part, vuot quiff swept up, dai long, buoi bun, hoi balding, xoan curly), mau_toc (den black, nau brown, vang blond, bac grey or white, do ginger), ao (vest suit, so_mi shirt, ao_thun t-shirt, ao_khoac jacket, ao_len sweater or turtleneck, ao_dai Vietnamese long dress, quan_phuc military uniform, ao_ba_ba Southern Vietnamese peasant shirt), mau_ao and mau_quan as #rrggbb colours that suit the person and the era, kinh (glasses) true or false, rau (khong none, ria moustache, quai_non chin beard, day full beard), vat_dung: one signature object from the prop list that fits this stage of life (or khong), mo_ta: one short Vietnamese sentence describing this look and why.
+- Base the look on documented facts (era, job, a famous personal style such as a black turtleneck or a military uniform); if unsure keep it neutral and simple.`,
+    noiDung: `Person: ${o.ten}\nChapters: ${chuong}\n\n<research>\n${JSON.stringify({ ho_so: o.nghienCuu.ho_so, moc_doi: o.nghienCuu.moc_doi })}\n</research>`,
+    effort: 'low',
+    kiemTra: TaoHinhSchema,
+    schema: doiTuong({
+      gioi: enumChuoi(['nam', 'nu']),
+      da: enumChuoi(['sang', 'trung_binh', 'ngam']),
+      giai_doan: {
+        type: 'array',
+        items: doiTuong({
+          tu_chuong: { type: 'integer' }, tuoi: enumChuoi(TUOI), toc: enumChuoi(KIEU_TOC), mau_toc: enumChuoi(MAU_TOC), ao: enumChuoi(KIEU_AO),
+          mau_ao: chuoi, mau_quan: chuoi, kinh: { type: 'boolean' }, rau: enumChuoi(RAU), vat_dung: enumChuoi(DAO_CU), mo_ta: chuoi,
+        }),
+      },
+    }),
+  })
+}
+
 // ---------- 3. Kịch bản: giọng kể (nguoi_ke) dẫn chính, Mèo Mun & Robot Bit xen vào ----------
-export const NGUOI_NOI_PHIM = ['nguoi_ke', ...NGUOI_NOI] as const
-const CauPhimSchema = CauSchema.extend({ ai: z.enum(NGUOI_NOI_PHIM), tai_hien: z.boolean(), the_moc: z.string() })
+// nhan_vat_chinh: chính người được kể (nhân vật hoạt hình ở bước 2b) — đứng trên sân khấu khi người kể nói về họ, nói
+// những câu trích dẫn có thật (hoặc tái hiện có gắn nhãn)
+export const NGUOI_NOI_PHIM = ['nguoi_ke', 'nhan_vat_chinh', ...NGUOI_NOI] as const
+const NHAN_VAT_PHU_PHIM = [...NHAN_VAT_PHU, 'nhan_vat_chinh'] as const
+const CauPhimSchema = CauSchema.extend({ ai: z.enum(NGUOI_NOI_PHIM), nhan_vat_phu: z.enum(NHAN_VAT_PHU_PHIM), tai_hien: z.boolean(), the_moc: z.string() })
 export type CauPhim = z.infer<typeof CauPhimSchema>
 const PhanPhimSchema = z.object({ loi: z.array(CauPhimSchema).min(6).max(80), moc: MocSchema })
 const JSON_CAU_PHIM = {
   ...JSON_CAU,
-  properties: { ...JSON_CAU.properties, ai: { type: 'string', enum: [...NGUOI_NOI_PHIM] }, tai_hien: { type: 'boolean' }, the_moc: chuoi },
+  properties: {
+    ...JSON_CAU.properties,
+    ai: { type: 'string', enum: [...NGUOI_NOI_PHIM] },
+    nhan_vat_phu: { type: 'string', enum: [...NHAN_VAT_PHU_PHIM] },
+    tai_hien: { type: 'boolean' },
+    the_moc: chuoi,
+  },
   required: [...JSON_CAU.required, 'tai_hien', 'the_moc'],
 }
 
@@ -148,7 +207,7 @@ export async function vietPhanPhim(o: {
   const system = `${PHIM_DAU}
 
 STAGE 3 — SCRIPT of one chapter, for the channel's animated version: a documentary narrator tells the story over cartoon scenes, and the two mascots sometimes interject.
-Speakers ("ai"): nguoi_ke = the documentary narrator (voiceover, cinematic, calm and gripping; about 40-50% of the lines, carrying the story forward); meo = Mèo Mun, a curious cat who asks the question viewers would ask or reacts emotionally (about 10-15%); robot = Robot Bit, who adds a short clear explanation or context (about 10-15%); extras about 25-35% of the lines: the people of this life seen from many sides — family, mentors, partners, rivals, employees, customers, journalists, officials, critics, experts. Tell the story from several sides, like a lively documentary: bring in 3 to 5 different extras (people involved, an expert, a supporter, a critic, an ordinary person affected, a reporter…), each speaking 2 to 5 lines in their own voice and personality. Include short exchanges where two extras talk to each other (an interview by a reporter, a question and answer, a friendly argument, a family conversation) for 3 to 6 lines; at most two different extras take part in one exchange, then hosts react. Give each extra a distinct way of speaking (an old farmer speaks simply and warmly, an expert precisely, a reporter asks sharp questions, a young student is enthusiastic). Every extra line that is not a documented quote from the sources is a dramatized reconstruction (tai_hien true) and must stay faithful to the documented facts and viewpoints; never invent events, numbers or private details through them. Extras (also shown silently with nhan_vat_phu while the narrator talks about such a person — family, mentors, partners, rivals, workers, officials…): ${MO_TA_NHAN_VAT_PHU}.
+Speakers ("ai"): nguoi_ke = the documentary narrator (voiceover, cinematic, calm and gripping; about 40-50% of the lines, carrying the story forward); nhan_vat_chinh = ${o.ten} as the film's cartoon protagonist, who speaks about 5-10% of the lines: their documented quotes from the sources (tai_hien false), or short dramatized reconstructions faithful to the facts (tai_hien true), at the key moments (a decision, a turning point, a famous sentence);meo = Mèo Mun, a curious cat who asks the question viewers would ask or reacts emotionally (about 10-15%); robot = Robot Bit, who adds a short clear explanation or context (about 10-15%); extras about 25-35% of the lines: the people of this life seen from many sides — family, mentors, partners, rivals, employees, customers, journalists, officials, critics, experts. Tell the story from several sides, like a lively documentary: bring in 3 to 5 different extras (people involved, an expert, a supporter, a critic, an ordinary person affected, a reporter…), each speaking 2 to 5 lines in their own voice and personality. Include short exchanges where two extras talk to each other (an interview by a reporter, a question and answer, a friendly argument, a family conversation) for 3 to 6 lines; at most two different extras take part in one exchange, then hosts react. Give each extra a distinct way of speaking (an old farmer speaks simply and warmly, an expert precisely, a reporter asks sharp questions, a young student is enthusiastic). Every extra line that is not a documented quote from the sources is a dramatized reconstruction (tai_hien true) and must stay faithful to the documented facts and viewpoints; never invent events, numbers or private details through them. Extras (also shown silently with nhan_vat_phu while the narrator talks about such a person — family, mentors, partners, rivals, workers, officials…): ${MO_TA_NHAN_VAT_PHU}.
 Rules:
 - Write ${o.soCau} lines for this chapter, not fewer, covering only what this chapter of the plan says, in order. Never pad, never repeat; every line adds a fact, a scene, an emotion, a question or a reveal. Something new every 30-60 seconds; plant open loops and pay them off.
 - Documentary style, not Wikipedia: scenes, human behaviour, specific details, conflict, emotion; do not read lists of dates or stuff numbers.
@@ -156,7 +215,7 @@ Rules:
 - A sentence put in a real person's mouth that is not a documented quote is a dramatized reconstruction: set tai_hien true for that line (it will be shown with a "Tái hiện" tag); every other line tai_hien false. Prefer the narrator telling it instead.
 - the_moc: when the story jumps to a new year or place, a short card like "1993 · Kharkov, Ukraina" (Vietnamese); otherwise an empty string.
 - Each line at most 30 words, written to be read aloud: no emoji, hashtags or URLs. Keep the channel name exactly as "Công Nghệ 24H".
-- For the narrator, nhan_vat_phu may show the kind of person the line is about (for example doanh_nhan for the businessman as a generic cartoon figure, never a real likeness), and dao_cu / bang / minh_hoa illustrate the line as usual. cam_xuc of narrator lines describes the mood of the line.
+- nhan_vat_phu shows who the line is about on stage: when the narrator (or Mèo Mun / Robot Bit) talks about ${o.ten}, set nhan_vat_phu to nhan_vat_chinh so the protagonist acts the scene while it is told; when it is about another person, show the kind of person (for example doanh_nhan for a business partner, ba_lao for a grandmother) as a generic cartoon figure, never a real likeness; when an extra speaks, the same extra; when nhan_vat_chinh speaks, nhan_vat_chinh. dao_cu / bang / minh_hoa illustrate the line as usual. cam_xuc of narrator lines describes the mood of the line.
 ${LUAT_HINH}- moc: the hook shown in big letters for the first 2 seconds of the film: chu at most 8 Vietnamese words, truthful; bieu_tuong one emoji. (Only used for chapter 1, but always fill it.)`
   const keHoach = cc.phan.map((p, i) => `Chapter ${i + 1}${i + 1 === k ? ' (WRITE THIS ONE)' : ''}: ${p.tieu_de}\nEmotional curve: ${p.nhip}\n${p.noi_dung}`).join('\n\n')
   const noiDung = `Person: ${o.ten}

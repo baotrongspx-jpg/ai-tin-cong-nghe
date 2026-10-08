@@ -5,13 +5,20 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { BOI_CANH } from './boiCanh.mjs'
-import { NHAN_VAT_PHU, nguoiKeSvg } from './nhanVatPhu.mjs'
+import { NHAN_VAT_PHU, nguoiKeSvg, nhanVatChinhSvg } from './nhanVatPhu.mjs'
 import { meoSvg, robotSvg } from './nhanVatChinh.mjs'
+import { DAO_CU } from './daoCu.mjs'
 import { CSS_MINH_HOA, MINH_HOA, mocMoDau } from './minhHoa.mjs'
 
 const GOC = resolve(process.argv[2] ?? '.')
-const { nhan_vat, loi, moc, kenh = 'Công Nghệ 24H', chu_de = 'AI', kho = 'doc', the_chuong = null, man_ket = false } = JSON.parse(readFileSync(join(GOC, 'artifacts/loi_thoai.json'), 'utf8'))
+const { nhan_vat, loi, moc, kenh = 'Công Nghệ 24H', chu_de = 'AI', kho = 'doc', the_chuong = null, man_ket = false, nhan_vat_chinh = null } = JSON.parse(readFileSync(join(GOC, 'artifacts/loi_thoai.json'), 'utf8'))
 const doDai = JSON.parse(readFileSync(join(GOC, 'artifacts/do_dai.json'), 'utf8'))
+// Phim tiểu sử: người được kể là một nhân vật trên sân khấu như nhân vật phụ (xuất hiện, nói, nhép miệng, rời đi),
+// vẽ theo bản thiết kế AI của chương này (lib/youtube.ts: loiThoaiGui)
+if (nhan_vat_chinh?.hinh) {
+  const v = nhanVatChinhSvg(nhan_vat_chinh.hinh)
+  NHAN_VAT_PHU.nhan_vat_chinh = { mau: '#fde68a', bieu_tuong: '⭐', ten: nhan_vat_chinh.ten ?? 'Nhân vật chính', svg: v.svg, viewBox: v.viewBox }
+}
 // kho "ngang" (YouTube 1920x1080): "thế giới" (nền, nhân vật, đạo cụ) vẫn vẽ theo toạ độ dọc 1080x1920, chỉ đặt lệch
 // để khung hình thấy vùng x -420..1500, y 300..1380; nền nối dài hai bên bằng bản soi gương; hai nhân vật đứng giãn ra.
 // Các lớp phủ (tên kênh, bảng tin, phụ đề, câu giật tít) đặt theo toạ độ khung hình.
@@ -389,7 +396,7 @@ const nvPhu = doanPhu.map((dp, k) => {
   tw.push(`tl.to("#o-robot", { x: ${dp.doi ? 170 : 80}, duration: 0.5, ease: "power2.inOut" }, ${f(vao)});`)
   // Mèo / Bit về chỗ cũ khi người cuối cùng của cảnh rời đi
   if (dp.het === dp.hetCum) tw.push(`tl.to(["#o-meo", "#o-robot"], { x: 0, duration: 0.5, ease: "power2.inOut" }, ${f(het - 0.1)});`)
-  return `<div id="${id}" class="nv-phu" style="left:${354 + dp.lech}px"><svg viewBox="0 0 400 600" width="372" height="558" class="nv">${NHAN_VAT_PHU[dp.ten].svg(id)}</svg></div>`
+  return `<div id="${id}" class="nv-phu" style="left:${354 + dp.lech}px"><svg viewBox="${NHAN_VAT_PHU[dp.ten].viewBox ?? '0 0 400 600'}" width="372" height="558" class="nv">${NHAN_VAT_PHU[dp.ten].svg(id)}</svg></div>`
 })
 
 // ── Chỉ dẫn đạo diễn AI chọn cho từng câu (khi có): khung hình + chuyển động máy quay ─
@@ -512,32 +519,6 @@ loi.forEach((l, i) => {
 })
 
 // ── Đạo cụ: hiện bên cạnh người nói theo nội dung câu (AI chọn), bay nhẹ rồi biến mất ─
-const DAO_CU = {
-  dien_thoai: '📱', laptop: '💻', kinh_lup: '🔍', bieu_do: '📈', tien: '💰', khien: '🛡️',
-  coi_bao: '🚨', chip: '🔌', o_to: '🚗', ten_lua: '🚀', bong_den: '💡', o_khoa: '🔒',
-  the_ngan_hang: '💳', robot: '🤖', tai_lieu: '📄', dong_ho: '⏰', trai_dat: '🌍', tay_cam_game: '🎮',
-  may_anh: '📷', tai_nghe: '🎧', cup: '🏆', tin_nhan: '💬', canh_bao: '⚠️', vu_tru: '🛰️',
-  pin: '🔋', mang: '📶', internet: '🌐', tin_nong: '📰', toc_do: '⚡', ly_nuoc: '🥛',
-  ca_phe: '☕', tra: '🍵', ly_ruou: '🍷', bat_com: '🍚', to_mi: '🍜', dua: '🥢',
-  noi_lau: '🍲', banh_mi: '🥖', banh_kem: '🎂', trai_cay: '🍎', bong_lua: '🌾', con_ca: '🐟',
-  chia_khoa: '🔑', nha: '🏠', den_cay: '🕯️', ghe_sofa: '🛋️', but_chi: '✏️', but_bi: '🖊️',
-  sach: '📚', so_tay: '📒', cap_sach: '🎒', thuoc_ke: '📏', cai_keo: '✂️', ghim: '📌',
-  lich: '📅', ban_do: '🗺️', mu_tot_nghiep: '🎓', ke_hoach: '📋', thu: '✉️', may_tinh_tien: '🧮',
-  o_cung: '💾', may_in: '🖨️', cap_tai_lieu: '💼', dien_thoai_ban: '☎️', bua: '🔨', co_le: '🔧',
-  tua_vit: '🪛', banh_rang: '⚙️', hop_do_nghe: '🧰', cai_thang: '🪜', nam_cham: '🧲', cay_cau: '🏗️',
-  nha_may: '🏭', toa_nha: '🏢', ngan_hang: '🏦', xe_ui: '🚜', ong_tiem: '💉', thuoc: '💊',
-  ong_nghiem: '🧪', kinh_hien_vi: '🔬', kinh_vien_vong: '🔭', adn: '🧬', nhiet_ke: '🌡️', trai_tim: '❤️',
-  tim_vo: '💔', nguyen_tu: '⚛️', dong_xu: '🪙', tien_giay: '💵', kim_cuong: '💎', bat_tay: '🤝',
-  gio_hang: '🛒', hop_qua: '🎁', bieu_do_giam: '📉', bieu_do_cot: '📊', can_cong_ly: '⚖️', vuong_mien: '👑',
-  the_ten: '🏷️', vali: '🧳', xe_may: '🛵', xe_dap: '🚲', xe_buyt: '🚌', tau_hoa: '🚆',
-  may_bay: '✈️', tau_thuy: '🚢', xe_tai: '🚚', tram_xang: '⛽', micro: '🎤', ti_vi: '📺',
-  loa: '📢', dan_guitar: '🎸', not_nhac: '🎵', bang_phim: '🎬', bang_mau: '🎨', mat_na: '🎭',
-  chuong: '🔔', bong_da: '⚽', huy_chuong: '🥇', muc_tieu: '🎯', co_dich: '🏁', co_hieu: '🚩',
-  ngoi_sao: '⭐', phao_hoa: '🎆', bong_bay: '🎈', cay_xanh: '🌳', mam_cay: '🌱', mat_troi: '☀️',
-  mua: '🌧️', bao_giong: '⛈️', ngon_lua: '🔥', giot_nuoc: '💧', bong_tuyet: '❄️', cau_vong: '🌈',
-  ngoi_sao_bang: '🌠', dau_hoi: '❓', dau_than: '❗', dau_tich: '✅', dau_x: '❌', bom: '💣',
-  dong_ho_cat: '⏳', xich: '⛓️', tui_rac: '🗑️',
-}
 const daoCu = []
 loi.forEach((l, i) => {
   const bt = DAO_CU[l.dao_cu]

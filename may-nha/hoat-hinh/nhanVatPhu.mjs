@@ -4,6 +4,7 @@
 // Bộ phận có id để diễn: <id>-dau (xoay quanh cổ 200 250), <id>-tay-phai / <id>-tay-trai (xoay quanh vai 270 300 / 130 300;
 // đồ cầm tay vẽ trong nhóm tay nên cử động theo tay), <id>-mieng-dong / <id>-mieng-mo (nhép miệng khi nói).
 // `mau`: màu nhãn + phụ đề khi nói, `ten`: tên hiện ở phụ đề. Tên khoá phải khớp lib/ai.ts (NHAN_VAT_PHU).
+import { DAO_CU } from './daoCu.mjs'
 const VIEN = '#1f2937'
 
 // Màu tối / sáng hơn một chút để đổ bóng
@@ -136,6 +137,74 @@ export const nguoiKeSvg = (id) => `
     <path d="M118 316 Q150 400 236 382" fill="none" stroke="#1f2937" stroke-width="9" stroke-linecap="round"/>
     <ellipse cx="246" cy="380" rx="22" ry="16" fill="#111827" stroke="#f97316" stroke-width="4"/>
   </g>`
+
+// ── Nhân vật chính của phim tiểu sử (người được kể), vẽ theo bản thiết kế AI (lib/aiPhim.ts: TaoHinh, một giai đoạn):
+// { gioi, da, tuoi, toc, mau_toc, ao, mau_ao, mau_quan, kinh, rau, vat_dung }. Vầng sáng vàng dưới chân để người xem
+// nhận ra vai chính; trẻ em thì nhỏ lại (viewBox rộng hơn). Trả { svg(id), viewBox }.
+const MAU_TOC_HEX = { den: '#1c1917', nau: '#6b3a1d', vang: '#eab308', bac: '#d1d5db', do: '#b45309' }
+const MAU_DA = { sang: '#fcd9b8', trung_binh: '#e9b48a', ngam: '#b97a56' }
+const hex = (x, mac) => (/^#[0-9a-f]{6}$/i.test(x ?? '') ? x : mac)
+export function nhanVatChinhSvg(h) {
+  const nu = h.gioi === 'nu'
+  const gia = h.tuoi === 'gia'
+  const mt = gia && h.mau_toc !== 'bac' ? '#cbd5e1' : (MAU_TOC_HEX[h.mau_toc] ?? MAU_TOC_HEX.den)
+  const ao = hex(h.mau_ao, '#1e3a8a')
+  const quan = hex(h.mau_quan, '#1f2937')
+  const da = MAU_DA[h.da] ?? MAU_DA.sang
+  const tocVe = {
+    ngan: { truoc: toc.ngan(mt) },
+    re_ngoi: { truoc: toc.reNgoi(mt) },
+    vuot: { truoc: `<path d="M110 186 C92 96 150 52 214 58 C268 62 306 104 290 184 C284 156 272 140 254 134 C234 112 196 104 168 116 C146 126 128 140 120 160 Z" fill="${mt}" ${vien(6)}/><path d="M160 90 Q206 64 256 92" fill="none" stroke="${pha(mt, 0.35)}" stroke-width="5" stroke-linecap="round"/>` },
+    dai: { sau: toc.daiSau(mt), truoc: toc.maiTruoc(mt) },
+    buoi: { sau: toc.buiSau(mt), truoc: toc.buiTruoc(mt) },
+    hoi: { truoc: `<path d="M114 196 Q108 150 132 132 L146 168 Z M286 196 Q292 150 268 132 L254 168 Z" fill="${mt}" ${vien(5)}/><path d="M168 112 Q200 102 232 112" fill="none" stroke="#ffffff66" stroke-width="5" stroke-linecap="round"/>` },
+    xoan: { truoc: [[130, 150], [150, 118], [182, 100], [218, 100], [250, 118], [270, 150]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="30" fill="${mt}" ${vien(5)}/>`).join('') + `<path d="M126 170 Q200 120 274 170 L274 150 Q200 110 126 150 Z" fill="${mt}"/>` },
+  }[h.toc] ?? { truoc: toc.ngan(mt) }
+  const rau =
+    h.rau === 'ria'
+      ? `<path d="M176 214 Q190 204 200 212 Q210 204 224 214 Q212 220 200 216 Q188 220 176 214 Z" fill="${mt}" ${vien(3)}/>`
+      : h.rau === 'quai_non'
+        ? `<path d="M182 236 Q200 270 218 236 Q200 246 182 236 Z" fill="${mt}" ${vien(3)}/>`
+        : h.rau === 'day'
+          ? `<path d="M126 196 Q132 276 200 284 Q268 276 274 196 Q262 236 236 240 Q218 226 200 230 Q182 226 164 240 Q138 236 126 196 Z" fill="${mt}" ${vien(4)}/>`
+          : ''
+  const kieu = {
+    vest: { co: 'vest', than: nu ? `<circle cx="200" cy="330" r="7" fill="#fde68a" ${vien(3)}/>` : caVat('#b91c1c') },
+    so_mi: { co: 'so_mi', than: `<circle cx="200" cy="340" r="4" fill="#e5e7eb"/><circle cx="200" cy="380" r="4" fill="#e5e7eb"/><circle cx="200" cy="420" r="4" fill="#e5e7eb"/>` },
+    ao_thun: { co: 'tron', than: '' },
+    ao_khoac: { co: 'vest', than: `<path d="M200 300 L200 470" stroke="${pha(ao, -0.35)}" stroke-width="5"/><rect x="146" y="400" width="34" height="8" rx="4" fill="${pha(ao, -0.3)}"/><rect x="220" y="400" width="34" height="8" rx="4" fill="${pha(ao, -0.3)}"/>` },
+    ao_len: { co: 'khong', than: `<path d="M170 286 Q200 304 230 286 L230 300 Q200 318 170 300 Z" fill="${pha(ao, -0.2)}" ${vien(4)}/><path d="M140 440 Q200 452 260 440" fill="none" stroke="${pha(ao, -0.25)}" stroke-width="5"/>` },
+    ao_dai: { co: 'tron', than: `<path d="M200 296 L200 470" stroke="${pha(ao, 0.3)}" stroke-width="4"/><path d="M186 300 Q200 312 214 300" fill="none" stroke="#fde68a" stroke-width="4"/>` },
+    quan_phuc: { co: 'so_mi', than: `<rect x="146" y="330" width="24" height="14" rx="3" fill="#facc15" ${vien(3)}/><rect x="230" y="330" width="24" height="14" rx="3" fill="#facc15" ${vien(3)}/><circle cx="200" cy="360" r="5" fill="#facc15"/><circle cx="200" cy="400" r="5" fill="#facc15"/><path d="M150 300 L172 290 M250 300 L228 290" stroke="#facc15" stroke-width="5"/>` },
+    ao_ba_ba: { co: 'tron', than: `<circle cx="200" cy="330" r="5" fill="${pha(ao, 0.4)}"/><circle cx="200" cy="370" r="5" fill="${pha(ao, 0.4)}"/><circle cx="200" cy="410" r="5" fill="${pha(ao, 0.4)}"/><rect x="146" y="420" width="30" height="26" rx="3" fill="${pha(ao, -0.15)}" ${vien(3)}/>` },
+  }[h.ao] ?? { co: 'tron', than: '' }
+  const vat = DAO_CU[h.vat_dung]
+  const tayPhai = vat ? `<text x="300" y="486" font-size="66" text-anchor="middle" font-family="Emoji, 'Segoe UI Emoji', sans-serif">${vat}</text>` : ''
+  const treEm = h.tuoi === 'tre_em'
+  return {
+    // Trẻ em nhỏ lại ~78% (chân vẫn chạm đất): viewBox rộng hơn quanh điểm chân (200, 585)
+    viewBox: treEm ? '-56 -169 512 769' : '0 0 400 600',
+    svg: (id) => `
+  <defs><radialGradient id="${id}-hq"><stop offset="0" stop-color="#fde68a" stop-opacity="0.85"/><stop offset="1" stop-color="#fde68a" stop-opacity="0"/></radialGradient></defs>
+  <ellipse cx="200" cy="584" rx="190" ry="34" fill="url(#${id}-hq)"/>
+  ${nguoi(id, {
+    da,
+    ao,
+    quan: h.ao === 'ao_dai' ? ao : quan,
+    vay: nu && (h.ao === 'ao_dai' || h.ao === 'vest'),
+    quanNgan: treEm && !nu,
+    co: kieu.co,
+    nu,
+    gia,
+    may: mt,
+    tocSau: tocVe.sau ?? '',
+    tocTruoc: tocVe.truoc + rau,
+    mat: (h.kinh ? kinh(gia ? '#78350f' : VIEN) : '') + matMacDinh(undefined, nu),
+    than: kieu.than,
+    tayPhai,
+  })}`,
+  }
+}
 
 export const NHAN_VAT_PHU = {
   nguoi_phu_nu: {

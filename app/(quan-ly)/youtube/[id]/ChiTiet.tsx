@@ -11,6 +11,7 @@ import HoSoPhim, { KhoiDuLieu } from './HoSoPhim'
 
 const NGUOI: Record<string, string> = {
   nguoi_ke: '🎙 Người kể',
+  nhan_vat_chinh: '⭐ Nhân vật chính',
   meo: '🐱 Mèo Mun',
   robot: '🤖 Robot Bit',
   nguoi_phu_nu: '👩 Người phụ nữ',
@@ -183,6 +184,7 @@ export default function ChiTiet({ dau, ttDau, dsNhac }: { dau: DuAnYT; ttDau: Tr
       }
       if (phim && !moi.phim?.nghien_cuu && !(await lam('Nghiên cứu nhân vật: đọc Wikipedia + tài liệu, kiểm chứng từng sự thật…', () => chayBuocPhimYouTube(moi.id, 'nghien_cuu')))) return
       if (phim && !moi.phim?.cau_chuyen && !(await lam('Phát triển câu chuyện: khán giả, góc kể, big idea, cấu trúc, hook, chia chương…', () => chayBuocPhimYouTube(moi.id, 'cau_chuyen')))) return
+      if (phim && !moi.phim?.tao_hinh && !(await lam('Thiết kế nhân vật chính: tuổi từng giai đoạn, tóc, trang phục, đồ vật đặc trưng…', () => chayBuocPhimYouTube(moi.id, 'tao_hinh')))) return
       for (let k = 1; k <= moi.phan.length; k++) {
         if (moi.phan[k - 1].loi) continue
         if (!(await lam(`AI đang viết kịch bản ${ten} ${k}/${moi.phan.length}…`, () => vietPhanYouTube(moi.id, k), k))) return
@@ -201,7 +203,7 @@ export default function ChiTiet({ dau, ttDau, dsNhac }: { dau: DuAnYT; ttDau: Tr
     }
   }
   // Chạy lại một giai đoạn của phim (nút "AI làm lại bước này"), rồi làm tiếp các việc còn thiếu
-  const chayLaiBuoc = async (buoc: 'nghien_cuu' | 'cau_chuyen' | 'ho_so' | 'dong_goi' | 'phan_canh', k?: number) => {
+  const chayLaiBuoc = async (buoc: 'nghien_cuu' | 'cau_chuyen' | 'tao_hinh' | 'ho_so' | 'dong_goi' | 'phan_canh', k?: number) => {
     setLoiViet('')
     setDangChay(buoc === 'phan_canh' ? `Phân cảnh lại chương ${k}…` : 'AI đang làm lại bước này…')
     setDangViet(k ?? null)
@@ -214,6 +216,10 @@ export default function ChiTiet({ dau, ttDau, dsNhac }: { dau: DuAnYT; ttDau: Tr
     setMoTa(kq.duAn.mo_ta)
     setThe(kq.duAn.the.join(', '))
     if (buoc === 'cau_chuyen') thongBao('ok', 'Đã chia chương mới — bấm "Chạy tiếp" để AI viết kịch bản')
+    if (buoc === 'tao_hinh') {
+      thongBao(kq.duAn.phim?.tao_hinh?.mac_dinh ? 'loi' : 'ok', kq.duAn.phim?.tao_hinh?.mac_dinh ? 'AI chưa thiết kế được, tạm dùng hình mặc định' : 'Đã thiết kế lại nhân vật chính — bấm Dựng video để dựng lại')
+      await capNhatTt()
+    }
   }
 
   useEffect(() => {
@@ -223,7 +229,7 @@ export default function ChiTiet({ dau, ttDau, dsNhac }: { dau: DuAnYT; ttDau: Tr
     const conThieu =
       dau.phan.some((x) => !x.loi) ||
       dau.phan.length === 0 ||
-      (dau.loai === 'tieu_su' && (!p?.nghien_cuu || !p.cau_chuyen || !p.ho_so || !p.dong_goi || dau.phan.some((x) => !x.canh)))
+      (dau.loai === 'tieu_su' && (!p?.nghien_cuu || !p.cau_chuyen || !p.tao_hinh || !p.ho_so || !p.dong_goi || dau.phan.some((x) => !x.canh)))
     // Gọi sau lượt vẽ đầu (không đặt state ngay trong effect)
     if (conThieu) setTimeout(() => void chayTiep(), 0)
     // Chỉ chạy một lần khi mở trang
@@ -454,6 +460,36 @@ export default function ChiTiet({ dau, ttDau, dsNhac }: { dau: DuAnYT; ttDau: Tr
           Trong YouTube Studio bấm Tạo → Tải video lên, chọn video trong thư mục Video-YouTube, dán tiêu đề, mô tả, thẻ (mục Hiện thêm), chọn &quot;Không, nội dung này không dành cho trẻ em&quot; rồi Xuất bản.
         </p>
       </section>
+
+      {d.loai === 'tieu_su' && d.phim?.tao_hinh && (
+        <section className="the grid gap-2 p-5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="font-bold">⭐ Nhân vật chính trên sân khấu: {d.phim.ten}</h2>
+            <button
+              type="button"
+              disabled={!!dangChay || dangLam}
+              onClick={() => confirm('AI thiết kế lại nhân vật chính? Các chương sẽ phải dựng lại.') && void chayLaiBuoc('tao_hinh')}
+              className="btn btn-sm btn-phu"
+            >
+              Thiết kế lại
+            </button>
+          </div>
+          <p className="text-sm text-slate-600">
+            Nhân vật hoạt hình (không phải chân dung thật), có vầng sáng vàng dưới chân. Tự đứng trên sân khấu mỗi khi người kể nói mà chưa có ai, khi lời thoại nhắc tới họ, và tự nói những câu trích dẫn của họ ({d.phim.tao_hinh.gioi === 'nu' ? 'giọng Mỹ Duyên' : 'giọng Thiện Minh'}).
+          </p>
+          {d.phim.tao_hinh.mac_dinh && <p className="text-sm text-amber-700">⚠ AI chưa thiết kế được, đang dùng hình mặc định. Bấm Thiết kế lại sau ít phút.</p>}
+          <ul className="grid gap-1.5 text-sm">
+            {d.phim.tao_hinh.giai_doan.map((g, i) => (
+              <li key={i} className="flex flex-wrap items-center gap-2">
+                <span className="chip bg-amber-100 text-amber-800">Từ chương {g.tu_chuong}</span>
+                <span className="h-4 w-4 rounded-full ring-1 ring-slate-300" style={{ background: g.mau_ao }} title="Màu áo" />
+                <span className="h-4 w-4 rounded-full ring-1 ring-slate-300" style={{ background: g.mau_quan }} title="Màu quần" />
+                <span>{g.mo_ta}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {d.loai === 'tieu_su' && <HoSoPhim d={d} chay={(buoc) => void chayLaiBuoc(buoc)} dangChay={!!dangChay} />}
 

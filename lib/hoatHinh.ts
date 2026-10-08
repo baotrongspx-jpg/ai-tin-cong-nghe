@@ -23,6 +23,8 @@ export const NHAN_VAT = {
   doanh_nhan: { ten: 'Doanh nhân', giong: 'Quốc Tuấn' },
   nha_khoa_hoc: { ten: 'Nhà khoa học', giong: 'Thiện Minh' },
   nguoi_dung: { ten: 'Người dùng', giong: 'Phạm Tuyên' },
+  // Người kể phim tài liệu (trang YouTube, phim tiểu sử): giọng kể chuyện, không đứng trên sân khấu
+  nguoi_ke: { ten: 'Người kể', giong: 'Thanh Bình' },
 }
 
 const bam = (x: unknown) => createHash('sha256').update(JSON.stringify(x)).digest('hex').slice(0, 16)

@@ -3,7 +3,10 @@
 import { revalidatePath } from 'next/cache'
 import { daDangNhap } from '@/lib/xacThuc'
 import { mayNhaTat } from '@/lib/giongDoc'
-import { docDuAn, guiDung, suaThongTin, taoDuAn, trangThaiDuAn, vietLoiPhan, xoaDuAn, type DuAnYT, type TrangThaiDuAn } from '@/lib/youtube'
+import {
+  chayBuocPhim, docDuAn, guiDung, suaThongTin, taoDuAn, taoPhim, trangThaiDuAn, vietLoiPhan, xoaDuAn,
+  type BuocPhim, type DuAnYT, type TrangThaiDuAn,
+} from '@/lib/youtube'
 
 type Loi = { ok: false; loi: string }
 const baoLoi = (e: unknown): Loi => ({ ok: false, loi: e instanceof Error ? e.message : 'Có lỗi' })
@@ -18,6 +21,27 @@ export async function taoVideoYouTube(o: { baiIds: string[]; yTuong: string; phu
     const d = await taoDuAn(o)
     revalidatePath('/youtube')
     return { ok: true, id: d.id }
+  } catch (e) {
+    return baoLoi(e)
+  }
+}
+
+// Phim tiểu sử: tạo dự án (nhanh, chưa gọi AI); các giai đoạn chạy sau bằng chayBuocPhimYouTube
+export async function taoPhimTieuSu(o: { ten: string; ghiChu: string; taiLieu: string; phut: number }): Promise<{ ok: true; id: string } | Loi> {
+  try {
+    await chanChuaDangNhap()
+    const d = await taoPhim(o)
+    revalidatePath('/youtube')
+    return { ok: true, id: d.id }
+  } catch (e) {
+    return baoLoi(e)
+  }
+}
+
+export async function chayBuocPhimYouTube(id: string, buoc: BuocPhim, k?: number): Promise<{ ok: true; duAn: DuAnYT } | Loi> {
+  try {
+    await chanChuaDangNhap()
+    return { ok: true, duAn: await chayBuocPhim(id, buoc, k) }
   } catch (e) {
     return baoLoi(e)
   }

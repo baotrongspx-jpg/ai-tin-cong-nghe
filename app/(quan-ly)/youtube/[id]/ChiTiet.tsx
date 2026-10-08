@@ -4,12 +4,13 @@ import { useEffect, useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { DuAnYT, TrangThaiDuAn, TrangThaiPhan } from '@/lib/youtube'
-import type { LoiThoai } from '@/lib/ai'
 import { thongBao } from '@/app/ThongBao'
 import { IconChep, IconMo, IconXong, IconYouTube, Xoay } from '@/app/BieuTuong'
-import { dungVideoYouTube, layTrangThaiYouTube, luuThongTinYouTube, vietPhanYouTube, xoaVideoYouTube } from '../actions'
+import { chayBuocPhimYouTube, dungVideoYouTube, layTrangThaiYouTube, luuThongTinYouTube, vietPhanYouTube, xoaVideoYouTube } from '../actions'
+import HoSoPhim, { KhoiDuLieu } from './HoSoPhim'
 
 const NGUOI: Record<string, string> = {
+  nguoi_ke: '🎙 Người kể',
   meo: '🐱 Mèo Mun',
   robot: '🤖 Robot Bit',
   nguoi_phu_nu: '👩 Người phụ nữ',
@@ -21,7 +22,7 @@ const NGUOI: Record<string, string> = {
 }
 
 // Ước lượng độ dài theo số chữ (~19 ký tự mỗi giây + nghỉ giữa câu), giống lib/youtube.ts
-const uocGiay = (loi: LoiThoai | null) => (loi ? loi.reduce((t, l) => t + l.chu.length / 19 + 0.25, 0) : 0)
+const uocGiay = (loi: { chu: string }[] | null) => (loi ? loi.reduce((t, l) => t + l.chu.length / 19 + 0.25, 0) : 0)
 const phutGiay = (giay: number) => `${Math.floor(giay / 60)}:${String(Math.round(giay % 60)).padStart(2, '0')}`
 
 // Chỉ dẫn đạo diễn AI chọn cho từng câu (hiện thành nhãn nhỏ dưới lời thoại)
@@ -72,6 +73,7 @@ export default function ChiTiet({ dau, ttDau }: { dau: DuAnYT; ttDau: TrangThaiD
   const [d, setD] = useState(dau)
   const [tt, setTt] = useState(ttDau)
   const [dangViet, setDangViet] = useState<number | null>(null) // phần AI đang viết
+  const [dangChay, setDangChay] = useState<string | null>(null) // việc AI đang làm (hiện thành dòng trạng thái)
   const [loiViet, setLoiViet] = useState('')
   const [dangLam, startTransition] = useTransition()
   const [tieuDe, setTieuDe] = useState(dau.tieu_de)
@@ -84,30 +86,80 @@ export default function ChiTiet({ dau, ttDau }: { dau: DuAnYT; ttDau: TrangThaiD
     if (kq.ok) setTt(kq.tt)
   }
 
-  // AI viết lần lượt các phần chưa có lời thoại (mỗi phần một lượt gọi để không quá thời gian của máy chủ)
-  const vietCacPhan = async (chiPhan?: number) => {
+  // AI làm lần lượt mọi việc còn thiếu (mỗi việc một lượt gọi máy chủ để không quá thời gian):
+  // video thường: viết lời từng phần; phim tiểu sử: nghiên cứu → câu chuyện → kịch bản từng chương → hồ sơ hình ảnh →
+  // phân cảnh từng chương → đóng gói YouTube. chiPhan: chỉ viết lại một phần.
+  type KetQua = { ok: true; duAn: DuAnYT } | { ok: false; loi: string }
+  const chayTiep = async (chiPhan?: number) => {
     setLoiViet('')
     let moi = d
-    for (let k = 1; k <= moi.phan.length; k++) {
-      if (chiPhan ? k !== chiPhan : moi.phan[k - 1].loi) continue
-      setDangViet(k)
-      const kq = await vietPhanYouTube(moi.id, k)
+    const lam = async (moTaViec: string, viec: () => Promise<KetQua>, k?: number) => {
+      setDangChay(moTaViec)
+      setDangViet(k ?? null)
+      const kq = await viec()
       if (!kq.ok) {
         setLoiViet(kq.loi)
-        break
+        return false
       }
+      if (kq.duAn.tieu_de !== moi.tieu_de) setTieuDe(kq.duAn.tieu_de)
+      if (kq.duAn.mo_ta !== moi.mo_ta) setMoTa(kq.duAn.mo_ta)
+      if (kq.duAn.the.join(', ') !== moi.the.join(', ')) setThe(kq.duAn.the.join(', '))
       moi = kq.duAn
       setD(moi)
+      return true
     }
+    try {
+      const phim = moi.loai === 'tieu_su'
+      const ten = phim ? 'chương' : 'phần'
+      if (chiPhan) {
+        await lam(`AI đang viết lại ${ten} ${chiPhan}…`, () => vietPhanYouTube(moi.id, chiPhan), chiPhan)
+        return
+      }
+      if (phim && !moi.phim?.nghien_cuu && !(await lam('Nghiên cứu nhân vật: đọc Wikipedia + tài liệu, kiểm chứng từng sự thật…', () => chayBuocPhimYouTube(moi.id, 'nghien_cuu')))) return
+      if (phim && !moi.phim?.cau_chuyen && !(await lam('Phát triển câu chuyện: khán giả, góc kể, big idea, cấu trúc, hook, chia chương…', () => chayBuocPhimYouTube(moi.id, 'cau_chuyen')))) return
+      for (let k = 1; k <= moi.phan.length; k++) {
+        if (moi.phan[k - 1].loi) continue
+        if (!(await lam(`AI đang viết kịch bản ${ten} ${k}/${moi.phan.length}…`, () => vietPhanYouTube(moi.id, k), k))) return
+      }
+      if (!phim) return
+      if (!moi.phim?.ho_so && !(await lam('Hồ sơ hình ảnh: nhân vật, bối cảnh, thiết kế, màu, nhạc…', () => chayBuocPhimYouTube(moi.id, 'ho_so')))) return
+      for (let k = 1; k <= moi.phan.length; k++) {
+        if (moi.phan[k - 1].canh) continue
+        if (!(await lam(`Phân cảnh, shot list và prompt video AI chương ${k}/${moi.phan.length}…`, () => chayBuocPhimYouTube(moi.id, 'phan_canh', k), k))) return
+      }
+      if (!moi.phim?.dong_goi && !(await lam('Đóng gói YouTube: 20 tiêu đề, thumbnail, mô tả, Shorts, chấm điểm…', () => chayBuocPhimYouTube(moi.id, 'dong_goi')))) return
+    } finally {
+      setDangChay(null)
+      setDangViet(null)
+      await capNhatTt()
+    }
+  }
+  // Chạy lại một giai đoạn của phim (nút "AI làm lại bước này"), rồi làm tiếp các việc còn thiếu
+  const chayLaiBuoc = async (buoc: 'nghien_cuu' | 'cau_chuyen' | 'ho_so' | 'dong_goi' | 'phan_canh', k?: number) => {
+    setLoiViet('')
+    setDangChay(buoc === 'phan_canh' ? `Phân cảnh lại chương ${k}…` : 'AI đang làm lại bước này…')
+    setDangViet(k ?? null)
+    const kq = await chayBuocPhimYouTube(d.id, buoc, k)
+    setDangChay(null)
     setDangViet(null)
-    await capNhatTt()
+    if (!kq.ok) return setLoiViet(kq.loi)
+    setD(kq.duAn)
+    setTieuDe(kq.duAn.tieu_de)
+    setMoTa(kq.duAn.mo_ta)
+    setThe(kq.duAn.the.join(', '))
+    if (buoc === 'cau_chuyen') thongBao('ok', 'Đã chia chương mới — bấm "Chạy tiếp" để AI viết kịch bản')
   }
 
   useEffect(() => {
     if (daChay.current) return
     daChay.current = true
+    const p = dau.phim
+    const conThieu =
+      dau.phan.some((x) => !x.loi) ||
+      dau.phan.length === 0 ||
+      (dau.loai === 'tieu_su' && (!p?.nghien_cuu || !p.cau_chuyen || !p.ho_so || !p.dong_goi || dau.phan.some((x) => !x.canh)))
     // Gọi sau lượt vẽ đầu (không đặt state ngay trong effect)
-    if (dau.phan.some((p) => !p.loi)) setTimeout(() => void vietCacPhan(), 0)
+    if (conThieu) setTimeout(() => void chayTiep(), 0)
     // Chỉ chạy một lần khi mở trang
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -123,7 +175,7 @@ export default function ChiTiet({ dau, ttDau }: { dau: DuAnYT; ttDau: TrangThaiD
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dangCho])
 
-  const daVietDu = d.phan.every((p) => p.loi)
+  const daVietDu = d.phan.length > 0 && d.phan.every((p) => p.loi)
   const soXong = tt.phan.filter((p) => p.loai === 'xong').length
   const tongGiay = d.phan.reduce((t, p) => t + uocGiay(p.loi), 0)
   const coViecDung = tt.phan.some((p) => p.loai === 'chua_dung' || p.loai === 'loi')
@@ -165,15 +217,30 @@ export default function ChiTiet({ dau, ttDau }: { dau: DuAnYT; ttDau: TrangThaiD
           <Link href="/youtube" className="text-sm font-semibold text-slate-500 hover:text-slate-800">
             ← Video YouTube
           </Link>
+          {d.loai === 'tieu_su' && <p className="mt-1 text-xs font-bold uppercase tracking-wide text-violet-600">🎬 Phim tiểu sử · {d.phim?.ten}</p>}
           <h1 className="mt-1 text-2xl font-extrabold leading-snug tracking-tight">{d.tieu_de}</h1>
           <p className="mt-1 text-sm text-slate-500">
-            {d.phan.length} phần · {daVietDu ? `dài khoảng ${phutGiay(tongGiay)} phút` : `dự kiến ${d.phut} phút`} · khung ngang 16:9
+            {d.phan.length} {d.loai === 'tieu_su' ? 'chương' : 'phần'} · {daVietDu ? `dài khoảng ${phutGiay(tongGiay)} phút` : `dự kiến ${d.phut} phút`} · khung ngang 16:9
           </p>
         </div>
         <button type="button" onClick={xoa} disabled={dangLam} className="btn btn-sm btn-nhat text-red-600">
           Xoá video
         </button>
       </div>
+
+      {dangChay && (
+        <p className="flex items-center gap-2 rounded-xl bg-violet-50 p-3 text-sm text-violet-700 ring-1 ring-violet-200">
+          <Xoay /> {dangChay} (giữ trang này mở)
+        </p>
+      )}
+      {loiViet && !dangChay && (
+        <p className="flex flex-wrap items-center gap-3 rounded-xl bg-red-50 p-3 text-sm text-red-700 ring-1 ring-red-200">
+          {loiViet}
+          <button type="button" onClick={() => chayTiep()} className="btn btn-sm btn-phu">
+            Chạy tiếp
+          </button>
+        </p>
+      )}
 
       {tt.mayNha && <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800 ring-1 ring-amber-200">⚠ {tt.mayNha}. Mở máy nhà và chạy chay-vieneu.bat thì mới dựng được video.</p>}
 
@@ -200,7 +267,7 @@ export default function ChiTiet({ dau, ttDau }: { dau: DuAnYT; ttDau: TrangThaiD
                   {!daVietDu ? 'Chờ AI viết xong lời thoại các phần' : soXong ? `Đã dựng ${soXong}/${d.phan.length} phần` : 'Máy nhà đọc giọng và dựng hình lần lượt từng phần, rồi ghép thành một video'}
                 </p>
               </div>
-              <button type="button" onClick={() => dung()} disabled={dangLam || !daVietDu || !!dangViet || !(coViecDung || choGhep)} className="btn bg-red-600 px-5 py-2.5 text-white hover:bg-red-700">
+              <button type="button" onClick={() => dung()} disabled={dangLam || !daVietDu || !!dangChay || !(coViecDung || choGhep)} className="btn bg-red-600 px-5 py-2.5 text-white hover:bg-red-700">
                 {dangLam ? <Xoay /> : <IconYouTube className="h-4 w-4" />}
                 {!coViecDung && !choGhep && tt.phan.some((p) => p.loai === 'cho' || p.loai === 'dang_lam') ? 'Đang dựng…' : soXong || tt.phan.some((p) => p.loai === 'cho' || p.loai === 'dang_lam') ? 'Dựng các phần còn lại' : 'Dựng video'}
               </button>
@@ -263,34 +330,23 @@ export default function ChiTiet({ dau, ttDau }: { dau: DuAnYT; ttDau: TrangThaiD
         </p>
       </section>
 
+      {d.loai === 'tieu_su' && <HoSoPhim d={d} chay={(buoc) => void chayLaiBuoc(buoc)} dangChay={!!dangChay} />}
+
       {/* Các phần */}
       <section className="grid gap-3">
         <h2 className="font-bold">Kịch bản</h2>
-        {dangViet && (
-          <p className="flex items-center gap-2 rounded-xl bg-violet-50 p-3 text-sm text-violet-700 ring-1 ring-violet-200">
-            <Xoay /> AI đang viết lời thoại phần {dangViet}/{d.phan.length}… (mỗi phần khoảng 1 phút, giữ trang này mở)
-          </p>
-        )}
-        {loiViet && (
-          <p className="flex flex-wrap items-center gap-3 rounded-xl bg-red-50 p-3 text-sm text-red-700 ring-1 ring-red-200">
-            {loiViet}
-            <button type="button" onClick={() => vietCacPhan()} className="btn btn-sm btn-phu">
-              Viết tiếp
-            </button>
-          </p>
-        )}
         {d.phan.map((p, i) => {
           const k = i + 1
           const tp = tt.phan[i] ?? { loai: 'chua_viet' }
           const [nhan, mau] = NHAN[tp.loai]
-          const khoa = !!dangViet || dangLam
+          const khoa = !!dangChay || dangLam
           return (
             <article key={k} className="the grid gap-2 p-4">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm font-extrabold text-red-600">Phần {k}</span>
+                <span className="text-sm font-extrabold text-red-600">{d.loai === 'tieu_su' ? 'Chương' : 'Phần'} {k}</span>
                 <h3 className="min-w-0 flex-1 font-bold">{p.tieu_de}</h3>
                 <span className={`chip ${mau}`}>
-                  {tp.loai === 'dang_lam' ? `${nhan} ${tp.phanTram}%` : dangViet === k ? 'AI đang viết…' : nhan}
+                  {tp.loai === 'dang_lam' ? `${nhan} ${tp.phanTram}%` : dangViet === k ? 'AI đang làm…' : nhan}
                 </span>
               </div>
               {p.nhip && <p className="text-xs font-semibold text-violet-700">Nhịp cảm xúc: {p.nhip}</p>}
@@ -307,6 +363,8 @@ export default function ChiTiet({ dau, ttDau }: { dau: DuAnYT; ttDau: TrangThaiD
                       <li key={j} className="grid grid-cols-[8.5rem_minmax(0,1fr)] gap-2">
                         <span className="truncate text-xs font-semibold leading-5 text-slate-500">{NGUOI[l.ai] ?? l.ai}</span>
                         <span>
+                          {l.the_moc && <span className="mr-1 rounded bg-slate-200 px-1 text-[11px] font-semibold text-slate-700">📍 {l.the_moc}</span>}
+                          {l.tai_hien && <span className="mr-1 rounded bg-amber-100 px-1 text-[11px] font-semibold text-amber-800">Tái hiện</span>}
                           {l.chu}
                           {chiDan(l) && <span className="block text-[11px] text-slate-400">{chiDan(l)}</span>}
                         </span>
@@ -315,12 +373,25 @@ export default function ChiTiet({ dau, ttDau }: { dau: DuAnYT; ttDau: TrangThaiD
                   </ol>
                 </details>
               )}
+              {p.canh && (
+                <details className="rounded-xl bg-violet-50/60 p-3 ring-1 ring-violet-100">
+                  <summary className="cursor-pointer text-sm font-semibold text-violet-800">Phân cảnh, shot list và prompt video AI ({p.canh.length} cảnh)</summary>
+                  <div className="mt-2 grid gap-2">
+                    <KhoiDuLieu v={p.canh} />
+                  </div>
+                </details>
+              )}
               <div className="flex flex-wrap gap-2">
+                {d.loai === 'tieu_su' && p.loi && (
+                  <button type="button" disabled={khoa} onClick={() => void chayLaiBuoc('phan_canh', k)} className="btn btn-sm btn-phu">
+                    {p.canh ? 'AI phân cảnh lại' : 'AI phân cảnh chương này'}
+                  </button>
+                )}
                 {p.loi && (
                   <button
                     type="button"
                     disabled={khoa || tp.loai === 'cho' || tp.loai === 'dang_lam'}
-                    onClick={() => confirm(`AI viết lại lời thoại phần ${k}? Phần này sẽ phải dựng lại.`) && vietCacPhan(k)}
+                    onClick={() => confirm(`AI viết lại lời thoại phần ${k}? Phần này sẽ phải dựng lại.`) && chayTiep(k)}
                     className="btn btn-sm btn-phu"
                   >
                     AI viết lại phần này

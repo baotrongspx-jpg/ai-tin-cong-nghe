@@ -4,14 +4,19 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { thongBao } from '@/app/ThongBao'
 import { Xoay } from '@/app/BieuTuong'
-import { taoVideoYouTube } from './actions'
+import { taoPhimTieuSu, taoVideoYouTube } from './actions'
 
 const DS_PHUT = [3, 5, 10, 15, 20]
 const boDau = (s: string) => s.normalize('NFD').replace(/\p{M}/gu, '').replace(/đ/gi, 'd').toLowerCase()
 
-// Khung tạo video mới: chọn bài (tuỳ chọn), viết ý tưởng / câu chuyện (tuỳ chọn), chọn độ dài → AI lên dàn ý
+// Khung tạo video mới. Phim tiểu sử: nhập tên nhân vật (+ ghi chú, tài liệu) → AI làm đạo diễn từng giai đoạn.
+// Video thường: chọn bài (tuỳ chọn), viết ý tưởng / câu chuyện (tuỳ chọn), chọn độ dài → AI lên dàn ý
 export default function TaoVideo({ bai }: { bai: { id: string; tieu_de_anh: string; nguon_ten: string }[] }) {
   const router = useRouter()
+  const [kieu, setKieu] = useState<'phim' | 'thuong'>('phim')
+  const [ten, setTen] = useState('')
+  const [ghiChu, setGhiChu] = useState('')
+  const [taiLieu, setTaiLieu] = useState('')
   const [yTuong, setYTuong] = useState('')
   const [phut, setPhut] = useState(10)
   const [chon, setChon] = useState<string[]>([])
@@ -23,15 +28,50 @@ export default function TaoVideo({ bai }: { bai: { id: string; tieu_de_anh: stri
 
   const tao = () =>
     startTransition(async () => {
-      const kq = await taoVideoYouTube({ baiIds: chon, yTuong, phut })
+      const kq = kieu === 'phim' ? await taoPhimTieuSu({ ten, ghiChu, taiLieu, phut }) : await taoVideoYouTube({ baiIds: chon, yTuong, phut })
       if (!kq.ok) return thongBao('loi', kq.loi)
       router.push(`/youtube/${kq.id}`)
     })
 
   return (
     <section className="the grid min-w-0 content-start gap-5 p-5">
-      <h2 className="text-base font-bold">Tạo video mới</h2>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-base font-bold">Tạo video mới</h2>
+        <div className="flex rounded-xl bg-slate-100 p-1 text-sm font-semibold">
+          {(
+            [
+              ['phim', '🎬 Phim tiểu sử'],
+              ['thuong', 'Video thường'],
+            ] as const
+          ).map(([ma, nhan]) => (
+            <button key={ma} type="button" disabled={dangTao} onClick={() => setKieu(ma)} className={`rounded-lg px-3 py-1.5 ${kieu === ma ? 'bg-white text-red-600 shadow-sm' : 'text-slate-500'}`}>
+              {nhan}
+            </button>
+          ))}
+        </div>
+      </div>
 
+      {kieu === 'phim' && (
+        <>
+          <p className="rounded-xl bg-violet-50 p-3 text-xs leading-relaxed text-violet-800 ring-1 ring-violet-200">
+            AI làm đạo diễn phim tài liệu: nghiên cứu (Wikipedia + tài liệu bạn dán, đánh dấu điều nào đã xác minh / cần kiểm tra) → khán giả, góc kể, big idea, hook → kịch bản có giọng kể và Mèo Mun &amp; Robot Bit xen vào → hồ sơ nhân vật, bối cảnh → phân cảnh, shot list, prompt video AI → 20 tiêu đề, thumbnail, mô tả, Shorts, chấm điểm. Máy nhà dựng được bản hoạt hình; hồ sơ tải về để làm bản điện ảnh bằng công cụ video AI khác.
+          </p>
+          <label className="grid">
+            <span className="label">Tên nhân vật *</span>
+            <input value={ten} onChange={(e) => setTen(e.target.value)} disabled={dangTao} maxLength={120} placeholder="Ví dụ: Phạm Nhật Vượng, Steve Jobs, Võ Nguyên Giáp…" className="input" />
+          </label>
+          <label className="grid">
+            <span className="label">Yêu cầu thêm (tuỳ chọn)</span>
+            <textarea value={ghiChu} onChange={(e) => setGhiChu(e.target.value)} disabled={dangTao} rows={2} maxLength={3000} placeholder="Góc kể muốn nhấn mạnh, phong cách, đối tượng khán giả… Để trống thì AI tự chọn." className="input" />
+          </label>
+          <label className="grid">
+            <span className="label">Tài liệu nguồn (tuỳ chọn)</span>
+            <textarea value={taiLieu} onChange={(e) => setTaiLieu(e.target.value)} disabled={dangTao} rows={3} maxLength={40000} placeholder="Dán bài báo, phỏng vấn, sách… AI chỉ coi là đã xác minh những gì có trong nguồn." className="input" />
+          </label>
+        </>
+      )}
+
+      {kieu === 'thuong' && (
       <label className="grid">
         <span className="label">Ý tưởng / câu chuyện (tuỳ chọn)</span>
         <textarea
@@ -44,6 +84,7 @@ export default function TaoVideo({ bai }: { bai: { id: string; tieu_de_anh: stri
           className="input"
         />
       </label>
+      )}
 
       <div>
         <span className="label">Độ dài video (khoảng)</span>
@@ -61,10 +102,11 @@ export default function TaoVideo({ bai }: { bai: { id: string; tieu_de_anh: stri
           ))}
         </div>
         <p className="mt-1.5 text-xs text-slate-400">
-          Chia thành {Math.min(8, Math.max(1, Math.round(phut / 3)))} phần, máy nhà dựng lần lượt từng phần rồi ghép. Dựng mất khoảng 3–4 lần độ dài video (video 20 phút khoảng 1–1,5 giờ).
+          Chia thành {Math.min(8, Math.max(1, Math.round(phut / 3)))} {kieu === 'phim' ? 'chương' : 'phần'}, máy nhà dựng lần lượt từng phần rồi ghép. Dựng mất khoảng 3–4 lần độ dài video (video 20 phút khoảng 1–1,5 giờ).
         </p>
       </div>
 
+      {kieu === 'thuong' && (
       <div className="min-w-0">
         <span className="label">
           Dựa trên bài đã có (tuỳ chọn) {chon.length > 0 && <span className="text-red-600">Đã chọn {chon.length} bài</span>}
@@ -86,12 +128,15 @@ export default function TaoVideo({ bai }: { bai: { id: string; tieu_de_anh: stri
         </ul>
         <p className="mt-1.5 text-xs text-slate-400">Chọn nhiều bài để làm bản tin tổng hợp. Có thể vừa chọn bài vừa viết ý tưởng.</p>
       </div>
+      )}
 
-      <button type="button" onClick={tao} disabled={dangTao || (!chon.length && !yTuong.trim())} className="btn bg-red-600 py-3 text-white hover:bg-red-700">
+      <button type="button" onClick={tao} disabled={dangTao || (kieu === 'phim' ? !ten.trim() : !chon.length && !yTuong.trim())} className="btn bg-red-600 py-3 text-white hover:bg-red-700">
         {dangTao ? (
           <>
-            <Xoay /> AI đang lên dàn ý… (~1 phút)
+            <Xoay /> {kieu === 'phim' ? 'Đang tạo phim…' : 'AI đang lên dàn ý… (~1 phút)'}
           </>
+        ) : kieu === 'phim' ? (
+          'Bắt đầu làm phim'
         ) : (
           'AI lên dàn ý và viết kịch bản'
         )}

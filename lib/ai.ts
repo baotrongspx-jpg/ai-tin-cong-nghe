@@ -25,7 +25,7 @@ type YeuCauJson<T> = {
 
 // Gọi AI, ép trả JSON đúng schema rồi kiểm tra lại bằng zod.
 // Trả null nếu AI từ chối hoặc JSON không hợp lệ.
-async function goiJson<T>(opts: YeuCauJson<T>): Promise<T | null> {
+export async function goiJson<T>(opts: YeuCauJson<T>): Promise<T | null> {
   const text = process.env.GEMINI_API_KEY ? await goiGemini(opts) : await goiClaude(opts)
   if (text === null) return null
   try {
@@ -313,7 +313,7 @@ export const AM_THANH = ['khong', 'vut', 'bum', 'ting', 'bop', 'coi_bao', 'go_ph
 export const CHUYEN_CANH = ['tu_dong', 'truot', 'phong', 'quet', 'mo', 'xuyen'] as const
 
 // Luật chọn hình ảnh cho từng câu thoại (dùng chung cho video TikTok và video YouTube dài)
-const LUAT_HINH = `- cam_xuc: the speaker's emotion and gesture for that line. Mèo Mun uses to_mo, bat_ngo, vui, lo_lang or suy_nghi. Robot Bit uses giai_thich, khang_dinh, vui, lo_lang or suy_nghi. Extras use any of them.
+export const LUAT_HINH = `- cam_xuc: the speaker's emotion and gesture for that line. Mèo Mun uses to_mo, bat_ngo, vui, lo_lang or suy_nghi. Robot Bit uses giai_thich, khang_dinh, vui, lo_lang or suy_nghi. Extras use any of them.
 - boi_canh: the backdrop that fits the line: truong_quay (news studio, default for general talk, intro and outro), pho_florida (a sunny city street, use for any outdoor or city or "in country X" moment), may_chu (AI / data center / servers / technology inside), don_canh_sat (police, crime, law, court), phong_khach (home, everyday users, phones and apps at home), van_phong (a tech company office: business, CEOs, companies, revenue, jobs), vu_tru (space, satellites, rockets, global internet), cua_hang (a tech store: product launches, prices, buying phones or gadgets). Keep the same backdrop for 2-3 consecutive lines about the same thing, then move to another backdrop that still fits the content, so the video keeps moving without jumping around randomly.
 - dao_cu: a prop that pops up next to the speaker, matching what the line talks about (dien_thoai phone, laptop, kinh_lup magnifier for investigating, bieu_do growth chart, tien money, khien shield/security, coi_bao siren/emergency, chip, o_to car, ten_lua rocket, bong_den idea, o_khoa lock/privacy, the_ngan_hang bank card, robot AI, tai_lieu document/law, dong_ho time/deadline, trai_dat world, tay_cam_game games, may_anh camera, tai_nghe headphones, cup award, tin_nhan chat/message, canh_bao warning, vu_tru satellite, pin battery, mang network/signal, internet globe/online, tin_nong breaking news, toc_do speed/fast). Use a prop on about two thirds of the lines and khong (none) on the rest so props stay special; never the same prop on two lines in a row.
 - nhan_vat_phu: a silent extra character who appears between the mascots while the line talks about that kind of person: nguoi_phu_nu (a woman), canh_sat (police officer), hacker (hacker, scammer, cybercriminal), doanh_nhan (CEO, businessman, company leader), nha_khoa_hoc (scientist, researcher, engineer), nguoi_dung (ordinary user, customer, young person). Use khong when no such person is the subject of the line. Keep the same extra on consecutive lines about the same person.
@@ -341,7 +341,7 @@ Turn the article in the user turn into a short dialogue between them, in natural
 ${LUAT_HINH}- moc: the hook shown in big letters for the first 2 seconds (also the TikTok cover): chu is at most 8 Vietnamese words that make people stop scrolling, curious but truthful (no clickbait lies), bieu_tuong one emoji.`
 
 // Một câu thoại (zod để kiểm tra, JSON schema để ép AI trả đúng dạng); dùng chung cho video TikTok và YouTube
-const CauSchema = z.object({
+export const CauSchema = z.object({
   ai: z.enum(NGUOI_NOI),
   chu: z.string().min(1),
   cam_xuc: z.enum(CAM_XUC),
@@ -357,8 +357,8 @@ const CauSchema = z.object({
   lang: z.boolean(),
   chuyen_canh: z.enum(CHUYEN_CANH),
 })
-const MocSchema = z.object({ chu: z.string(), bieu_tuong: z.string() })
-const JSON_CAU = {
+export const MocSchema = z.object({ chu: z.string(), bieu_tuong: z.string() })
+export const JSON_CAU = {
   type: 'object',
   properties: {
     ai: { type: 'string', enum: [...NGUOI_NOI] },
@@ -395,7 +395,7 @@ const JSON_CAU = {
   required: ['ai', 'chu', 'cam_xuc', 'boi_canh', 'dao_cu', 'nhan_vat_phu', 'bang', 'minh_hoa', 'khung_hinh', 'may_quay', 'anh_sang', 'am_thanh', 'lang', 'chuyen_canh'],
   additionalProperties: false,
 }
-const JSON_MOC = {
+export const JSON_MOC = {
   type: 'object',
   properties: { chu: { type: 'string' }, bieu_tuong: { type: 'string' } },
   required: ['chu', 'bieu_tuong'],
@@ -408,7 +408,7 @@ export type LoiThoai = KichBan['loi']
 
 // Model dự phòng nhẹ đôi khi viết tiếng Việt không dấu: kiểm tra rồi bắt viết lại (tối đa 3 lần)
 const CO_DAU = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/giu
-const coDauDu = (loi: LoiThoai) => {
+export const coDauDu = (loi: { chu: string }[]) => {
   const chu = loi.map((l) => l.chu).join(' ')
   return (chu.match(CO_DAU)?.length ?? 0) / Math.max(1, chu.replace(/\s/g, '').length) > 0.08
 }
@@ -416,8 +416,10 @@ const coDauDu = (loi: LoiThoai) => {
 // Gemini đôi khi viết cả kịch bản tiếng Việt không dấu (chỉ dẫn dài toàn mã không dấu). Thay vì bỏ cả kịch bản,
 // nhờ AI thêm dấu cho đúng các chữ đó (giữ nguyên từng từ, thứ tự, số lượng); không được thì trả null.
 const DauSchema = z.object({ chu: z.array(z.string()) })
-async function themDau(kb: KichBan): Promise<KichBan | null> {
-  const ds = [kb.moc.chu, ...kb.loi.flatMap((l) => [l.chu, l.bang.chu, l.minh_hoa.tu_khoa, l.minh_hoa.chu_chinh, l.minh_hoa.chu_phu])]
+// Dạng chung của một kịch bản (TikTok, YouTube, phim tiểu sử): câu thoại có chữ, bảng tin, minh hoạ; phim có thêm thẻ mốc
+type CauCoChu = { chu: string; bang: { chu: string }; minh_hoa: { tu_khoa: string; chu_chinh: string; chu_phu: string }; the_moc?: string }
+async function themDau<T extends { moc: { chu: string }; loi: CauCoChu[] }>(kb: T): Promise<T | null> {
+  const ds = [kb.moc.chu, ...kb.loi.flatMap((l) => [l.chu, l.bang.chu, l.minh_hoa.tu_khoa, l.minh_hoa.chu_chinh, l.minh_hoa.chu_phu, l.the_moc ?? ''])]
   const kq = await goiJson({
     system:
       'You restore Vietnamese diacritics. The user turn is a JSON array of Vietnamese strings written without (or with missing) diacritics. Return the same array with full, correct Vietnamese diacritics (tiếng Việt có dấu đầy đủ), choosing the meaning that fits the context of the whole list. Keep exactly the same words, word order, punctuation, numbers and number of items; do not translate, shorten or add anything; keep empty strings empty. Spell Vietnamese names and places correctly (for example Pham Nhat Vuong → Phạm Nhật Vượng, Ha Noi → Hà Nội) and keep English or brand names as they are (Vingroup, VinFast, iPhone, Công Nghệ 24H).',
@@ -429,7 +431,8 @@ async function themDau(kb: KichBan): Promise<KichBan | null> {
   if (!kq || kq.chu.length !== ds.length) return null
   let k = 1
   const lay = () => kq.chu[k++].normalize('NFC')
-  const moi: KichBan = {
+  const moi: T = {
+    ...kb,
     moc: { ...kb.moc, chu: kq.chu[0].normalize('NFC') },
     loi: kb.loi.map((l) => {
       const chu = lay()
@@ -437,17 +440,24 @@ async function themDau(kb: KichBan): Promise<KichBan | null> {
       const tuKhoa = lay()
       const chinh = lay()
       const phu = lay()
-      return { ...l, chu, bang: { ...l.bang, chu: bang }, minh_hoa: { ...l.minh_hoa, tu_khoa: tuKhoa, chu_chinh: chinh, chu_phu: phu } }
+      const theMoc = lay()
+      return {
+        ...l,
+        chu,
+        bang: { ...l.bang, chu: bang },
+        minh_hoa: { ...l.minh_hoa, tu_khoa: tuKhoa, chu_chinh: chinh, chu_phu: phu },
+        ...(l.the_moc !== undefined ? { the_moc: theMoc } : {}),
+      }
     }),
   }
   return coDauDu(moi.loi) ? moi : null
 }
 
 // Có dấu đủ thì giữ; thiếu dấu thì thử thêm dấu (một lượt gọi AI ngắn)
-const damBaoDau = async (kb: KichBan) => (coDauDu(kb.loi) ? kb : await themDau(kb))
+export const damBaoDau = async <T extends { moc: { chu: string }; loi: CauCoChu[] }>(kb: T) => (coDauDu(kb.loi) ? kb : await themDau(kb))
 
 // Biểu tượng bảng tin phải là emoji; AI ghi chữ thì thay bằng emoji theo bối cảnh
-const EMOJI_BOI_CANH: Record<(typeof BOI_CANH)[number], string> = {
+export const EMOJI_BOI_CANH: Record<(typeof BOI_CANH)[number], string> = {
   truong_quay: '📺', pho_florida: '🏙️', may_chu: '🤖', don_canh_sat: '🚓', phong_khach: '📱',
   van_phong: '🏢', vu_tru: '🚀', cua_hang: '🛍️',
 }

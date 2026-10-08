@@ -40,10 +40,11 @@ export default async function TrangYouTube() {
               return (
                 <li key={d.id}>
                   <Link href={`/youtube/${d.id}`} className="the block p-4 transition hover:ring-red-300">
+                    {d.loai === 'tieu_su' && <span className="chip mb-1 bg-violet-100 text-violet-700">🎬 Phim tiểu sử · {d.phim?.ten}</span>}
                     <p className="line-clamp-2 font-bold leading-snug">{d.tieu_de}</p>
                     <p className="mt-1 flex flex-wrap gap-x-3 text-xs text-slate-500">
                       <span suppressHydrationWarning>{truoc(d.tao_luc)}</span>
-                      <span>{d.phan.length} phần</span>
+                      <span>{d.phan.length ? `${d.phan.length} ${d.loai === 'tieu_su' ? 'chương' : 'phần'}` : 'Đang chuẩn bị'}</span>
                       <span>{daViet < d.phan.length ? `AI đã viết ${daViet}/${d.phan.length} phần` : `~${phutGiay(giay)} phút`}</span>
                     </p>
                   </Link>

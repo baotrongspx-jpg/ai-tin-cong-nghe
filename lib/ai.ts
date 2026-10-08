@@ -30,6 +30,7 @@ async function goiJson<T>(opts: YeuCauJson<T>): Promise<T | null> {
   if (text === null) return null
   try {
     const kq = opts.kiemTra.safeParse(JSON.parse(text))
+    if (!kq.success) console.error('AI trả JSON sai dạng:', kq.error.issues.slice(0, 3).map((v) => `${v.path.join('.')}: ${v.message}`).join(' | '))
     return kq.success ? kq.data : null
   } catch {
     return null
@@ -66,7 +67,10 @@ async function goiGemini(opts: YeuCauJson<unknown>): Promise<string | null> {
       }
       if (res.ok && data.candidates?.[0]) {
         const c = data.candidates[0]
-        if (c.finishReason && c.finishReason !== 'STOP') return null // bị chặn / quá dài
+        if (c.finishReason && c.finishReason !== 'STOP') {
+          console.error(`Gemini ${model} dừng giữa chừng: ${c.finishReason}`) // bị chặn / quá dài
+          return null
+        }
         return (c.content?.parts ?? []).map((p) => p.text ?? '').join('')
       }
       loiCuoi = `${model}: ${data.error?.message ?? res.status}`
@@ -408,6 +412,40 @@ const coDauDu = (loi: LoiThoai) => {
   const chu = loi.map((l) => l.chu).join(' ')
   return (chu.match(CO_DAU)?.length ?? 0) / Math.max(1, chu.replace(/\s/g, '').length) > 0.08
 }
+
+// Gemini đôi khi viết cả kịch bản tiếng Việt không dấu (chỉ dẫn dài toàn mã không dấu). Thay vì bỏ cả kịch bản,
+// nhờ AI thêm dấu cho đúng các chữ đó (giữ nguyên từng từ, thứ tự, số lượng); không được thì trả null.
+const DauSchema = z.object({ chu: z.array(z.string()) })
+async function themDau(kb: KichBan): Promise<KichBan | null> {
+  const ds = [kb.moc.chu, ...kb.loi.flatMap((l) => [l.chu, l.bang.chu, l.minh_hoa.tu_khoa, l.minh_hoa.chu_chinh, l.minh_hoa.chu_phu])]
+  const kq = await goiJson({
+    system:
+      'You restore Vietnamese diacritics. The user turn is a JSON array of Vietnamese strings written without (or with missing) diacritics. Return the same array with full, correct Vietnamese diacritics (tiếng Việt có dấu đầy đủ), choosing the meaning that fits the context of the whole list. Keep exactly the same words, word order, punctuation, numbers and number of items; do not translate, shorten or add anything; keep empty strings empty. Spell Vietnamese names and places correctly (for example Pham Nhat Vuong → Phạm Nhật Vượng, Ha Noi → Hà Nội) and keep English or brand names as they are (Vingroup, VinFast, iPhone, Công Nghệ 24H).',
+    noiDung: JSON.stringify(ds),
+    effort: 'low',
+    kiemTra: DauSchema,
+    schema: { type: 'object', properties: { chu: { type: 'array', items: { type: 'string' } } }, required: ['chu'], additionalProperties: false },
+  }).catch(() => null)
+  if (!kq || kq.chu.length !== ds.length) return null
+  let k = 1
+  const lay = () => kq.chu[k++].normalize('NFC')
+  const moi: KichBan = {
+    moc: { ...kb.moc, chu: kq.chu[0].normalize('NFC') },
+    loi: kb.loi.map((l) => {
+      const chu = lay()
+      const bang = lay()
+      const tuKhoa = lay()
+      const chinh = lay()
+      const phu = lay()
+      return { ...l, chu, bang: { ...l.bang, chu: bang }, minh_hoa: { ...l.minh_hoa, tu_khoa: tuKhoa, chu_chinh: chinh, chu_phu: phu } }
+    }),
+  }
+  return coDauDu(moi.loi) ? moi : null
+}
+
+// Có dấu đủ thì giữ; thiếu dấu thì thử thêm dấu (một lượt gọi AI ngắn)
+const damBaoDau = async (kb: KichBan) => (coDauDu(kb.loi) ? kb : await themDau(kb))
+
 // Biểu tượng bảng tin phải là emoji; AI ghi chữ thì thay bằng emoji theo bối cảnh
 const EMOJI_BOI_CANH: Record<(typeof BOI_CANH)[number], string> = {
   truong_quay: '📺', pho_florida: '🏙️', may_chu: '🤖', don_canh_sat: '🚓', phong_khach: '📱',
@@ -438,10 +476,11 @@ export async function vietLoiThoai(bai: { tieu_de_anh: string; noi_dung: string;
   let totNhat: { kb: KichBan; thieu: string[] } | null = null
   let nhacThem = ''
   for (let lan = 0; lan < 3; lan++) {
-    const kb = await vietLoiThoaiMotLan(bai, nhacThem)
-    if (!kb) continue
-    if (!coDauDu(kb.loi)) {
-      console.error('Lời thoại AI viết thiếu dấu, viết lại')
+    const goc = await vietLoiThoaiMotLan(bai, nhacThem)
+    if (!goc) continue
+    const kb = await damBaoDau(goc)
+    if (!kb) {
+      console.error('Lời thoại AI viết thiếu dấu, thêm dấu không được, viết lại')
       continue
     }
     const thieu = thieuChiTiet(chiTiet, kb.loi)
@@ -573,7 +612,9 @@ ${LUAT_HINH}- moc: a hook shown in big letters for the first 2 seconds of the vi
   for (let lan = 0; lan < 3; lan++) {
     const kq = await goiJson({
       system,
-      noiDung: `<source>\n${o.nguon}\n</source>\n\n<plan title="${danY.tieu_de}">\n${keHoach}\n</plan>\n\n${nhac}${nhacThem}`,
+      noiDung: `<source>\n${o.nguon}\n</source>\n\n<plan title="${danY.tieu_de}">\n${keHoach}\n</plan>\n\n${nhac}${nhacThem}
+
+Write every Vietnamese text field (chu, bang.chu, minh_hoa texts, moc.chu) in proper Vietnamese WITH full diacritics, for example "Chào mừng các bạn đến với Công Nghệ 24H", never "Chao mung cac ban". Only the enum codes (toan_canh, rung_tay...) are written without diacritics.`,
       effort: 'medium',
       kiemTra: PhanSchema,
       schema: {
@@ -583,14 +624,14 @@ ${LUAT_HINH}- moc: a hook shown in big letters for the first 2 seconds of the vi
         additionalProperties: false,
       },
     })
-    if (!kq) continue
-    if (!coDauDu(kq.loi)) {
-      console.error('Lời thoại YouTube thiếu dấu, viết lại')
+    const coDau = kq && (await damBaoDau(kq))
+    if (!coDau) {
+      if (kq) console.error('Lời thoại YouTube thiếu dấu, thêm dấu không được, viết lại')
       continue
     }
-    if (!totNhat || kq.loi.length > totNhat.loi.length) totNhat = kq
-    if (kq.loi.length >= o.soCau * 0.75) break
-    nhacThem = `\n\nYour previous draft of this part had only ${kq.loi.length} lines, far too short. Write this part again with ${o.soCau} lines: go deeper into every point of this part of the plan with more back-and-forth questions, concrete examples, reactions and short explanations, while keeping each line short. Do not add extra greetings or goodbyes to reach the count.`
+    if (!totNhat || coDau.loi.length > totNhat.loi.length) totNhat = coDau
+    if (coDau.loi.length >= o.soCau * 0.75) break
+    nhacThem = `\n\nYour previous draft of this part had only ${coDau.loi.length} lines, far too short. Write this part again with ${o.soCau} lines: go deeper into every point of this part of the plan with more back-and-forth questions, concrete examples, reactions and short explanations, while keeping each line short. Do not add extra greetings or goodbyes to reach the count.`
   }
   if (!totNhat) return null
   const laEmoji = (x: string) => /\p{Extended_Pictographic}/u.test(x)

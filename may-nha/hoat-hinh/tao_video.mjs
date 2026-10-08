@@ -155,17 +155,32 @@ tw.push(`tl.from("#o-robot", { x: ${NGANG ? 1150 : 700}, duration: 0.6, ease: "b
 
 // ── Nhân vật phụ trên sân khấu: câu do nhân vật phụ nói, hoặc câu nhắc tới họ (AI chọn nhan_vat_phu).
 // Các câu liền nhau cùng một nhân vật phụ gom thành một lần xuất hiện; phuCuaCau[i] là id phần tử của họ ở câu i.
-const doanPhu = []
+// Các câu có nhân vật phụ cách nhau tối đa 2 câu và chỉ gồm tối đa 2 người khác nhau thì chung một "cảnh": cả hai cùng
+// đứng trên sân khấu (lệch trái / phải) cho tới hết cảnh, để họ nói chuyện, phỏng vấn, tranh luận với nhau.
+const cumPhu = []
 loi.forEach((l, i) => {
   const ten = NHAN_VAT_PHU[l.ai] ? l.ai : NHAN_VAT_PHU[l.nhan_vat_phu] ? l.nhan_vat_phu : null
   if (!ten) return
-  const cuoi = doanPhu.at(-1)
-  if (cuoi && cuoi.ten === ten && cuoi.het === i - 1) cuoi.het = i
-  else doanPhu.push({ ten, tu: i, het: i })
+  const c = cumPhu.at(-1)
+  if (c && i - c.het <= 2 && (c.ds.some((x) => x.ten === ten) || c.ds.length < 2)) {
+    c.het = i
+    if (!c.ds.some((x) => x.ten === ten)) c.ds.push({ ten, tu: i })
+  } else cumPhu.push({ tu: i, het: i, ds: [{ ten, tu: i }] })
 })
+// Mỗi người trong mỗi cảnh là một phần tử phu<k>: xuất hiện từ câu đầu tiên của họ tới hết cảnh; lech: độ lệch ngang
+const LECH_PHU = 140
+const doanPhu = cumPhu.flatMap((c) =>
+  c.ds.map((x, j) => ({ ten: x.ten, tu: x.tu, het: c.het, lech: c.ds.length === 2 ? (j ? LECH_PHU : -LECH_PHU) : 0, doi: c.ds.length === 2 })),
+)
 const phuCuaCau = {}
+const viTriPhu = {} // id → toạ độ x giữa người đó (để máy quay cận vào)
 doanPhu.forEach((dp, k) => {
-  for (let i = dp.tu; i <= dp.het; i++) phuCuaCau[i] = `phu${k}`
+  viTriPhu[`phu${k}`] = 540 + dp.lech
+  for (let i = dp.tu; i <= dp.het; i++) {
+    const l = loi[i]
+    const ten = NHAN_VAT_PHU[l.ai] ? l.ai : l.nhan_vat_phu
+    if (ten === dp.ten) phuCuaCau[i] = `phu${k}`
+  }
 })
 const laPhu = (ai) => !!NHAN_VAT_PHU[ai]
 // Khung bao của nhân vật (để nhún, nhảy, phóng to khi nói)
@@ -405,6 +420,7 @@ const nvPhu = doanPhu.map((dp, k) => {
     daGioiThieu.add(dp.ten)
     gioiThieu.add(dp.tu)
   }
+  if (dp.lech < 0) tw.push(`gsap.set("#${id} svg", { scaleX: -1 });`)
   tw.push(`gsap.set("#${id}-dau", { svgOrigin: "200 250" }); gsap.set("#${id}-tay-phai", { svgOrigin: "270 300" }); gsap.set("#${id}-tay-trai", { svgOrigin: "130 300" }); gsap.set("#${id}-mieng-mo", { svgOrigin: "200 226" });`)
   tw.push(`tl.fromTo("#${id}", { opacity: 0, y: 90, scale: 0.85 }, { opacity: 1, y: 0, scale: 1, duration: 0.5, ease: "back.out(1.8)" }, ${f(t0 + 0.1)});`)
   tw.push(`tl.to("#${id}-tay-phai", { rotation: -140, duration: 0.3, ease: "back.out(2)" }, ${f(t0 + 0.5)});`)
@@ -413,10 +429,11 @@ const nvPhu = doanPhu.map((dp, k) => {
   tw.push(`tl.to("#${id}-dau", { rotation: 6, duration: 0.5, yoyo: true, repeat: ${lap(het - t0 - 2.2, 0.5) | 1}, ease: "sine.inOut" }, ${f(t0 + 2.2)});`)
   tw.push(`tl.to("#${id}", { opacity: 0, y: 60, duration: 0.35, ease: "power2.in" }, ${f(het - 0.1)});`)
   // Không ghi tên trên đầu (trang phục tự nói lên họ là ai); hai nhân vật chính dạt sang hai bên chừa chỗ cho nhân vật phụ
-  tw.push(`tl.to("#o-meo", { x: -80, duration: 0.5, ease: "power2.inOut" }, ${f(t0)});`)
-  tw.push(`tl.to("#o-robot", { x: 80, duration: 0.5, ease: "power2.inOut" }, ${f(t0)});`)
+  // Hai người cùng đứng thì Mèo / Bit dạt xa hơn
+  tw.push(`tl.to("#o-meo", { x: ${dp.doi ? -170 : -80}, duration: 0.5, ease: "power2.inOut" }, ${f(t0)});`)
+  tw.push(`tl.to("#o-robot", { x: ${dp.doi ? 170 : 80}, duration: 0.5, ease: "power2.inOut" }, ${f(t0)});`)
   tw.push(`tl.to(["#o-meo", "#o-robot"], { x: 0, duration: 0.5, ease: "power2.inOut" }, ${f(het - 0.1)});`)
-  return `<div id="${id}" class="nv-phu"><svg viewBox="0 0 400 600" width="372" height="558" class="nv">${NHAN_VAT_PHU[dp.ten].svg(id)}</svg></div>`
+  return `<div id="${id}" class="nv-phu" style="left:${354 + dp.lech}px"><svg viewBox="0 0 400 600" width="372" height="558" class="nv">${NHAN_VAT_PHU[dp.ten].svg(id)}</svg></div>`
 })
 
 // ── Chỉ dẫn đạo diễn AI chọn cho từng câu (khi có): khung hình + chuyển động máy quay ─
@@ -480,12 +497,14 @@ loi.forEach((l, i) => {
     canCanhChiDan = quayChiDan(l, i, t0, conLai)
   } else if (laPhu(l.ai)) {
     // Nhân vật phụ đang nói: cận vừa vào họ (đứng giữa, phía sau), đẩy vào nhẹ
-    lia(Math.max(0, t0 - 0.2), 1.42, 540, 720 - HA_PHU, 0.6)
-    lia(t0 + 0.4, 1.47, 540 + (i % 2 ? 15 : -15), 715 - HA_PHU, conLai, 'sine.inOut')
+    const xPhu = viTriPhu[phuCuaCau[i]] ?? 540
+    lia(Math.max(0, t0 - 0.2), 1.42, xPhu, 720 - HA_PHU, 0.6)
+    lia(t0 + 0.4, 1.47, xPhu + (i % 2 ? 15 : -15), 715 - HA_PHU, conLai, 'sine.inOut')
   } else if (gioiThieu.has(i)) {
     // Nhân vật phụ vừa xuất hiện: cận vào họ một nhịp, rồi về cảnh vừa nghiêng về người nói
-    lia(Math.max(0, t0 - 0.1), 1.5, 540, 760 - HA_PHU, 0.5)
-    lia(t0 + 0.45, 1.54, 540, 750 - HA_PHU, 0.9, 'sine.inOut')
+    const xPhu = viTriPhu[phuCuaCau[i]] ?? 540
+    lia(Math.max(0, t0 - 0.1), 1.5, xPhu, 760 - HA_PHU, 0.5)
+    lia(t0 + 0.45, 1.54, xPhu, 750 - HA_PHU, 0.9, 'sine.inOut')
     lia(t0 + 1.4, 1.18, (tam.x + 540) / 2, 940, 0.6)
     if (d > 2.4) lia(t0 + 2.0, 1.21, (tam.x + 540) / 2 + 15, 940, Math.max(0.4, d - 2.5 - lui), 'sine.inOut')
   } else if (i === 0 || i === loi.length - 1) {
@@ -600,7 +619,7 @@ loi.forEach((l, i) => {
   const id = `mh${i}`
   const mh = ve(id, m)
   tw.push(...mh.tw(bd, kt - bd))
-  const dau = laPhu(l.ai) || l.ai === 'nguoi_ke' ? DAU_PHU : DAU[l.ai === 'meo' ? 'meo' : 'robot']
+  const dau = laPhu(l.ai) ? { ...DAU_PHU, x: viTriPhu[phuCuaCau[i]] ?? DAU_PHU.x } : l.ai === 'nguoi_ke' ? DAU_PHU : DAU[l.ai === 'meo' ? 'meo' : 'robot']
   const trai = Math.min(Math.max(dau.x - 240, 10 - LECH_X), RONG - LECH_X - 490)
   // Khung ngang: đặt cố định ở giữa phía trên khung hình (chỗ bảng tin), không phóng theo máy quay nên không bị cắt mép
   if (NGANG) minhHoaKhung.push(`<div id="${id}" class="mh" style="left:${(RONG - 480) / 2}px;top:14px">${mh.html}</div>`)

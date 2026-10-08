@@ -2,7 +2,7 @@
 // Vào (trong thư mục làm việc): artifacts/loi_thoai.json (lời thoại + cảm xúc + bối cảnh + bảng tin),
 // artifacts/do_dai.json, hyperframes/assets/loi-<i>.wav. Miệng nhép theo độ to thật của giọng.
 // Chạy: node tao_video.mjs <thư mục làm việc> → <thư mục>/hyperframes/index.html (thợ đọc giọng gọi, may-nha/tho_doc.py)
-import { readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { BOI_CANH } from './boiCanh.mjs'
 import { NHAN_VAT_PHU } from './nhanVatPhu.mjs'
@@ -52,7 +52,9 @@ function doTo(file) {
 
 const batDau = []
 let t = 0.4 // nhịp mở đầu trước câu đầu tiên
-for (const d of doDai) {
+for (const [i, d] of doDai.entries()) {
+  // Khoảng lặng có chủ đích (AI đặt lang) trước câu quan trọng: im 0,9 giây, chỉ còn âm nền
+  if (i && loi[i]?.lang) t += 0.9
   batDau.push(t)
   t += d
 }
@@ -325,13 +327,17 @@ loi.forEach((l, i) => {
   else doanCanh.push({ ten, tu: i, het: i })
 })
 const KIEU_CHUYEN = ['truot', 'phong', 'quet', 'mo', 'xuyen']
+const chuyenCanh = [] // { i: câu đầu cảnh mới, t: lúc đổi, kieu } (để chèn tiếng vút)
 const nenCanh = doanCanh.map((dc, k) => {
   const t0 = k ? batDau[dc.tu] - 0.35 : 0
   const het = dc.het === loi.length - 1 ? TONG : batDau[dc.het + 1]
   const bc = BOI_CANH[dc.ten](`bc${k}`)
   tw.push(...bc.tw(t0, het - t0))
   if (k) {
-    const kieu = KIEU_CHUYEN[(k - 1) % KIEU_CHUYEN.length]
+    // Kiểu chuyển cảnh AI chọn theo cảm xúc (chuyen_canh ở câu đầu của cảnh mới); không có thì lần lượt từng kiểu
+    const chon = loi[dc.tu].chuyen_canh
+    const kieu = KIEU_CHUYEN.includes(chon) ? chon : KIEU_CHUYEN[(k - 1) % KIEU_CHUYEN.length]
+    chuyenCanh.push({ i: dc.tu, t: t0, kieu })
     const truoc = `#bc${k - 1}`
     if (kieu === 'truot') {
       tw.push(`tl.fromTo("#bc${k}", { opacity: 1, x: ${TRUOT} }, { opacity: 1, x: 0, duration: 0.6, ease: "power3.inOut" }, ${f(t0)});`)
@@ -412,6 +418,52 @@ const nvPhu = doanPhu.map((dp, k) => {
   return `<div id="${id}" class="nv-phu"><svg viewBox="0 0 400 600" width="372" height="558" class="nv">${NHAN_VAT_PHU[dp.ten].svg(id)}</svg>${lanDau ? `<div class="ten-phu">${esc(NHAN_VAT_PHU[dp.ten].ten)}</div>` : ''}</div>`
 })
 
+// ── Chỉ dẫn đạo diễn AI chọn cho từng câu (khi có): khung hình + chuyển động máy quay ─
+// Độ phóng theo khung hình; góc thấp / góc cao giả lập bằng cách nhìn thấp xuống chân / cao trên đầu nhân vật
+const KHUNG = { toan_canh: 1, trung_canh: 1.2, can_canh: 1.48, sieu_can: 1.85, goc_thap: 1.3, goc_cao: 1.16 }
+// Rung tay (handheld): lắc nhẹ cả thế giới (nền + nhân vật), số lần lẻ để kết thúc đúng chỗ cũ
+const rungTay = (t0, d) =>
+  tw.push(`tl.fromTo(".the-gioi", { x: ${LECH_X}, y: ${LECH_Y}, rotation: 0 }, { x: ${LECH_X + 7}, y: ${LECH_Y - 5}, rotation: 0.25, duration: 0.19, yoyo: true, repeat: ${2 * Math.max(1, Math.floor(d / 0.38)) + 1}, ease: "sine.inOut" }, ${f(t0)});`)
+function quayChiDan(l, i, t0, conLai) {
+  const tam = TAM[l.ai] ?? TAM.robot
+  const ben = TAM[l.ai === 'meo' ? 'robot' : 'meo']
+  const s = KHUNG[l.khung_hinh]
+  const ox = l.khung_hinh === 'toan_canh' ? GIUA_X : ['trung_canh', 'goc_cao'].includes(l.khung_hinh) ? (tam.x + GIUA_X) / 2 : tam.x
+  const oy = { toan_canh: GIUA_Y, trung_canh: 960, can_canh: tam.y - 40, sieu_can: tam.y - 20, goc_thap: tam.y + 170, goc_cao: tam.y - 230 }[l.khung_hinh]
+  const vao = Math.max(0, t0 - 0.2)
+  switch (l.may_quay) {
+    case 'day_vao': // đẩy vào: nhấn mạnh
+      lia(vao, s, ox, oy, 0.5)
+      lia(t0 + 0.3, s * 1.13, ox, oy - 15, conLai, 'sine.inOut')
+      break
+    case 'keo_ra': // kéo ra: mở rộng thông tin
+      lia(vao, s * 1.16, ox, oy, 0.5)
+      lia(t0 + 0.3, s, ox, oy, conLai, 'sine.inOut')
+      break
+    case 'lia_sang': // lia từ người nghe sang người nói (pan)
+      lia(vao, s, l.khung_hinh === 'toan_canh' ? GIUA_X : ben.x, oy, 0.4)
+      lia(t0 + 0.25, s, ox, oy, Math.min(1, conLai), 'power2.inOut')
+      break
+    case 'truot_ngang': // tracking ngang chậm
+      lia(vao, s, ox - 70, oy, 0.5)
+      lia(t0 + 0.3, s, ox + 70, oy, conLai, 'none')
+      break
+    case 'nang_len': // nâng máy lên (crane / tilt up): hy vọng, mở ra
+      lia(vao, s, ox, oy + 70, 0.5)
+      lia(t0 + 0.3, s * 1.03, ox, oy - 70, conLai, 'sine.inOut')
+      break
+    case 'rung_tay': // máy cầm tay: căng thẳng, gấp gáp
+      lia(vao, s, ox, oy, 0.4)
+      rungTay(t0, conLai + 0.3)
+      break
+    default: // dung_yen: đứng yên, chỉ trôi rất nhẹ
+      lia(vao, s, ox, oy, 0.5)
+      lia(t0 + 0.3, s * 1.015, ox, oy, conLai, 'sine.inOut')
+  }
+  // Cận / siêu cận: người nghe lùi ra ngoài khung (trừ khi đang lia từ họ sang)
+  return ['can_canh', 'sieu_can'].includes(l.khung_hinh) && l.may_quay !== 'lia_sang'
+}
+
 // Câu cuối của mỗi đoạn bối cảnh (sắp đổi cảnh): máy quay lùi về cảnh rộng để có điểm nghỉ
 const truocDoiCanh = new Set(doanCanh.slice(0, -1).map((dc) => dc.het))
 loi.forEach((l, i) => {
@@ -421,7 +473,11 @@ loi.forEach((l, i) => {
   const nghe = l.ai === 'meo' ? 'robot' : 'meo'
   const lui = truocDoiCanh.has(i) && d > 2.2 ? 0.7 : 0 // chừa cuối câu để lùi về cảnh rộng
   const conLai = Math.max(0.5, d - 0.5 - lui)
-  if (laPhu(l.ai)) {
+  const chiDan = !laPhu(l.ai) && !gioiThieu.has(i) && KHUNG[l.khung_hinh] !== undefined
+  let canCanhChiDan = false
+  if (chiDan) {
+    canCanhChiDan = quayChiDan(l, i, t0, conLai)
+  } else if (laPhu(l.ai)) {
     // Nhân vật phụ đang nói: cận vừa vào họ (đứng giữa, phía sau), đẩy vào nhẹ
     lia(Math.max(0, t0 - 0.2), 1.42, 540, 720 - HA_PHU, 0.6)
     lia(t0 + 0.4, 1.47, 540 + (i % 2 ? 15 : -15), 715 - HA_PHU, conLai, 'sine.inOut')
@@ -461,7 +517,11 @@ loi.forEach((l, i) => {
   if (lui) lia(t0 + d - lui, 1, 540, 960, lui, 'power2.inOut')
   // Cận cảnh một nhân vật chính: người nghe lùi hẳn ra ngoài khung (không lộ một lát mỏng ở mép màn hình như vệt sọc),
   // cảnh rộng / cảnh vừa / có nhân vật phụ thì về chỗ cũ. Dùng xPercent để không đụng độ dịch x của các chuyển động khác.
-  const canCanh = !laPhu(l.ai) && !gioiThieu.has(i) && i > 0 && i < loi.length - 1 && ['bat_ngo', 'lo_lang', 'vui', 'suy_nghi'].includes(l.cam_xuc)
+  const canCanh = chiDan
+    ? canCanhChiDan
+    : !laPhu(l.ai) && !gioiThieu.has(i) && i > 0 && i < loi.length - 1 && ['bat_ngo', 'lo_lang', 'vui', 'suy_nghi'].includes(l.cam_xuc)
+  // Nhân vật phụ nói trong đoạn căng thẳng cũng có thể rung tay
+  if (!chiDan && l.may_quay === 'rung_tay') rungTay(t0, conLai + 0.3)
   tw.push(`tl.to("#o-${nghe}", { xPercent: ${canCanh ? (nghe === 'robot' ? 45 : -45) : 0}, duration: 0.55, ease: "power2.inOut" }, ${f(Math.max(0, t0 - 0.2))});`)
   tw.push(`tl.to("#o-${nghe === 'robot' ? 'meo' : 'robot'}", { xPercent: 0, duration: 0.55, ease: "power2.inOut" }, ${f(Math.max(0, t0 - 0.2))});`)
   if (canCanh && lui) tw.push(`tl.to("#o-${nghe}", { xPercent: 0, duration: ${f(lui)}, ease: "power2.inOut" }, ${f(t0 + d - lui)});`)
@@ -544,6 +604,70 @@ const bang = loi.map((l, i) => {
     </div>`
 })
 
+// ── Ánh sáng & tông màu theo câu (AI chọn anh_sang): lớp màu hoà trộn mềm (soft-light) phủ cả khung, đổi êm giữa
+// các câu cùng nhịp cảm xúc; loé sáng cho khoảnh khắc bất ngờ; đỏ nhấp nháy khi cảnh báo
+const ANH_SANG = {
+  binh_thuong: ['#000000', 0], am_ap: ['#ffa53d', 0.32], lanh: ['#3b6dff', 0.32], cang_thang: ['#0b0b2a', 0.5],
+  tuoi_sang: ['#fff1a6', 0.3], mo_mong: ['#d59cff', 0.35], bi_an: ['#3a0a55', 0.48], canh_bao: ['#ff1f1f', 0.3], loe_sang: ['#000000', 0],
+}
+let anhTruoc = 'binh_thuong'
+loi.forEach((l, i) => {
+  const ten = ANH_SANG[l.anh_sang] ? l.anh_sang : 'binh_thuong'
+  const t0 = batDau[i]
+  const d = doDai[i]
+  if (ten !== anhTruoc) {
+    const [mau, op] = ANH_SANG[ten]
+    tw.push(`tl.to("#den", { backgroundColor: "${mau}", opacity: ${op}, duration: 0.6, ease: "sine.inOut" }, ${f(Math.max(0, t0 - 0.3))});`)
+  }
+  if (ten === 'canh_bao') tw.push(`tl.to("#den", { opacity: 0.1, duration: 0.45, yoyo: true, repeat: ${2 * Math.max(1, Math.floor(d / 0.9)) - 1}, ease: "sine.inOut" }, ${f(t0 + 0.3)});`)
+  if (ten === 'loe_sang') tw.push(`tl.fromTo("#chop", { opacity: 0.8 }, { opacity: 0, duration: 0.5, ease: "power2.out", immediateRender: false }, ${f(t0)});`)
+  anhTruoc = ten
+})
+
+// ── Âm thanh: hiệu ứng theo câu (AI chọn am_thanh), tiếng vút khi đổi cảnh, âm nền theo bối cảnh (ambience).
+// Tệp ở may-nha/hoat-hinh/am-thanh, thợ máy nhà chép vào assets; thiếu tệp (thợ đời cũ) thì bỏ qua.
+const doDaiTep = (ten) => {
+  const tep = join(GOC, 'hyperframes', 'assets', `${ten}.wav`)
+  if (!existsSync(tep)) return 0
+  const b = readFileSync(tep)
+  let i = 12, byteGiay = 0
+  while (i + 8 <= b.length) {
+    const loai = b.toString('ascii', i, i + 4), co = b.readUInt32LE(i + 4)
+    if (loai === 'fmt ') byteGiay = b.readUInt32LE(i + 16)
+    if (loai === 'data') return byteGiay ? Math.min(co, b.length - i - 8) / byteGiay : 0
+    i += 8 + co + (co % 2)
+  }
+  return 0
+}
+const SFX = {
+  vut: ['sfx-vut', 0.45], bum: ['sfx-bum', 0.55], ting: ['sfx-ting', 0.4], bop: ['sfx-bop', 0.4], coi_bao: ['sfx-coi', 0.3],
+  go_phim: ['sfx-go-phim', 0.45], tim_dap: ['sfx-tim-dap', 0.55], tich_tac: ['sfx-tich-tac', 0.7], vui: ['sfx-vui', 0.35], hut_hang: ['sfx-hut-hang', 0.4],
+}
+const AM_NEN = {
+  truong_quay: ['nen-phong', 0.25], pho_florida: ['nen-pho', 0.09], may_chu: ['nen-may-chu', 0.07], don_canh_sat: ['nen-phong', 0.3],
+  phong_khach: ['nen-phong', 0.28], van_phong: ['nen-van-phong', 0.4], vu_tru: ['nen-vu-tru', 0.05], cua_hang: ['nen-van-phong', 0.35],
+}
+const amPhu = []
+const themAm = (ten, luc, amLuong, toiDa = Infinity) => {
+  const dai = Math.min(doDaiTep(ten), toiDa, TONG - luc)
+  if (dai <= 0.05) return
+  amPhu.push(`<audio id="ap-${amPhu.length}" src="assets/${ten}.wav" data-start="${f(luc)}" data-duration="${f(dai)}" data-track-index="${3000 + amPhu.length}" data-volume="${amLuong}"></audio>`)
+}
+loi.forEach((l, i) => {
+  const sfx = SFX[l.am_thanh]
+  if (sfx) themAm(sfx[0], batDau[i] + (l.am_thanh === 'bum' ? 0 : 0.05), sfx[1])
+})
+for (const cc of chuyenCanh) if (!SFX[loi[cc.i].am_thanh]) themAm('sfx-vut', Math.max(0, cc.t - 0.05), 0.28)
+doanCanh.forEach((dc, k) => {
+  const nen = AM_NEN[dc.ten]
+  if (!nen) return
+  const tu = k ? batDau[dc.tu] - 0.35 : 0
+  const den = dc.het === loi.length - 1 ? TONG : batDau[dc.het + 1] - 0.35
+  const doan = doDaiTep(nen[0])
+  if (!doan) return
+  for (let luc = tu; luc < den - 0.05; luc += doan) themAm(nen[0], luc, nen[1], den - luc)
+})
+
 // Khung ngang (YouTube): không có cột nút / dòng mô tả của TikTok che, nên phụ đề sát đáy, đầu trang và bảng tin gọn hơn
 const CSS_NGANG = `
       .dau-trang { height: 130px; padding: 0 56px; }
@@ -577,6 +701,8 @@ const trang = `<!doctype html>
       /* Nền hơi nhoè như ống kính lấy nét vào nhân vật; nhân vật có viền sáng và bóng đổ mềm */
       #camera-nen { filter: blur(1.6px) saturate(1.08); }
       #toi-chuyen { position: absolute; inset: 0; background: #000; opacity: 0; }
+      #den { position: absolute; inset: 0; background: #000; opacity: 0; mix-blend-mode: soft-light; }
+      #chop { position: absolute; inset: 0; background: #fff; opacity: 0; }
       .nv { filter: drop-shadow(0 0 10px #ffffff66) drop-shadow(0 24px 30px #0000008c); }
       .lop-nen { position: absolute; inset: 0; }
       .nen-svg { display: block; }
@@ -630,9 +756,9 @@ const trang = `<!doctype html>
           ${minhHoa.join('')}
         </div></div>
       </div>
-      <div id="vien-toi" class="clip" data-start="0" data-duration="${f(TONG)}" data-track-index="5"></div>
+      <div id="vien-toi" class="clip" data-start="0" data-duration="${f(TONG)}" data-track-index="5"><div id="den"></div><div id="chop"></div></div>
       <div id="lop-minh-hoa" class="clip" data-start="0" data-duration="${f(TONG)}" data-track-index="7">${giatTit.html}</div>${phuDe.join('')}
-      ${amThanh.join('\n      ')}
+      ${[...amThanh, ...amPhu].join('\n      ')}
     </div>
     <script>
       window.__timelines = window.__timelines || {};

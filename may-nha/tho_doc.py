@@ -178,6 +178,9 @@ def dung_video(may, ds_giong, lt, tm, td, fps=30, gioi_han=1500):
     for tep in ('BeVietnamPro-Bold.ttf', 'BeVietnamPro-Medium.ttf'):
         shutil.copy(REPO / 'assets' / 'fonts' / tep, tai_san / tep)
     shutil.copy(HOAT_HINH / 'gsap.min.js', tai_san / 'gsap.min.js')
+    # Hiệu ứng âm thanh + âm nền theo bối cảnh (tao_video.mjs chèn khi AI chọn)
+    for tep in (HOAT_HINH / 'am-thanh').glob('*.wav'):
+        shutil.copy(tep, tai_san / tep.name)
     do_dai = []
     for i, l in enumerate(lt['loi']):
         td.bao(10 + 20 * i / len(lt['loi']), f'Đọc giọng câu {i + 1}/{len(lt["loi"])}')

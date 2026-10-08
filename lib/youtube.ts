@@ -20,7 +20,7 @@ export const PHUT_MOI_PHAN = 3
 export const soPhanCho = (phut: number) => Math.min(8, Math.max(1, Math.round(phut / PHUT_MOI_PHAN)))
 export const DS_PHUT = [3, 5, 10, 15, 20] as const
 
-export type PhanYT = { tieu_de: string; noi_dung: string; loi: LoiThoai | null; moc: { chu: string; bieu_tuong: string } | null }
+export type PhanYT = { tieu_de: string; noi_dung: string; nhip?: string; loi: LoiThoai | null; moc: { chu: string; bieu_tuong: string } | null }
 export type DuAnYT = {
   id: string
   tao_luc: string
@@ -90,7 +90,7 @@ export async function taoDuAn(o: { baiIds: string[]; yTuong: string; phut: numbe
     mo_ta: dy.mo_ta,
     the: dy.the.map((t) => t.replace(/^#/, '').trim()).filter(Boolean).slice(0, 20),
     chu_de: dy.chu_de.slice(0, 20) || 'Công nghệ',
-    phan: dy.phan.map((p) => ({ tieu_de: p.tieu_de, noi_dung: p.noi_dung, loi: null, moc: null })),
+    phan: dy.phan.map((p) => ({ tieu_de: p.tieu_de, noi_dung: p.noi_dung, nhip: p.nhip, loi: null, moc: null })),
   }
   await luuDuAn(d)
   return d

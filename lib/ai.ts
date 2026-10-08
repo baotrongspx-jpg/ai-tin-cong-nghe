@@ -301,6 +301,12 @@ export const NHAN_VAT_PHU = ['khong', 'nguoi_phu_nu', 'canh_sat', 'hacker', 'doa
 export const MINH_HOA = ['khong', 'so_lieu', 'dia_diem', 'trich_dan', 'bieu_tuong', 'so_sanh'] as const
 // Người nói: hai nhân vật chính hoặc một nhân vật phụ (có giọng riêng, lib/hoatHinh.ts)
 export const NGUOI_NOI = ['meo', 'robot', ...NHAN_VAT_PHU.filter((n) => n !== 'khong')] as const
+// Chỉ dẫn đạo diễn từng câu (may-nha/hoat-hinh/tao_video.mjs: KHUNG, quayChiDan, ANH_SANG, SFX, KIEU_CHUYEN)
+export const KHUNG_HINH = ['toan_canh', 'trung_canh', 'can_canh', 'sieu_can', 'goc_thap', 'goc_cao'] as const
+export const MAY_QUAY = ['dung_yen', 'day_vao', 'keo_ra', 'lia_sang', 'truot_ngang', 'nang_len', 'rung_tay'] as const
+export const ANH_SANG = ['binh_thuong', 'am_ap', 'lanh', 'cang_thang', 'tuoi_sang', 'mo_mong', 'bi_an', 'canh_bao', 'loe_sang'] as const
+export const AM_THANH = ['khong', 'vut', 'bum', 'ting', 'bop', 'coi_bao', 'go_phim', 'tim_dap', 'tich_tac', 'vui', 'hut_hang'] as const
+export const CHUYEN_CANH = ['tu_dong', 'truot', 'phong', 'quet', 'mo', 'xuyen'] as const
 
 // Luật chọn hình ảnh cho từng câu thoại (dùng chung cho video TikTok và video YouTube dài)
 const LUAT_HINH = `- cam_xuc: the speaker's emotion and gesture for that line. Mèo Mun uses to_mo, bat_ngo, vui, lo_lang or suy_nghi. Robot Bit uses giai_thich, khang_dinh, vui, lo_lang or suy_nghi. Extras use any of them.
@@ -309,6 +315,13 @@ const LUAT_HINH = `- cam_xuc: the speaker's emotion and gesture for that line. M
 - nhan_vat_phu: a silent extra character who appears between the mascots while the line talks about that kind of person: nguoi_phu_nu (a woman), canh_sat (police officer), hacker (hacker, scammer, cybercriminal), doanh_nhan (CEO, businessman, company leader), nha_khoa_hoc (scientist, researcher, engineer), nguoi_dung (ordinary user, customer, young person). Use khong when no such person is the subject of the line. Keep the same extra on consecutive lines about the same person.
 - bang: a small sign shown behind the characters: bieu_tuong is exactly one emoji character (for example 🤖 🚨 📱 🔒 💡), never a word; chu is at most 6 Vietnamese words with diacritics summing up the line.
 - minh_hoa: a full-screen illustration that pops up for about 2 seconds exactly when the voice reaches one concrete detail of the line, so the video shows something new every 2-3 seconds. Use it on about half of the lines, on the most visual details; kieu khong on the others. tu_khoa is the exact word or short phrase copied from chu where it should appear. Kinds: so_lieu (a number: chu_chinh is the number with its unit like "30 tuổi", "1 tỷ USD", "tăng 200%", chu_phu explains it), dia_diem (a place: chu_chinh is the place name, chu_phu one short fact), trich_dan (only for a statement the article reports word for word in quotation marks: chu_chinh the short quote, chu_phu who said it; never put paraphrased, implied or private messages in quotes, use bieu_tuong for those), bieu_tuong (a key object or idea: bieu_tuong one emoji, chu_chinh 1-4 words, chu_phu a short explanation), so_sanh (two things compared: chu_chinh "A | B", chu_phu "fact about A | fact about B"). Use empty strings for unused fields.
+- Directing: you are also the director. First plan the emotional curve of the whole video from the topic (for example calm → curious → surprised → tense → relieved → satisfied; a scam story builds suspense, a product launch builds excitement, a sad story slows down), then pick the shot, camera move, light and sound of every line to follow that curve and what is happening in the line. Never use one fixed pattern: vary choices with the situation, and change gradually within a mood.
+- khung_hinh (shot): toan_canh (wide: openings, context, a new place, the big picture, groups), trung_canh (medium: normal conversation, the default), can_canh (close-up: emotion, an important point, a reaction), sieu_can (extreme close-up: a shocking reveal or the single most dramatic moment, at most 1 line in 10), goc_thap (low angle: something powerful, impressive, big or threatening), goc_cao (high angle: someone small, overwhelmed, a victim, or looking down on a situation). Do not use the same shot for more than 2 lines in a row.
+- may_quay (camera move): day_vao (slow push in: emphasis, building tension, a key fact), keo_ra (pull out: revealing the wider picture, conclusions), lia_sang (pan from the listener to the speaker: a reply or a reaction), truot_ngang (slow tracking: listing several things, walking through steps), nang_len (crane up: hope, good news, inspiration), rung_tay (handheld shake: danger, panic, urgency, chaos), dung_yen (still: calm explanation, letting a statement sink in).
+- anh_sang (light and colour grade of the whole frame): binh_thuong (neutral), am_ap (warm: friendly, cosy, happy endings), lanh (cool blue: technology, facts, calm analysis, night), cang_thang (dark, high contrast: tension, crime, threats), tuoi_sang (bright: joy, success, fun), mo_mong (dreamy purple: imagination, the future, ideas), bi_an (dark purple: mystery, secrets, hackers), canh_bao (pulsing red: danger, warnings, emergencies), loe_sang (a white flash: a sudden shock or "aha" moment, then neutral). Keep the same light for consecutive lines of the same mood and change it when the mood changes.
+- am_thanh (one sound effect at the start of the line, on about a quarter of the lines, never twice in a row): vut (whoosh: fast change, a new idea arriving), bum (deep impact: a shocking number or reveal), ting (chime: a good tip, the right answer, an idea), bop (pop: something small and fun appears), coi_bao (siren: police, danger, alarm), go_phim (keyboard typing: hacking, typing messages, computers working), tim_dap (heartbeat: suspense, fear), tich_tac (clock ticking: deadlines, waiting, time pressure), vui (happy jingle: success, celebration), hut_hang (sad descending tone: disappointment, failure, loss), khong (none).
+- lang: true for a deliberate dramatic pause of silence just before this line (before a big reveal, a twist or an emotional moment), at most 1 line in 8; false otherwise.
+- chuyen_canh: the transition when this line starts a new backdrop: truot (slide: calm continuation), quet (whip pan: fast, energetic), phong (zoom in: focusing on a detail), mo (fade through black: time passes, serious or sad turn), xuyen (dive through: entering a new world, going inside technology); tu_dong when the backdrop does not change or any transition fits.
 `
 
 const THOAI_SYSTEM = `You write scripts for "Công Nghệ 24H", a Vietnamese TikTok channel that explains tech news with two cartoon mascots:
@@ -333,6 +346,12 @@ const CauSchema = z.object({
   nhan_vat_phu: z.enum(NHAN_VAT_PHU),
   bang: z.object({ bieu_tuong: z.string(), chu: z.string() }),
   minh_hoa: z.object({ kieu: z.enum(MINH_HOA), tu_khoa: z.string(), chu_chinh: z.string(), chu_phu: z.string(), bieu_tuong: z.string() }),
+  khung_hinh: z.enum(KHUNG_HINH),
+  may_quay: z.enum(MAY_QUAY),
+  anh_sang: z.enum(ANH_SANG),
+  am_thanh: z.enum(AM_THANH),
+  lang: z.boolean(),
+  chuyen_canh: z.enum(CHUYEN_CANH),
 })
 const MocSchema = z.object({ chu: z.string(), bieu_tuong: z.string() })
 const JSON_CAU = {
@@ -362,8 +381,14 @@ const JSON_CAU = {
       required: ['kieu', 'tu_khoa', 'chu_chinh', 'chu_phu', 'bieu_tuong'],
       additionalProperties: false,
     },
+    khung_hinh: { type: 'string', enum: [...KHUNG_HINH] },
+    may_quay: { type: 'string', enum: [...MAY_QUAY] },
+    anh_sang: { type: 'string', enum: [...ANH_SANG] },
+    am_thanh: { type: 'string', enum: [...AM_THANH] },
+    lang: { type: 'boolean' },
+    chuyen_canh: { type: 'string', enum: [...CHUYEN_CANH] },
   },
-  required: ['ai', 'chu', 'cam_xuc', 'boi_canh', 'dao_cu', 'nhan_vat_phu', 'bang', 'minh_hoa'],
+  required: ['ai', 'chu', 'cam_xuc', 'boi_canh', 'dao_cu', 'nhan_vat_phu', 'bang', 'minh_hoa', 'khung_hinh', 'may_quay', 'anh_sang', 'am_thanh', 'lang', 'chuyen_canh'],
   additionalProperties: false,
 }
 const JSON_MOC = {
@@ -468,7 +493,7 @@ const DanYSchema = z.object({
   mo_ta: z.string(),
   the: z.array(z.string()),
   chu_de: z.string(),
-  phan: z.array(z.object({ tieu_de: z.string().min(1), noi_dung: z.string().min(1) })).min(1).max(10),
+  phan: z.array(z.object({ tieu_de: z.string().min(1), noi_dung: z.string().min(1), nhip: z.string() })).min(1).max(10),
 })
 export type DanYYouTube = z.infer<typeof DanYSchema>
 
@@ -482,7 +507,7 @@ Plan a video of about ${phut} minutes, split into exactly ${soPhan} parts of abo
 - mo_ta: the YouTube description in Vietnamese, 3 to 6 sentences summing up what viewers will learn, then a line inviting them to subscribe to Công Nghệ 24H. No URLs.
 - the: 8 to 15 YouTube tags (Vietnamese and English keywords, without #).
 - chu_de: a short topic label of 1 or 2 words shown in the corner of the video (for example "AI", "Bảo mật", "Điện thoại").
-- phan: for each part, tieu_de (a short Vietnamese heading) and noi_dung (4 to 8 sentences in Vietnamese describing exactly what this part covers: which facts, story events, questions and examples, in order). Spread the source over the parts so that everything is covered once, without repeating, and the whole video stays interesting to the end.`,
+- phan: for each part, tieu_de (a short Vietnamese heading), nhip (the emotional curve of this part in a few Vietnamese words, e.g. "tò mò → bất ngờ → lo lắng", planned so the whole video rises and falls like a good story and ends satisfied) and noi_dung (4 to 8 sentences in Vietnamese describing exactly what this part covers: which facts, story events, questions and examples, in order). Spread the source over the parts so that everything is covered once, without repeating, and the whole video stays interesting to the end.`,
     noiDung: `<source>\n${nguon}\n</source>`,
     effort: 'medium',
     kiemTra: DanYSchema,
@@ -497,8 +522,8 @@ Plan a video of about ${phut} minutes, split into exactly ${soPhan} parts of abo
           type: 'array',
           items: {
             type: 'object',
-            properties: { tieu_de: { type: 'string' }, noi_dung: { type: 'string' } },
-            required: ['tieu_de', 'noi_dung'],
+            properties: { tieu_de: { type: 'string' }, noi_dung: { type: 'string' }, nhip: { type: 'string' } },
+            required: ['tieu_de', 'noi_dung', 'nhip'],
             additionalProperties: false,
           },
         },
@@ -516,7 +541,7 @@ const PhanSchema = z.object({ loi: z.array(CauSchema).min(6).max(70), moc: MocSc
 // Lời thoại một phần (k bắt đầu từ 1). `noiTiep`: vài câu cuối của phần trước để nối mạch.
 export async function vietPhanYouTube(o: {
   nguon: string
-  danY: { tieu_de: string; phan: { tieu_de: string; noi_dung: string }[] }
+  danY: { tieu_de: string; phan: { tieu_de: string; noi_dung: string; nhip?: string }[] }
   k: number
   soCau: number
   noiTiep: string[]
@@ -536,10 +561,11 @@ export async function vietPhanYouTube(o: {
 Rules for the dialogue:
 - Write ${o.soCau} lines for this part, not fewer (it must last about ${Math.round((o.soCau * 4.5) / 60)} minutes when read aloud). Mèo Mun and Robot Bit are the hosts and speak most lines (at least 60%). Alternate speakers most of the time.
 - Let 1 or 2 extras speak a few lines each in their own words when the content involves such people; hosts react to and question them. Extras never speak as a suspect, criminal or victim in the first person repeating threats, crimes or private details; for such people, let a host or a police officer retell what happened instead. When an extra speaks, set nhan_vat_phu to that same extra.
+- Never pad: every line must add something new (a fact, an example, a question, a reaction, a short scene). Greetings take at most 2 lines and the closing (thanks, like, subscribe, goodbye) at most 2 lines in total; never repeat the same idea or goodbye in different words. If the plan for this part seems thin, go deeper instead: concrete everyday examples, a short role-play scene, a quick quiz question to viewers, common mistakes, step-by-step tips.
 - Cover only what this part of the plan says, in order, with all its details (numbers as digits with units, names spelled exactly as in the source). Do not repeat what earlier parts already told.
 - Each line at most 25 words, written to be read aloud: no emoji, no hashtags, no URLs. Keep the channel name exactly as "Công Nghệ 24H".
 ${LUAT_HINH}- moc: a hook shown in big letters for the first 2 seconds of the video: chu is at most 8 Vietnamese words, curious but truthful, bieu_tuong one emoji. (Only used for part 1, but always fill it.)`
-  const keHoach = danY.phan.map((p, i) => `Part ${i + 1}${i + 1 === k ? ' (WRITE THIS ONE)' : ''}: ${p.tieu_de}\n${p.noi_dung}`).join('\n\n')
+  const keHoach = danY.phan.map((p, i) => `Part ${i + 1}${i + 1 === k ? ' (WRITE THIS ONE)' : ''}: ${p.tieu_de}${p.nhip ? `\nEmotional curve: ${p.nhip}` : ''}\n${p.noi_dung}`).join('\n\n')
   const nhac = `${viTri}${o.noiTiep.length ? `\n\nThe previous part ended with these lines:\n${o.noiTiep.join('\n')}` : ''}`
   // AI hay viết ngắn hơn yêu cầu: bản ngắn hơn 3/4 số câu thì bắt viết lại dài hơn (tối đa 3 lượt, giữ bản dài nhất)
   let totNhat: KichBan | null = null
@@ -564,7 +590,7 @@ ${LUAT_HINH}- moc: a hook shown in big letters for the first 2 seconds of the vi
     }
     if (!totNhat || kq.loi.length > totNhat.loi.length) totNhat = kq
     if (kq.loi.length >= o.soCau * 0.75) break
-    nhacThem = `\n\nYour previous draft of this part had only ${kq.loi.length} lines, far too short. Write this part again with ${o.soCau} lines: go deeper into every point of this part of the plan with more back-and-forth questions, concrete examples, reactions and short explanations, while keeping each line short.`
+    nhacThem = `\n\nYour previous draft of this part had only ${kq.loi.length} lines, far too short. Write this part again with ${o.soCau} lines: go deeper into every point of this part of the plan with more back-and-forth questions, concrete examples, reactions and short explanations, while keeping each line short. Do not add extra greetings or goodbyes to reach the count.`
   }
   if (!totNhat) return null
   const laEmoji = (x: string) => /\p{Extended_Pictographic}/u.test(x)

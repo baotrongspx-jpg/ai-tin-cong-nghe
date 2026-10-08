@@ -24,6 +24,21 @@ const NGUOI: Record<string, string> = {
 const uocGiay = (loi: LoiThoai | null) => (loi ? loi.reduce((t, l) => t + l.chu.length / 19 + 0.25, 0) : 0)
 const phutGiay = (giay: number) => `${Math.floor(giay / 60)}:${String(Math.round(giay % 60)).padStart(2, '0')}`
 
+// Chỉ dẫn đạo diễn AI chọn cho từng câu (hiện thành nhãn nhỏ dưới lời thoại)
+const KHUNG: Record<string, string> = { toan_canh: 'toàn cảnh', trung_canh: 'trung cảnh', can_canh: 'cận cảnh', sieu_can: 'siêu cận', goc_thap: 'góc thấp', goc_cao: 'góc cao' }
+const MAY: Record<string, string> = { dung_yen: 'đứng yên', day_vao: 'đẩy vào', keo_ra: 'kéo ra', lia_sang: 'lia sang', truot_ngang: 'trượt ngang', nang_len: 'nâng lên', rung_tay: 'rung tay' }
+const DEN: Record<string, string> = { am_ap: 'ấm', lanh: 'lạnh', cang_thang: 'căng thẳng', tuoi_sang: 'tươi sáng', mo_mong: 'mơ mộng', bi_an: 'bí ẩn', canh_bao: 'cảnh báo đỏ', loe_sang: 'loé sáng' }
+const AM: Record<string, string> = { vut: 'vút', bum: 'bùm', ting: 'ting', bop: 'bốp', coi_bao: 'còi báo', go_phim: 'gõ phím', tim_dap: 'tim đập', tich_tac: 'tích tắc', vui: 'nhạc vui', hut_hang: 'hụt hẫng' }
+type ChiDan = { khung_hinh?: string; may_quay?: string; anh_sang?: string; am_thanh?: string; lang?: boolean }
+const chiDan = (l: ChiDan) =>
+  [
+    l.lang && '⏸ lặng',
+    l.khung_hinh && `📷 ${KHUNG[l.khung_hinh] ?? l.khung_hinh}`,
+    l.may_quay && `🎥 ${MAY[l.may_quay] ?? l.may_quay}`,
+    l.anh_sang && DEN[l.anh_sang] && `💡 ${DEN[l.anh_sang]}`,
+    l.am_thanh && AM[l.am_thanh] && `🔊 ${AM[l.am_thanh]}`,
+  ].filter(Boolean).join(' · ')
+
 const NHAN: Record<TrangThaiPhan['loai'], [string, string]> = {
   chua_viet: ['Chưa viết', 'bg-slate-100 text-slate-500'],
   chua_dung: ['Chưa dựng', 'bg-slate-100 text-slate-600'],
@@ -278,6 +293,7 @@ export default function ChiTiet({ dau, ttDau }: { dau: DuAnYT; ttDau: TrangThaiD
                   {tp.loai === 'dang_lam' ? `${nhan} ${tp.phanTram}%` : dangViet === k ? 'AI đang viết…' : nhan}
                 </span>
               </div>
+              {p.nhip && <p className="text-xs font-semibold text-violet-700">Nhịp cảm xúc: {p.nhip}</p>}
               <p className="text-sm text-slate-600">{p.noi_dung}</p>
               {tp.loai === 'dang_lam' && <p className="text-xs text-violet-700">{tp.buoc}</p>}
               {tp.loai === 'loi' && <p className="text-xs text-red-600">Lỗi: {tp.loi}</p>}
@@ -290,7 +306,10 @@ export default function ChiTiet({ dau, ttDau }: { dau: DuAnYT; ttDau: TrangThaiD
                     {p.loi.map((l, j) => (
                       <li key={j} className="grid grid-cols-[8.5rem_minmax(0,1fr)] gap-2">
                         <span className="truncate text-xs font-semibold leading-5 text-slate-500">{NGUOI[l.ai] ?? l.ai}</span>
-                        <span>{l.chu}</span>
+                        <span>
+                          {l.chu}
+                          {chiDan(l) && <span className="block text-[11px] text-slate-400">{chiDan(l)}</span>}
+                        </span>
                       </li>
                     ))}
                   </ol>

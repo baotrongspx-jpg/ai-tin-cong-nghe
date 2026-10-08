@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { daDangNhap } from '@/lib/xacThuc'
 import { mayNhaTat } from '@/lib/giongDoc'
 import {
-  chayBuocPhim, docDuAn, guiDung, suaThongTin, taoDuAn, taoPhim, trangThaiDuAn, vietLoiPhan, xoaDuAn,
+  chayBuocPhim, chonNhacDuAn, docDuAn, guiDung, suaThongTin, taoDuAn, taoPhim, trangThaiDuAn, vietLoiPhan, xoaDuAn,
   type BuocPhim, type DuAnYT, type TrangThaiDuAn,
 } from '@/lib/youtube'
 
@@ -74,6 +74,16 @@ export async function dungVideoYouTube(id: string, chiPhan?: number): Promise<{ 
     const d = await docDuAn(id)
     if (!d) throw new Error('Không tìm thấy video')
     return { ok: true, so: await guiDung(d, chiPhan) }
+  } catch (e) {
+    return baoLoi(e)
+  }
+}
+
+export async function chonNhacYouTube(id: string, nhac: string, amLuong: number): Promise<{ ok: true } | Loi> {
+  try {
+    await chanChuaDangNhap()
+    await chonNhacDuAn(id, nhac, amLuong)
+    return { ok: true }
   } catch (e) {
     return baoLoi(e)
   }

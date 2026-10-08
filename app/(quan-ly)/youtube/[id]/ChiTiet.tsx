@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import type { DuAnYT, TrangThaiDuAn, TrangThaiPhan } from '@/lib/youtube'
 import { thongBao } from '@/app/ThongBao'
 import { IconChep, IconMo, IconXong, IconYouTube, Xoay } from '@/app/BieuTuong'
-import { chayBuocPhimYouTube, dungVideoYouTube, layTrangThaiYouTube, luuThongTinYouTube, vietPhanYouTube, xoaVideoYouTube } from '../actions'
+import { chayBuocPhimYouTube, chonNhacYouTube, dungVideoYouTube, layTrangThaiYouTube, luuThongTinYouTube, vietPhanYouTube, xoaVideoYouTube } from '../actions'
 import HoSoPhim, { KhoiDuLieu } from './HoSoPhim'
 
 const NGUOI: Record<string, string> = {
@@ -84,7 +84,7 @@ function NutChep({ chu, ten = 'Chép' }: { chu: string; ten?: string }) {
   )
 }
 
-export default function ChiTiet({ dau, ttDau }: { dau: DuAnYT; ttDau: TrangThaiDuAn }) {
+export default function ChiTiet({ dau, ttDau, dsNhac }: { dau: DuAnYT; ttDau: TrangThaiDuAn; dsNhac: { ten: string; kichThuoc: number }[] }) {
   const router = useRouter()
   const [d, setD] = useState(dau)
   const [tt, setTt] = useState(ttDau)
@@ -308,6 +308,53 @@ export default function ChiTiet({ dau, ttDau }: { dau: DuAnYT; ttDau: TrangThaiD
             </p>
           </>
         )}
+      </section>
+
+      {/* Nhạc nền: máy nhà trộn dưới cả video, tự nhỏ đi khi có lời */}
+      <section className="the flex flex-wrap items-center gap-x-4 gap-y-2 p-4">
+        <span className="font-bold">🎵 Nhạc nền</span>
+        <select
+          value={d.nhac ?? ''}
+          disabled={dangLam}
+          onChange={(e) => {
+            const nhac = e.target.value
+            setD({ ...d, nhac })
+            startTransition(async () => {
+              const kq = await chonNhacYouTube(d.id, nhac, d.am_luong_nhac ?? 30)
+              if (!kq.ok) return thongBao('loi', kq.loi)
+              await capNhatTt()
+            })
+          }}
+          className="input w-auto"
+        >
+          <option value="">Tự chọn (bài đầu tiên trong thư viện)</option>
+          {dsNhac.map((n, i) => (
+            <option key={n.ten} value={n.ten}>
+              Bài {i + 1} · {(n.kichThuoc / 1e6).toFixed(1)} MB
+            </option>
+          ))}
+          <option value="khong">Không dùng nhạc nền</option>
+        </select>
+        {d.nhac !== 'khong' && (
+          <label className="flex items-center gap-2 text-sm text-slate-600">
+            Âm lượng
+            <input
+              type="range"
+              min={10}
+              max={60}
+              step={5}
+              value={d.am_luong_nhac ?? 30}
+              disabled={dangLam}
+              onChange={(e) => setD({ ...d, am_luong_nhac: Number(e.target.value) })}
+              onPointerUp={() => startTransition(async () => void (await chonNhacYouTube(d.id, d.nhac ?? '', d.am_luong_nhac ?? 30)))}
+              className="accent-red-600"
+            />
+            {d.am_luong_nhac ?? 30}%
+          </label>
+        )}
+        <p className="w-full text-xs text-slate-400">
+          Nhạc tự nhỏ đi khi có lời nói, to lên ở chỗ chuyển cảnh và màn kết. Đổi nhạc sau khi đã dựng xong thì bấm Dựng video: máy nhà chỉ ghép lại, không dựng lại hình. Thêm bài nhạc ở trang TikTok → Nhạc nền.
+        </p>
       </section>
 
       {/* Tiêu đề, mô tả, thẻ để đăng YouTube */}

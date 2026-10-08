@@ -224,6 +224,36 @@ def dung_video(may, ds_giong, lt, tm, td, fps=30, gioi_han=1500):
     return do_dai
 
 
+def do_dai_video(tep):
+    # Đọc "Duration: hh:mm:ss.xx" ffmpeg in ra
+    kq = subprocess.run([str(FFMPEG), '-hide_banner', '-i', str(tep)], capture_output=True, text=True, encoding='utf-8', errors='replace')
+    m = re.search(r'Duration: (\d+):(\d+):([\d.]+)', kq.stderr or '')
+    return int(m.group(1)) * 3600 + int(m.group(2)) * 60 + float(m.group(3)) if m else None
+
+
+def tron_nhac_nen(thu_muc, vao, ra, ten_nhac, am_luong, td):
+    # Nhạc nền dưới cả video: lặp cho đủ dài, to dần đầu / nhỏ dần cuối, TỰ NHỎ ĐI khi có lời nói (nén theo giọng —
+    # sidechain), nghe rõ hơn ở chỗ chuyển cảnh / khoảng lặng / màn kết. Lỗi thì trả False (dùng bản không nhạc).
+    try:
+        td.bao(98, 'Trộn nhạc nền', ep=True)
+        r = s.get(f'{URL}/{KHO}/nhac/{ten_nhac}', timeout=120)
+        if not r.ok:
+            return False
+        tep_nhac = thu_muc / ('nhac-nen' + Path(ten_nhac).suffix)
+        tep_nhac.write_bytes(r.content)
+        tong = do_dai_video(vao) or 600
+        loc = (f'[0:a]asplit=2[giong][dieu];[1:a]volume={am_luong / 100:.2f},afade=t=in:d=2,afade=t=out:st={max(0, tong - 4):.2f}:d=4[nhac];'
+               '[nhac][dieu]sidechaincompress=threshold=0.015:ratio=8:attack=20:release=450[nhacnho];'
+               '[giong][nhacnho]amix=inputs=2:duration=first:normalize=0[a]')
+        chay([str(FFMPEG), '-hide_banner', '-y', '-i', vao.name, '-stream_loop', '-1', '-i', tep_nhac.name, '-filter_complex', loc,
+              '-map', '0:v', '-map', '[a]', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-t', f'{tong:.2f}', '-movflags', '+faststart', ra.name], thu_muc, 1800)
+        tep_nhac.unlink(missing_ok=True)
+        return True
+    except Exception:
+        traceback.print_exc()
+        return False
+
+
 def dung_youtube(may, ds_giong, yc):
     # Một phần của video YouTube dài (lib/youtube.ts): {"du_an", "tieu_de", "phan" (1, 2...), "ma_phan": [mã từng phần],
     # "loi_thoai"}. Dựng xong lưu phan-<số>-<mã>.mp4 trong thư mục dự án ở máy nhà, báo youtube/<dự án>/phan-<số>.json.
@@ -253,9 +283,16 @@ def dung_youtube(may, ds_giong, yc):
             td.bao(97, 'Ghép các phần thành một video', ep=True)
             ra = thu_muc / f'{ten_tep(yc.get("tieu_de"))}.mp4'
             (thu_muc / 'ds.txt').write_text('\n'.join(f"file '{p.name}'" for p in cac_phan), encoding='utf-8')
-            chay([str(FFMPEG), '-hide_banner', '-y', '-f', 'concat', '-safe', '0', '-i', 'ds.txt', '-c', 'copy', '-movflags', '+faststart', ra.name], thu_muc, 1800)
+            ghep = thu_muc / 'ghep-tam.mp4'
+            chay([str(FFMPEG), '-hide_banner', '-y', '-f', 'concat', '-safe', '0', '-i', 'ds.txt', '-c', 'copy', '-movflags', '+faststart', ghep.name], thu_muc, 1800)
             (thu_muc / 'ds.txt').unlink(missing_ok=True)
-            gui(f'{goc}/xong.json', json.dumps({'tep': str(ra), 'ma': ds_ma, 'luc': int(time.time() * 1000)}, ensure_ascii=False), 'application/json')
+            nhac = yc.get('nhac')
+            if nhac and tron_nhac_nen(thu_muc, ghep, ra, nhac, yc.get('am_luong_nhac', 30), td):
+                ghep.unlink(missing_ok=True)
+            else:
+                nhac = None
+                shutil.move(str(ghep), str(ra))
+            gui(f'{goc}/xong.json', json.dumps({'tep': str(ra), 'ma': ds_ma, 'nhac': nhac, 'luc': int(time.time() * 1000)}, ensure_ascii=False), 'application/json')
     finally:
         td.xong()
 

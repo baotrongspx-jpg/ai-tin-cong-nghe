@@ -9,7 +9,7 @@ import { NHAN_VAT_PHU } from './nhanVatPhu.mjs'
 import { CSS_MINH_HOA, MINH_HOA, mocMoDau } from './minhHoa.mjs'
 
 const GOC = resolve(process.argv[2] ?? '.')
-const { nhan_vat, loi, moc, kenh = 'Công Nghệ 24H', chu_de = 'AI', kho = 'doc' } = JSON.parse(readFileSync(join(GOC, 'artifacts/loi_thoai.json'), 'utf8'))
+const { nhan_vat, loi, moc, kenh = 'Công Nghệ 24H', chu_de = 'AI', kho = 'doc', the_chuong = null, man_ket = false } = JSON.parse(readFileSync(join(GOC, 'artifacts/loi_thoai.json'), 'utf8'))
 const doDai = JSON.parse(readFileSync(join(GOC, 'artifacts/do_dai.json'), 'utf8'))
 // kho "ngang" (YouTube 1920x1080): "thế giới" (nền, nhân vật, đạo cụ) vẫn vẽ theo toạ độ dọc 1080x1920, chỉ đặt lệch
 // để khung hình thấy vùng x -420..1500, y 300..1380; nền nối dài hai bên bằng bản soi gương; hai nhân vật đứng giãn ra.
@@ -52,7 +52,10 @@ function doTo(file) {
 }
 
 const batDau = []
-let t = 0.4 // nhịp mở đầu trước câu đầu tiên
+// Thẻ chương (video YouTube nhiều phần): 2,4 giây đầu phần là màn tiêu đề chương; màn kết đăng ký kênh 6 giây cuối video
+const MO_CHUONG = the_chuong ? 2.4 : 0
+const MAN_KET = man_ket ? 6 : 0
+let t = 0.4 + MO_CHUONG // nhịp mở đầu trước câu đầu tiên
 for (const [i, d] of doDai.entries()) {
   // Khoảng lặng có chủ đích (AI đặt lang) trước câu quan trọng: im 0,9 giây, chỉ còn âm nền
   if (i && loi[i]?.lang) t += 0.9
@@ -62,7 +65,8 @@ for (const [i, d] of doDai.entries()) {
   batDau.push(t)
   t += d
 }
-const TONG = t + DUOI
+const HET_NOI = t + DUOI // lúc lời cuối cùng dứt
+const TONG = HET_NOI + MAN_KET
 const tw = []
 
 // ── Nhân vật (SVG vẽ tay, mỗi bộ phận một nhóm có điểm xoay) ─────────────
@@ -153,8 +157,8 @@ for (let k = 1.7; k < TONG - 0.5; k += 3.1) {
   tw.push(`tl.to(["#robot-mat-trai", "#robot-mat-phai"], { scaleY: 0.12, duration: 0.07, yoyo: true, repeat: 1 }, ${f(k + 1.3)});`)
 }
 // Mở đầu: hai nhân vật nhảy vào khung
-tw.push(`tl.from("#o-meo", { x: ${NGANG ? -1150 : -700}, duration: 0.6, ease: "back.out(1.4)" }, 0);`)
-tw.push(`tl.from("#o-robot", { x: ${NGANG ? 1150 : 700}, duration: 0.6, ease: "back.out(1.4)" }, 0.1);`)
+tw.push(`tl.from("#o-meo", { x: ${NGANG ? -1150 : -700}, duration: 0.6, ease: "back.out(1.4)" }, ${f(Math.max(0, MO_CHUONG - 0.3))});`)
+tw.push(`tl.from("#o-robot", { x: ${NGANG ? 1150 : 700}, duration: 0.6, ease: "back.out(1.4)" }, ${f(Math.max(0.1, MO_CHUONG - 0.2))});`)
 
 // ── Nhân vật phụ trên sân khấu: câu do nhân vật phụ nói, hoặc câu nhắc tới họ (AI chọn nhan_vat_phu).
 // Các câu liền nhau cùng một nhân vật phụ gom thành một lần xuất hiện; phuCuaCau[i] là id phần tử của họ ở câu i.
@@ -556,8 +560,14 @@ loi.forEach((l, i) => {
     : !laPhu(l.ai) && !gioiThieu.has(i) && i > 0 && i < loi.length - 1 && ['bat_ngo', 'lo_lang', 'vui', 'suy_nghi'].includes(l.cam_xuc)
   // Nhân vật phụ nói trong đoạn căng thẳng cũng có thể rung tay
   if (!chiDan && l.may_quay === 'rung_tay') rungTay(t0, conLai + 0.3)
-  tw.push(`tl.to("#o-${nghe}", { xPercent: ${canCanh ? (nghe === 'robot' ? 45 : -45) : 0}, duration: 0.55, ease: "power2.inOut" }, ${f(Math.max(0, t0 - 0.2))});`)
-  tw.push(`tl.to("#o-${nghe === 'robot' ? 'meo' : 'robot'}", { xPercent: 0, duration: 0.55, ease: "power2.inOut" }, ${f(Math.max(0, t0 - 0.2))});`)
+  if (l.ai === 'nguoi_ke') {
+    // B-roll: lời kể đi cùng cảnh minh hoạ, Mèo / Bit lui hẳn ra hai mép (quay lại khi tới lượt họ)
+    tw.push(`tl.to("#o-meo", { xPercent: -150, duration: 0.6, ease: "power2.inOut" }, ${f(Math.max(0, t0 - 0.35))});`)
+    tw.push(`tl.to("#o-robot", { xPercent: 150, duration: 0.6, ease: "power2.inOut" }, ${f(Math.max(0, t0 - 0.35))});`)
+  } else {
+    tw.push(`tl.to("#o-${nghe}", { xPercent: ${canCanh ? (nghe === 'robot' ? 45 : -45) : 0}, duration: 0.55, ease: "power2.inOut" }, ${f(Math.max(0, t0 - 0.3))});`)
+    tw.push(`tl.to("#o-${nghe === 'robot' ? 'meo' : 'robot'}", { xPercent: 0, duration: 0.55, ease: "power2.inOut" }, ${f(Math.max(0, t0 - 0.3))});`)
+  }
   if (canCanh && lui) tw.push(`tl.to("#o-${nghe}", { xPercent: 0, duration: ${f(lui)}, ease: "power2.inOut" }, ${f(t0 + d - lui)});`)
   // Nhịp giữa câu dài: người nghe gật đầu, đạo cụ / biểu cảm đã lo phần đầu câu
   if (d > 4.5) tw.push(`tl.to("#${nghe}-dau", { rotation: 6, duration: 0.2, yoyo: true, repeat: 3, ease: "sine.inOut" }, ${f(t0 + d / 2)});`)
@@ -605,13 +615,27 @@ loi.forEach((l, i) => {
 })
 
 // ── Câu giật tít 2 giây đầu + minh hoạ chèn đúng lúc giọng đọc tới chi tiết (con số, địa điểm, lời trích...) ─
-const gtMoc = Math.min(2.2, batDau[0] + doDai[0])
-const giatTit = mocMoDau(moc, gtMoc)
+const gtMoc = Math.min(batDau[0] + 2.2, batDau[0] + doDai[0])
+const giatTit = mocMoDau(moc, gtMoc, Math.max(0, batDau[0] - 0.3))
 tw.push(...giatTit.tw)
 // Bảng tin câu đầu nhường chỗ cho câu giật tít
 if (giatTit.html) {
   tw.push(`tl.set("#bang0", { opacity: 0 }, 0);`)
   tw.push(`tl.to("#bang0", { opacity: 1, duration: 0.3 }, ${f(gtMoc)});`)
+}
+const bangHien = []
+const bangCuaCau = []
+{
+  let cuoi = -99
+  loi.forEach((l, i) => {
+    const canhMoi = i === 0 || (BOI_CANH[l.boi_canh] ? l.boi_canh : 'truong_quay') !== (BOI_CANH[loi[i - 1].boi_canh] ? loi[i - 1].boi_canh : 'truong_quay')
+    const doi = i > 0 && (l.bang?.chu !== loi[cuoi]?.bang?.chu || l.bang?.bieu_tuong !== loi[cuoi]?.bang?.bieu_tuong)
+    if (l.bang?.chu && (canhMoi || (doi && i - cuoi >= 3))) {
+      bangHien.push(i)
+      cuoi = i
+    }
+    bangCuaCau.push(cuoi >= 0 ? cuoi : null)
+  })
 }
 // Thẻ minh hoạ nằm ngay trên đầu người nói (toạ độ trong lớp nhân vật nên đi theo máy quay)
 const DAU = { meo: { x: 290 - GIAN, dinh: 715 }, robot: { x: 790 + GIAN, dinh: 715 } }
@@ -639,16 +663,18 @@ loi.forEach((l, i) => {
   if (NGANG) minhHoaKhung.push(`<div id="${id}" class="mh" style="left:${(RONG - 480) / 2}px;top:14px">${mh.html}</div>`)
   else minhHoa.push(`<div id="${id}" class="mh" style="left:${trai}px;top:${dau.dinh - 345}px">${mh.html}</div>`)
   // Bảng tin của câu tạm ẩn trong lúc thẻ minh hoạ hiện
-  tw.push(`tl.to("#bang${i}", { opacity: 0, duration: 0.1 }, ${f(bd - 0.05)});`)
-  tw.push(`tl.to("#bang${i}", { opacity: 1, duration: 0.25 }, ${f(kt)});`)
+  if (bangCuaCau[i] !== null) {
+    tw.push(`tl.to("#bang${bangCuaCau[i]}", { opacity: 0, duration: 0.1 }, ${f(bd - 0.05)});`)
+    tw.push(`tl.to("#bang${bangCuaCau[i]}", { opacity: 1, duration: 0.25 }, ${f(kt)});`)
+  }
 })
 
 // Bảng tin phía sau đổi theo lời thoại
-const bang = loi.map((l, i) => {
+const bang = bangHien.map((i, j) => {
+  const l = loi[i]
   const t0 = batDau[i]
-  const het = i === loi.length - 1 ? TONG : batDau[i + 1]
-  const giong = i && loi[i - 1].bang?.chu === l.bang?.chu && loi[i - 1].bang?.bieu_tuong === l.bang?.bieu_tuong
-  if (!giong) tw.push(`tl.from("#bang${i} .bang-noi", { scale: 0.6, opacity: 0, duration: 0.4, ease: "back.out(2)" }, ${f(t0 + 0.05)});`)
+  const het = j === bangHien.length - 1 ? HET_NOI : batDau[bangHien[j + 1]]
+  tw.push(`tl.from("#bang${i} .bang-noi", { scale: 0.6, opacity: 0, duration: 0.4, ease: "back.out(2)" }, ${f(t0 + 0.05)});`)
   return `
     <div id="bang${i}" class="bang clip" data-start="${f(t0)}" data-duration="${f(het - t0)}" data-track-index="2">
       <div class="bang-noi"><div class="bang-bt">${l.bang?.bieu_tuong ?? ''}</div><div class="bang-chu">${esc(l.bang?.chu ?? '')}</div></div>
@@ -671,7 +697,7 @@ loi.forEach((l, i) => {
     tw.push(`tl.to("#den", { backgroundColor: "${mau}", opacity: ${op}, duration: 0.6, ease: "sine.inOut" }, ${f(Math.max(0, t0 - 0.3))});`)
   }
   if (ten === 'canh_bao') tw.push(`tl.to("#den", { opacity: 0.1, duration: 0.45, yoyo: true, repeat: ${2 * Math.max(1, Math.floor(d / 0.9)) - 1}, ease: "sine.inOut" }, ${f(t0 + 0.3)});`)
-  if (ten === 'loe_sang') tw.push(`tl.fromTo("#chop", { opacity: 0.8 }, { opacity: 0, duration: 0.5, ease: "power2.out", immediateRender: false }, ${f(t0)});`)
+  if (ten === 'loe_sang') tw.push(`tl.fromTo("#chop", { opacity: 0.45 }, { opacity: 0, duration: 0.6, ease: "power2.out", immediateRender: false }, ${f(t0)});`)
   anhTruoc = ten
 })
 
@@ -748,6 +774,40 @@ doanCanh.forEach((dc, k) => {
   for (let luc = tu; luc < den - 0.05; luc += doan) themAm(nen[0], luc, nen[1], den - luc)
 })
 
+// ── Thẻ chương đầu phần: tên kênh, "CHƯƠNG n", tên chương, vạch sáng chạy; mờ dần lúc câu đầu bắt đầu ─
+let theChuongHtml = ''
+if (the_chuong) {
+  const ten = esc(the_chuong.ten ?? '')
+  theChuongHtml = `<div id="the-chuong"><div class="tc-kenh">${esc(kenh)}</div><div class="tc-so">CHƯƠNG ${esc(the_chuong.so ?? '')}</div><div class="tc-ten">${ten}</div><div class="tc-vach"></div></div>`
+  tw.push(`tl.fromTo("#the-chuong", { opacity: 0 }, { opacity: 1, duration: 0.35, ease: "power1.out" }, 0.05);`)
+  tw.push(`tl.fromTo("#the-chuong .tc-so", { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 0.45, ease: "power3.out" }, 0.25);`)
+  tw.push(`tl.fromTo("#the-chuong .tc-ten", { y: 60, opacity: 0 }, { y: 0, opacity: 1, duration: 0.55, ease: "power3.out" }, 0.45);`)
+  tw.push(`tl.fromTo("#the-chuong .tc-vach", { scaleX: 0 }, { scaleX: 1, duration: 0.9, ease: "power2.inOut" }, 0.5);`)
+  tw.push(`tl.to("#the-chuong", { opacity: 0, scale: 1.05, duration: 0.45, ease: "power2.in" }, ${f(MO_CHUONG - 0.25)});`)
+  themAm('sfx-vut', 0.4, 0.3)
+}
+// ── Màn kết: cảm ơn + nút ĐĂNG KÝ có con trỏ bấm + chuông; Mèo / Bit quay lại vẫy tay ─
+let manKetHtml = ''
+if (MAN_KET) {
+  const t1 = HET_NOI
+  manKetHtml = `<div id="man-ket"><div class="mk-cam-on">Cảm ơn bạn đã xem!</div><div class="mk-nut"><span class="mk-chua"><span class="mk-play">▶</span> ĐĂNG KÝ</span><span class="mk-da">✓ ĐÃ ĐĂNG KÝ</span></div><div class="mk-chuong">🔔</div><div class="mk-tro">👆</div><div class="mk-phu">${esc(kenh)} · video mới mỗi tuần</div></div>`
+  tw.push(`tl.to(["#o-meo", "#o-robot"], { xPercent: 0, duration: 0.5, ease: "power2.out" }, ${f(t1)});`)
+  tw.push(`tl.fromTo("#man-ket", { opacity: 0 }, { opacity: 1, duration: 0.4 }, ${f(t1 + 0.1)});`)
+  tw.push(`tl.fromTo("#man-ket .mk-nut", { scale: 0 }, { scale: 1, duration: 0.5, ease: "back.out(2)" }, ${f(t1 + 0.4)});`)
+  tw.push(`tl.fromTo("#man-ket .mk-tro", { x: 260, y: 200, opacity: 0 }, { x: 0, y: 0, opacity: 1, duration: 0.8, ease: "power2.out" }, ${f(t1 + 1.1)});`)
+  tw.push(`tl.to("#man-ket .mk-nut", { scale: 0.9, duration: 0.12, yoyo: true, repeat: 1 }, ${f(t1 + 2)});`)
+  tw.push(`tl.set("#man-ket .mk-nut", { backgroundColor: "#475569" }, ${f(t1 + 2.2)});`)
+  tw.push(`tl.set("#man-ket .mk-chua", { display: "none" }, ${f(t1 + 2.2)});`)
+  tw.push(`tl.set("#man-ket .mk-da", { display: "inline" }, ${f(t1 + 2.2)});`)
+  tw.push(`tl.fromTo("#man-ket .mk-chuong", { scale: 0, rotation: 0 }, { scale: 1, rotation: 0, duration: 0.4, ease: "back.out(2.5)" }, ${f(t1 + 2.6)});`)
+  tw.push(`tl.to("#man-ket .mk-chuong", { rotation: 18, duration: 0.1, yoyo: true, repeat: 7 }, ${f(t1 + 3)});`)
+  tw.push(...CU_CHI.vui('meo', t1 + 0.4), ...CU_CHI.vui('robot', t1 + 0.6))
+  lia(t1, 1, GIUA_X, GIUA_Y, 0.8)
+  themAm('sfx-vui', t1 + 0.3, 0.35)
+  themAm('sfx-bop', t1 + 2.0, 0.4)
+  themAm('sfx-ting', t1 + 2.6, 0.4)
+}
+
 // Khung ngang (YouTube): không có cột nút / dòng mô tả của TikTok che, nên phụ đề sát đáy, đầu trang và bảng tin gọn hơn
 const CSS_NGANG = `
       .dau-trang { height: 130px; padding: 0 56px; }
@@ -760,7 +820,20 @@ const CSS_NGANG = `
       .moc { top: 110px; height: 400px; }
       .moc-chu { font-size: 76px; }
       .phu-de { height: 330px; padding: 0 160px 44px; background: linear-gradient(transparent, #00000080 45%, #00000099); }
-      .pd-dong { font-size: 50px; }`
+      .pd-dong { font-size: 50px; }
+      #the-chuong { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: radial-gradient(ellipse at center, #1e1b4bf2, #020617fa); opacity: 0; }
+      .tc-kenh { font-size: 30px; font-weight: 700; letter-spacing: 8px; color: #38bdf8; }
+      .tc-so { font-size: 40px; font-weight: 700; letter-spacing: 12px; color: #fbbf24; }
+      .tc-ten { max-width: 1400px; font-size: 76px; font-weight: 700; line-height: 1.15; text-align: center; color: #fff; text-shadow: 0 6px 30px #000; }
+      .tc-vach { width: 520px; height: 6px; border-radius: 3px; background: linear-gradient(90deg, transparent, #fbbf24, transparent); transform-origin: 50% 50%; }
+      #man-ket { position: absolute; left: 0; right: 0; top: 70px; display: flex; flex-direction: column; align-items: center; gap: 22px; opacity: 0; }
+      .mk-cam-on { font-size: 64px; font-weight: 700; color: #fff; text-shadow: 0 0 12px #000, 0 6px 0 #e11d48; }
+      .mk-nut { display: flex; align-items: center; gap: 16px; padding: 22px 56px; border-radius: 18px; background: #dc2626; font-size: 54px; font-weight: 700; color: #fff; box-shadow: 0 16px 40px #000a; }
+      .mk-play { font-size: 40px; }
+      .mk-da { display: none; }
+      .mk-chuong { position: absolute; left: calc(50% + 250px); top: 120px; font-size: 80px; font-family: "Emoji", sans-serif; }
+      .mk-tro { position: absolute; left: calc(50% + 90px); top: 190px; font-size: 80px; font-family: "Emoji", sans-serif; opacity: 0; }
+      .mk-phu { font-size: 32px; font-weight: 500; color: #e2e8f0; text-shadow: 0 0 8px #000; }`
 
 const trang = `<!doctype html>
 <html lang="vi">
@@ -840,7 +913,7 @@ const trang = `<!doctype html>
         </div></div>
       </div>
       <div id="vien-toi" class="clip" data-start="0" data-duration="${f(TONG)}" data-track-index="5"><div id="den"></div><div id="chop"></div></div>
-      <div id="lop-minh-hoa" class="clip" data-start="0" data-duration="${f(TONG)}" data-track-index="7">${giatTit.html}${theMoc.join('')}${minhHoaKhung.join('')}</div>${phuDe.join('')}
+      <div id="lop-minh-hoa" class="clip" data-start="0" data-duration="${f(TONG)}" data-track-index="7">${giatTit.html}${theMoc.join('')}${minhHoaKhung.join('')}${manKetHtml}${theChuongHtml}</div>${phuDe.join('')}
       ${[...amThanh, ...amPhu].join('\n      ')}
     </div>
     <script>

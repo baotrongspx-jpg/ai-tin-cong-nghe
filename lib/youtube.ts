@@ -8,6 +8,7 @@ import {
 } from './aiPhim'
 import { nguonWiki } from './wiki'
 import { NHAN_VAT } from './hoatHinh'
+import { dsNhac } from './nhacNen'
 
 // Video YouTube dài (trang /youtube): hoạt hình Mèo Mun & Robot Bit, khung ngang 16:9, dài tới ~20 phút.
 // Mỗi dự án là một tệp youtube/<id>/du-an.json trong kho (không cần thêm bảng). AI viết dàn ý chia phần (~3 phút
@@ -15,7 +16,7 @@ import { NHAN_VAT } from './hoatHinh'
 // video và chỉ lưu trên máy nhà (Desktop\Video-YouTube), vì video dài quá nặng để gửi lên kho.
 // Máy nhà báo kết quả: youtube/<id>/phan-<k>.json ({ xong, ma } hoặc { loi, ma }), tien-do.json, xong.json.
 const KHO = 'video-tiktok'
-const PHIEN_BAN = 4 // tăng khi đổi cách dựng để các phần dựng lại (2: thẻ minh hoạ / đạo cụ khung ngang; 3: giọng Mèo Mun; 4: nhịp chuyển cảnh mượt)
+const PHIEN_BAN = 5 // tăng khi đổi cách dựng để các phần dựng lại (2: thẻ minh hoạ / đạo cụ khung ngang; 3: giọng Mèo Mun; 4: nhịp chuyển cảnh mượt; 5: thẻ chương, màn kết, B-roll)
 const kho = () => db().storage.from(KHO)
 const thuMuc = (id: string) => `youtube/${id}`
 const tenViec = (id: string, k: number) => `yt-${id}-${k}.json`
@@ -59,6 +60,8 @@ export type DuAnYT = {
   phan: PhanYT[]
   loai?: 'thuong' | 'tieu_su'
   phim?: PhimTieuSu
+  nhac?: string // nhạc nền: tên bài trong thư viện, 'khong' = không nhạc, trống = tự chọn bài đầu tiên
+  am_luong_nhac?: number // % (mặc định 30)
 }
 
 const bam = (x: unknown) => createHash('sha256').update(JSON.stringify(x)).digest('hex').slice(0, 12)
@@ -142,6 +145,19 @@ export async function vietLoiPhan(id: string, k: number) {
   return moi
 }
 
+// Bài nhạc nền sẽ dùng: bài đã chọn (nếu còn trong thư viện), không chọn thì bài đầu tiên; 'khong' thì không nhạc
+export async function nhacCuaDuAn(d: DuAnYT) {
+  if (d.nhac === 'khong') return null
+  const ds = await dsNhac().catch(() => [])
+  return ds.find((x) => x.ten === d.nhac)?.ten ?? ds[0]?.ten ?? null
+}
+
+export async function chonNhacDuAn(id: string, nhac: string, amLuong: number) {
+  const d = await docDuAn(id)
+  if (!d) throw new Error('Không tìm thấy video')
+  await luuDuAn({ ...d, nhac, am_luong_nhac: Math.max(5, Math.min(80, Math.round(amLuong))) })
+}
+
 export async function suaThongTin(id: string, o: { tieu_de: string; mo_ta: string; the: string[] }) {
   const d = await docDuAn(id)
   if (!d) throw new Error('Không tìm thấy video')
@@ -160,7 +176,7 @@ export async function trangThaiDuAn(d: DuAnYT, mayNha: string | null): Promise<T
   const [{ data: viec }, tienDo, xong, ...kq] = await Promise.all([
     kho().list('hang-doi/viec', { limit: 200, search: `yt-${d.id}` }),
     docJson<{ phan: number; phanTram: number; buoc: string; luc: number }>(`${goc}/tien-do.json`),
-    docJson<{ tep: string; ma: string[] }>(`${goc}/xong.json`),
+    docJson<{ tep: string; ma: string[]; nhac?: string | null }>(`${goc}/xong.json`),
     ...d.phan.map((_, i) => docJson<{ xong?: boolean; loi?: string; ma: string }>(`${goc}/phan-${i + 1}.json`)),
   ])
   const dangCho = new Set((viec ?? []).map((f) => f.name))
@@ -175,7 +191,9 @@ export async function trangThaiDuAn(d: DuAnYT, mayNha: string | null): Promise<T
     if (r?.ma === ma[i] && r.loi) return { loai: 'loi', loi: r.loi }
     return { loai: 'chua_dung' }
   })
-  const daGhep = xong && xong.ma.length === ma.length && xong.ma.every((m, i) => m === ma[i]) ? { tep: xong.tep } : null
+  const nhacChon = await nhacCuaDuAn(d)
+  const daGhep =
+    xong && xong.ma.length === ma.length && xong.ma.every((m, i) => m === ma[i]) && (xong.nhac ?? null) === nhacChon ? { tep: xong.tep } : null
   return { phan, xong: daGhep, mayNha }
 }
 
@@ -185,6 +203,7 @@ export async function guiDung(d: DuAnYT, chiPhan?: number) {
   if (d.phan.some((p) => !p.loi)) throw new Error('Còn phần chưa có lời thoại, chờ AI viết xong đã')
   const tt = await trangThaiDuAn(d, null)
   const ma = d.phan.map((_, i) => maPhan(d, i + 1))
+  const nhac = { nhac: await nhacCuaDuAn(d), am_luong_nhac: d.am_luong_nhac ?? 30 }
   const can = d.phan
     .map((_, i) => i + 1)
     .filter((k) => (chiPhan ? k === chiPhan : true) && ['chua_dung', 'loi'].includes(tt.phan[k - 1].loai))
@@ -197,7 +216,8 @@ export async function guiDung(d: DuAnYT, chiPhan?: number) {
       tieu_de: d.tieu_de,
       phan: k,
       ma_phan: ma,
-      loi_thoai: { kho: 'ngang', kenh: 'Công Nghệ 24H', chu_de: d.chu_de, nhan_vat: NHAN_VAT, loi: p.loi, moc: k === 1 ? p.moc : null },
+      ...nhac,
+      loi_thoai: { kho: 'ngang', kenh: 'Công Nghệ 24H', chu_de: d.chu_de, nhan_vat: NHAN_VAT, loi: p.loi, moc: k === 1 ? p.moc : null, the_chuong: { so: k, ten: p.tieu_de }, man_ket: k === d.phan.length },
     })
   }
   // Mọi phần đã xong từ trước (vd sửa tiêu đề rồi bấm lại) nhưng chưa ghép: gửi lại phần cuối để máy nhà ghép
@@ -209,7 +229,8 @@ export async function guiDung(d: DuAnYT, chiPhan?: number) {
       tieu_de: d.tieu_de,
       phan: k,
       ma_phan: ma,
-      loi_thoai: { kho: 'ngang', kenh: 'Công Nghệ 24H', chu_de: d.chu_de, nhan_vat: NHAN_VAT, loi: d.phan[k - 1].loi, moc: k === 1 ? d.phan[0].moc : null },
+      ...nhac,
+      loi_thoai: { kho: 'ngang', kenh: 'Công Nghệ 24H', chu_de: d.chu_de, nhan_vat: NHAN_VAT, loi: d.phan[k - 1].loi, moc: k === 1 ? d.phan[0].moc : null, the_chuong: { so: k, ten: d.phan[k - 1].tieu_de }, man_ket: true },
     })
     return 1
   }

@@ -69,16 +69,17 @@ export const MINH_HOA = {
 }
 
 // Câu giật tít mở đầu (2 giây đầu, cũng là ảnh bìa TikTok): chữ lớn, từng chữ bật lên, rung nhẹ
-export function mocMoDau(moc, giay) {
+// giay: lúc tắt; tu: lúc bắt đầu hiện (sau thẻ chương thì > 0)
+export function mocMoDau(moc, giay, tu = 0) {
   if (!moc?.chu) return { html: '', tw: [] }
-  const tu = String(moc.chu).split(/\s+/).filter(Boolean)
+  const tuNgu = String(moc.chu).split(/\s+/).filter(Boolean)
   return {
-    html: `<div id="moc" class="moc"><div class="moc-bt">${esc(moc.bieu_tuong ?? '🔥')}</div><div class="moc-chu">${tu.map((w, k) => `<span id="moc-${k}" class="moc-tu">${esc(w)}</span>`).join(' ')}</div></div>`,
+    html: `<div id="moc" class="moc"><div class="moc-bt">${esc(moc.bieu_tuong ?? '🔥')}</div><div class="moc-chu">${tuNgu.map((w, k) => `<span id="moc-${k}" class="moc-tu">${esc(w)}</span>`).join(' ')}</div></div>`,
     tw: [
-      `tl.set("#moc", { opacity: 1 }, 0);`,
-      `tl.fromTo("#moc .moc-bt", { scale: 0, rotation: -30 }, { scale: 1, rotation: 0, duration: 0.4, ease: "back.out(2.5)" }, 0);`,
-      ...tu.map((_, k) => `tl.fromTo("#moc-${k}", { y: 70, scale: 0.5, opacity: 0 }, { y: 0, scale: 1, opacity: 1, duration: 0.3, ease: "back.out(2.2)" }, ${f(0.05 + k * 0.08)});`),
-      `tl.to("#moc .moc-chu", { x: 7, duration: 0.05, yoyo: true, repeat: 5 }, ${f(0.15 + tu.length * 0.08)});`,
+      `tl.set("#moc", { opacity: 1 }, ${f(tu)});`,
+      `tl.fromTo("#moc .moc-bt", { scale: 0, rotation: -30 }, { scale: 1, rotation: 0, duration: 0.4, ease: "back.out(2.5)" }, ${f(tu)});`,
+      ...tuNgu.map((_, k) => `tl.fromTo("#moc-${k}", { y: 70, scale: 0.5, opacity: 0 }, { y: 0, scale: 1, opacity: 1, duration: 0.3, ease: "back.out(2.2)" }, ${f(tu + 0.05 + k * 0.08)});`),
+      `tl.to("#moc .moc-chu", { x: 7, duration: 0.05, yoyo: true, repeat: 5 }, ${f(tu + 0.15 + tuNgu.length * 0.08)});`,
       `tl.to("#moc", { opacity: 0, scale: 1.15, duration: 0.3, ease: "power2.in" }, ${f(giay - 0.3)});`,
     ],
   }

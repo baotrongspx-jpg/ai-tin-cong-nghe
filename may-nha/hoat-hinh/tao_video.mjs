@@ -417,12 +417,11 @@ const nvPhu = doanPhu.map((dp, k) => {
   tw.push(`tl.to("#${id}-tay-phai", { rotation: 0, duration: 0.3 }, ${f(t0 + 1.9)});`)
   tw.push(`tl.to("#${id}-dau", { rotation: 6, duration: 0.5, yoyo: true, repeat: ${lap(het - t0 - 2.2, 0.5) | 1}, ease: "sine.inOut" }, ${f(t0 + 2.2)});`)
   tw.push(`tl.to("#${id}", { opacity: 0, y: 60, duration: 0.35, ease: "power2.in" }, ${f(het - 0.1)});`)
-  // Thẻ tên chỉ hiện lúc giới thiệu; hai nhân vật chính dạt sang hai bên chừa chỗ cho nhân vật phụ
-  if (lanDau) tw.push(`tl.to("#${id} .ten-phu", { opacity: 0, duration: 0.3 }, ${f(t0 + 2.3)});`)
+  // Không ghi tên trên đầu (trang phục tự nói lên họ là ai); hai nhân vật chính dạt sang hai bên chừa chỗ cho nhân vật phụ
   tw.push(`tl.to("#o-meo", { x: -80, duration: 0.5, ease: "power2.inOut" }, ${f(t0)});`)
   tw.push(`tl.to("#o-robot", { x: 80, duration: 0.5, ease: "power2.inOut" }, ${f(t0)});`)
   tw.push(`tl.to(["#o-meo", "#o-robot"], { x: 0, duration: 0.5, ease: "power2.inOut" }, ${f(het - 0.1)});`)
-  return `<div id="${id}" class="nv-phu"><svg viewBox="0 0 400 600" width="372" height="558" class="nv">${NHAN_VAT_PHU[dp.ten].svg(id)}</svg>${lanDau ? `<div class="ten-phu">${esc(NHAN_VAT_PHU[dp.ten].ten)}</div>` : ''}</div>`
+  return `<div id="${id}" class="nv-phu"><svg viewBox="0 0 400 600" width="372" height="558" class="nv">${NHAN_VAT_PHU[dp.ten].svg(id)}</svg></div>`
 })
 
 // ── Chỉ dẫn đạo diễn AI chọn cho từng câu (khi có): khung hình + chuyển động máy quay ─
@@ -731,7 +730,6 @@ const trang = `<!doctype html>
       .dao-cu.meo { left: ${10 - GIAN}px; top: 470px; }
       .dao-cu.robot { left: ${880 + GIAN}px; top: 470px; }
       .nv-phu { position: absolute; left: 354px; top: ${440 + PHU_XUONG}px; width: 372px; height: 600px; opacity: 0; }
-      .ten-phu { position: absolute; left: 50%; top: -20px; transform: translateX(-50%); white-space: nowrap; font-size: 30px; font-weight: 700; padding: 6px 18px; border-radius: 999px; background: #ffffffe6; color: #0f172a; }
       #vet-quet { position: absolute; top: 0; left: 0; width: ${RONG}px; height: ${CAO}px; opacity: 0; background: linear-gradient(90deg, transparent, #ffffffaa 45%, #ffffffaa 55%, transparent); }
       .dau-trang { height: 200px; background: linear-gradient(#000000aa, transparent); display: flex; align-items: center; justify-content: space-between; padding: 0 64px; box-sizing: border-box; }
       .kenh { display: flex; align-items: center; gap: 18px; font-size: 40px; font-weight: 700; }

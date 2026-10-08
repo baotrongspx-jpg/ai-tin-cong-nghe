@@ -680,6 +680,16 @@ const doDaiTep = (ten) => {
 const SFX = {
   vut: ['sfx-vut', 0.45], bum: ['sfx-bum', 0.55], ting: ['sfx-ting', 0.4], bop: ['sfx-bop', 0.4], coi_bao: ['sfx-coi', 0.3],
   go_phim: ['sfx-go-phim', 0.45], tim_dap: ['sfx-tim-dap', 0.55], tich_tac: ['sfx-tich-tac', 0.7], vui: ['sfx-vui', 0.35], hut_hang: ['sfx-hut-hang', 0.4],
+  gio: ['sfx-gio', 0.6], buoc_chan: ['sfx-buoc-chan', 0.3], vo_tay: ['sfx-vo-tay', 0.8], xe_chay: ['sfx-xe-chay', 0.25], bo_xe: ['sfx-bo-xe', 0.18],
+  coi_xe: ['sfx-coi-xe', 0.2], mua: ['sfx-mua', 0.6], sam: ['sfx-sam', 1], chuong_dt: ['sfx-chuong-dt', 0.3], chuong_truong: ['sfx-chuong-truong', 0.3],
+  tien: ['sfx-tien', 0.45], go_cua: ['sfx-go-cua', 0.45], chup_anh: ['sfx-chup-anh', 0.6], reo_ho: ['sfx-reo-ho', 0.7], bua: ['sfx-bua', 0.45],
+  phao_hoa: ['sfx-phao-hoa', 0.45], may_bay: ['sfx-may-bay', 0.5], nuoc: ['sfx-nuoc', 0.6],
+}
+// Âm thanh tự gắn khi vào một bối cảnh (nếu câu đó AI chưa chọn hiệu ứng): có hình gì thì có tiếng đó
+const AM_VAO_CANH = {
+  pho_florida: 'xe_chay', thanh_pho_dem: 'xe_chay', nong_thon: 'gio', nui_rung: 'gio', thanh_pho_tuyet: 'gio', truong_hoc: 'chuong_truong',
+  san_bay: 'may_bay', san_van_dong: 'reo_ho', san_khau: 'vo_tay', hoi_truong: 'vo_tay', cong_truong: 'bua', bai_bien: 'nuoc', cang_bien: 'nuoc',
+  san_chung_khoan: 'tien', cho: 'buoc_chan', nha_ngheo: 'gio',
 }
 const AM_NEN = {
   truong_quay: ['nen-phong', 0.25], pho_florida: ['nen-pho', 0.09], may_chu: ['nen-may-chu', 0.07], don_canh_sat: ['nen-phong', 0.3],
@@ -701,7 +711,20 @@ loi.forEach((l, i) => {
   const sfx = SFX[l.am_thanh]
   if (sfx) themAm(sfx[0], batDau[i] + (l.am_thanh === 'bum' ? 0 : 0.05), sfx[1])
 })
-for (const cc of chuyenCanh) if (!SFX[loi[cc.i].am_thanh]) themAm('sfx-vut', Math.max(0, cc.t - 0.05), 0.28)
+// Đổi cảnh: tiếng vút; vào bối cảnh có âm thanh đặc trưng (phố → xe chạy, sân vận động → reo hò…) thì thêm tiếng đó
+for (const cc of chuyenCanh) {
+  if (SFX[loi[cc.i].am_thanh]) continue
+  themAm('sfx-vut', Math.max(0, cc.t - 0.05), 0.28)
+  const rieng = SFX[AM_VAO_CANH[BOI_CANH[loi[cc.i].boi_canh] ? loi[cc.i].boi_canh : '']]
+  if (rieng) themAm(rieng[0], cc.t + 0.35, rieng[1] * 0.8)
+}
+// Cảnh mở đầu cũng có âm thanh đặc trưng của bối cảnh
+{
+  const rieng = SFX[AM_VAO_CANH[loi[0]?.boi_canh]]
+  if (rieng && !SFX[loi[0]?.am_thanh]) themAm(rieng[0], 0.3, rieng[1] * 0.7)
+}
+// Nhân vật phụ bước ra sân khấu: tiếng bước chân (trừ khi câu đó đã có hiệu ứng)
+for (const dp of doanPhu) if (!SFX[loi[dp.tu].am_thanh]) themAm('sfx-buoc-chan', batDau[dp.tu] + 0.05, 0.22, 1.1)
 doanCanh.forEach((dc, k) => {
   const nen = AM_NEN[dc.ten]
   if (!nen) return

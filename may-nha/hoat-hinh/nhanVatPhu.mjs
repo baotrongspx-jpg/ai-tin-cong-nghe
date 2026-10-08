@@ -139,24 +139,68 @@ export const nguoiKeSvg = (id) => `
   </g>`
 
 // ── Nhân vật chính của phim tiểu sử (người được kể), vẽ theo bản thiết kế AI (lib/aiPhim.ts: TaoHinh, một giai đoạn):
-// { gioi, da, tuoi, toc, mau_toc, ao, mau_ao, mau_quan, kinh, rau, vat_dung }. Vầng sáng vàng dưới chân để người xem
-// nhận ra vai chính; trẻ em thì nhỏ lại (viewBox rộng hơn). Trả { svg(id), viewBox }.
+// { nhom, gioi, da, tuoi, toc, mau_toc, ao, mau_ao, mau_quan, kinh, rau, mu, phu_kien, so_ao, vat_dung }.
+// nhom (hoang_gia, lich_su, the_thao, am_nhac, dien_anh, khoa_hoc, chinh_tri, doanh_nhan, khac) quyết định màu vầng sáng
+// dưới chân + vài lấp lánh quanh người, để người xem nhận ra vai chính và "chất" của họ. Trẻ em nhỏ lại (viewBox rộng
+// hơn). Trường thiếu (bản thiết kế cũ) thì dùng mặc định. Trả { svg(id), viewBox }.
 const MAU_TOC_HEX = { den: '#1c1917', nau: '#6b3a1d', vang: '#eab308', bac: '#d1d5db', do: '#b45309' }
 const MAU_DA = { sang: '#fcd9b8', trung_binh: '#e9b48a', ngam: '#b97a56' }
+const MAU_NHOM = {
+  hoang_gia: '#facc15', lich_su: '#f59e0b', the_thao: '#4ade80', am_nhac: '#c084fc', dien_anh: '#fb7185',
+  khoa_hoc: '#22d3ee', chinh_tri: '#60a5fa', doanh_nhan: '#34d399', khac: '#fde68a',
+}
+const VANG = '#facc15'
 const hex = (x, mac) => (/^#[0-9a-f]{6}$/i.test(x ?? '') ? x : mac)
+
+// Mũ / vật đội đầu (vẽ sau tóc, trong nhóm đầu nên nghiêng theo đầu)
+const MU = {
+  vuong_mien: () =>
+    `<path d="M136 116 L142 56 L170 90 L200 40 L230 90 L258 56 L264 116 Z" fill="${VANG}" ${vien(5)}/><rect x="132" y="108" width="136" height="20" rx="6" fill="#eab308" ${vien(5)}/>` +
+    `<circle cx="200" cy="118" r="7" fill="#dc2626"/><circle cx="164" cy="118" r="5" fill="#2563eb"/><circle cx="236" cy="118" r="5" fill="#16a34a"/><circle cx="200" cy="40" r="6" fill="#fff" ${vien(3)}/>`,
+  mu_vua: (ao) =>
+    `<path d="M128 134 Q126 56 200 52 Q274 56 272 134 Z" fill="${VANG}" ${vien(5)}/><path d="M128 120 L82 100 L86 118 L128 134 Z M272 120 L318 100 L314 118 L272 134 Z" fill="${pha(ao, -0.2)}" ${vien(4)}/>` +
+    `<path d="M150 100 Q200 80 250 100" fill="none" stroke="#b45309" stroke-width="5"/><circle cx="200" cy="72" r="9" fill="#dc2626" ${vien(3)}/><rect x="128" y="124" width="144" height="14" rx="5" fill="#b45309"/>`,
+  khan_dong: (ao) =>
+    `<path d="M114 154 Q114 90 200 86 Q286 90 286 154 Q200 126 114 154 Z" fill="${pha(ao, -0.25)}" ${vien(5)}/><path d="M124 132 Q200 104 276 132 M130 114 Q200 92 270 114" fill="none" stroke="${pha(ao, 0.15)}" stroke-width="5"/>`,
+  mu_giap: () =>
+    `<path d="M112 162 Q108 66 200 62 Q292 66 288 162 L268 162 Q262 110 200 106 Q138 110 132 162 Z" fill="#94a3b8" ${vien(5)}/><path d="M200 62 L200 106" stroke="#64748b" stroke-width="6"/>` +
+    `<path d="M194 64 Q186 20 214 10 Q206 34 222 30 Q214 52 206 64 Z" fill="#dc2626" ${vien(4)}/>`,
+  mu_luoi_trai: (ao) =>
+    `<path d="M116 142 Q118 80 200 78 Q282 80 284 142 Z" fill="${ao}" ${vien(5)}/><path d="M196 134 Q264 126 308 142 Q264 154 196 146 Z" fill="${pha(ao, -0.25)}" ${vien(5)}/><circle cx="200" cy="80" r="6" fill="${pha(ao, -0.3)}"/>`,
+  mu_phot: () =>
+    `<ellipse cx="200" cy="120" rx="120" ry="20" fill="#1f2937" ${vien(5)}/><path d="M140 120 Q138 58 200 56 Q262 58 260 120 Z" fill="#1f2937" ${vien(5)}/><path d="M142 106 Q200 96 258 106 L258 118 Q200 108 142 118 Z" fill="#b91c1c"/>`,
+  tai_nghe: () =>
+    `<path d="M116 186 C108 70 292 70 284 186" fill="none" stroke="#111827" stroke-width="14" stroke-linecap="round"/><rect x="96" y="166" width="32" height="54" rx="14" fill="#111827" ${vien(4)}/><rect x="272" y="166" width="32" height="54" rx="14" fill="#111827" ${vien(4)}/><rect x="102" y="176" width="10" height="34" rx="5" fill="#a855f7"/><rect x="288" y="176" width="10" height="34" rx="5" fill="#a855f7"/>`,
+  hoa_cai: () => `<g transform="translate(250 110)">${[0, 72, 144, 216, 288].map((g) => `<ellipse cx="0" cy="-14" rx="9" ry="14" fill="#f472b6" transform="rotate(${g})" ${vien(2)}/>`).join('')}<circle r="7" fill="${VANG}"/></g>`,
+}
+
+// Phụ kiện trên người (vẽ ở thân) hoặc trên mặt (kính râm)
+const PHU_KIEN_THAN = {
+  huy_chuong: `<path d="M178 292 L200 360 L222 292" fill="none" stroke="#dc2626" stroke-width="10"/><circle cx="200" cy="372" r="22" fill="${VANG}" ${vien(4)}/><path d="M200 360 l4 9 l10 1 l-7 7 l2 10 l-9 -5 l-9 5 l2 -10 l-7 -7 l10 -1 z" fill="#ca8a04"/>`,
+  khan_quang: `<path d="M164 286 Q200 316 236 286 L244 304 Q200 336 156 304 Z" fill="#dc2626" ${vien(4)}/><path d="M222 310 L236 380 L214 380 L208 318 Z" fill="#b91c1c" ${vien(4)}/>`,
+  day_chuyen: `<path d="M172 292 Q200 350 228 292" fill="none" stroke="${VANG}" stroke-width="6"/><circle cx="200" cy="336" r="9" fill="${VANG}" ${vien(3)}/>`,
+  ghim_co: `<rect x="226" y="326" width="22" height="15" rx="2" fill="#dc2626" ${vien(2.5)}/><path d="M237 330 l2 4 l4 0 l-3 3 l1 4 l-4 -2 l-4 2 l1 -4 l-3 -3 l4 0 z" fill="${VANG}"/>`,
+}
+const kinhRam = `<rect x="148" y="174" width="44" height="30" rx="12" fill="#0b1020" stroke="${VIEN}" stroke-width="4"/><rect x="208" y="174" width="44" height="30" rx="12" fill="#0b1020" stroke="${VIEN}" stroke-width="4"/><path d="M192 186 L208 186 M148 184 L122 178 M252 184 L278 178" stroke="${VIEN}" stroke-width="5"/><path d="M156 182 l10 -4 M216 182 l10 -4" stroke="#ffffff88" stroke-width="4" stroke-linecap="round"/>`
+
 export function nhanVatChinhSvg(h) {
   const nu = h.gioi === 'nu'
   const gia = h.tuoi === 'gia'
+  const treEm = h.tuoi === 'tre_em'
   const mt = gia && h.mau_toc !== 'bac' ? '#cbd5e1' : (MAU_TOC_HEX[h.mau_toc] ?? MAU_TOC_HEX.den)
   const ao = hex(h.mau_ao, '#1e3a8a')
   const quan = hex(h.mau_quan, '#1f2937')
   const da = MAU_DA[h.da] ?? MAU_DA.sang
+  const sang = MAU_NHOM[h.nhom] ?? MAU_NHOM.khac
+  // Mũ trùm kín đầu thì không vẽ tóc trước (vương miện, mũ lưỡi trai, mũ phớt vẫn lộ tóc)
+  const coMu = ['mu_vua', 'khan_dong', 'mu_giap'].includes(h.mu)
   const tocVe = {
     ngan: { truoc: toc.ngan(mt) },
     re_ngoi: { truoc: toc.reNgoi(mt) },
     vuot: { truoc: `<path d="M110 186 C92 96 150 52 214 58 C268 62 306 104 290 184 C284 156 272 140 254 134 C234 112 196 104 168 116 C146 126 128 140 120 160 Z" fill="${mt}" ${vien(6)}/><path d="M160 90 Q206 64 256 92" fill="none" stroke="${pha(mt, 0.35)}" stroke-width="5" stroke-linecap="round"/>` },
-    dai: { sau: toc.daiSau(mt), truoc: toc.maiTruoc(mt) },
-    buoi: { sau: toc.buiSau(mt), truoc: toc.buiTruoc(mt) },
+    // Tóc dài: phần ôm đầu vẽ sau mặt, phần buông dài vẽ SAU LƯNG (không phủ lên áo), chỉ lộ hai bên vai
+    dai: { sau: `<path d="M112 200 C96 84 304 84 288 200 L292 250 L108 250 Z" fill="${mt}" ${vien(7)}/>`, sauLung: `<path d="M108 220 L96 410 Q200 432 304 410 L292 220 Z" fill="${mt}" ${vien(7)}/>`, truoc: toc.maiTruoc(mt) },
+    buoi: { sau: coMu ? '' : toc.buiSau(mt), truoc: toc.buiTruoc(mt) },
     hoi: { truoc: `<path d="M114 196 Q108 150 132 132 L146 168 Z M286 196 Q292 150 268 132 L254 168 Z" fill="${mt}" ${vien(5)}/><path d="M168 112 Q200 102 232 112" fill="none" stroke="#ffffff66" stroke-width="5" stroke-linecap="round"/>` },
     xoan: { truoc: [[130, 150], [150, 118], [182, 100], [218, 100], [250, 118], [270, 150]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="30" fill="${mt}" ${vien(5)}/>`).join('') + `<path d="M126 170 Q200 120 274 170 L274 150 Q200 110 126 150 Z" fill="${mt}"/>` },
   }[h.toc] ?? { truoc: toc.ngan(mt) }
@@ -168,39 +212,59 @@ export function nhanVatChinhSvg(h) {
         : h.rau === 'day'
           ? `<path d="M126 196 Q132 276 200 284 Q268 276 274 196 Q262 236 236 240 Q218 226 200 230 Q182 226 164 240 Q138 236 126 196 Z" fill="${mt}" ${vien(4)}/>`
           : ''
+  const so = Number.isInteger(h.so_ao) && h.so_ao > 0 ? h.so_ao : 10
   const kieu = {
-    vest: { co: 'vest', than: nu ? `<circle cx="200" cy="330" r="7" fill="#fde68a" ${vien(3)}/>` : caVat('#b91c1c') },
+    vest: { co: 'vest', than: nu ? `<circle cx="200" cy="330" r="7" fill="#fde68a" ${vien(3)}/>` : caVat(h.nhom === 'chinh_tri' ? '#1d4ed8' : '#b91c1c') },
     so_mi: { co: 'so_mi', than: `<circle cx="200" cy="340" r="4" fill="#e5e7eb"/><circle cx="200" cy="380" r="4" fill="#e5e7eb"/><circle cx="200" cy="420" r="4" fill="#e5e7eb"/>` },
     ao_thun: { co: 'tron', than: '' },
     ao_khoac: { co: 'vest', than: `<path d="M200 300 L200 470" stroke="${pha(ao, -0.35)}" stroke-width="5"/><rect x="146" y="400" width="34" height="8" rx="4" fill="${pha(ao, -0.3)}"/><rect x="220" y="400" width="34" height="8" rx="4" fill="${pha(ao, -0.3)}"/>` },
     ao_len: { co: 'khong', than: `<path d="M170 286 Q200 304 230 286 L230 300 Q200 318 170 300 Z" fill="${pha(ao, -0.2)}" ${vien(4)}/><path d="M140 440 Q200 452 260 440" fill="none" stroke="${pha(ao, -0.25)}" stroke-width="5"/>` },
     ao_dai: { co: 'tron', than: `<path d="M200 296 L200 470" stroke="${pha(ao, 0.3)}" stroke-width="4"/><path d="M186 300 Q200 312 214 300" fill="none" stroke="#fde68a" stroke-width="4"/>` },
-    quan_phuc: { co: 'so_mi', than: `<rect x="146" y="330" width="24" height="14" rx="3" fill="#facc15" ${vien(3)}/><rect x="230" y="330" width="24" height="14" rx="3" fill="#facc15" ${vien(3)}/><circle cx="200" cy="360" r="5" fill="#facc15"/><circle cx="200" cy="400" r="5" fill="#facc15"/><path d="M150 300 L172 290 M250 300 L228 290" stroke="#facc15" stroke-width="5"/>` },
+    quan_phuc: { co: 'so_mi', than: `<rect x="146" y="330" width="24" height="14" rx="3" fill="${VANG}" ${vien(3)}/><rect x="230" y="330" width="24" height="14" rx="3" fill="${VANG}" ${vien(3)}/><circle cx="200" cy="360" r="5" fill="${VANG}"/><circle cx="200" cy="400" r="5" fill="${VANG}"/><path d="M150 300 L172 290 M250 300 L228 290" stroke="${VANG}" stroke-width="5"/>` },
     ao_ba_ba: { co: 'tron', than: `<circle cx="200" cy="330" r="5" fill="${pha(ao, 0.4)}"/><circle cx="200" cy="370" r="5" fill="${pha(ao, 0.4)}"/><circle cx="200" cy="410" r="5" fill="${pha(ao, 0.4)}"/><rect x="146" y="420" width="30" height="26" rx="3" fill="${pha(ao, -0.15)}" ${vien(3)}/>` },
+    // Long bào (vua chúa): áo dài tới chân, viền vàng, đai lưng, hoa văn rồng mây
+    long_bao: { co: 'tron', dai: true, than: `<path d="M172 290 L200 330 L228 290" fill="none" stroke="${VANG}" stroke-width="8"/><path d="M200 330 L200 476" stroke="${VANG}" stroke-width="6"/><rect x="132" y="400" width="136" height="16" rx="6" fill="${VANG}" ${vien(3)}/><circle cx="200" cy="408" r="9" fill="#dc2626" ${vien(2.5)}/><path d="M146 350 q14 -14 28 0 q14 14 28 0 M200 360 q14 -14 28 0 q14 14 28 0" fill="none" stroke="${VANG}" stroke-width="4"/><path d="M142 446 q12 -10 24 0 q12 10 24 0 M214 446 q12 -10 24 0 q12 10 24 0" fill="none" stroke="${VANG}" stroke-width="4"/>` },
+    // Giáp trụ (tướng lĩnh, anh hùng lịch sử): giáp ngực ánh kim, giáp vai, đai, áo choàng đỏ sau lưng
+    giap: { co: 'khong', sau: `<path d="M130 300 L100 560 Q200 580 300 560 L270 300 Z" fill="#b91c1c" ${vien(6)}/>`, than: `<path d="M150 300 L250 300 L246 420 Q200 440 154 420 Z" fill="#cbd5e1" ${vien(5)}/><path d="M160 340 L240 340 M160 370 L240 370 M164 400 L236 400" stroke="#64748b" stroke-width="5"/><ellipse cx="140" cy="306" rx="30" ry="18" fill="#94a3b8" ${vien(4)}/><ellipse cx="260" cy="306" rx="30" ry="18" fill="#94a3b8" ${vien(4)}/><rect x="136" y="430" width="128" height="16" rx="5" fill="#78350f" ${vien(3)}/><circle cx="200" cy="438" r="8" fill="${VANG}"/>` },
+    // Áo đấu thể thao: số áo to, sọc hai bên, quần đùi
+    ao_the_thao: { co: 'tron', ngan: true, than: `<path d="M134 330 L140 470 M266 330 L260 470" stroke="#fff" stroke-width="8"/><text x="200" y="462" text-anchor="middle" font-size="60" font-weight="900" font-family="Arial Black, Arial, sans-serif" fill="#fff" stroke="${VIEN}" stroke-width="3">${so}</text>` },
+    // Áo sân khấu (ca sĩ, ngôi sao): áo vest lấp lánh, sơ mi mở cổ
+    ao_san_khau: { co: 'vest', than: [[150, 340], [160, 390], [150, 440], [250, 340], [240, 390], [250, 440], [170, 460], [232, 460]].map(([x, y]) => `<path d="M${x} ${y - 7} l3 5 l6 1 l-5 4 l1 6 l-5 -3 l-5 3 l1 -6 l-5 -4 l6 -1 z" fill="#fef9c3"/>`).join('') },
+    // Áo blouse trắng (nhà khoa học, bác sĩ): túi ngực cắm bút
+    ao_blouse: { co: 'vest', than: `${caVat('#0ea5e9')}<rect x="222" y="344" width="32" height="38" rx="4" fill="#f1f5f9" ${vien(3)}/><path d="M230 338 L230 360 M240 336 L240 362" stroke="#2563eb" stroke-width="4"/><path d="M200 300 L200 476" stroke="#cbd5e1" stroke-width="4"/>` },
   }[h.ao] ?? { co: 'tron', than: '' }
+  const aoHien = h.ao === 'ao_blouse' ? '#f8fafc' : h.ao === 'giap' ? '#475569' : ao
   const vat = DAO_CU[h.vat_dung]
   const tayPhai = vat ? `<text x="300" y="486" font-size="66" text-anchor="middle" font-family="Emoji, 'Segoe UI Emoji', sans-serif">${vat}</text>` : ''
-  const treEm = h.tuoi === 'tre_em'
+  const mu = h.mu && MU[h.mu] ? MU[h.mu](ao) : ''
+  const phuKien = PHU_KIEN_THAN[h.phu_kien] ?? ''
+  // Lấp lánh quanh người theo màu nhóm (cố định vị trí, không ngẫu nhiên)
+  const lapLanh = [[60, 240, 1], [340, 200, 0.8], [80, 420, 0.7], [326, 380, 1]]
+    .map(([x, y, k]) => `<path d="M${x} ${y - 16 * k} Q${x + 3 * k} ${y - 3 * k} ${x + 16 * k} ${y} Q${x + 3 * k} ${y + 3 * k} ${x} ${y + 16 * k} Q${x - 3 * k} ${y + 3 * k} ${x - 16 * k} ${y} Q${x - 3 * k} ${y - 3 * k} ${x} ${y - 16 * k} Z" fill="${sang}" opacity="0.9"/>`)
+    .join('')
   return {
     // Trẻ em nhỏ lại ~78% (chân vẫn chạm đất): viewBox rộng hơn quanh điểm chân (200, 585)
     viewBox: treEm ? '-56 -169 512 769' : '0 0 400 600',
     svg: (id) => `
-  <defs><radialGradient id="${id}-hq"><stop offset="0" stop-color="#fde68a" stop-opacity="0.85"/><stop offset="1" stop-color="#fde68a" stop-opacity="0"/></radialGradient></defs>
+  <defs><radialGradient id="${id}-hq"><stop offset="0" stop-color="${sang}" stop-opacity="0.9"/><stop offset="1" stop-color="${sang}" stop-opacity="0"/></radialGradient></defs>
   <ellipse cx="200" cy="584" rx="190" ry="34" fill="url(#${id}-hq)"/>
+  ${lapLanh}
   ${nguoi(id, {
     da,
-    ao,
-    quan: h.ao === 'ao_dai' ? ao : quan,
-    vay: nu && (h.ao === 'ao_dai' || h.ao === 'vest'),
-    quanNgan: treEm && !nu,
+    ao: aoHien,
+    quan: h.ao === 'ao_dai' || kieu.dai ? aoHien : quan,
+    vay: kieu.dai || (nu && (h.ao === 'ao_dai' || h.ao === 'vest')),
+    quanNgan: kieu.ngan || (treEm && !nu),
+    giay: kieu.ngan ? '#f8fafc' : undefined,
     co: kieu.co,
     nu,
     gia,
     may: mt,
+    sau: (tocVe.sauLung ?? '') + (kieu.sau ?? ''),
     tocSau: tocVe.sau ?? '',
-    tocTruoc: tocVe.truoc + rau,
-    mat: (h.kinh ? kinh(gia ? '#78350f' : VIEN) : '') + matMacDinh(undefined, nu),
-    than: kieu.than,
+    tocTruoc: (coMu ? '' : tocVe.truoc) + rau + mu,
+    mat: matMacDinh(undefined, nu) + (h.phu_kien === 'kinh_ram' ? kinhRam : h.kinh ? kinh(gia ? '#78350f' : VIEN) : ''),
+    than: kieu.than + phuKien,
     tayPhai,
   })}`,
   }

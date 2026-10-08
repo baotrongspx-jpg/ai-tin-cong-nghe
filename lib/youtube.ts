@@ -81,7 +81,7 @@ const maPhan = (d: DuAnYT, k: number) =>
 function hinhChuong(d: DuAnYT, k: number) {
   const th = d.phim?.tao_hinh ?? TAO_HINH_MAC_DINH
   const gd = [...th.giai_doan].sort((a, b) => a.tu_chuong - b.tu_chuong).filter((g, i) => i === 0 || g.tu_chuong <= k).at(-1)!
-  return { gioi: th.gioi, da: th.da, ...gd }
+  return { nhom: th.nhom ?? 'khac', gioi: th.gioi, da: th.da, ...gd }
 }
 // Giọng nhân vật chính theo giới tính (giọng kể chuyện còn trống trong bộ VieNeu)
 const GIONG_CHINH = { nam: 'Thiện Minh', nu: 'Mỹ Duyên' } as const

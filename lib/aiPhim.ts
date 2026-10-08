@@ -125,20 +125,35 @@ STAGE 2 — STORY DEVELOPMENT for a film of about ${o.phut} minutes, based ONLY 
 export const TUOI = ['tre_em', 'thanh_nien', 'trung_nien', 'gia'] as const
 export const KIEU_TOC = ['ngan', 're_ngoi', 'vuot', 'dai', 'buoi', 'hoi', 'xoan'] as const
 export const MAU_TOC = ['den', 'nau', 'vang', 'bac', 'do'] as const
-export const KIEU_AO = ['vest', 'so_mi', 'ao_thun', 'ao_khoac', 'ao_len', 'ao_dai', 'quan_phuc', 'ao_ba_ba'] as const
+export const KIEU_AO = [
+  'vest', 'so_mi', 'ao_thun', 'ao_khoac', 'ao_len', 'ao_dai', 'quan_phuc', 'ao_ba_ba',
+  'long_bao', 'giap', 'ao_the_thao', 'ao_san_khau', 'ao_blouse',
+] as const
 export const RAU = ['khong', 'ria', 'quai_non', 'day'] as const
+// Nhóm nhân vật: quyết định màu vầng sáng + gợi ý trang phục / mũ / phụ kiện đặc trưng
+export const NHOM_NHAN_VAT = ['hoang_gia', 'lich_su', 'the_thao', 'am_nhac', 'dien_anh', 'khoa_hoc', 'chinh_tri', 'doanh_nhan', 'khac'] as const
+export const MU = ['khong', 'vuong_mien', 'mu_vua', 'khan_dong', 'mu_giap', 'mu_luoi_trai', 'mu_phot', 'tai_nghe', 'hoa_cai'] as const
+export const PHU_KIEN = ['khong', 'kinh_ram', 'huy_chuong', 'khan_quang', 'day_chuyen', 'ghim_co'] as const
 const MAU = z.string().regex(/^#[0-9a-fA-F]{6}$/)
 const GiaiDoanHinhSchema = zDoi({
   tu_chuong: z.number().int().min(1), tuoi: z.enum(TUOI), toc: z.enum(KIEU_TOC), mau_toc: z.enum(MAU_TOC), ao: z.enum(KIEU_AO),
   mau_ao: MAU, mau_quan: MAU, kinh: z.boolean(), rau: z.enum(RAU), vat_dung: z.enum(DAO_CU), mo_ta: z.string(),
+  // Bản thiết kế cũ (trước khi có nhóm) không có các trường này: máy nhà dùng mặc định
+  mu: z.enum(MU).optional(), phu_kien: z.enum(PHU_KIEN).optional(), so_ao: z.number().int().min(0).max(99).optional(),
 })
-const TaoHinhSchema = zDoi({ gioi: z.enum(['nam', 'nu']), da: z.enum(['sang', 'trung_binh', 'ngam']), giai_doan: z.array(GiaiDoanHinhSchema).min(1).max(5) })
+const TaoHinhSchema = zDoi({
+  nhom: z.enum(NHOM_NHAN_VAT).optional(),
+  gioi: z.enum(['nam', 'nu']),
+  da: z.enum(['sang', 'trung_binh', 'ngam']),
+  giai_doan: z.array(GiaiDoanHinhSchema).min(1).max(5),
+})
 export type TaoHinh = z.infer<typeof TaoHinhSchema> & { mac_dinh?: boolean }
 export const TAO_HINH_MAC_DINH: TaoHinh = {
+  nhom: 'khac',
   gioi: 'nam',
   da: 'sang',
   mac_dinh: true,
-  giai_doan: [{ tu_chuong: 1, tuoi: 'trung_nien', toc: 're_ngoi', mau_toc: 'den', ao: 'vest', mau_ao: '#1e3a8a', mau_quan: '#1f2937', kinh: false, rau: 'khong', vat_dung: 'khong', mo_ta: 'Hình mặc định (AI chưa thiết kế được)' }],
+  giai_doan: [{ tu_chuong: 1, tuoi: 'trung_nien', toc: 're_ngoi', mau_toc: 'den', ao: 'vest', mau_ao: '#1e3a8a', mau_quan: '#1f2937', kinh: false, rau: 'khong', mu: 'khong', phu_kien: 'khong', so_ao: 0, vat_dung: 'khong', mo_ta: 'Hình mặc định (AI chưa thiết kế được)' }],
 }
 
 export async function thietKeNhanVatChinh(o: { ten: string; nghienCuu: NghienCuu; cauChuyen: CauChuyen }): Promise<TaoHinh | null> {
@@ -148,20 +163,33 @@ export async function thietKeNhanVatChinh(o: { ten: string; nghienCuu: NghienCuu
     system: `${PHIM_DAU}
 
 STAGE 2b — CARTOON DESIGN of the protagonist for the animated version. The person appears as a simple, friendly chibi cartoon character on stage (the same style as the channel's cat and robot mascots), recognisable by a few signature traits, never a realistic likeness or a caricature that mocks them.
+- nhom: the group this person belongs to, which sets the colour of their glow and the signature look: hoang_gia (royalty: kings, queens, emperors, princes), lich_su (historical figures: generals, national heroes, scholars, revolutionaries), the_thao (sports), am_nhac (music), dien_anh (film and entertainment), khoa_hoc (scientists, inventors, geniuses), chinh_tri (politics and state leaders), doanh_nhan (business people and billionaires), khac (anyone else).
 - gioi: nam / nu. da: skin tone sang (light), trung_binh (medium), ngam (dark).
-- giai_doan: 1 to 4 life stages that the chapters actually show, in chapter order; tu_chuong = the chapter number (1..${o.cauChuyen.phan.length}) from which this look is used (the first stage has tu_chuong 1). For each: tuoi (tre_em child, thanh_nien young adult, trung_nien middle-aged, gia elderly), toc (ngan short, re_ngoi side part, vuot quiff swept up, dai long, buoi bun, hoi balding, xoan curly), mau_toc (den black, nau brown, vang blond, bac grey or white, do ginger), ao (vest suit, so_mi shirt, ao_thun t-shirt, ao_khoac jacket, ao_len sweater or turtleneck, ao_dai Vietnamese long dress, quan_phuc military uniform, ao_ba_ba Southern Vietnamese peasant shirt), mau_ao and mau_quan as #rrggbb colours that suit the person and the era, kinh (glasses) true or false, rau (khong none, ria moustache, quai_non chin beard, day full beard), vat_dung: one signature object from the prop list that fits this stage of life (or khong), mo_ta: one short Vietnamese sentence describing this look and why.
+- Signature looks by group (adapt to the real person, era and country; these are ideas, not obligations):
+  · hoang_gia: ao long_bao (royal robe; yellow for an Asian emperor, red / purple / blue for others) with mu mu_vua (Vietnamese or East Asian emperor hat) or vuong_mien (crown); a queen may wear long_bao or ao_dai with vuong_mien and day_chuyen.
+  · lich_su: a general or warrior in ao giap (armour, red cape) with mu mu_giap and vat_dung khien; a Vietnamese scholar or mandarin in long_bao (dark colours) with mu khan_dong; a modern revolutionary or soldier in quan_phuc or ao_ba_ba.
+  · the_thao: ao ao_the_thao in the team or national colours, so_ao = their famous shirt number (0 if none), phu_kien huy_chuong once they have won titles, vat_dung = their sport (bong_da, huy_chuong, cup…); mu_luoi_trai for golf, baseball or tennis players.
+  · am_nhac: ao ao_san_khau (sparkly stage jacket) or their famous style, mu tai_nghe or mu_phot or hoa_cai, phu_kien day_chuyen or kinh_ram, vat_dung micro / dan_guitar / not_nhac.
+  · dien_anh: elegant vest or ao_san_khau, mu_phot, phu_kien kinh_ram, vat_dung bang_phim / ngoi_sao / cup.
+  · khoa_hoc: ao ao_blouse (white lab coat) or their famous style, kinh if they wore glasses, vat_dung ong_nghiem / kinh_hien_vi / nguyen_tu / bong_den / kinh_vien_vong.
+  · chinh_tri: vest (or the national dress they were known for), phu_kien ghim_co (flag pin), vat_dung micro / tai_lieu / loa.
+  · doanh_nhan: vest or their famous casual style (for example a black ao_len turtleneck), vat_dung cap_tai_lieu / dien_thoai / bieu_do / kim_cuong / the product they are known for.
+  Childhood and youth stages wear simple everyday clothes (ao_thun, so_mi, ao_ba_ba) before the signature look appears.
+- giai_doan: 1 to 4 life stages that the chapters actually show, in chapter order; tu_chuong = the chapter number (1..${o.cauChuyen.phan.length}) from which this look is used (the first stage has tu_chuong 1). For each: tuoi (tre_em child, thanh_nien young adult, trung_nien middle-aged, gia elderly), toc (ngan short, re_ngoi side part, vuot quiff swept up, dai long, buoi bun, hoi balding, xoan curly), mau_toc (den black, nau brown, vang blond, bac grey or white, do ginger), ao (vest suit, so_mi shirt, ao_thun t-shirt, ao_khoac jacket, ao_len sweater or turtleneck, ao_dai Vietnamese long dress, quan_phuc military uniform, ao_ba_ba Southern Vietnamese peasant shirt, long_bao royal robe, giap armour with cape, ao_the_thao sports jersey with number, ao_san_khau sparkly stage jacket, ao_blouse white lab coat), mau_ao and mau_quan as #rrggbb colours that suit the person and the era, kinh (glasses) true or false, rau (khong none, ria moustache, quai_non chin beard, day full beard), mu (headwear: khong none, vuong_mien crown, mu_vua emperor hat, khan_dong Vietnamese turban, mu_giap warrior helmet, mu_luoi_trai cap, mu_phot fedora, tai_nghe headphones, hoa_cai flower in the hair), phu_kien (khong none, kinh_ram sunglasses, huy_chuong medal, khan_quang scarf, day_chuyen necklace, ghim_co flag pin), so_ao (shirt number for ao_the_thao, otherwise 0), vat_dung: one signature object from the prop list that fits this stage of life (or khong), mo_ta: one short Vietnamese sentence describing this look and why.
 - Base the look on documented facts (era, job, a famous personal style such as a black turtleneck or a military uniform); if unsure keep it neutral and simple.`,
     noiDung: `Person: ${o.ten}\nChapters: ${chuong}\n\n<research>\n${JSON.stringify({ ho_so: o.nghienCuu.ho_so, moc_doi: o.nghienCuu.moc_doi })}\n</research>`,
     effort: 'low',
     kiemTra: TaoHinhSchema,
     schema: doiTuong({
+      nhom: enumChuoi(NHOM_NHAN_VAT),
       gioi: enumChuoi(['nam', 'nu']),
       da: enumChuoi(['sang', 'trung_binh', 'ngam']),
       giai_doan: {
         type: 'array',
         items: doiTuong({
           tu_chuong: { type: 'integer' }, tuoi: enumChuoi(TUOI), toc: enumChuoi(KIEU_TOC), mau_toc: enumChuoi(MAU_TOC), ao: enumChuoi(KIEU_AO),
-          mau_ao: chuoi, mau_quan: chuoi, kinh: { type: 'boolean' }, rau: enumChuoi(RAU), vat_dung: enumChuoi(DAO_CU), mo_ta: chuoi,
+          mau_ao: chuoi, mau_quan: chuoi, kinh: { type: 'boolean' }, rau: enumChuoi(RAU), mu: enumChuoi(MU), phu_kien: enumChuoi(PHU_KIEN),
+          so_ao: { type: 'integer' }, vat_dung: enumChuoi(DAO_CU), mo_ta: chuoi,
         }),
       },
     }),

@@ -57,6 +57,18 @@ const chiDan = (l: ChiDan) =>
     l.am_thanh && AM[l.am_thanh] && `🔊 ${AM[l.am_thanh]}`,
   ].filter(Boolean).join(' · ')
 
+const NHOM: Record<string, string> = {
+  hoang_gia: '👑 Hoàng gia',
+  lich_su: '⚔️ Nhân vật lịch sử',
+  the_thao: '⚽ Thể thao',
+  am_nhac: '🎤 Âm nhạc',
+  dien_anh: '🎬 Điện ảnh – giải trí',
+  khoa_hoc: '🔬 Nhà khoa học – thiên tài',
+  chinh_tri: '🏛️ Chính trị – lãnh đạo',
+  doanh_nhan: '💼 Doanh nhân – tỷ phú',
+  khac: '⭐ Nhân vật',
+}
+
 const NHAN: Record<TrangThaiPhan['loai'], [string, string]> = {
   chua_viet: ['Chưa viết', 'bg-slate-100 text-slate-500'],
   chua_dung: ['Chưa dựng', 'bg-slate-100 text-slate-600'],
@@ -184,7 +196,7 @@ export default function ChiTiet({ dau, ttDau, dsNhac }: { dau: DuAnYT; ttDau: Tr
       }
       if (phim && !moi.phim?.nghien_cuu && !(await lam('Nghiên cứu nhân vật: đọc Wikipedia + tài liệu, kiểm chứng từng sự thật…', () => chayBuocPhimYouTube(moi.id, 'nghien_cuu')))) return
       if (phim && !moi.phim?.cau_chuyen && !(await lam('Phát triển câu chuyện: khán giả, góc kể, big idea, cấu trúc, hook, chia chương…', () => chayBuocPhimYouTube(moi.id, 'cau_chuyen')))) return
-      if (phim && !moi.phim?.tao_hinh && !(await lam('Thiết kế nhân vật chính: tuổi từng giai đoạn, tóc, trang phục, đồ vật đặc trưng…', () => chayBuocPhimYouTube(moi.id, 'tao_hinh')))) return
+      if (phim && !moi.phim?.tao_hinh?.nhom && !(await lam('Thiết kế nhân vật chính: tuổi từng giai đoạn, tóc, trang phục, đồ vật đặc trưng…', () => chayBuocPhimYouTube(moi.id, 'tao_hinh')))) return
       for (let k = 1; k <= moi.phan.length; k++) {
         if (moi.phan[k - 1].loi) continue
         if (!(await lam(`AI đang viết kịch bản ${ten} ${k}/${moi.phan.length}…`, () => vietPhanYouTube(moi.id, k), k))) return
@@ -229,7 +241,7 @@ export default function ChiTiet({ dau, ttDau, dsNhac }: { dau: DuAnYT; ttDau: Tr
     const conThieu =
       dau.phan.some((x) => !x.loi) ||
       dau.phan.length === 0 ||
-      (dau.loai === 'tieu_su' && (!p?.nghien_cuu || !p.cau_chuyen || !p.tao_hinh || !p.ho_so || !p.dong_goi || dau.phan.some((x) => !x.canh)))
+      (dau.loai === 'tieu_su' && (!p?.nghien_cuu || !p.cau_chuyen || !p.tao_hinh?.nhom || !p.ho_so || !p.dong_goi || dau.phan.some((x) => !x.canh)))
     // Gọi sau lượt vẽ đầu (không đặt state ngay trong effect)
     if (conThieu) setTimeout(() => void chayTiep(), 0)
     // Chỉ chạy một lần khi mở trang
@@ -464,7 +476,10 @@ export default function ChiTiet({ dau, ttDau, dsNhac }: { dau: DuAnYT; ttDau: Tr
       {d.loai === 'tieu_su' && d.phim?.tao_hinh && (
         <section className="the grid gap-2 p-5">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="font-bold">⭐ Nhân vật chính trên sân khấu: {d.phim.ten}</h2>
+            <h2 className="font-bold">
+              ⭐ Nhân vật chính trên sân khấu: {d.phim.ten}
+              {d.phim.tao_hinh.nhom && <span className="chip ml-2 bg-violet-100 text-violet-700">{NHOM[d.phim.tao_hinh.nhom] ?? d.phim.tao_hinh.nhom}</span>}
+            </h2>
             <button
               type="button"
               disabled={!!dangChay || dangLam}

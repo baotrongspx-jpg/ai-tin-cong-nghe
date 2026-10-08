@@ -56,6 +56,9 @@ let t = 0.4 // nhịp mở đầu trước câu đầu tiên
 for (const [i, d] of doDai.entries()) {
   // Khoảng lặng có chủ đích (AI đặt lang) trước câu quan trọng: im 0,9 giây, chỉ còn âm nền
   if (i && loi[i]?.lang) t += 0.9
+  // Đổi bối cảnh: nghỉ thêm 0,55 giây để chuyển cảnh chạy xong đúng lúc câu mới bắt đầu
+  const canh = (l) => (BOI_CANH[l?.boi_canh] ? l.boi_canh : 'truong_quay')
+  if (i && canh(loi[i]) !== canh(loi[i - 1])) t += 0.55
   batDau.push(t)
   t += d
 }
@@ -349,14 +352,17 @@ loi.forEach((l, i) => {
 const KIEU_CHUYEN = ['truot', 'phong', 'quet', 'mo', 'xuyen']
 const chuyenCanh = [] // { i: câu đầu cảnh mới, t: lúc đổi, kieu } (để chèn tiếng vút)
 const nenCanh = doanCanh.map((dc, k) => {
-  const t0 = k ? batDau[dc.tu] - 0.35 : 0
+  // Kiểu chuyển cảnh AI chọn theo cảm xúc (chuyen_canh ở câu đầu của cảnh mới); không có thì lần lượt từng kiểu
+  const chon = loi[dc.tu].chuyen_canh
+  const kieu = KIEU_CHUYEN.includes(chon) ? chon : KIEU_CHUYEN[(Math.max(1, k) - 1) % KIEU_CHUYEN.length]
+  // Hiệu ứng chạy hết ~0,75 giây: bắt đầu 0,75 giây trước câu mới, nhưng không trước lúc câu trước dứt tiếng
+  // (đuôi mỗi câu có 0,25 giây lặng)
+  const dutTieng = k ? batDau[dc.tu - 1] + doDai[dc.tu - 1] - 0.25 : 0
+  const t0 = k ? Math.max(dutTieng, batDau[dc.tu] - 0.75) : 0
   const het = dc.het === loi.length - 1 ? TONG : batDau[dc.het + 1]
   const bc = BOI_CANH[dc.ten](`bc${k}`)
   tw.push(...bc.tw(t0, het - t0))
   if (k) {
-    // Kiểu chuyển cảnh AI chọn theo cảm xúc (chuyen_canh ở câu đầu của cảnh mới); không có thì lần lượt từng kiểu
-    const chon = loi[dc.tu].chuyen_canh
-    const kieu = KIEU_CHUYEN.includes(chon) ? chon : KIEU_CHUYEN[(k - 1) % KIEU_CHUYEN.length]
     chuyenCanh.push({ i: dc.tu, t: t0, kieu })
     const truoc = `#bc${k - 1}`
     if (kieu === 'truot') {
@@ -427,7 +433,9 @@ const nvPhu = doanPhu.map((dp, k) => {
   }
   if (dp.lech < 0) tw.push(`gsap.set("#${id} svg", { scaleX: -1 });`)
   tw.push(`gsap.set("#${id}-dau", { svgOrigin: "200 250" }); gsap.set("#${id}-tay-phai", { svgOrigin: "270 300" }); gsap.set("#${id}-tay-trai", { svgOrigin: "130 300" }); gsap.set("#${id}-mieng-mo", { svgOrigin: "200 226" });`)
-  tw.push(`tl.fromTo("#${id}", { opacity: 0, y: 90, scale: 0.85 }, { opacity: 1, y: 0, scale: 1, duration: 0.5, ease: "back.out(1.8)" }, ${f(t0 + 0.1)});`)
+  // Bước ra trước khi câu của họ bắt đầu ~0,45 giây (không sớm hơn lúc câu trước dứt tiếng) để vừa vào chỗ là nói
+  const vao = Math.max(dp.tu ? batDau[dp.tu - 1] + doDai[dp.tu - 1] - 0.3 : 0, t0 - 0.45)
+  tw.push(`tl.fromTo("#${id}", { opacity: 0, y: 90, scale: 0.85 }, { opacity: 1, y: 0, scale: 1, duration: 0.45, ease: "back.out(1.6)" }, ${f(vao)});`)
   tw.push(`tl.to("#${id}-tay-phai", { rotation: -140, duration: 0.3, ease: "back.out(2)" }, ${f(t0 + 0.5)});`)
   tw.push(`tl.to("#${id}-tay-phai", { rotation: -115, duration: 0.18, yoyo: true, repeat: 5, ease: "sine.inOut" }, ${f(t0 + 0.8)});`)
   tw.push(`tl.to("#${id}-tay-phai", { rotation: 0, duration: 0.3 }, ${f(t0 + 1.9)});`)
@@ -435,8 +443,8 @@ const nvPhu = doanPhu.map((dp, k) => {
   tw.push(`tl.to("#${id}", { opacity: 0, y: 60, duration: 0.35, ease: "power2.in" }, ${f(het - 0.1)});`)
   // Không ghi tên trên đầu (trang phục tự nói lên họ là ai); hai nhân vật chính dạt sang hai bên chừa chỗ cho nhân vật phụ
   // Hai người cùng đứng thì Mèo / Bit dạt xa hơn
-  tw.push(`tl.to("#o-meo", { x: ${dp.doi ? -170 : -80}, duration: 0.5, ease: "power2.inOut" }, ${f(t0)});`)
-  tw.push(`tl.to("#o-robot", { x: ${dp.doi ? 170 : 80}, duration: 0.5, ease: "power2.inOut" }, ${f(t0)});`)
+  tw.push(`tl.to("#o-meo", { x: ${dp.doi ? -170 : -80}, duration: 0.5, ease: "power2.inOut" }, ${f(vao)});`)
+  tw.push(`tl.to("#o-robot", { x: ${dp.doi ? 170 : 80}, duration: 0.5, ease: "power2.inOut" }, ${f(vao)});`)
   // Mèo / Bit về chỗ cũ khi người cuối cùng của cảnh rời đi
   if (dp.het === dp.hetCum) tw.push(`tl.to(["#o-meo", "#o-robot"], { x: 0, duration: 0.5, ease: "power2.inOut" }, ${f(het - 0.1)});`)
   return `<div id="${id}" class="nv-phu" style="left:${354 + dp.lech}px"><svg viewBox="0 0 400 600" width="372" height="558" class="nv">${NHAN_VAT_PHU[dp.ten].svg(id)}</svg></div>`
@@ -639,7 +647,8 @@ loi.forEach((l, i) => {
 const bang = loi.map((l, i) => {
   const t0 = batDau[i]
   const het = i === loi.length - 1 ? TONG : batDau[i + 1]
-  tw.push(`tl.from("#bang${i} .bang-noi", { scale: 0.6, opacity: 0, duration: 0.4, ease: "back.out(2)" }, ${f(t0 + 0.05)});`)
+  const giong = i && loi[i - 1].bang?.chu === l.bang?.chu && loi[i - 1].bang?.bieu_tuong === l.bang?.bieu_tuong
+  if (!giong) tw.push(`tl.from("#bang${i} .bang-noi", { scale: 0.6, opacity: 0, duration: 0.4, ease: "back.out(2)" }, ${f(t0 + 0.05)});`)
   return `
     <div id="bang${i}" class="bang clip" data-start="${f(t0)}" data-duration="${f(het - t0)}" data-track-index="2">
       <div class="bang-noi"><div class="bang-bt">${l.bang?.bieu_tuong ?? ''}</div><div class="bang-chu">${esc(l.bang?.chu ?? '')}</div></div>

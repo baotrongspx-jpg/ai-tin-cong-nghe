@@ -98,17 +98,44 @@ const caVat = (m) => `<path d="M192 300 L208 300 L214 412 L200 430 L186 412 Z" f
 const dieuKhien = '' // (để dành)
 void dieuKhien
 
-// Người kể chuyện (phim tài liệu): hiện trong khung tròn ở góc màn hình khi đang kể, nhép miệng theo lời kể.
-// Áo vest nâu ấm, sơ mi xanh nhạt, kính gọng tròn, tóc gọn, micro thu âm trước ngực
-export const nguoiKeSvg = (id) =>
-  nguoi(id, {
-    ao: '#7c4a1e',
-    quan: '#292524',
-    co: 'vest',
-    tocTruoc: toc.reNgoi('#1c1917'),
-    mat: kinh('#78350f') + matMacDinh(),
-    than: `<path d="M184 300 L200 336 L216 300 Z" fill="#bfdbfe"/><rect x="168" y="352" width="64" height="98" rx="32" fill="#111827" stroke="${VIEN}" stroke-width="5"/>${[0, 1, 2, 3, 4].map((k) => `<line x1="176" y1="${370 + k * 15}" x2="224" y2="${370 + k * 15}" stroke="#4b5563" stroke-width="4"/>`).join('')}<rect x="194" y="448" width="12" height="40" fill="#374151"/>`,
-  })
+// Người kể chuyện — nhân vật chính thứ ba cùng Mèo Mun / Robot Bit, vẽ riêng cùng phong cách (đầu to kiểu chibi, viền
+// nâu ấm, mắt to long lanh): tóc vuốt có ánh sáng, kính gọng vàng, tai nghe có micro như người dẫn podcast, khăn quàng cam,
+// áo len xanh than. Toạ độ 0..600 x 0..700 như Mun / Bit. Bộ phận để diễn: <id>-dau (xoay quanh cổ 300 440),
+// <id>-mat-trai / <id>-mat-phai (chớp mắt), <id>-may (lông mày), <id>-mieng-dong / <id>-mieng-mo (nhép miệng, gốc 300 352).
+const VK = '#4a2511'
+export const NGUOI_KE_XOAY = { dau: '300 440', mieng: '300 352', matTrai: '238 268', matPhai: '362 268' }
+export const nguoiKeSvg = (id) => `
+  <g id="${id}-than">
+    <path d="M110 700 C110 560 180 470 300 470 C420 470 490 560 490 700 Z" fill="#1e3a5f" stroke="${VK}" stroke-width="9"/>
+    <path d="M150 640 Q300 600 450 640" fill="none" stroke="#2d5486" stroke-width="10" stroke-linecap="round"/>
+    <path d="M190 470 Q300 540 410 470 L432 520 Q300 600 168 520 Z" fill="#f97316" stroke="${VK}" stroke-width="8" stroke-linejoin="round"/>
+    <path d="M360 520 L388 640 L350 640 L332 540 Z" fill="#ea580c" stroke="${VK}" stroke-width="7" stroke-linejoin="round"/>
+    <path d="M210 500 Q300 540 390 500" fill="none" stroke="#fdba74" stroke-width="6" stroke-linecap="round"/>
+  </g>
+  <g id="${id}-dau">
+    <rect x="262" y="400" width="76" height="80" rx="20" fill="#f4c7a1" stroke="${VK}" stroke-width="8"/>
+    <path d="M140 210 C120 70 480 50 462 214 L470 300 C440 250 420 210 400 196 C340 170 250 168 190 200 C170 222 150 260 136 300 Z" fill="#3b1f10" stroke="${VK}" stroke-width="8" stroke-linejoin="round"/>
+    <ellipse cx="128" cy="280" rx="30" ry="40" fill="#fcd9b8" stroke="${VK}" stroke-width="8"/><ellipse cx="472" cy="280" rx="30" ry="40" fill="#fcd9b8" stroke="${VK}" stroke-width="8"/>
+    <ellipse cx="130" cy="282" rx="12" ry="18" fill="#f4a988"/><ellipse cx="470" cy="282" rx="12" ry="18" fill="#f4a988"/>
+    <ellipse cx="300" cy="275" rx="168" ry="160" fill="#fcd9b8" stroke="${VK}" stroke-width="9"/>
+    <path d="M150 230 C170 120 260 96 330 104 C410 110 456 170 452 236 C430 190 400 168 360 170 C330 150 290 156 260 172 C220 168 180 190 150 230 Z" fill="#4a2511"/>
+    <path d="M250 120 Q300 100 360 118 M200 160 Q240 128 290 132" fill="none" stroke="#7c4a2a" stroke-width="10" stroke-linecap="round"/>
+    <path d="M232 112 Q270 98 300 104" fill="none" stroke="#c08457" stroke-width="7" stroke-linecap="round" opacity="0.7"/>
+    <ellipse cx="200" cy="330" rx="34" ry="20" fill="#fb7185" opacity="0.35"/><ellipse cx="400" cy="330" rx="34" ry="20" fill="#fb7185" opacity="0.35"/>
+    <g id="${id}-may"><path d="M196 214 Q238 192 278 210" fill="none" stroke="#3b1f10" stroke-width="12" stroke-linecap="round"/><path d="M322 210 Q362 192 404 214" fill="none" stroke="#3b1f10" stroke-width="12" stroke-linecap="round"/></g>
+    <g id="${id}-mat-trai"><ellipse cx="238" cy="268" rx="34" ry="40" fill="#fff" stroke="${VK}" stroke-width="6"/><circle cx="243" cy="274" r="22" fill="#6b3a1d"/><circle cx="243" cy="274" r="12" fill="#1c0f08"/><circle cx="252" cy="262" r="8" fill="#fff"/><circle cx="236" cy="284" r="4" fill="#fff"/></g>
+    <g id="${id}-mat-phai"><ellipse cx="362" cy="268" rx="34" ry="40" fill="#fff" stroke="${VK}" stroke-width="6"/><circle cx="357" cy="274" r="22" fill="#6b3a1d"/><circle cx="357" cy="274" r="12" fill="#1c0f08"/><circle cx="366" cy="262" r="8" fill="#fff"/><circle cx="350" cy="284" r="4" fill="#fff"/></g>
+    <circle cx="238" cy="270" r="50" fill="#ffffff14" stroke="#d4a017" stroke-width="7"/><circle cx="362" cy="270" r="50" fill="#ffffff14" stroke="#d4a017" stroke-width="7"/>
+    <path d="M288 268 Q300 256 312 268 M188 262 L150 250 M412 262 L450 250" fill="none" stroke="#d4a017" stroke-width="7" stroke-linecap="round"/>
+    <path d="M296 300 Q304 322 318 312" fill="none" stroke="#d99a75" stroke-width="7" stroke-linecap="round"/>
+    <g id="${id}-mieng-dong"><path d="M262 352 Q300 382 338 352" fill="none" stroke="${VK}" stroke-width="8" stroke-linecap="round"/><path d="M262 352 l-8 -6 M338 352 l8 -6" stroke="${VK}" stroke-width="6" stroke-linecap="round"/></g>
+    <g id="${id}-mieng-mo" opacity="0"><path d="M266 340 Q300 334 334 340 Q336 392 300 396 Q264 392 266 340 Z" fill="#7f1d1d" stroke="${VK}" stroke-width="6"/><path d="M272 342 Q300 338 328 342 L326 352 Q300 348 274 352 Z" fill="#fff"/><ellipse cx="300" cy="384" rx="20" ry="9" fill="#fb7185"/></g>
+    <path d="M118 260 C112 110 488 110 482 260" fill="none" stroke="#1f2937" stroke-width="20" stroke-linecap="round"/>
+    <rect x="86" y="232" width="56" height="100" rx="26" fill="#1f2937" stroke="${VK}" stroke-width="6"/><rect x="458" y="232" width="56" height="100" rx="26" fill="#1f2937" stroke="${VK}" stroke-width="6"/>
+    <rect x="96" y="246" width="20" height="72" rx="10" fill="#f97316"/><rect x="484" y="246" width="20" height="72" rx="10" fill="#f97316"/>
+    <path d="M118 316 Q150 400 236 382" fill="none" stroke="#1f2937" stroke-width="9" stroke-linecap="round"/>
+    <ellipse cx="246" cy="380" rx="22" ry="16" fill="#111827" stroke="#f97316" stroke-width="4"/>
+  </g>`
 
 export const NHAN_VAT_PHU = {
   nguoi_phu_nu: {

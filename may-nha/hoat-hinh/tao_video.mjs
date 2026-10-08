@@ -611,14 +611,17 @@ let khungKeHtml = ''
     else dot.push({ tu: i, het: i })
   })
   if (dot.length) {
-    khungKeHtml = `<div id="khung-ke"><svg viewBox="78 72 244 244" width="300" height="300">${nguoiKeSvg('nguoi_ke')}</svg><div class="ke-mic">🎙</div></div>`
-    tw.push('gsap.set("#nguoi_ke-dau", { svgOrigin: "200 250" }); gsap.set("#nguoi_ke-mieng-mo", { svgOrigin: "200 226" });')
+    khungKeHtml = `<div id="khung-ke"><div class="ke-vong"></div><div class="ke-tron"><div class="ke-den"></div><svg viewBox="100 70 400 400" width="340" height="340">${nguoiKeSvg('nguoi_ke')}</svg></div><div class="ke-mic">🎙</div></div>`
+    tw.push('gsap.set("#nguoi_ke-dau", { svgOrigin: "300 440" }); gsap.set("#nguoi_ke-mieng-mo", { svgOrigin: "300 340" }); gsap.set("#nguoi_ke-mat-trai", { svgOrigin: "238 268" }); gsap.set("#nguoi_ke-mat-phai", { svgOrigin: "362 268" });')
     for (const c of dot) {
       const vao = Math.max(0, batDau[c.tu] - 0.4)
       const ra = batDau[c.het] + doDai[c.het] - 0.1
-      tw.push(`tl.fromTo("#khung-ke", { x: -360, opacity: 0 }, { x: 0, opacity: 1, duration: 0.45, ease: "power3.out", immediateRender: false }, ${f(vao)});`)
+      tw.push(`tl.fromTo("#khung-ke", { x: -400, opacity: 0 }, { x: 0, opacity: 1, duration: 0.5, ease: "back.out(1.4)", immediateRender: false }, ${f(vao)});`)
       tw.push(`tl.to("#nguoi_ke-dau", { rotation: 3, duration: 1.4, yoyo: true, repeat: ${lap(ra - vao, 1.4) | 1}, ease: "sine.inOut" }, ${f(vao)});`)
-      tw.push(`tl.to("#khung-ke", { x: -360, opacity: 0, duration: 0.4, ease: "power2.in" }, ${f(ra)});`)
+      tw.push(`tl.to("#khung-ke", { x: -400, opacity: 0, duration: 0.4, ease: "power2.in" }, ${f(ra)});`)
+      tw.push(`tl.fromTo("#nguoi_ke-may", { y: 0 }, { y: -10, duration: 0.25, yoyo: true, repeat: 1, ease: "sine.inOut", immediateRender: false }, ${f(vao + 0.45)});`)
+      tw.push(`tl.to(".ke-vong", { rotation: "+=" + ${Math.round((ra - vao) * 40)}, duration: ${f(ra - vao + 0.4)}, ease: "none" }, ${f(vao)});`)
+      for (let k = vao + 1.1; k < ra - 0.3; k += 3.3) tw.push(`tl.to(["#nguoi_ke-mat-trai", "#nguoi_ke-mat-phai"], { scaleY: 0.1, duration: 0.07, yoyo: true, repeat: 1 }, ${f(k)});`)
     }
   }
 }
@@ -910,9 +913,12 @@ const trang = `<!doctype html>
       .dao-cu.nguoi_ke { left: ${NGANG ? 1220 : 445}px; top: ${NGANG ? 560 : 380}px; }
       .pd-dong { font-size: 48px; font-weight: 700; line-height: 1.2; white-space: nowrap; text-shadow: 0 0 5px #000, 0 3px 0 #000, 2.5px 2.5px 0 #000, -2.5px 2.5px 0 #000, 2.5px -2.5px 0 #000, -2.5px -2.5px 0 #000; }
       .pd-tu { display: inline-block; color: #fff; }
-      #khung-ke { position: absolute; left: 36px; top: ${CAO - (NGANG ? 520 : 900)}px; width: 300px; height: 300px; border-radius: 50%; overflow: hidden; background: radial-gradient(circle at 50% 35%, #475569, #0f172a); border: 8px solid #fbbf24; box-shadow: 0 0 0 6px #0f172acc, 0 20px 50px #000a; opacity: 0; }
-      #khung-ke svg { display: block; }
-      .ke-mic { position: absolute; right: 22px; bottom: 22px; width: 54px; height: 54px; border-radius: 50%; background: #dc2626; display: flex; align-items: center; justify-content: center; font-size: 30px; font-family: "Emoji", sans-serif; box-shadow: 0 6px 14px #0008; }${NGANG ? CSS_NGANG : ''}
+      #khung-ke { position: absolute; left: 30px; top: ${CAO - (NGANG ? 560 : 940)}px; width: 360px; height: 360px; opacity: 0; filter: drop-shadow(0 22px 40px #000b); }
+      .ke-vong { position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(#fbbf24, #f97316, #fde68a, #fbbf24, #f97316, #fde68a, #fbbf24); }
+      .ke-tron { position: absolute; inset: 10px; border-radius: 50%; overflow: hidden; background: radial-gradient(circle at 50% 28%, #93c5fd 0%, #3b5b8c 38%, #1e293b 70%, #0f172a); box-shadow: inset 0 0 0 5px #0f172a; }
+      .ke-den { position: absolute; inset: 0; background: radial-gradient(circle at 78% 18%, #fde68a55, transparent 40%), radial-gradient(circle at 15% 85%, #f9731633, transparent 45%); }
+      #khung-ke svg { position: relative; display: block; }
+      .ke-mic { position: absolute; right: 14px; bottom: 18px; width: 62px; height: 62px; border-radius: 50%; background: linear-gradient(#ef4444, #b91c1c); border: 4px solid #fde68a; display: flex; align-items: center; justify-content: center; font-size: 32px; font-family: "Emoji", sans-serif; box-shadow: 0 6px 14px #0008; }${NGANG ? CSS_NGANG : ''}
     </style>
   </head>
   <body>

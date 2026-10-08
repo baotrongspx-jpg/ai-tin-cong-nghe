@@ -2,6 +2,7 @@
 // svg: hình vẽ toàn khung (mặt sàn từ y≈1180 để nhân vật đứng), tw: chuyển động riêng của bối cảnh trong [t0, t0+d]
 // (mây trôi, đèn chớp...). `id` là tiền tố duy nhất cho mỗi lần dùng. Danh sách tên phải khớp lib/ai.ts (BOI_CANH).
 import { boiCanhThem } from './boiCanhThem.mjs'
+import { boiCanhCo } from './boiCanhCo.mjs'
 
 const f = (x) => (Math.round(x * 1000) / 1000).toString()
 const lap = (giay, chuKy) => Math.max(0, Math.floor(giay / chuKy) - 1)
@@ -204,4 +205,6 @@ export const BOI_CANH = {
 
   // Bối cảnh thêm: thành phố đêm, nông thôn, trường học, bệnh viện, nhà máy… (boiCanhThem.mjs)
   ...boiCanhThem({ san, toaNha, f, lap }),
+  // Bối cảnh theo thời kỳ / văn hoá / nghề: thảo nguyên, cung điện, chiến trường, ga-ra khởi nghiệp… (boiCanhCo.mjs)
+  ...boiCanhCo({ san, f, lap }),
 }

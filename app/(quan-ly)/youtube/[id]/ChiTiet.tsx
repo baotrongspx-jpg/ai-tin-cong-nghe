@@ -48,7 +48,8 @@ const KHUNG: Record<string, string> = { toan_canh: 'toàn cảnh', trung_canh: '
 const MAY: Record<string, string> = { dung_yen: 'đứng yên', day_vao: 'đẩy vào', keo_ra: 'kéo ra', lia_sang: 'lia sang', truot_ngang: 'trượt ngang', nang_len: 'nâng lên', rung_tay: 'rung tay' }
 const DEN: Record<string, string> = { am_ap: 'ấm', lanh: 'lạnh', cang_thang: 'căng thẳng', tuoi_sang: 'tươi sáng', mo_mong: 'mơ mộng', bi_an: 'bí ẩn', canh_bao: 'cảnh báo đỏ', loe_sang: 'loé sáng' }
 const AM: Record<string, string> = { vut: 'vút', bum: 'bùm', ting: 'ting', bop: 'bốp', coi_bao: 'còi báo', go_phim: 'gõ phím', tim_dap: 'tim đập', tich_tac: 'tích tắc', vui: 'nhạc vui', hut_hang: 'hụt hẫng', gio: 'gió', buoc_chan: 'bước chân', vo_tay: 'vỗ tay', xe_chay: 'xe chạy', bo_xe: 'bô xe', coi_xe: 'còi xe', mua: 'mưa', sam: 'sấm', chuong_dt: 'chuông điện thoại', chuong_truong: 'chuông trường', tien: 'tiền keng', go_cua: 'gõ cửa', chup_anh: 'chụp ảnh', reo_ho: 'reo hò', bua: 'búa', phao_hoa: 'pháo hoa', may_bay: 'máy bay', nuoc: 'nước' }
-type ChiDan = { khung_hinh?: string; may_quay?: string; anh_sang?: string; am_thanh?: string; lang?: boolean }
+type ChiDan = { khung_hinh?: string; may_quay?: string; anh_sang?: string; am_thanh?: string; lang?: boolean; thoi_tiet?: string }
+const THOI_TIET: Record<string, string> = { tuyet: '🌨 tuyết rơi', mua: '🌧 mưa', suong: '🌫 sương mù' }
 const chiDan = (l: ChiDan) =>
   [
     l.lang && '⏸ lặng',
@@ -56,6 +57,7 @@ const chiDan = (l: ChiDan) =>
     l.may_quay && `🎥 ${MAY[l.may_quay] ?? l.may_quay}`,
     l.anh_sang && DEN[l.anh_sang] && `💡 ${DEN[l.anh_sang]}`,
     l.am_thanh && AM[l.am_thanh] && `🔊 ${AM[l.am_thanh]}`,
+    l.thoi_tiet && THOI_TIET[l.thoi_tiet],
   ].filter(Boolean).join(' · ')
 
 const NHOM: Record<string, string> = {

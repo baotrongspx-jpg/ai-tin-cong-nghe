@@ -1,6 +1,8 @@
 // Thư viện bối cảnh vẽ SVG (1080x1920) cho video nhân vật. Mỗi bối cảnh trả { svg, tw(t0, d) }:
 // svg: hình vẽ toàn khung (mặt sàn từ y≈1180 để nhân vật đứng), tw: chuyển động riêng của bối cảnh trong [t0, t0+d]
 // (mây trôi, đèn chớp...). `id` là tiền tố duy nhất cho mỗi lần dùng. Danh sách tên phải khớp lib/ai.ts (BOI_CANH).
+import { boiCanhThem } from './boiCanhThem.mjs'
+
 const f = (x) => (Math.round(x * 1000) / 1000).toString()
 const lap = (giay, chuKy) => Math.max(0, Math.floor(giay / chuKy) - 1)
 
@@ -199,4 +201,7 @@ export const BOI_CANH = {
       ...[...Array(15)].map((_, k) => `tl.to("#${id}-mh${k}", { opacity: 0.55, duration: ${f(0.7 + (k % 4) * 0.25)}, yoyo: true, repeat: ${lap(d, 0.7 + (k % 4) * 0.25)}, ease: "sine.inOut" }, ${f(t0 + (k % 5) * 0.15)});`),
     ],
   }),
+
+  // Bối cảnh thêm: thành phố đêm, nông thôn, trường học, bệnh viện, nhà máy… (boiCanhThem.mjs)
+  ...boiCanhThem({ san, toaNha, f, lap }),
 }

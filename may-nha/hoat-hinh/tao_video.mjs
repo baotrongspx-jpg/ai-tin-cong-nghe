@@ -381,9 +381,11 @@ const nenCanh = doanCanh.map((dc, k) => {
     // Hai nhân vật nhún nhẹ khi đổi cảnh (khoảng 3% chiều cao)
     tw.push(`tl.to(["#o-meo", "#o-robot"], { y: -22, duration: 0.18, yoyo: true, repeat: 1, ease: "power1.out" }, ${f(t0 + 0.1)});`)
   }
-  // Khung ngang: thêm hai bản soi gương của nền hai bên (dùng <use> nên chuyển động của nền chạy theo)
+  // Khung ngang: thêm hai bản soi gương của nền hai bên. Bản soi gương bỏ hết chữ (chữ soi gương bị ngược); trùng id
+  // với bản giữa nên các chuyển động (chọn theo id) chạy đồng thời ở cả ba bản
+  const guong = bc.svg.replace(/<text\b[\s\S]*?<\/text>/g, '')
   const svg = NGANG
-    ? `<svg class="nen-svg" viewBox="-1080 0 3240 1920" width="3240" height="1920" style="margin-left:-1080px"><g id="bc${k}-g">${bc.svg}</g><use href="#bc${k}-g" transform="scale(-1 1)"/><use href="#bc${k}-g" transform="translate(2160 0) scale(-1 1)"/></svg>`
+    ? `<svg class="nen-svg" viewBox="-1080 0 3240 1920" width="3240" height="1920" style="margin-left:-1080px"><g>${bc.svg}</g><g transform="scale(-1 1)">${guong}</g><g transform="translate(2160 0) scale(-1 1)">${guong}</g></svg>`
     : `<svg class="nen-svg" viewBox="0 0 1080 1920" width="1080" height="1920">${bc.svg}</svg>`
   return `<div id="bc${k}" class="lop-nen"${k ? ' style="opacity:0"' : ''}>${svg}</div>`
 })
@@ -682,6 +684,12 @@ const SFX = {
 const AM_NEN = {
   truong_quay: ['nen-phong', 0.25], pho_florida: ['nen-pho', 0.09], may_chu: ['nen-may-chu', 0.07], don_canh_sat: ['nen-phong', 0.3],
   phong_khach: ['nen-phong', 0.28], van_phong: ['nen-van-phong', 0.4], vu_tru: ['nen-vu-tru', 0.05], cua_hang: ['nen-van-phong', 0.35],
+  thanh_pho_dem: ['nen-pho', 0.08], nong_thon: ['nen-thien-nhien', 0.25], truong_hoc: ['nen-phong', 0.25], benh_vien: ['nen-van-phong', 0.35],
+  nha_may: ['nen-may-moc', 0.08], cong_truong: ['nen-may-moc', 0.07], san_bay: ['nen-dam-dong', 0.25], bai_bien: ['nen-bien', 0.1],
+  nui_rung: ['nen-thien-nhien', 0.25], cho: ['nen-dam-dong', 0.35], nha_hang: ['nen-dam-dong', 0.25], san_van_dong: ['nen-dam-dong', 0.45],
+  phong_hop: ['nen-van-phong', 0.35], phong_thi_nghiem: ['nen-may-chu', 0.05], hoi_truong: ['nen-phong', 0.3], cang_bien: ['nen-bien', 0.08],
+  nha_ngheo: ['nen-phong', 0.25], san_khau: ['nen-dam-dong', 0.4], thanh_pho_tuyet: ['nen-thien-nhien', 0.15], thu_vien: ['nen-phong', 0.2],
+  san_chung_khoan: ['nen-dam-dong', 0.25],
 }
 const amPhu = []
 const themAm = (ten, luc, amLuong, toiDa = Infinity) => {

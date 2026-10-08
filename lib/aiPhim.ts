@@ -201,7 +201,7 @@ STAGE 2b — CARTOON DESIGN of the protagonist for the animated version. The per
 // những câu trích dẫn có thật (hoặc tái hiện có gắn nhãn)
 export const NGUOI_NOI_PHIM = ['nguoi_ke', 'nhan_vat_chinh', ...NGUOI_NOI] as const
 const NHAN_VAT_PHU_PHIM = [...NHAN_VAT_PHU, 'nhan_vat_chinh'] as const
-const CauPhimSchema = CauSchema.extend({ ai: z.enum(NGUOI_NOI_PHIM), nhan_vat_phu: z.enum(NHAN_VAT_PHU_PHIM), tai_hien: z.boolean(), the_moc: z.string() })
+const CauPhimSchema = CauSchema.extend({ ai: z.enum(NGUOI_NOI_PHIM), nhan_vat_phu: z.enum(NHAN_VAT_PHU_PHIM), tai_hien: z.boolean(), the_moc: z.string(), anh: z.number().int().optional() })
 export type CauPhim = z.infer<typeof CauPhimSchema>
 const PhanPhimSchema = z.object({ loi: z.array(CauPhimSchema).min(6).max(80), moc: MocSchema })
 const JSON_CAU_PHIM = {
@@ -212,8 +212,9 @@ const JSON_CAU_PHIM = {
     nhan_vat_phu: { type: 'string', enum: [...NHAN_VAT_PHU_PHIM] },
     tai_hien: { type: 'boolean' },
     the_moc: chuoi,
+    anh: { type: 'integer' },
   },
-  required: [...JSON_CAU.required, 'tai_hien', 'the_moc'],
+  required: [...JSON_CAU.required, 'tai_hien', 'the_moc', 'anh'],
 }
 
 export async function vietPhanPhim(o: {
@@ -223,6 +224,7 @@ export async function vietPhanPhim(o: {
   k: number
   soCau: number
   noiTiep: string[]
+  anh?: { nam: string; mo_ta: string; chinh?: boolean }[] // ảnh thật từ Wikimedia Commons (lib/wiki.ts)
 }): Promise<{ loi: CauPhim[]; moc: { chu: string; bieu_tuong: string } } | null> {
   const { k, cauChuyen: cc } = o
   const n = cc.phan.length
@@ -242,6 +244,7 @@ Rules:
 - Use only facts from the research (verified ones as facts; reported ones with careful wording like "theo nhiều nguồn tin"; disputed ones as disputed). Never invent events, numbers or quotes.
 - A sentence put in a real person's mouth that is not a documented quote is a dramatized reconstruction: set tai_hien true for that line (it will be shown with a "Tái hiện" tag); every other line tai_hien false. Prefer the narrator telling it instead.
 - the_moc: when the story jumps to a new year or place, a short card like "1993 · Kharkov, Ukraina" (Vietnamese); otherwise an empty string.
+- anh: the number of a REAL PHOTO from the <photos> list that shows exactly what this line talks about (the person at that age or event, the place, the building, the product, the artwork…), shown framed on screen like in a documentary while the line is spoken; -1 when no photo truly fits. Use photos on about 15-25% of the lines, mostly narrator lines, spread across the chapter; one photo may cover up to 3 lines in a row about the same thing; never put a photo on a line about something else just to use it, and never imply a photo shows something it does not (a statue is a statue, not the person).
 - Each line at most 30 words, written to be read aloud: no emoji, hashtags or URLs. Keep the channel name exactly as "Công Nghệ 24H".
 - nhan_vat_phu shows who the line is about on stage: when the narrator (or Mèo Mun / Robot Bit) talks about ${o.ten}, set nhan_vat_phu to nhan_vat_chinh so the protagonist acts the scene while it is told; when it is about another person, show the kind of person (for example doanh_nhan for a business partner, ba_lao for a grandmother) as a generic cartoon figure, never a real likeness; when an extra speaks, the same extra; when nhan_vat_chinh speaks, nhan_vat_chinh. dao_cu / bang / minh_hoa illustrate the line as usual. cam_xuc of narrator lines describes the mood of the line.
 ${LUAT_HINH}- moc: the hook shown in big letters for the first 2 seconds of the film: chu at most 8 Vietnamese words, truthful; bieu_tuong one emoji. (Only used for chapter 1, but always fill it.)`
@@ -259,6 +262,10 @@ ${JSON.stringify({ ho_so: o.nghienCuu.ho_so, moc_doi: o.nghienCuu.moc_doi, su_th
 <plan>
 ${keHoach}
 </plan>
+
+<photos>
+${(o.anh ?? []).length ? (o.anh ?? []).map((a, i) => `${i}. ${a.nam ? a.nam + ' — ' : ''}${a.mo_ta}${a.chinh ? ' (main portrait)' : ''}`).join('\n') : '(no photos: set anh -1 on every line)'}
+</photos>
 
 ${viTri}${o.noiTiep.length ? `\n\nThe previous chapter ended with these lines:\n${o.noiTiep.join('\n')}` : ''}
 

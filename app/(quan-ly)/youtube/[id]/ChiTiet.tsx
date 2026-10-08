@@ -78,6 +78,10 @@ const NHAN: Record<TrangThaiPhan['loai'], [string, string]> = {
   loi: ['Lỗi', 'bg-red-100 text-red-700'],
 }
 
+// Ghi nguồn ảnh Wikimedia Commons cho mô tả YouTube (giấy phép CC BY / CC BY-SA bắt buộc ghi tác giả + giấy phép)
+const ghiNguonAnh = (ds: { tac_gia: string; giay_phep: string; nguon: string; ten_tep: string }[]) =>
+  ['Nguồn ảnh (Wikimedia Commons):', ...ds.map((a) => `- ${a.ten_tep.replace(/\.[a-z]+$/i, '').replace(/_/g, ' ')}: ${a.tac_gia}, ${a.giay_phep} — ${a.nguon}`)].join('\n')
+
 function NutChep({ chu, ten = 'Chép' }: { chu: string; ten?: string }) {
   const [da, setDa] = useState(false)
   return (
@@ -195,6 +199,7 @@ export default function ChiTiet({ dau, ttDau, dsNhac }: { dau: DuAnYT; ttDau: Tr
         return
       }
       if (phim && !moi.phim?.nghien_cuu && !(await lam('Nghiên cứu nhân vật: đọc Wikipedia + tài liệu, kiểm chứng từng sự thật…', () => chayBuocPhimYouTube(moi.id, 'nghien_cuu')))) return
+      if (phim && moi.phim?.anh === undefined && !(await lam('Lấy ảnh thật trong bài Wikipedia (Wikimedia Commons)…', () => chayBuocPhimYouTube(moi.id, 'lay_anh')))) return
       if (phim && !moi.phim?.cau_chuyen && !(await lam('Phát triển câu chuyện: khán giả, góc kể, big idea, cấu trúc, hook, chia chương…', () => chayBuocPhimYouTube(moi.id, 'cau_chuyen')))) return
       if (phim && !moi.phim?.tao_hinh?.nhom && !(await lam('Thiết kế nhân vật chính: tuổi từng giai đoạn, tóc, trang phục, đồ vật đặc trưng…', () => chayBuocPhimYouTube(moi.id, 'tao_hinh')))) return
       for (let k = 1; k <= moi.phan.length; k++) {
@@ -215,7 +220,7 @@ export default function ChiTiet({ dau, ttDau, dsNhac }: { dau: DuAnYT; ttDau: Tr
     }
   }
   // Chạy lại một giai đoạn của phim (nút "AI làm lại bước này"), rồi làm tiếp các việc còn thiếu
-  const chayLaiBuoc = async (buoc: 'nghien_cuu' | 'cau_chuyen' | 'tao_hinh' | 'ho_so' | 'dong_goi' | 'phan_canh', k?: number) => {
+  const chayLaiBuoc = async (buoc: 'nghien_cuu' | 'lay_anh' | 'cau_chuyen' | 'tao_hinh' | 'ho_so' | 'dong_goi' | 'phan_canh', k?: number) => {
     setLoiViet('')
     setDangChay(buoc === 'phan_canh' ? `Phân cảnh lại chương ${k}…` : 'AI đang làm lại bước này…')
     setDangViet(k ?? null)
@@ -228,6 +233,10 @@ export default function ChiTiet({ dau, ttDau, dsNhac }: { dau: DuAnYT; ttDau: Tr
     setMoTa(kq.duAn.mo_ta)
     setThe(kq.duAn.the.join(', '))
     if (buoc === 'cau_chuyen') thongBao('ok', 'Đã chia chương mới — bấm "Chạy tiếp" để AI viết kịch bản')
+    if (buoc === 'lay_anh') {
+      thongBao('ok', `Đã lấy ${kq.duAn.phim?.anh?.length ?? 0} ảnh — bấm Dựng video để dựng lại`)
+      await capNhatTt()
+    }
     if (buoc === 'tao_hinh') {
       thongBao(kq.duAn.phim?.tao_hinh?.mac_dinh ? 'loi' : 'ok', kq.duAn.phim?.tao_hinh?.mac_dinh ? 'AI chưa thiết kế được, tạm dùng hình mặc định' : 'Đã thiết kế lại nhân vật chính — bấm Dựng video để dựng lại')
       await capNhatTt()
@@ -241,7 +250,7 @@ export default function ChiTiet({ dau, ttDau, dsNhac }: { dau: DuAnYT; ttDau: Tr
     const conThieu =
       dau.phan.some((x) => !x.loi) ||
       dau.phan.length === 0 ||
-      (dau.loai === 'tieu_su' && (!p?.nghien_cuu || !p.cau_chuyen || !p.tao_hinh?.nhom || !p.ho_so || !p.dong_goi || dau.phan.some((x) => !x.canh)))
+      (dau.loai === 'tieu_su' && (!p?.nghien_cuu || p.anh === undefined || !p.cau_chuyen || !p.tao_hinh?.nhom || !p.ho_so || !p.dong_goi || dau.phan.some((x) => !x.canh)))
     // Gọi sau lượt vẽ đầu (không đặt state ngay trong effect)
     if (conThieu) setTimeout(() => void chayTiep(), 0)
     // Chỉ chạy một lần khi mở trang
@@ -506,6 +515,47 @@ export default function ChiTiet({ dau, ttDau, dsNhac }: { dau: DuAnYT; ttDau: Tr
         </section>
       )}
 
+      {d.loai === 'tieu_su' && d.phim?.anh && (
+        <section className="the grid gap-3 p-5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="font-bold">🖼 Ảnh thật từ Wikipedia ({d.phim.anh.length})</h2>
+            <button type="button" disabled={!!dangChay || dangLam} onClick={() => void chayLaiBuoc('lay_anh')} className="btn btn-sm btn-phu">
+              Lấy lại ảnh
+            </button>
+          </div>
+          {d.phim.anh.length === 0 ? (
+            <p className="text-sm text-slate-500">Bài Wikipedia không có ảnh dùng được (chỉ lấy ảnh giấy phép tự do trên Wikimedia Commons). Phim vẫn dựng bằng hoạt hình.</p>
+          ) : (
+            <>
+              <p className="text-sm text-slate-600">
+                Chỉ lấy ảnh trên Wikimedia Commons (giấy phép tự do hoặc phạm vi công cộng). AI ghép ảnh vào đúng câu kể nói về nội dung trong ảnh; video hiện khung ảnh kèm dòng ghi nguồn.
+              </p>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {d.phim.anh.map((a, i) => (
+                  <a key={a.url} href={a.nguon} target="_blank" rel="noreferrer" className="group grid gap-1 text-xs text-slate-500" title={a.mo_ta}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={a.url} alt={a.mo_ta} loading="lazy" className="aspect-[4/3] w-full rounded-lg bg-slate-100 object-cover ring-1 ring-slate-200 group-hover:ring-red-400" />
+                    <span className="line-clamp-2">
+                      {i}. {a.chinh && '⭐ '}
+                      {a.mo_ta}
+                    </span>
+                    <span className="truncate text-[11px] text-slate-400">
+                      {a.tac_gia} · {a.giay_phep}
+                    </span>
+                  </a>
+                ))}
+              </div>
+              <label className="grid">
+                <span className="label">
+                  Ghi nguồn ảnh (dán vào cuối mô tả YouTube) <NutChep chu={ghiNguonAnh(d.phim.anh)} />
+                </span>
+                <textarea readOnly rows={3} value={ghiNguonAnh(d.phim.anh)} className="input text-xs" />
+              </label>
+            </>
+          )}
+        </section>
+      )}
+
       {d.loai === 'tieu_su' && <HoSoPhim d={d} chay={(buoc) => void chayLaiBuoc(buoc)} dangChay={!!dangChay} />}
 
       {/* Các phần */}
@@ -541,6 +591,9 @@ export default function ChiTiet({ dau, ttDau, dsNhac }: { dau: DuAnYT; ttDau: Tr
                         <span className="truncate text-xs font-semibold leading-5 text-slate-500">{NGUOI[l.ai] ?? l.ai}</span>
                         <span>
                           {l.the_moc && <span className="mr-1 rounded bg-slate-200 px-1 text-[11px] font-semibold text-slate-700">📍 {l.the_moc}</span>}
+                          {typeof l.anh === 'number' && l.anh >= 0 && d.phim?.anh?.[l.anh] && (
+                            <span className="mr-1 rounded bg-sky-100 px-1 text-[11px] font-semibold text-sky-800">🖼 Ảnh {l.anh}</span>
+                          )}
                           {l.tai_hien && <span className="mr-1 rounded bg-amber-100 px-1 text-[11px] font-semibold text-amber-800">Tái hiện</span>}
                           {l.chu}
                           {chiDan(l) && <span className="block text-[11px] text-slate-400">{chiDan(l)}</span>}

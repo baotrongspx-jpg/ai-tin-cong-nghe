@@ -13,6 +13,8 @@ import { CSS_MINH_HOA, MINH_HOA, mocMoDau } from './minhHoa.mjs'
 const GOC = resolve(process.argv[2] ?? '.')
 const { nhan_vat, loi, moc, kenh = 'Công Nghệ 24H', chu_de = 'AI', kho = 'doc', the_chuong = null, man_ket = false, nhan_vat_chinh = null } = JSON.parse(readFileSync(join(GOC, 'artifacts/loi_thoai.json'), 'utf8'))
 const doDai = JSON.parse(readFileSync(join(GOC, 'artifacts/do_dai.json'), 'utf8'))
+// Câu có ảnh thật (phim tiểu sử): máy quay lùi ra toàn cảnh để khung ảnh phía trên không đè lên đầu nhân vật
+for (const l of loi) if (l.anh_wiki?.tep) l.khung_hinh = 'toan_canh'
 // Phim tiểu sử: người được kể là một nhân vật trên sân khấu như nhân vật phụ (xuất hiện, nói, nhép miệng, rời đi),
 // vẽ theo bản thiết kế AI của chương này (lib/youtube.ts: loiThoaiGui)
 if (nhan_vat_chinh?.hinh) {
@@ -607,7 +609,7 @@ const minhHoaKhung = [] // khung ngang: thẻ minh hoạ ở lớp khung hình
 loi.forEach((l, i) => {
   const m = l.minh_hoa
   const ve = MINH_HOA[m?.kieu]
-  if (!ve) return
+  if (!ve || l.anh_wiki?.tep) return
   const t0 = batDau[i]
   const d = doDai[i]
   // Vị trí từ khoá trong câu → thời điểm giọng đọc tới (chia theo số ký tự)
@@ -629,6 +631,38 @@ loi.forEach((l, i) => {
     tw.push(`tl.to("#bang${bangCuaCau[i]}", { opacity: 0, duration: 0.1 }, ${f(bd - 0.05)});`)
     tw.push(`tl.to("#bang${bangCuaCau[i]}", { opacity: 1, duration: 0.25 }, ${f(kt)});`)
   }
+})
+
+// ── Ảnh thật (phim tiểu sử, ảnh Wikimedia Commons máy nhà đã tải về assets/): khung ảnh viền trắng kiểu phim tài liệu
+// ở giữa phía trên khung hình (chỗ thẻ minh hoạ / bảng tin, hai thứ đó tạm ẩn). Ảnh hiện trọn (không cắt mặt) trên nền
+// chính nó làm mờ; từ từ phóng to + lia nhẹ (Ken Burns); dòng ghi nguồn: tác giả · giấy phép · Wikimedia Commons.
+// Các câu liền nhau cùng một ảnh thì giữ nguyên khung.
+const doanAnh = []
+loi.forEach((l, i) => {
+  const a = l.anh_wiki
+  if (!a?.tep) return
+  const c = doanAnh.at(-1)
+  if (c && c.a.tep === a.tep && c.het === i - 1) c.het = i
+  else doanAnh.push({ a, tu: i, het: i })
+})
+const anhThat = doanAnh.map((c, k) => {
+  const id = `anh${k}`
+  // Câu đầu phim: chờ dòng chữ mở đầu (móc câu) chạy xong rồi mới hiện ảnh
+  const vao = Math.max(batDau[c.tu] + 0.15, c.tu === 0 && moc?.chu ? gtMoc + 0.1 : 0)
+  const ra = batDau[c.het] + doDai[c.het] - 0.05
+  // Hiện quá ngắn (dưới 1,6 giây) thì bỏ, tránh ảnh loé qua rồi tắt
+  if (ra - vao < 1.6) return ''
+  const huong = k % 2 ? 1 : -1
+  tw.push(`tl.fromTo("#${id}", { opacity: 0, y: -40, rotation: ${-4 * huong}, scale: 0.9 }, { opacity: 1, y: 0, rotation: ${-1.2 * huong}, scale: 1, duration: 0.55, ease: "back.out(1.6)", immediateRender: false }, ${f(vao)});`)
+  tw.push(`tl.fromTo("#${id}-anh", { scale: 1, xPercent: ${2 * huong} }, { scale: 1.12, xPercent: ${-2 * huong}, duration: ${f(ra - vao)}, ease: "none", immediateRender: false }, ${f(vao)});`)
+  tw.push(`tl.to("#${id}", { opacity: 0, y: -24, duration: 0.35, ease: "power2.in" }, ${f(ra - 0.3)});`)
+  for (let i = c.tu; i <= c.het; i++) {
+    if (bangCuaCau[i] === null || bangCuaCau[i] === undefined) continue
+    tw.push(`tl.to("#bang${bangCuaCau[i]}", { opacity: 0, duration: 0.1 }, ${f(vao - 0.05)});`)
+    tw.push(`tl.to("#bang${bangCuaCau[i]}", { opacity: 1, duration: 0.25 }, ${f(ra)});`)
+  }
+  const src = `assets/${esc(c.a.tep)}`
+  return `<div id="${id}" class="anh-that"><div class="anh-khung"><img class="anh-nen" src="${src}"/><img id="${id}-anh" class="anh-chinh" src="${src}"/></div><div class="anh-ghi">📷 ${esc(c.a.tac_gia)} · ${esc(c.a.giay_phep)} · Wikimedia Commons</div></div>`
 })
 
 // Bảng tin phía sau đổi theo lời thoại
@@ -858,6 +892,11 @@ const trang = `<!doctype html>
       .ke-tron { position: absolute; inset: 10px; border-radius: 50%; overflow: hidden; background: radial-gradient(circle at 50% 28%, #93c5fd 0%, #3b5b8c 38%, #1e293b 70%, #0f172a); box-shadow: inset 0 0 0 5px #0f172a; }
       .ke-den { position: absolute; inset: 0; background: radial-gradient(circle at 78% 18%, #fde68a55, transparent 40%), radial-gradient(circle at 15% 85%, #f9731633, transparent 45%); }
       #khung-ke svg { position: relative; display: block; }
+      .anh-that { position: absolute; left: ${(RONG - 600) / 2}px; top: ${NGANG ? 18 : 300}px; width: 600px; opacity: 0; display: flex; flex-direction: column; align-items: center; filter: drop-shadow(0 18px 30px #000b); }
+      .anh-khung { position: relative; width: 600px; height: 360px; overflow: hidden; border: 12px solid #fdfaf3; border-radius: 6px; background: #111; box-sizing: border-box; }
+      .anh-nen { position: absolute; inset: -30px; width: calc(100% + 60px); height: calc(100% + 60px); object-fit: cover; filter: blur(18px) brightness(0.6); }
+      .anh-chinh { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+      .anh-ghi { margin-top: 6px; max-width: 600px; padding: 4px 14px; border-radius: 8px; background: #000b; color: #f1f5f9; font-size: 17px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: "BVP", "Emoji", sans-serif; }
       .ke-mic { position: absolute; right: 14px; bottom: 18px; width: 62px; height: 62px; border-radius: 50%; background: linear-gradient(#ef4444, #b91c1c); border: 4px solid #fde68a; display: flex; align-items: center; justify-content: center; font-size: 32px; font-family: "Emoji", sans-serif; box-shadow: 0 6px 14px #0008; }${NGANG ? CSS_NGANG : ''}
     </style>
   </head>
@@ -881,7 +920,7 @@ const trang = `<!doctype html>
         </div></div>
       </div>
       <div id="vien-toi" class="clip" data-start="0" data-duration="${f(TONG)}" data-track-index="5"><div id="den"></div><div id="chop"></div></div>
-      <div id="lop-minh-hoa" class="clip" data-start="0" data-duration="${f(TONG)}" data-track-index="7">${giatTit.html}${theMoc.join('')}${minhHoaKhung.join('')}${khungKeHtml}${manKetHtml}${theChuongHtml}</div>${phuDe.join('')}
+      <div id="lop-minh-hoa" class="clip" data-start="0" data-duration="${f(TONG)}" data-track-index="7">${giatTit.html}${theMoc.join('')}${minhHoaKhung.join('')}${anhThat.join('')}${khungKeHtml}${manKetHtml}${theChuongHtml}</div>${phuDe.join('')}
       ${[...amThanh, ...amPhu].join('\n      ')}
     </div>
     <script>

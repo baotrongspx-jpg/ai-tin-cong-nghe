@@ -6,7 +6,7 @@ import {
   dongGoiYouTube, hoSoHinhAnh, nghienCuuNhanVat, phanCanhChuong, phatTrienCauChuyen, thietKeNhanVatChinh, vietPhanPhim, TAO_HINH_MAC_DINH,
   type CanhPhim, type CauChuyen, type CauPhim, type DongGoi, type HoSoHinhAnh, type NghienCuu, type TaoHinh,
 } from './aiPhim'
-import { nguonWiki } from './wiki'
+import { anhWiki, nguonWiki, type AnhWiki } from './wiki'
 import { NHAN_VAT } from './hoatHinh'
 import { dsNhac } from './nhacNen'
 import { kiemDinh, type KetQuaKiemDinh } from './kiemDinh'
@@ -17,7 +17,7 @@ import { kiemDinh, type KetQuaKiemDinh } from './kiemDinh'
 // video và chỉ lưu trên máy nhà (Desktop\Video-YouTube), vì video dài quá nặng để gửi lên kho.
 // Máy nhà báo kết quả: youtube/<id>/phan-<k>.json ({ xong, ma } hoặc { loi, ma }), tien-do.json, xong.json.
 const KHO = 'video-tiktok'
-const PHIEN_BAN = 8 // tăng khi đổi cách dựng để các phần dựng lại (2: thẻ minh hoạ / đạo cụ khung ngang; 3: giọng Mèo Mun; 4: nhịp chuyển cảnh mượt; 5: thẻ chương, màn kết, B-roll; 6: khung người kể, 7: người kể vẽ riêng, 8: nhân vật chính phim tiểu sử)
+const PHIEN_BAN = 9 // tăng khi đổi cách dựng để các phần dựng lại (2: thẻ minh hoạ / đạo cụ khung ngang; 3: giọng Mèo Mun; 4: nhịp chuyển cảnh mượt; 5: thẻ chương, màn kết, B-roll; 6: khung người kể, 7: người kể vẽ riêng, 8: nhân vật chính phim tiểu sử, 9: ảnh Wikipedia)
 const kho = () => db().storage.from(KHO)
 const thuMuc = (id: string) => `youtube/${id}`
 const tenViec = (id: string, k: number) => `yt-${id}-${k}.json`
@@ -33,6 +33,7 @@ export type CauYT = Omit<LoiThoai[number], 'ai' | 'nhan_vat_phu'> & {
   nhan_vat_phu: CauPhim['nhan_vat_phu']
   tai_hien?: boolean
   the_moc?: string
+  anh?: number // phim tiểu sử: số thứ tự ảnh Wikipedia (d.phim.anh) hiện trong câu này, -1 = không
 }
 export type PhanYT = {
   tieu_de: string
@@ -53,6 +54,7 @@ export type PhimTieuSu = {
   cau_chuyen?: CauChuyen
   ho_so?: HoSoHinhAnh
   tao_hinh?: TaoHinh // hình hoạt hình của người được kể (bước "Thiết kế nhân vật chính")
+  anh?: AnhWiki[] // ảnh thật từ Wikimedia Commons (giấy phép tự do), ghép vào câu kể hợp nội dung
   dong_goi?: DongGoi
 }
 export type DuAnYT = {
@@ -75,7 +77,34 @@ export type DuAnYT = {
 const bam = (x: unknown) => createHash('sha256').update(JSON.stringify(x)).digest('hex').slice(0, 12)
 // Mã một phần: đổi lời thoại / cách dựng thì đổi mã, máy nhà dựng lại phần đó
 const maPhan = (d: DuAnYT, k: number) =>
-  bam([PHIEN_BAN, d.chu_de, d.phan[k - 1].loi, k === 1 ? d.phan[0].moc : null, ...(d.loai === 'tieu_su' ? [hinhChuong(d, k)] : [])])
+  bam([
+    PHIEN_BAN, d.chu_de, d.phan[k - 1].loi, k === 1 ? d.phan[0].moc : null,
+    ...(d.loai === 'tieu_su' ? [hinhChuong(d, k), Object.entries(anhCuaChuong(d, k)).map(([i, a]) => [i, a.url])] : []),
+  ])
+
+// Phim tiểu sử: câu nào hiện ảnh thật nào (chỉ số câu → ảnh). Kịch bản AI viết sau khi có ảnh thì mỗi câu có "anh"
+// (số thứ tự ảnh, -1 = không); kịch bản cũ chưa có thì tự rải: ảnh xếp theo năm chia đều cho các chương theo thứ tự,
+// mỗi chương tối đa 3 ảnh, đặt vào các câu người kể cách đều nhau (đời người kể theo thời gian nên khớp tương đối)
+function anhCuaChuong(d: DuAnYT, k: number): Record<number, AnhWiki> {
+  const ds = d.phim?.anh ?? []
+  const loi = d.phan[k - 1]?.loi ?? []
+  if (!ds.length || !loi.length) return {}
+  const kq: Record<number, AnhWiki> = {}
+  if (loi.some((l) => typeof l.anh === 'number')) {
+    loi.forEach((l, i) => {
+      if (typeof l.anh === 'number' && ds[l.anh]) kq[i] = ds[l.anh]
+    })
+    return kq
+  }
+  const n = d.phan.length
+  const phan = ds.slice(Math.floor(((k - 1) * ds.length) / n), Math.floor((k * ds.length) / n)).slice(0, 3)
+  const ke = loi.map((l, i) => (l.ai === 'nguoi_ke' ? i : -1)).filter((i) => i >= 0)
+  phan.forEach((a, j) => {
+    const i = ke[Math.floor(((j + 0.5) * ke.length) / phan.length)]
+    if (i !== undefined) kq[i] = a
+  })
+  return kq
+}
 
 // Phim tiểu sử: hình nhân vật chính dùng ở chương k (giai đoạn tuổi có tu_chuong lớn nhất mà <= k)
 function hinhChuong(d: DuAnYT, k: number) {
@@ -97,7 +126,14 @@ function loiThoaiGui(d: DuAnYT, k: number) {
     ...goc,
     nhan_vat: { ...NHAN_VAT, nhan_vat_chinh: { ten: d.phim.ten, giong: GIONG_CHINH[hinh.gioi] } },
     nhan_vat_chinh: { ten: d.phim.ten, hinh },
-    loi: (p.loi ?? []).map((l) => (l.ai === 'nguoi_ke' && (!l.nhan_vat_phu || l.nhan_vat_phu === 'khong') ? { ...l, nhan_vat_phu: 'nhan_vat_chinh' } : l)),
+    loi: (p.loi ?? []).map((l, i) => {
+      const anh = anhCuaChuong(d, k)[i]
+      return {
+        ...l,
+        ...(l.ai === 'nguoi_ke' && (!l.nhan_vat_phu || l.nhan_vat_phu === 'khong') ? { nhan_vat_phu: 'nhan_vat_chinh' } : {}),
+        ...(anh ? { anh_wiki: { url: anh.url, tac_gia: anh.tac_gia, giay_phep: anh.giay_phep, nam: anh.nam } } : {}),
+      }
+    }),
   }
 }
 
@@ -168,7 +204,7 @@ export async function vietLoiPhan(id: string, k: number) {
   const noiTiep = truoc.slice(-4).map((l) => `${l.ai}: ${l.chu}`)
   const kb =
     d.loai === 'tieu_su' && d.phim?.nghien_cuu && d.phim.cau_chuyen
-      ? await vietPhanPhim({ ten: d.phim.ten, nghienCuu: d.phim.nghien_cuu, cauChuyen: d.phim.cau_chuyen, k, soCau: Math.round(giay / 5.5), noiTiep })
+      ? await vietPhanPhim({ ten: d.phim.ten, nghienCuu: d.phim.nghien_cuu, cauChuyen: d.phim.cau_chuyen, k, soCau: Math.round(giay / 5.5), noiTiep, anh: d.phim.anh ?? [] })
       : await vietPhanYouTube({ nguon: d.nguon_chu, danY: d, k, soCau: Math.round(giay / 4.5), noiTiep })
   if (!kb) throw new Error(`AI chưa viết được phần ${k}, thử lại sau ít phút`)
   // Biên tập viên kiểm định: tự sửa nhịp hình ảnh, chấm điểm, ghi chú
@@ -355,7 +391,7 @@ export async function taoPhim(o: { ten: string; ghiChu: string; taiLieu: string;
   return d
 }
 
-export type BuocPhim = 'nghien_cuu' | 'cau_chuyen' | 'tao_hinh' | 'ho_so' | 'phan_canh' | 'dong_goi'
+export type BuocPhim = 'nghien_cuu' | 'lay_anh' | 'cau_chuyen' | 'tao_hinh' | 'ho_so' | 'phan_canh' | 'dong_goi'
 
 // Chạy một giai đoạn (phan_canh cần số chương k). Trả dự án đã lưu.
 export async function chayBuocPhim(id: string, buoc: BuocPhim, k?: number) {
@@ -363,7 +399,8 @@ export async function chayBuocPhim(id: string, buoc: BuocPhim, k?: number) {
   if (!d?.phim || d.loai !== 'tieu_su') throw new Error('Không tìm thấy phim')
   const p = d.phim
   if (buoc === 'nghien_cuu') {
-    const wiki = await nguonWiki(p.ten)
+    const [wiki, anh] = await Promise.all([nguonWiki(p.ten), anhWiki(p.ten).catch(() => [])])
+    p.anh = anh
     const ds = [
       ...wiki.map((w, i) => ({ ten: `Nguồn ${i + 1} — Wikipedia ${w.ngon_ngu === 'vi' ? 'tiếng Việt' : 'tiếng Anh'}: ${w.tieu_de} (${w.url})`, chu: w.noi_dung })),
       ...(p.tai_lieu ? [{ ten: `Nguồn ${wiki.length + 1} — Tài liệu chủ kênh cung cấp`, chu: p.tai_lieu }] : []),
@@ -382,6 +419,9 @@ export async function chayBuocPhim(id: string, buoc: BuocPhim, k?: number) {
     d.the = kq.the.map((t) => t.replace(/^#/, '').trim()).filter(Boolean).slice(0, 20)
     d.mo_ta = kq.big_idea
     d.phan = kq.phan.map((x) => ({ tieu_de: x.tieu_de, noi_dung: x.noi_dung, nhip: x.nhip, loi: null, moc: null }))
+  } else if (buoc === 'lay_anh') {
+    // Không gọi AI: lấy ảnh trong bài Wikipedia (phim nghiên cứu trước khi có bước này, hoặc bấm "Lấy lại ảnh")
+    p.anh = await anhWiki(p.ten)
   } else if (buoc === 'tao_hinh') {
     if (!p.nghien_cuu || !p.cau_chuyen) throw new Error('Chưa có nghiên cứu và câu chuyện')
     // AI chưa làm được thì dùng hình mặc định để phim vẫn dựng được; bấm "Thiết kế lại" sau

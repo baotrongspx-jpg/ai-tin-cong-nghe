@@ -72,6 +72,57 @@ async function layWiki(ngonNgu: 'vi' | 'en', ten: string, toiDa: number): Promis
   }
 }
 
+// ---------- Ảnh trong bài: chỉ ảnh trên Wikimedia Commons (kho chỉ nhận ảnh giấy phép tự do / phạm vi công cộng) ----------
+// Bỏ ảnh SVG, ảnh nhỏ, cờ, logo, chữ ký, bản đồ, huy hiệu, biểu tượng. Mỗi ảnh giữ: link ảnh thu nhỏ rộng 1280, trang
+// nguồn, tác giả, giấy phép (để ghi nguồn trên video và trong mô tả YouTube), năm chụp, mô tả.
+export type AnhWiki = { url: string; nguon: string; ten_tep: string; tac_gia: string; giay_phep: string; nam: string; mo_ta: string; chinh?: boolean }
+const BO_ANH = /flag|logo|signature|chữ[_ ]ký|chu[_ ]ky|icon|map|bản[_ ]đồ|coat[_ ]of[_ ]arms|seal|emblem|huy[_ ]hiệu|symbol|commons-|wiki|disambig|question|edit-|ambox|portal|stub|padlock|audio|speaker/i
+const boThe = (s: string) =>
+  s.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#0?39;/g, "'").replace(/\s+/g, ' ').trim()
+
+async function anhCuaBai(ngonNgu: 'vi' | 'en', tieuDe: string): Promise<AnhWiki[]> {
+  const [ds, chinh] = await Promise.all([
+    hoi(ngonNgu, {
+      action: 'query', titles: tieuDe, redirects: '1', generator: 'images', gimlimit: '60',
+      prop: 'imageinfo', iiprop: 'url|size|mime|extmetadata', iiurlwidth: '1280',
+    }),
+    hoi(ngonNgu, { action: 'query', titles: tieuDe, redirects: '1', prop: 'pageimages', piprop: 'name' }),
+  ])
+  const tenChinh: string | undefined = chinh?.query?.pages?.[0]?.pageimage
+  type Trang = { title: string; imagerepository?: string; imageinfo?: { url: string; thumburl?: string; descriptionurl: string; width: number; height: number; mime: string; extmetadata?: Record<string, { value: string }> }[] }
+  const kq: AnhWiki[] = []
+  for (const t of (ds?.query?.pages ?? []) as Trang[]) {
+    const ii = t.imageinfo?.[0]
+    if (!ii || t.imagerepository !== 'shared') continue // chỉ ảnh trên Commons
+    if (!/^image\/(jpeg|png|webp)$/.test(ii.mime) || ii.width < 400 || ii.height < 300 || BO_ANH.test(t.title)) continue
+    const m = ii.extmetadata ?? {}
+    const giayPhep = boThe(m.LicenseShortName?.value ?? '')
+    if (!giayPhep || /non-?free|fair use/i.test(giayPhep)) continue
+    const ngay = boThe(m.DateTimeOriginal?.value ?? '')
+    const tenTep = t.title.replace(/^[^:]+:/, '')
+    kq.push({
+      url: ii.thumburl ?? ii.url,
+      nguon: ii.descriptionurl,
+      ten_tep: tenTep,
+      tac_gia: boThe(m.Artist?.value ?? '').slice(0, 80) || 'Không rõ',
+      giay_phep: giayPhep,
+      nam: ngay.match(/\b(1[0-9]{3}|20[0-9]{2})\b/)?.[1] ?? '',
+      mo_ta: (boThe(m.ImageDescription?.value ?? '') || tenTep.replace(/\.[a-z]+$/i, '').replace(/_/g, ' ')).slice(0, 200),
+      chinh: !!tenChinh && tenTep.replace(/ /g, '_') === tenChinh.replace(/ /g, '_'),
+    })
+  }
+  return kq
+}
+
+// Ảnh của nhân vật từ bài vi + en (bỏ trùng), ảnh chân dung chính của bài lên đầu, rồi theo năm; tối đa 16 ảnh
+export async function anhWiki(ten: string): Promise<AnhWiki[]> {
+  const bai = await Promise.all((['vi', 'en'] as const).map(async (ng) => ({ ng, tieuDe: await timTieuDe(ng, ten).catch(() => null) })))
+  const ds = (await Promise.all(bai.filter((b) => b.tieuDe).map((b) => anhCuaBai(b.ng, b.tieuDe!).catch(() => [])))).flat()
+  const daCo = new Set<string>()
+  const kq = ds.filter((a) => !daCo.has(a.ten_tep) && daCo.add(a.ten_tep))
+  return kq.sort((a, b) => Number(!!b.chinh) - Number(!!a.chinh) || (a.nam || '9999').localeCompare(b.nam || '9999')).slice(0, 16)
+}
+
 // Bài tiếng Việt (dài hơn) + tiếng Anh; không có bài nào đúng người thì trả mảng rỗng
 export async function nguonWiki(ten: string) {
   const ds = await Promise.all([layWiki('vi', ten, 24_000), layWiki('en', ten, 16_000)])

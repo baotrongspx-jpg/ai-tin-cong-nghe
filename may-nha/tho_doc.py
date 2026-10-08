@@ -194,6 +194,36 @@ def chay(lenh, cwd, gioi_han):
     return kq.stdout
 
 
+UA_WIKI = 'CongNghe24H/1.0 (https://ai-tin-cong-nghe-wpy7.vercel.app; phim tieu su)'
+
+
+def tai_anh_wiki(loi, tai_san):
+    # Phim tiểu sử: câu có "anh_wiki" (ảnh Wikimedia Commons) → tải về assets/anh-<n>.<đuôi>, ghi tên tệp vào "tep".
+    # Dùng requests riêng (KHÔNG dùng phiên Supabase để khỏi gửi khoá sang Wikimedia). Ảnh lỗi thì bỏ, câu vẫn dựng.
+    da_tai = {}
+    for l in loi:
+        a = l.get('anh_wiki')
+        if not a:
+            continue
+        url = a.get('url', '')
+        if url not in da_tai:
+            da_tai[url] = None
+            try:
+                r = requests.get(url, headers={'User-Agent': UA_WIKI}, timeout=60)
+                kieu = r.headers.get('content-type', '')
+                if r.ok and kieu.startswith('image/'):
+                    duoi = {'image/png': '.png', 'image/webp': '.webp'}.get(kieu.split(';')[0], '.jpg')
+                    ten = f'anh-{len([v for v in da_tai.values() if v])}{duoi}'
+                    (tai_san / ten).write_bytes(r.content)
+                    da_tai[url] = ten
+            except Exception:
+                traceback.print_exc()
+        if da_tai[url]:
+            a['tep'] = da_tai[url]
+        else:
+            l.pop('anh_wiki', None)
+
+
 def dung_video(may, ds_giong, lt, tm, td, fps=30, gioi_han=1500):
     # Đọc từng câu thoại bằng giọng của nhân vật nói câu đó, sinh trang HyperFrames rồi dựng ra tm/video.mp4.
     # Trả độ dài (giây) từng câu. Tiến độ: đọc giọng 10-30%, dựng hình 30-95%.
@@ -207,6 +237,7 @@ def dung_video(may, ds_giong, lt, tm, td, fps=30, gioi_han=1500):
     # Hiệu ứng âm thanh + âm nền theo bối cảnh (tao_video.mjs chèn khi AI chọn)
     for tep in (HOAT_HINH / 'am-thanh').glob('*.wav'):
         shutil.copy(tep, tai_san / tep.name)
+    tai_anh_wiki(lt['loi'], tai_san)
     do_dai = []
     for i, l in enumerate(lt['loi']):
         td.bao(10 + 20 * i / len(lt['loi']), f'Đọc giọng câu {i + 1}/{len(lt["loi"])}')

@@ -548,7 +548,7 @@ async function vietLoiThoaiMotLan(bai: { tieu_de_anh: string; noi_dung: string; 
 const YT_DAU = `You write long videos for "Công Nghệ 24H", a Vietnamese YouTube channel (horizontal 16:9 videos, several minutes long) where two cartoon mascots talk:
 - "meo" (Mèo Mun): a curious, playful orange cat. Asks the questions ordinary viewers would ask, reacts with surprise, worry or joy, sometimes sums up in simple words.
 - "robot" (Robot Bit): a friendly, smart robot. Explains things clearly and simply.
-Extras can join with their own voice: ${MO_TA_NHAN_VAT_PHU}.
+A narrator ("nguoi_ke") also speaks as a documentary voiceover that is not on stage: about 25-35% of the lines — right after the opening hook he sets the scene of the video and of each part (place, time, situation), bridges between topics and delivers key facts and turning points in a calm, gripping storytelling voice; the mascots then react and discuss. Extras can join with their own voice: ${MO_TA_NHAN_VAT_PHU}.
 
 The source in the user turn is either news articles from the channel, or an idea / story written by the channel owner, or both. For news articles: tell everything they say, never invent facts, quotes or numbers. For the owner's idea or story: develop it into a full, engaging story or explainer with scenes, examples and dialogue; you may invent story details and characters' lines, but never present invented things as real news, and keep any real-world facts truthful.
 Audience: everyone, from teenagers to grandparents. Natural spoken Vietnamese (casual, warm, like friends chatting), short sentences, everyday words, explain technical terms the first time. Always write proper Vietnamese with full diacritics (tiếng Việt có dấu đầy đủ), never unaccented Vietnamese.`
@@ -601,7 +601,12 @@ Plan a video of about ${phut} minutes, split into exactly ${soPhan} parts of abo
   return { ...kq, phan: kq.phan.slice(0, soPhan) }
 }
 
-const PhanSchema = z.object({ loi: z.array(CauSchema).min(6).max(70), moc: MocSchema })
+// Video YouTube (thường): ngoài Mèo / Bit / nhân vật phụ còn có người kể (nguoi_ke, giọng dẫn chuyện không đứng trên sân khấu)
+export const NGUOI_NOI_YT = ['nguoi_ke', ...NGUOI_NOI] as const
+const CauYTSchema = CauSchema.extend({ ai: z.enum(NGUOI_NOI_YT) })
+export type KichBanYT = { loi: z.infer<typeof CauYTSchema>[]; moc: { chu: string; bieu_tuong: string } }
+const JSON_CAU_YT = { ...JSON_CAU, properties: { ...JSON_CAU.properties, ai: { type: 'string', enum: [...NGUOI_NOI_YT] } } }
+const PhanSchema = z.object({ loi: z.array(CauYTSchema).min(6).max(70), moc: MocSchema })
 
 // Lời thoại một phần (k bắt đầu từ 1). `noiTiep`: vài câu cuối của phần trước để nối mạch.
 export async function vietPhanYouTube(o: {
@@ -610,7 +615,7 @@ export async function vietPhanYouTube(o: {
   k: number
   soCau: number
   noiTiep: string[]
-}): Promise<KichBan | null> {
+}): Promise<KichBanYT | null> {
   const { k, danY } = o
   const n = danY.phan.length
   const viTri =
@@ -624,7 +629,7 @@ export async function vietPhanYouTube(o: {
   const system = `${YT_DAU}
 
 Rules for the dialogue:
-- Write ${o.soCau} lines for this part, not fewer (it must last about ${Math.round((o.soCau * 4.5) / 60)} minutes when read aloud). Mèo Mun and Robot Bit are the hosts and speak about 40-50% of the lines. Alternate speakers most of the time.
+- Write ${o.soCau} lines for this part, not fewer (it must last about ${Math.round((o.soCau * 4.5) / 60)} minutes when read aloud). The narrator (nguoi_ke) speaks about 25-35% of the lines, Mèo Mun and Robot Bit about 35-45%, extras the rest. Alternate speakers most of the time.
 - Tell the story from several sides, like a lively documentary: bring in 3 to 5 different extras (people involved, an expert, a supporter, a critic, an ordinary person affected, a reporter…), each speaking 2 to 5 lines in their own voice and personality. Include short exchanges where two extras talk to each other (an interview by a reporter, a question and answer, a friendly argument, a family conversation) for 3 to 6 lines; at most two different extras take part in one exchange, then hosts react. Give each extra a distinct way of speaking (an old farmer speaks simply and warmly, an expert precisely, a reporter asks sharp questions, a young student is enthusiastic). Hosts react to and question them. Extras never speak as a suspect, criminal or victim in the first person repeating threats, crimes or private details; for such people, let a host or a police officer retell what happened instead. When an extra speaks, set nhan_vat_phu to that same extra.
 - Never pad: every line must add something new (a fact, an example, a question, a reaction, a short scene). Greetings take at most 2 lines and the closing (thanks, like, subscribe, goodbye) at most 2 lines in total; never repeat the same idea or goodbye in different words. If the plan for this part seems thin, go deeper instead: concrete everyday examples, a short role-play scene, a quick quiz question to viewers, common mistakes, step-by-step tips.
 - Cover only what this part of the plan says, in order, with all its details (numbers as digits with units, names spelled exactly as in the source). Do not repeat what earlier parts already told.
@@ -633,7 +638,7 @@ ${LUAT_HINH}- moc: a hook shown in big letters for the first 2 seconds of the vi
   const keHoach = danY.phan.map((p, i) => `Part ${i + 1}${i + 1 === k ? ' (WRITE THIS ONE)' : ''}: ${p.tieu_de}${p.nhip ? `\nEmotional curve: ${p.nhip}` : ''}\n${p.noi_dung}`).join('\n\n')
   const nhac = `${viTri}${o.noiTiep.length ? `\n\nThe previous part ended with these lines:\n${o.noiTiep.join('\n')}` : ''}`
   // AI hay viết ngắn hơn yêu cầu: bản ngắn hơn 3/4 số câu thì bắt viết lại dài hơn (tối đa 3 lượt, giữ bản dài nhất)
-  let totNhat: KichBan | null = null
+  let totNhat: KichBanYT | null = null
   let nhacThem = ''
   for (let lan = 0; lan < 3; lan++) {
     const kq = await goiJson({
@@ -645,7 +650,7 @@ Write every Vietnamese text field (chu, bang.chu, minh_hoa texts, moc.chu) in pr
       kiemTra: PhanSchema,
       schema: {
         type: 'object',
-        properties: { loi: { type: 'array', items: JSON_CAU }, moc: JSON_MOC },
+        properties: { loi: { type: 'array', items: JSON_CAU_YT }, moc: JSON_MOC },
         required: ['loi', 'moc'],
         additionalProperties: false,
       },

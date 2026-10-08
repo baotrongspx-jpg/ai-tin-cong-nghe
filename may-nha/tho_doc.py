@@ -445,6 +445,12 @@ def main():
                     for tm in [*THU_MUC_YT.glob(f'*-{du_an[:6]}'), *THU_MUC_TAM.glob(f'yt-{du_an}-*')]:
                         if tm.is_dir():
                             shutil.rmtree(tm, ignore_errors=True)
+                            # OneDrive đôi khi còn giữ thư mục lúc vừa xoá tệp bên trong: đợi rồi xoá lại thư mục rỗng
+                            for _ in range(3):
+                                if not tm.exists():
+                                    break
+                                time.sleep(2)
+                                shutil.rmtree(tm, ignore_errors=True)
                             so += 1
                     print(f'Đã xoá {so} thư mục video của dự án {du_an[:6]}', flush=True)
                 elif yc.get('loai') == 'youtube':

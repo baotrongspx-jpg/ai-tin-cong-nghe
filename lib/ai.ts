@@ -634,10 +634,10 @@ export async function vietPhanYouTube(o: {
     n === 1
       ? 'This is the whole video: start with Mèo Mun asking a hook question about the most surprising point and greeting viewers of Công Nghệ 24H, and end with one line inviting viewers to like and subscribe to Công Nghệ 24H.'
       : k === 1
-        ? "This is part 1: the narrator's channel greeting, a short introduction of the topic and the reading of the part title are inserted automatically before your lines, so do not greet or introduce the channel; start with Mèo Mun asking a hook question about the most surprising point of the whole video. Do not say goodbye at the end; lead naturally into the next part."
+        ? "This is part 1: the narrator's channel greeting, a short introduction of the topic and the reading of the part title are inserted automatically before your lines, so do not greet or introduce the channel; start with Mèo Mun asking a hook question about the most surprising point of the whole video. Do not say goodbye at the end; lead naturally into the next part. The whole video is ONE continuous video watched in one sitting; parts are only sections of it: never say goodbye, thanks, «hẹn gặp lại», «đón xem phần tiếp theo» or ask viewers to subscribe before the very end; end the part with a line that flows straight into the next part."
         : k === n
-          ? 'This is the last part: continue right where the previous part stopped (no new greeting), then wrap up the whole video and end with one line inviting viewers to like and subscribe to Công Nghệ 24H.'
-          : `This is part ${k} of ${n}: continue right where the previous part stopped (no greeting, no goodbye) and lead naturally into the next part.`
+          ? 'This is the last part: continue right where the previous part stopped (no new greeting), then wrap up the whole video (tie back to the opening question) and end with at most 2 closing lines, one of them inviting viewers to like and subscribe to Công Nghệ 24H.'
+          : `This is part ${k} of ${n}: continue right where the previous part stopped (no greeting, no goodbye, no recap) and lead naturally into the next part. The whole video is ONE continuous video watched in one sitting; parts are only sections of it: never say goodbye, thanks, "hẹn gặp lại", "đón xem phần tiếp theo" or ask viewers to subscribe before the very end; end the part with a line that flows straight into the next part.`
   const system = `${YT_DAU}
 
 Rules for the dialogue:

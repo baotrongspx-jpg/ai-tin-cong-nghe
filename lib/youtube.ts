@@ -9,7 +9,7 @@ import {
 import { anhWiki, nguonWiki, type AnhWiki } from './wiki'
 import { NHAN_VAT } from './hoatHinh'
 import { dsNhac } from './nhacNen'
-import { kiemDinh, type KetQuaKiemDinh } from './kiemDinh'
+import { kiemDinh, locLoiChao, type KetQuaKiemDinh } from './kiemDinh'
 
 // Video YouTube dài (trang /youtube): hoạt hình Mèo Mun & Robot Bit, khung ngang 16:9, dài tới ~20 phút.
 // Mỗi dự án là một tệp youtube/<id>/du-an.json trong kho (không cần thêm bảng). AI viết dàn ý chia phần (~3 phút
@@ -119,19 +119,22 @@ function loiThoaiGui(d: DuAnYT, k: number) {
   const p = d.phan[k - 1]
   const phim = d.loai === 'tieu_su' && d.phim ? d.phim : null
   const nhieuPhan = d.phan.length > 1
+  // Tên chương AI đặt hay có sẵn "Phần 1: …" — bỏ đi để người kể không đọc "Chương 1. Phần 1"
+  const tenChuong = p.tieu_de.replace(/^\s*(phần|chương|tập)\s*\d+\s*[:.\-–—]\s*/i, '').trim() || p.tieu_de
   const goc = {
     kho: 'ngang', kenh: 'Công Nghệ 24H', chu_de: d.chu_de, moc: k === 1 ? p.moc : null,
-    the_chuong: { so: k, ten: p.tieu_de, nhan: phim ? 'CHƯƠNG' : 'PHẦN' }, man_ket: k === d.phan.length,
+    the_chuong: { so: k, ten: tenChuong, nhan: phim ? 'CHƯƠNG' : 'PHẦN' }, man_ket: k === d.phan.length,
   }
   const hinh = phim ? hinhChuong(d, k) : null
   const anhChuong = phim ? anhCuaChuong(d, k) : {}
   const veAnh = (a: AnhWiki) => ({ anh_wiki: { url: a.url, tac_gia: a.tac_gia, giay_phep: a.giay_phep, nam: a.nam } })
-  const loi: Record<string, unknown>[] = (p.loi ?? []).map((l, i) => ({
+  // Phim xem liền một mạch: bỏ câu chào / hẹn chương sau giữa phim, chương cuối chỉ giữ 2 câu chào kết (lib/kiemDinh.ts)
+  const loi: Record<string, unknown>[] = locLoiChao((p.loi ?? []).map((l, i) => ({
     ...l,
     // Phim tiểu sử: câu người kể chưa có ai trên sân khấu thì nhân vật chính đứng diễn
     ...(phim && l.ai === 'nguoi_ke' && (!l.nhan_vat_phu || l.nhan_vat_phu === 'khong') ? { nhan_vat_phu: 'nhan_vat_chinh' } : {}),
     ...(anhChuong[i] ? veAnh(anhChuong[i]) : {}),
-  }))
+  })), k === d.phan.length).loi
   // Câu người kể chèn thêm (không do AI viết): giữ bối cảnh / bảng tin của câu chuyện kế bên cho khỏi đổi cảnh thừa
   const mau = (gan: Record<string, unknown> | undefined, them: Record<string, unknown>) => ({
     ...(gan ?? {}),
@@ -142,7 +145,7 @@ function loiThoaiGui(d: DuAnYT, k: number) {
   })
   const cham = (x: string) => (/[.!?…]$/.test(x.trim()) ? x.trim() : `${x.trim()}.`)
   // Người kể đọc tên chương / phần (thẻ chương hiện đúng lúc này) — chỉ khi video có nhiều phần
-  const docChuong = nhieuPhan ? [mau(loi[0], { chu: cham(`${phim ? 'Chương' : 'Phần'} ${k}. ${p.tieu_de}`), la_chuong: true })] : []
+  const docChuong = nhieuPhan ? [mau(loi[0], { chu: cham(`${phim ? 'Chương' : 'Phần'} ${k}. ${tenChuong}`), la_chuong: true })] : []
   if (k === 1) {
     // Mở đầu: người kể giới thiệu phim kể chuyện gì (dòng chữ móc câu to hiện cùng lúc) → tên chương 1 → vào chuyện
     const chanDung = phim?.anh?.find((a) => a.chinh)
@@ -235,14 +238,15 @@ export async function vietLoiPhan(id: string, k: number) {
   if (!d || !d.phan[k - 1]) throw new Error('Không tìm thấy phần này')
   const truoc = d.phan[k - 2]?.loi ?? []
   const giay = (d.phut / d.phan.length) * 60
-  const noiTiep = truoc.slice(-4).map((l) => `${l.ai}: ${l.chu}`)
+  // Nối mạch: 6 câu cuối chương trước (đã bỏ câu chào / hẹn chương sau) để chương này viết tiếp liền mạch
+  const noiTiep = locLoiChao(truoc, false).loi.slice(-6).map((l) => `${l.ai}: ${l.chu}`)
   const kb =
     d.loai === 'tieu_su' && d.phim?.nghien_cuu && d.phim.cau_chuyen
       ? await vietPhanPhim({ ten: d.phim.ten, nghienCuu: d.phim.nghien_cuu, cauChuyen: d.phim.cau_chuyen, k, soCau: Math.round(giay / 5.5), noiTiep, anh: d.phim.anh ?? [] })
       : await vietPhanYouTube({ nguon: d.nguon_chu, danY: d, k, soCau: Math.round(giay / 4.5), noiTiep })
   if (!kb) throw new Error(`AI chưa viết được phần ${k}, thử lại sau ít phút`)
   // Biên tập viên kiểm định: tự sửa nhịp hình ảnh, chấm điểm, ghi chú
-  const { loi, ...kd } = kiemDinh(kb.loi as CauYT[], { loai: d.loai })
+  const { loi, ...kd } = kiemDinh(kb.loi as CauYT[], { loai: d.loai, laCuoi: k === d.phan.length })
   // Đọc lại ngay trước khi lưu: lúc AI viết, phần khác có thể vừa được lưu
   const moi = (await docDuAn(id)) ?? d
   moi.phan[k - 1] = { ...moi.phan[k - 1], loi, moc: kb.moc, canh: undefined, kiem_dinh: kd } // lời đổi thì phân cảnh cũ không còn đúng
@@ -255,7 +259,7 @@ export async function kiemDinhLaiPhan(id: string, k: number) {
   const d = await docDuAn(id)
   const p = d?.phan[k - 1]
   if (!d || !p?.loi) throw new Error('Phần này chưa có lời thoại')
-  const { loi, ...kd } = kiemDinh(p.loi, { loai: d.loai })
+  const { loi, ...kd } = kiemDinh(p.loi, { loai: d.loai, laCuoi: k === d.phan.length })
   const doi = JSON.stringify(loi) !== JSON.stringify(p.loi)
   d.phan[k - 1] = { ...p, loi, kiem_dinh: kd, canh: doi ? undefined : p.canh }
   await luuDuAn(d)

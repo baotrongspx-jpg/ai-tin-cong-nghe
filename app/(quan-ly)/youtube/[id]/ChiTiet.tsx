@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { DuAnYT, KiemTraVideo, PhanYT, TrangThaiDuAn, TrangThaiPhan } from '@/lib/youtube'
 import { thongBao } from '@/app/ThongBao'
+import { locLoiChao } from '@/lib/kiemDinh'
 import { IconChep, IconMo, IconXong, IconYouTube, Xoay } from '@/app/BieuTuong'
 import { chayBuocPhimYouTube, chonNhacYouTube, dungVideoYouTube, kiemDinhYouTube, layTrangThaiYouTube, luuThongTinYouTube, vietPhanYouTube, xoaVideoYouTube } from '../actions'
 import HoSoPhim, { KhoiDuLieu } from './HoSoPhim'
@@ -566,6 +567,8 @@ export default function ChiTiet({ dau, ttDau, dsNhac }: { dau: DuAnYT; ttDau: Tr
           const tp = tt.phan[i] ?? { loai: 'chua_viet' }
           const [nhan, mau] = NHAN[tp.loai]
           const khoa = !!dangChay || dangLam
+          // Câu chào / hẹn chương sau giữa phim: máy nhà bỏ khi dựng cho phim liền mạch (chương cuối giữ 2 câu chào kết)
+          const boChao = new Set(p.loi ? locLoiChao(p.loi, k === d.phan.length).bo : [])
           return (
             <article key={k} className="the grid gap-2 p-4">
               <div className="flex flex-wrap items-center gap-2">
@@ -595,7 +598,8 @@ export default function ChiTiet({ dau, ttDau, dsNhac }: { dau: DuAnYT; ttDau: Tr
                             <span className="mr-1 rounded bg-sky-100 px-1 text-[11px] font-semibold text-sky-800">🖼 Ảnh {l.anh}</span>
                           )}
                           {l.tai_hien && <span className="mr-1 rounded bg-amber-100 px-1 text-[11px] font-semibold text-amber-800">Tái hiện</span>}
-                          {l.chu}
+                          {boChao.has(j) && <span className="mr-1 rounded bg-slate-200 px-1 text-[11px] font-semibold text-slate-600">✂ Bỏ khi dựng</span>}
+                          <span className={boChao.has(j) ? 'text-slate-400 line-through' : ''}>{l.chu}</span>
                           {chiDan(l) && <span className="block text-[11px] text-slate-400">{chiDan(l)}</span>}
                         </span>
                       </li>

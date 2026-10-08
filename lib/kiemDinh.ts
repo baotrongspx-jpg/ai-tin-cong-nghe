@@ -39,7 +39,17 @@ function tachDoi(chu: string): [string, string] | null {
   return tot > 0 ? [chu.slice(0, tot).trim(), chu.slice(tot).trim()] : null
 }
 
-export function kiemDinh<T extends Cau>(goc: T[], o: { loai?: 'thuong' | 'tieu_su' } = {}): KetQuaKiemDinh & { loi: T[] } {
+// Câu chào / hẹn chương sau / kêu gọi đăng ký. Video là MỘT phim xem liền từ đầu đến cuối: giữa phim không được chào
+// tạm biệt hay "đón xem chương tiếp theo"; chương cuối giữ tối đa 2 câu chào kết.
+const LOI_CHAO =
+  /(hẹn gặp lại|tạm biệt|(đón|chờ) (xem |đón )?(chương|phần|tập)|(chương|phần|tập) (tiếp theo|sau|cuối|cuối cùng) (để|nhé|sẽ|của)|bấm đăng ký|nhấn đăng ký|đăng ký kênh|đăng ký ngay|nhấn chuông|bấm chuông|bấm like|nhấn like|theo dõi kênh|subscribe|đồng hành cùng (chúng tôi|kênh|công nghệ 24h))/i
+export function locLoiChao<T extends { chu: string }>(loi: T[], laCuoi: boolean): { loi: T[]; bo: number[] } {
+  const khop = loi.map((l, i) => (LOI_CHAO.test(l.chu) ? i : -1)).filter((i) => i >= 0)
+  const bo = laCuoi ? khop.slice(0, -2) : khop
+  return { loi: loi.filter((_, i) => !bo.includes(i)), bo }
+}
+
+export function kiemDinh<T extends Cau>(goc: T[], o: { loai?: 'thuong' | 'tieu_su'; laCuoi?: boolean } = {}): KetQuaKiemDinh & { loi: T[] } {
   const tieuSu = o.loai === 'tieu_su'
   const daSua: string[] = []
   const dem = (ten: string) => {
@@ -48,9 +58,13 @@ export function kiemDinh<T extends Cau>(goc: T[], o: { loai?: 'thuong' | 'tieu_s
     else daSua.push(`${ten} (1)`)
   }
 
+  // ── 0. Bỏ câu chào / hẹn chương sau giữa phim (phim xem liền một mạch) ──
+  const sach = locLoiChao(goc, !!o.laCuoi)
+  for (let k = 0; k < sach.bo.length; k++) dem(o.laCuoi ? 'Bớt câu chào kết thừa (giữ 2 câu)' : 'Bỏ câu chào / hẹn chương sau giữa phim cho mạch phim liền')
+
   // ── 1. Tách câu quá dài ──
   const loi: T[] = []
-  for (const l of goc) {
+  for (const l of sach.loi) {
     const tach = l.chu.length > DAI_TOI_DA ? tachDoi(l.chu) : null
     if (!tach) {
       loi.push({ ...l })

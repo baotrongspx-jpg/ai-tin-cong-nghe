@@ -15,7 +15,7 @@ import { NHAN_VAT } from './hoatHinh'
 // video và chỉ lưu trên máy nhà (Desktop\Video-YouTube), vì video dài quá nặng để gửi lên kho.
 // Máy nhà báo kết quả: youtube/<id>/phan-<k>.json ({ xong, ma } hoặc { loi, ma }), tien-do.json, xong.json.
 const KHO = 'video-tiktok'
-const PHIEN_BAN = 2 // tăng khi đổi cách dựng để các phần dựng lại (2: sửa thẻ minh hoạ / đạo cụ khung ngang, bỏ tên trên phụ đề)
+const PHIEN_BAN = 3 // tăng khi đổi cách dựng để các phần dựng lại (2: sửa thẻ minh hoạ / đạo cụ khung ngang; 3: giọng Mèo Mun tươi hơn)
 const kho = () => db().storage.from(KHO)
 const thuMuc = (id: string) => `youtube/${id}`
 const tenViec = (id: string, k: number) => `yt-${id}-${k}.json`

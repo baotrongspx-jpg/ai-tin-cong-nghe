@@ -106,6 +106,30 @@ def doc(may, ds_giong, cau, giong):
     return buf.getvalue(), do_dai
 
 
+# Chỉnh giọng theo nhân vật sau khi đọc: Mèo Mun nâng tông 3,5 nửa cung, nói nhanh hơn 6%, sáng tiếng (chủ trang chọn
+# bản "tươi hơn nhiều" ngày 08/10/2026). Trả (wav mới, độ dài giây).
+CHINH_GIONG = {'meo': 3.5}
+
+
+def chinh_giong(wav, nua_cung):
+    with wave.open(io.BytesIO(wav)) as w:
+        sr = w.getframerate()
+    ty_le = 2 ** (nua_cung / 12)
+    loc = f'asetrate={sr}*{ty_le:.4f},aresample={sr},atempo={1 / ty_le * 1.06:.4f},equalizer=f=3200:t=q:w=1:g=4,equalizer=f=200:t=q:w=1:g=-3'
+    # Ra PCM thô rồi tự ghi đầu tệp WAV (WAV ghi qua pipe không có độ dài đúng)
+    kq = subprocess.run([str(FFMPEG), '-hide_banner', '-loglevel', 'error', '-f', 'wav', '-i', 'pipe:0', '-af', loc, '-ac', '1', '-ar', str(sr), '-f', 's16le', 'pipe:1'],
+                        input=wav, capture_output=True, timeout=60)
+    if kq.returncode != 0 or len(kq.stdout) < 100:
+        return wav, None
+    buf = io.BytesIO()
+    with wave.open(buf, 'wb') as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(sr)
+        w.writeframes(kq.stdout)
+    return buf.getvalue(), round(len(kq.stdout) / 2 / sr, 3)
+
+
 def ten_tep(tieu_de):
     # Tiêu đề → tên tệp không dấu, an toàn cho Windows
     t = unicodedata.normalize('NFD', tieu_de or 'video').replace('đ', 'd').replace('Đ', 'D')
@@ -185,6 +209,10 @@ def dung_video(may, ds_giong, lt, tm, td, fps=30, gioi_han=1500):
     for i, l in enumerate(lt['loi']):
         td.bao(10 + 20 * i / len(lt['loi']), f'Đọc giọng câu {i + 1}/{len(lt["loi"])}')
         wav, dd = doc(may, ds_giong, [l['chu']], lt['nhan_vat'][l['ai']]['giong'])
+        if l['ai'] in CHINH_GIONG:
+            wav2, giay = chinh_giong(wav, CHINH_GIONG[l['ai']])
+            if giay:
+                wav, dd = wav2, [giay]
         (tai_san / f'loi-{i}.wav').write_bytes(wav)
         do_dai.append(dd[0])
     (tm / 'artifacts' / 'loi_thoai.json').write_text(json.dumps(lt, ensure_ascii=False), encoding='utf-8')

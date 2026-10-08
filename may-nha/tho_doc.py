@@ -25,6 +25,8 @@ import numpy as np
 import requests
 from vieneu import Vieneu
 
+from kiem_tra_video import kiem_tra_video
+
 REPO = Path(__file__).resolve().parent.parent
 env = {}
 for dong in (REPO / '.env.local').read_text(encoding='utf-8').splitlines():
@@ -254,6 +256,21 @@ def tron_nhac_nen(thu_muc, vao, ra, ten_nhac, am_luong, td):
         return False
 
 
+def tao_anh_bia(thu_muc, goc, thong_tin):
+    # Ảnh bìa 1280x720 (hoat-hinh/tao_anh_bia.mjs) lưu cạnh video và gửi lên kho để trang web hiện / tải. Lỗi thì bỏ qua.
+    try:
+        vao = thu_muc / 'anh-bia.json'
+        ra = thu_muc / 'anh-bia.png'
+        vao.write_text(json.dumps(thong_tin, ensure_ascii=False), encoding='utf-8')
+        chay(['node', str(HOAT_HINH / 'tao_anh_bia.mjs'), str(vao), str(ra)], thu_muc, 180)
+        vao.unlink(missing_ok=True)
+        gui(f'{goc}/anh-bia.png', ra.read_bytes(), 'image/png')
+        return True
+    except Exception:
+        traceback.print_exc()
+        return False
+
+
 def dung_youtube(may, ds_giong, yc):
     # Một phần của video YouTube dài (lib/youtube.ts): {"du_an", "tieu_de", "phan" (1, 2...), "ma_phan": [mã từng phần],
     # "loi_thoai"}. Dựng xong lưu phan-<số>-<mã>.mp4 trong thư mục dự án ở máy nhà, báo youtube/<dự án>/phan-<số>.json.
@@ -292,7 +309,17 @@ def dung_youtube(may, ds_giong, yc):
             else:
                 nhac = None
                 shutil.move(str(ghep), str(ra))
-            gui(f'{goc}/xong.json', json.dumps({'tep': str(ra), 'ma': ds_ma, 'nhac': nhac, 'luc': int(time.time() * 1000)}, ensure_ascii=False), 'application/json')
+            # Tự kiểm tra (độ to tiếng chuẩn YouTube, im lặng, hình đen) + ảnh bìa
+            td.bao(99, 'Tự kiểm tra video, vẽ ảnh bìa', ep=True)
+            try:
+                kiem_tra = kiem_tra_video(ra)
+            except Exception as e:
+                traceback.print_exc()
+                kiem_tra = {'do_dai': do_dai_video(ra), 'lufs': None, 'lufs_goc': None, 'da_chinh_am': False, 'im_lang': [], 'man_den': [],
+                            'ghi_chu': [f'Máy nhà chưa tự kiểm tra được: {str(e)[:150]}']}
+            anh_bia = bool(yc.get('anh_bia')) and tao_anh_bia(thu_muc, goc, yc['anh_bia'])
+            gui(f'{goc}/xong.json', json.dumps({'tep': str(ra), 'ma': ds_ma, 'nhac': nhac, 'kiem_tra': kiem_tra, 'anh_bia': anh_bia,
+                                                'luc': int(time.time() * 1000)}, ensure_ascii=False), 'application/json')
     finally:
         td.xong()
 

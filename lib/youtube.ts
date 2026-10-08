@@ -9,6 +9,7 @@ import {
 import { nguonWiki } from './wiki'
 import { NHAN_VAT } from './hoatHinh'
 import { dsNhac } from './nhacNen'
+import { kiemDinh, type KetQuaKiemDinh } from './kiemDinh'
 
 // Video YouTube dài (trang /youtube): hoạt hình Mèo Mun & Robot Bit, khung ngang 16:9, dài tới ~20 phút.
 // Mỗi dự án là một tệp youtube/<id>/du-an.json trong kho (không cần thêm bảng). AI viết dàn ý chia phần (~3 phút
@@ -35,6 +36,7 @@ export type PhanYT = {
   loi: CauYT[] | null
   moc: { chu: string; bieu_tuong: string } | null
   canh?: CanhPhim[] // phim tiểu sử: phân cảnh + shot + prompt video AI của chương này
+  kiem_dinh?: KetQuaKiemDinh // biên tập viên kiểm định (lib/kiemDinh.ts): điểm, ghi chú, những gì đã tự sửa
 }
 // Phim tiểu sử: kết quả từng giai đoạn sản xuất
 export type PhimTieuSu = {
@@ -138,11 +140,37 @@ export async function vietLoiPhan(id: string, k: number) {
       ? await vietPhanPhim({ ten: d.phim.ten, nghienCuu: d.phim.nghien_cuu, cauChuyen: d.phim.cau_chuyen, k, soCau: Math.round(giay / 5.5), noiTiep })
       : await vietPhanYouTube({ nguon: d.nguon_chu, danY: d, k, soCau: Math.round(giay / 4.5), noiTiep })
   if (!kb) throw new Error(`AI chưa viết được phần ${k}, thử lại sau ít phút`)
+  // Biên tập viên kiểm định: tự sửa nhịp hình ảnh, chấm điểm, ghi chú
+  const { loi, ...kd } = kiemDinh(kb.loi as CauYT[], { loai: d.loai })
   // Đọc lại ngay trước khi lưu: lúc AI viết, phần khác có thể vừa được lưu
   const moi = (await docDuAn(id)) ?? d
-  moi.phan[k - 1] = { ...moi.phan[k - 1], loi: kb.loi, moc: kb.moc, canh: undefined } // lời đổi thì phân cảnh cũ không còn đúng
+  moi.phan[k - 1] = { ...moi.phan[k - 1], loi, moc: kb.moc, canh: undefined, kiem_dinh: kd } // lời đổi thì phân cảnh cũ không còn đúng
   await luuDuAn(moi)
   return moi
+}
+
+// Cho biên tập viên kiểm định chạy lại trên lời thoại đang có (phần viết trước khi có bước này): tự sửa + chấm điểm
+export async function kiemDinhLaiPhan(id: string, k: number) {
+  const d = await docDuAn(id)
+  const p = d?.phan[k - 1]
+  if (!d || !p?.loi) throw new Error('Phần này chưa có lời thoại')
+  const { loi, ...kd } = kiemDinh(p.loi, { loai: d.loai })
+  const doi = JSON.stringify(loi) !== JSON.stringify(p.loi)
+  d.phan[k - 1] = { ...p, loi, kiem_dinh: kd, canh: doi ? undefined : p.canh }
+  await luuDuAn(d)
+  return d
+}
+
+// Ảnh bìa: chữ to (phim tiểu sử: chữ AI đề xuất ở bước đóng gói; video thường: vế đầu của tiêu đề), bối cảnh hay gặp
+// nhất ở phần 1 làm nền, có người kể thì người kể đứng giữa. Máy nhà vẽ khi ghép xong (hoat-hinh/tao_anh_bia.mjs).
+function anhBia(d: DuAnYT) {
+  const vat = (x: string) => x.replace(/[#\p{Extended_Pictographic}️]/gu, '').replace(/\s+/g, ' ').trim()
+  const tuTieuDe = vat(d.tieu_de.replace(/^Phim tiểu sử:\s*/i, '')).split(/\s*[:|–—]\s+|\s+-\s+/)[0]
+  const chu = vat(d.phim?.dong_goi?.thumbnail[0]?.chu ?? '') || tuTieuDe.split(' ').slice(0, 8).join(' ')
+  const dem: Record<string, number> = {}
+  for (const l of d.phan[0]?.loi ?? []) dem[l.boi_canh] = (dem[l.boi_canh] ?? 0) + 1
+  const boi_canh = Object.entries(dem).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'truong_quay'
+  return { chu, chu_de: d.chu_de, kenh: 'Công Nghệ 24H', boi_canh, nguoi_ke: d.phan.some((p) => p.loi?.some((l) => l.ai === 'nguoi_ke')) }
 }
 
 // Bài nhạc nền sẽ dùng: bài đã chọn (nếu còn trong thư viện), không chọn thì bài đầu tiên; 'khong' thì không nhạc
@@ -168,7 +196,13 @@ export type TrangThaiPhan =
   | { loai: 'chua_viet' | 'chua_dung' | 'cho' | 'xong' }
   | { loai: 'dang_lam'; phanTram: number; buoc: string }
   | { loai: 'loi'; loi: string }
-export type TrangThaiDuAn = { phan: TrangThaiPhan[]; xong: { tep: string } | null; mayNha: string | null }
+// Máy nhà tự kiểm tra video sau khi ghép (may-nha/tho_doc.py: kiem_tra_video)
+export type KiemTraVideo = { do_dai: number | null; lufs: number | null; lufs_goc: number | null; da_chinh_am: boolean; im_lang: number[][]; man_den: number[][]; ghi_chu: string[] }
+export type TrangThaiDuAn = {
+  phan: TrangThaiPhan[]
+  xong: { tep: string; kiem_tra?: KiemTraVideo; anh_bia?: { xem: string; tai: string } } | null
+  mayNha: string | null
+}
 
 // Trạng thái từng phần + video đã ghép (chỉ tính khi khớp mã lời thoại hiện tại)
 export async function trangThaiDuAn(d: DuAnYT, mayNha: string | null): Promise<TrangThaiDuAn> {
@@ -176,7 +210,7 @@ export async function trangThaiDuAn(d: DuAnYT, mayNha: string | null): Promise<T
   const [{ data: viec }, tienDo, xong, ...kq] = await Promise.all([
     kho().list('hang-doi/viec', { limit: 200, search: `yt-${d.id}` }),
     docJson<{ phan: number; phanTram: number; buoc: string; luc: number }>(`${goc}/tien-do.json`),
-    docJson<{ tep: string; ma: string[]; nhac?: string | null }>(`${goc}/xong.json`),
+    docJson<{ tep: string; ma: string[]; nhac?: string | null; kiem_tra?: KiemTraVideo; anh_bia?: boolean }>(`${goc}/xong.json`),
     ...d.phan.map((_, i) => docJson<{ xong?: boolean; loi?: string; ma: string }>(`${goc}/phan-${i + 1}.json`)),
   ])
   const dangCho = new Set((viec ?? []).map((f) => f.name))
@@ -192,8 +226,18 @@ export async function trangThaiDuAn(d: DuAnYT, mayNha: string | null): Promise<T
     return { loai: 'chua_dung' }
   })
   const nhacChon = await nhacCuaDuAn(d)
-  const daGhep =
-    xong && xong.ma.length === ma.length && xong.ma.every((m, i) => m === ma[i]) && (xong.nhac ?? null) === nhacChon ? { tep: xong.tep } : null
+  const khop = xong && xong.ma.length === ma.length && xong.ma.every((m, i) => m === ma[i]) && (xong.nhac ?? null) === nhacChon
+  let daGhep: TrangThaiDuAn['xong'] = null
+  if (khop) {
+    daGhep = { tep: xong.tep, kiem_tra: xong.kiem_tra }
+    if (xong.anh_bia) {
+      const [xem, tai] = await Promise.all([
+        kho().createSignedUrl(`${goc}/anh-bia.png`, 3600),
+        kho().createSignedUrl(`${goc}/anh-bia.png`, 3600, { download: 'anh-bia.png' }),
+      ])
+      if (xem.data && tai.data) daGhep.anh_bia = { xem: xem.data.signedUrl, tai: tai.data.signedUrl }
+    }
+  }
   return { phan, xong: daGhep, mayNha }
 }
 
@@ -217,6 +261,7 @@ export async function guiDung(d: DuAnYT, chiPhan?: number) {
       phan: k,
       ma_phan: ma,
       ...nhac,
+      anh_bia: anhBia(d),
       loi_thoai: { kho: 'ngang', kenh: 'Công Nghệ 24H', chu_de: d.chu_de, nhan_vat: NHAN_VAT, loi: p.loi, moc: k === 1 ? p.moc : null, the_chuong: { so: k, ten: p.tieu_de }, man_ket: k === d.phan.length },
     })
   }
@@ -230,6 +275,7 @@ export async function guiDung(d: DuAnYT, chiPhan?: number) {
       phan: k,
       ma_phan: ma,
       ...nhac,
+      anh_bia: anhBia(d),
       loi_thoai: { kho: 'ngang', kenh: 'Công Nghệ 24H', chu_de: d.chu_de, nhan_vat: NHAN_VAT, loi: d.phan[k - 1].loi, moc: k === 1 ? d.phan[0].moc : null, the_chuong: { so: k, ten: d.phan[k - 1].tieu_de }, man_ket: true },
     })
     return 1

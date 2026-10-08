@@ -3,10 +3,10 @@
 import { useEffect, useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import type { DuAnYT, TrangThaiDuAn, TrangThaiPhan } from '@/lib/youtube'
+import type { DuAnYT, KiemTraVideo, PhanYT, TrangThaiDuAn, TrangThaiPhan } from '@/lib/youtube'
 import { thongBao } from '@/app/ThongBao'
 import { IconChep, IconMo, IconXong, IconYouTube, Xoay } from '@/app/BieuTuong'
-import { chayBuocPhimYouTube, chonNhacYouTube, dungVideoYouTube, layTrangThaiYouTube, luuThongTinYouTube, vietPhanYouTube, xoaVideoYouTube } from '../actions'
+import { chayBuocPhimYouTube, chonNhacYouTube, dungVideoYouTube, kiemDinhYouTube, layTrangThaiYouTube, luuThongTinYouTube, vietPhanYouTube, xoaVideoYouTube } from '../actions'
 import HoSoPhim, { KhoiDuLieu } from './HoSoPhim'
 
 const NGUOI: Record<string, string> = {
@@ -81,6 +81,56 @@ function NutChep({ chu, ten = 'Chép' }: { chu: string; ten?: string }) {
       {da ? <IconXong className="h-3.5 w-3.5 text-emerald-600" /> : <IconChep className="h-3.5 w-3.5" />}
       {da ? 'Đã chép' : ten}
     </button>
+  )
+}
+
+// Biên tập viên kiểm định (lib/kiemDinh.ts): điểm + ghi chú nên xem lại + những gì đã tự sửa
+function KiemDinh({ kd }: { kd: NonNullable<PhanYT['kiem_dinh']> }) {
+  const mau = kd.diem >= 85 ? 'bg-emerald-50 text-emerald-800 ring-emerald-200' : kd.diem >= 65 ? 'bg-amber-50 text-amber-800 ring-amber-200' : 'bg-red-50 text-red-700 ring-red-200'
+  return (
+    <details className={`rounded-xl p-3 ring-1 ${mau}`}>
+      <summary className="cursor-pointer text-sm font-semibold">
+        🧐 Biên tập viên chấm {kd.diem}/100{kd.ghi_chu.length ? ` · ${kd.ghi_chu.length} điều nên xem lại` : ' · kịch bản ổn'}
+        {kd.da_sua.length > 0 && ` · đã tự sửa ${kd.da_sua.length} kiểu lỗi`}
+      </summary>
+      <ul className="mt-2 grid gap-1 text-sm">
+        {kd.ghi_chu.map((g, i) => (
+          <li key={i}>{g.muc === 'loi' ? '❌' : '⚠️'} {g.chu}</li>
+        ))}
+        {kd.da_sua.map((x, i) => (
+          <li key={`s${i}`} className="text-slate-600">
+            ✅ {x}
+          </li>
+        ))}
+      </ul>
+      <p className="mt-2 text-xs opacity-75">Phần tự sửa chỉ đổi hình ảnh / nhịp (đạo cụ, khung hình, máy quay, âm thanh) và tách câu quá dài; không đổi nội dung lời thoại.</p>
+    </details>
+  )
+}
+
+// Máy nhà tự kiểm tra video sau khi ghép: độ dài, độ to tiếng (chuẩn YouTube -14 LUFS), đoạn im lặng, khung hình đen
+function KiemTra({ kt }: { kt: KiemTraVideo }) {
+  const tot = kt.ghi_chu.length === 0
+  return (
+    <div className={`rounded-xl p-3 text-sm ring-1 ${tot ? 'bg-emerald-50 text-emerald-800 ring-emerald-200' : 'bg-amber-50 text-amber-800 ring-amber-200'}`}>
+      <p className="font-semibold">{tot ? '✅ Máy nhà đã tự kiểm tra: video đạt' : '⚠️ Máy nhà đã tự kiểm tra: có điều nên xem lại'}</p>
+      <ul className="mt-1 grid gap-0.5">
+        {kt.do_dai != null && <li>Độ dài: {phutGiay(kt.do_dai)} phút</li>}
+        {kt.lufs != null && (
+          <li>
+            Độ to tiếng: {kt.lufs.toFixed(1)} LUFS (chuẩn YouTube −14)
+            {kt.da_chinh_am && kt.lufs_goc != null && ` · đã tự chỉnh từ ${kt.lufs_goc.toFixed(1)}`}
+          </li>
+        )}
+        <li>Đoạn im lặng lâu: {kt.im_lang.length ? kt.im_lang.map(([t, d]) => `${phutGiay(t)} (${d.toFixed(1)} giây)`).join(', ') : 'không có'}</li>
+        <li>Khung hình đen: {kt.man_den.length ? kt.man_den.map(([t, d]) => `${phutGiay(t)} (${d.toFixed(1)} giây)`).join(', ') : 'không có'}</li>
+        {kt.ghi_chu.map((g, i) => (
+          <li key={i} className="font-semibold">
+            → {g}
+          </li>
+        ))}
+      </ul>
+    </div>
   )
 }
 
@@ -273,6 +323,18 @@ export default function ChiTiet({ dau, ttDau, dsNhac }: { dau: DuAnYT; ttDau: Tr
               <NutChep chu={tt.xong.tep} ten="Chép đường dẫn" />
             </div>
             <p className="text-xs text-slate-500">Mở thư mục Desktop → Video-YouTube trên máy nhà để thấy video. Sửa lời thoại một phần thì chỉ phần đó dựng lại.</p>
+            {tt.xong.anh_bia && (
+              <div className="grid gap-2">
+                <p className="font-semibold">🖼 Ảnh bìa (thumbnail) tự động</p>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={tt.xong.anh_bia.xem} alt="Ảnh bìa video" className="w-full max-w-md rounded-xl ring-1 ring-slate-200" />
+                <a href={tt.xong.anh_bia.tai} className="btn btn-sm btn-phu justify-self-start">
+                  Tải ảnh bìa
+                </a>
+                <p className="text-xs text-slate-500">Ảnh cũng nằm cạnh video trong thư mục trên máy nhà (anh-bia.png). Trong YouTube Studio bấm Tải hình thu nhỏ lên.</p>
+              </div>
+            )}
+            {tt.xong.kiem_tra && <KiemTra kt={tt.xong.kiem_tra} />}
           </div>
         ) : (
           <>
@@ -416,6 +478,7 @@ export default function ChiTiet({ dau, ttDau, dsNhac }: { dau: DuAnYT; ttDau: Tr
               <p className="text-sm text-slate-600">{p.noi_dung}</p>
               {tp.loai === 'dang_lam' && <p className="text-xs text-violet-700">{tp.buoc}</p>}
               {tp.loai === 'loi' && <p className="text-xs text-red-600">Lỗi: {tp.loi}</p>}
+              {p.kiem_dinh && <KiemDinh kd={p.kiem_dinh} />}
               {p.loi && (
                 <details className="rounded-xl bg-slate-50 p-3 ring-1 ring-slate-100">
                   <summary className="cursor-pointer text-sm font-semibold text-slate-600">
@@ -458,6 +521,24 @@ export default function ChiTiet({ dau, ttDau, dsNhac }: { dau: DuAnYT; ttDau: Tr
                     className="btn btn-sm btn-phu"
                   >
                     AI viết lại phần này
+                  </button>
+                )}
+                {p.loi && !p.kiem_dinh && (
+                  <button
+                    type="button"
+                    disabled={khoa || tp.loai === 'cho' || tp.loai === 'dang_lam'}
+                    onClick={() =>
+                      startTransition(async () => {
+                        const kq = await kiemDinhYouTube(d.id, k)
+                        if (!kq.ok) return thongBao('loi', kq.loi)
+                        setD(kq.duAn)
+                        thongBao('ok', `Biên tập viên chấm ${kq.duAn.phan[k - 1].kiem_dinh?.diem ?? '?'}/100`)
+                        await capNhatTt()
+                      })
+                    }
+                    className="btn btn-sm btn-phu"
+                  >
+                    🧐 Biên tập viên kiểm định
                   </button>
                 )}
                 {tp.loai === 'loi' && (

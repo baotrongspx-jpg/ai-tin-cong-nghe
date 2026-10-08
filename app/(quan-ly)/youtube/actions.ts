@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { daDangNhap } from '@/lib/xacThuc'
 import { mayNhaTat } from '@/lib/giongDoc'
 import {
-  chayBuocPhim, chonNhacDuAn, docDuAn, guiDung, suaThongTin, taoDuAn, taoPhim, trangThaiDuAn, vietLoiPhan, xoaDuAn,
+  chayBuocPhim, chonNhacDuAn, docDuAn, guiDung, kiemDinhLaiPhan, suaThongTin, taoDuAn, taoPhim, trangThaiDuAn, vietLoiPhan, xoaDuAn,
   type BuocPhim, type DuAnYT, type TrangThaiDuAn,
 } from '@/lib/youtube'
 
@@ -51,6 +51,16 @@ export async function vietPhanYouTube(id: string, k: number): Promise<{ ok: true
   try {
     await chanChuaDangNhap()
     return { ok: true, duAn: await vietLoiPhan(id, k) }
+  } catch (e) {
+    return baoLoi(e)
+  }
+}
+
+// Biên tập viên kiểm định chạy lại trên lời thoại đang có (không gọi AI)
+export async function kiemDinhYouTube(id: string, k: number): Promise<{ ok: true; duAn: DuAnYT } | Loi> {
+  try {
+    await chanChuaDangNhap()
+    return { ok: true, duAn: await kiemDinhLaiPhan(id, k) }
   } catch (e) {
     return baoLoi(e)
   }

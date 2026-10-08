@@ -164,13 +164,16 @@ loi.forEach((l, i) => {
   const c = cumPhu.at(-1)
   if (c && i - c.het <= 2 && (c.ds.some((x) => x.ten === ten) || c.ds.length < 2)) {
     c.het = i
-    if (!c.ds.some((x) => x.ten === ten)) c.ds.push({ ten, tu: i })
-  } else cumPhu.push({ tu: i, het: i, ds: [{ ten, tu: i }] })
+    const x = c.ds.find((y) => y.ten === ten)
+    if (x) x.het = i
+    else c.ds.push({ ten, tu: i, het: i })
+  } else cumPhu.push({ tu: i, het: i, ds: [{ ten, tu: i, het: i }] })
 })
-// Mỗi người trong mỗi cảnh là một phần tử phu<k>: xuất hiện từ câu đầu tiên của họ tới hết cảnh; lech: độ lệch ngang
+// Mỗi người trong mỗi cảnh là một phần tử phu<k>: xuất hiện ở câu đầu tiên của họ, nói / được nhắc xong câu cuối
+// của chính họ thì rời sân khấu ngay; lech: độ lệch ngang; hetCum: câu cuối của cả cảnh (Mèo / Bit trở về chỗ cũ)
 const LECH_PHU = 140
 const doanPhu = cumPhu.flatMap((c) =>
-  c.ds.map((x, j) => ({ ten: x.ten, tu: x.tu, het: c.het, lech: c.ds.length === 2 ? (j ? LECH_PHU : -LECH_PHU) : 0, doi: c.ds.length === 2 })),
+  c.ds.map((x, j) => ({ ten: x.ten, tu: x.tu, het: x.het, hetCum: c.het, lech: c.ds.length === 2 ? (j ? LECH_PHU : -LECH_PHU) : 0, doi: c.ds.length === 2 })),
 )
 const phuCuaCau = {}
 const viTriPhu = {} // id → toạ độ x giữa người đó (để máy quay cận vào)
@@ -434,7 +437,8 @@ const nvPhu = doanPhu.map((dp, k) => {
   // Hai người cùng đứng thì Mèo / Bit dạt xa hơn
   tw.push(`tl.to("#o-meo", { x: ${dp.doi ? -170 : -80}, duration: 0.5, ease: "power2.inOut" }, ${f(t0)});`)
   tw.push(`tl.to("#o-robot", { x: ${dp.doi ? 170 : 80}, duration: 0.5, ease: "power2.inOut" }, ${f(t0)});`)
-  tw.push(`tl.to(["#o-meo", "#o-robot"], { x: 0, duration: 0.5, ease: "power2.inOut" }, ${f(het - 0.1)});`)
+  // Mèo / Bit về chỗ cũ khi người cuối cùng của cảnh rời đi
+  if (dp.het === dp.hetCum) tw.push(`tl.to(["#o-meo", "#o-robot"], { x: 0, duration: 0.5, ease: "power2.inOut" }, ${f(het - 0.1)});`)
   return `<div id="${id}" class="nv-phu" style="left:${354 + dp.lech}px"><svg viewBox="0 0 400 600" width="372" height="558" class="nv">${NHAN_VAT_PHU[dp.ten].svg(id)}</svg></div>`
 })
 

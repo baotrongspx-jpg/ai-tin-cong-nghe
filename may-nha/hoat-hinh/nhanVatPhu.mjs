@@ -98,6 +98,18 @@ const caVat = (m) => `<path d="M192 300 L208 300 L214 412 L200 430 L186 412 Z" f
 const dieuKhien = '' // (để dành)
 void dieuKhien
 
+// Người kể chuyện (phim tài liệu): hiện trong khung tròn ở góc màn hình khi đang kể, nhép miệng theo lời kể.
+// Áo vest nâu ấm, sơ mi xanh nhạt, kính gọng tròn, tóc gọn, micro thu âm trước ngực
+export const nguoiKeSvg = (id) =>
+  nguoi(id, {
+    ao: '#7c4a1e',
+    quan: '#292524',
+    co: 'vest',
+    tocTruoc: toc.reNgoi('#1c1917'),
+    mat: kinh('#78350f') + matMacDinh(),
+    than: `<path d="M184 300 L200 336 L216 300 Z" fill="#bfdbfe"/><rect x="168" y="352" width="64" height="98" rx="32" fill="#111827" stroke="${VIEN}" stroke-width="5"/>${[0, 1, 2, 3, 4].map((k) => `<line x1="176" y1="${370 + k * 15}" x2="224" y2="${370 + k * 15}" stroke="#4b5563" stroke-width="4"/>`).join('')}<rect x="194" y="448" width="12" height="40" fill="#374151"/>`,
+  })
+
 export const NHAN_VAT_PHU = {
   nguoi_phu_nu: {
     mau: '#f472b6',

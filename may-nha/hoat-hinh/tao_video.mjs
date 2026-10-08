@@ -5,7 +5,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { BOI_CANH } from './boiCanh.mjs'
-import { NHAN_VAT_PHU } from './nhanVatPhu.mjs'
+import { NHAN_VAT_PHU, nguoiKeSvg } from './nhanVatPhu.mjs'
 import { CSS_MINH_HOA, MINH_HOA, mocMoDau } from './minhHoa.mjs'
 
 const GOC = resolve(process.argv[2] ?? '.')
@@ -274,7 +274,7 @@ loi.forEach((l, i) => {
   }
   // Nhép miệng mượt: độ to giọng mỗi 1/15 giây được làm mềm (mở nhanh, khép chậm dần); miệng chỉ đổi mở / khép khi
   // vượt ngưỡng có trễ (không nháy liên tục), còn độ há trượt êm từ khung này sang khung sau.
-  const am = ke ? [] : doTo(join(GOC, `hyperframes/assets/loi-${i}.wav`))
+  const am = doTo(join(GOC, `hyperframes/assets/loi-${i}.wav`))
   let em = 0, dangMo = false
   am.forEach((v, k) => {
     em = Math.max(v, em * 0.62)
@@ -287,10 +287,8 @@ loi.forEach((l, i) => {
     }
     if (mo) tw.push(`tl.to("#${p}-mieng-mo", { scaleY: ${f(Math.min(1, 0.3 + em * 0.8))}, duration: 0.066, ease: "sine.inOut" }, ${f(tk)});`)
   })
-  if (!ke) {
-    tw.push(`tl.set("#${p}-mieng-mo", { opacity: 0 }, ${f(t0 + d)});`)
-    tw.push(`tl.set("#${p}-mieng-dong", { opacity: 1 }, ${f(t0 + d)});`)
-  }
+  tw.push(`tl.set("#${p}-mieng-mo", { opacity: 0 }, ${f(t0 + d)});`)
+  tw.push(`tl.set("#${p}-mieng-dong", { opacity: 1 }, ${f(t0 + d)});`)
   amThanh.push(`<audio id="am-${i}" src="assets/loi-${i}.wav" data-start="${f(t0)}" data-duration="${f(d)}" data-track-index="${8 + i}" data-volume="1"></audio>`)
 
   // Phụ đề gọn sát đáy: câu chia thành từng đoạn tối đa 2 dòng, hiện đúng lúc đọc tới, chữ sáng dần theo giọng.
@@ -603,6 +601,27 @@ const hat = [...Array(16)].map((_, k) => {
 })
 
 // ── Thẻ năm / nơi chốn (phim tiểu sử): "1993 · Kharkov, Ukraina" trượt vào góc trên bên trái
+let khungKeHtml = ''
+{
+  const dot = []
+  loi.forEach((l, i) => {
+    if (l.ai !== 'nguoi_ke') return
+    const c = dot.at(-1)
+    if (c && i - c.het <= 2) c.het = i
+    else dot.push({ tu: i, het: i })
+  })
+  if (dot.length) {
+    khungKeHtml = `<div id="khung-ke"><svg viewBox="78 72 244 244" width="300" height="300">${nguoiKeSvg('nguoi_ke')}</svg><div class="ke-mic">🎙</div></div>`
+    tw.push('gsap.set("#nguoi_ke-dau", { svgOrigin: "200 250" }); gsap.set("#nguoi_ke-mieng-mo", { svgOrigin: "200 226" });')
+    for (const c of dot) {
+      const vao = Math.max(0, batDau[c.tu] - 0.4)
+      const ra = batDau[c.het] + doDai[c.het] - 0.1
+      tw.push(`tl.fromTo("#khung-ke", { x: -360, opacity: 0 }, { x: 0, opacity: 1, duration: 0.45, ease: "power3.out", immediateRender: false }, ${f(vao)});`)
+      tw.push(`tl.to("#nguoi_ke-dau", { rotation: 3, duration: 1.4, yoyo: true, repeat: ${lap(ra - vao, 1.4) | 1}, ease: "sine.inOut" }, ${f(vao)});`)
+      tw.push(`tl.to("#khung-ke", { x: -360, opacity: 0, duration: 0.4, ease: "power2.in" }, ${f(ra)});`)
+    }
+  }
+}
 const theMoc = []
 loi.forEach((l, i) => {
   if (!l.the_moc) return
@@ -890,7 +909,10 @@ const trang = `<!doctype html>
       .the-moc { position: absolute; left: 56px; top: ${NGANG ? 150 : 240}px; display: flex; align-items: center; gap: 12px; padding: 12px 24px 12px 18px; border-radius: 14px; background: #0f172ae6; border-left: 8px solid #fbbf24; font-size: ${NGANG ? 34 : 38}px; font-weight: 700; color: #fff; box-shadow: 0 16px 36px #0008; opacity: 0; }
       .dao-cu.nguoi_ke { left: ${NGANG ? 1220 : 445}px; top: ${NGANG ? 560 : 380}px; }
       .pd-dong { font-size: 48px; font-weight: 700; line-height: 1.2; white-space: nowrap; text-shadow: 0 0 5px #000, 0 3px 0 #000, 2.5px 2.5px 0 #000, -2.5px 2.5px 0 #000, 2.5px -2.5px 0 #000, -2.5px -2.5px 0 #000; }
-      .pd-tu { display: inline-block; color: #fff; }${NGANG ? CSS_NGANG : ''}
+      .pd-tu { display: inline-block; color: #fff; }
+      #khung-ke { position: absolute; left: 36px; top: ${CAO - (NGANG ? 520 : 900)}px; width: 300px; height: 300px; border-radius: 50%; overflow: hidden; background: radial-gradient(circle at 50% 35%, #475569, #0f172a); border: 8px solid #fbbf24; box-shadow: 0 0 0 6px #0f172acc, 0 20px 50px #000a; opacity: 0; }
+      #khung-ke svg { display: block; }
+      .ke-mic { position: absolute; right: 22px; bottom: 22px; width: 54px; height: 54px; border-radius: 50%; background: #dc2626; display: flex; align-items: center; justify-content: center; font-size: 30px; font-family: "Emoji", sans-serif; box-shadow: 0 6px 14px #0008; }${NGANG ? CSS_NGANG : ''}
     </style>
   </head>
   <body>
@@ -913,7 +935,7 @@ const trang = `<!doctype html>
         </div></div>
       </div>
       <div id="vien-toi" class="clip" data-start="0" data-duration="${f(TONG)}" data-track-index="5"><div id="den"></div><div id="chop"></div></div>
-      <div id="lop-minh-hoa" class="clip" data-start="0" data-duration="${f(TONG)}" data-track-index="7">${giatTit.html}${theMoc.join('')}${minhHoaKhung.join('')}${manKetHtml}${theChuongHtml}</div>${phuDe.join('')}
+      <div id="lop-minh-hoa" class="clip" data-start="0" data-duration="${f(TONG)}" data-track-index="7">${giatTit.html}${theMoc.join('')}${minhHoaKhung.join('')}${khungKeHtml}${manKetHtml}${theChuongHtml}</div>${phuDe.join('')}
       ${[...amThanh, ...amPhu].join('\n      ')}
     </div>
     <script>

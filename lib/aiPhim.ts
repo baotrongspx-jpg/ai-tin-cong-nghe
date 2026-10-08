@@ -1,6 +1,6 @@
 import 'server-only'
 import { z } from 'zod'
-import { CauSchema, EMOJI_BOI_CANH, JSON_CAU, JSON_MOC, LUAT_HINH, MocSchema, NGUOI_NOI, damBaoDau, goiJson } from './ai'
+import { CauSchema, EMOJI_BOI_CANH, JSON_CAU, JSON_MOC, LUAT_HINH, MO_TA_NHAN_VAT_PHU, MocSchema, NGUOI_NOI, damBaoDau, goiJson } from './ai'
 
 // Phim tiểu sử (trang /youtube): AI làm đạo diễn phim tài liệu theo từng giai đoạn — nghiên cứu → phát triển câu
 // chuyện → kịch bản (giọng kể + Mèo Mun & Robot Bit xen vào) → hồ sơ hình ảnh → phân cảnh + prompt video AI →
@@ -148,7 +148,7 @@ export async function vietPhanPhim(o: {
   const system = `${PHIM_DAU}
 
 STAGE 3 — SCRIPT of one chapter, for the channel's animated version: a documentary narrator tells the story over cartoon scenes, and the two mascots sometimes interject.
-Speakers ("ai"): nguoi_ke = the documentary narrator (voiceover, cinematic, calm and gripping; speaks about 65-75% of the lines); meo = Mèo Mun, a curious cat who asks the question viewers would ask or reacts emotionally (about 15%); robot = Robot Bit, who adds a short clear explanation or context (about 15%); extras (nguoi_phu_nu, canh_sat, hacker, doanh_nhan, nha_khoa_hoc, nguoi_dung) only rarely, to voice a real documented quote or a clearly dramatized reconstruction.
+Speakers ("ai"): nguoi_ke = the documentary narrator (voiceover, cinematic, calm and gripping; speaks about 65-75% of the lines); meo = Mèo Mun, a curious cat who asks the question viewers would ask or reacts emotionally (about 15%); robot = Robot Bit, who adds a short clear explanation or context (about 15%); extras only rarely, to voice a real documented quote or a clearly dramatized reconstruction. Extras (also shown silently with nhan_vat_phu while the narrator talks about such a person — family, mentors, partners, rivals, workers, officials…): ${MO_TA_NHAN_VAT_PHU}.
 Rules:
 - Write ${o.soCau} lines for this chapter, not fewer, covering only what this chapter of the plan says, in order. Never pad, never repeat; every line adds a fact, a scene, an emotion, a question or a reveal. Something new every 30-60 seconds; plant open loops and pay them off.
 - Documentary style, not Wikipedia: scenes, human behaviour, specific details, conflict, emotion; do not read lists of dates or stuff numbers.

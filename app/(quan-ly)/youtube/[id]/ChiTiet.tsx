@@ -19,6 +19,22 @@ const NGUOI: Record<string, string> = {
   doanh_nhan: '👔 Doanh nhân',
   nha_khoa_hoc: '🔬 Nhà khoa học',
   nguoi_dung: '🙂 Người dùng',
+  ong_lao: '👴 Ông lão',
+  ba_lao: '👵 Bà lão',
+  hoc_sinh: '🧑‍🎓 Học sinh',
+  cong_nhan: '👷 Công nhân',
+  nong_dan: '🧑‍🌾 Nông dân',
+  bac_si: '🧑‍⚕️ Bác sĩ',
+  giao_vien: '🧑‍🏫 Giáo viên',
+  ky_su: '🛠️ Kỹ sư',
+  bo_doi: '🪖 Quân nhân',
+  phong_vien: '🎤 Phóng viên',
+  chinh_khach: '🏛️ Lãnh đạo',
+  van_dong_vien: '🏅 Vận động viên',
+  nghe_si: '🎵 Nghệ sĩ',
+  dau_bep: '🧑‍🍳 Đầu bếp',
+  nu_doanh_nhan: '👩‍💼 Nữ doanh nhân',
+  nguoi_nuoc_ngoai: '🌍 Người nước ngoài',
 }
 
 // Ước lượng độ dài theo số chữ (~19 ký tự mỗi giây + nghỉ giữa câu), giống lib/youtube.ts

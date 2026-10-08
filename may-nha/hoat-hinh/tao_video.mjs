@@ -573,11 +573,30 @@ loi.forEach((l, i) => {
 
 // ── Đạo cụ: hiện bên cạnh người nói theo nội dung câu (AI chọn), bay nhẹ rồi biến mất ─
 const DAO_CU = {
-  dien_thoai: '📱', laptop: '💻', kinh_lup: '🔍', bieu_do: '📈', tien: '💰', khien: '🛡️', coi_bao: '🚨',
-  chip: '🔌', o_to: '🚗', ten_lua: '🚀', bong_den: '💡', o_khoa: '🔒', the_ngan_hang: '💳', robot: '🤖',
-  tai_lieu: '📄', dong_ho: '⏰', trai_dat: '🌍', tay_cam_game: '🎮', may_anh: '📷', tai_nghe: '🎧',
-  cup: '🏆', tin_nhan: '💬', canh_bao: '⚠️', vu_tru: '🛰️', pin: '🔋', mang: '📶',
-  internet: '🌐', tin_nong: '📰', toc_do: '⚡',
+  dien_thoai: '📱', laptop: '💻', kinh_lup: '🔍', bieu_do: '📈', tien: '💰', khien: '🛡️',
+  coi_bao: '🚨', chip: '🔌', o_to: '🚗', ten_lua: '🚀', bong_den: '💡', o_khoa: '🔒',
+  the_ngan_hang: '💳', robot: '🤖', tai_lieu: '📄', dong_ho: '⏰', trai_dat: '🌍', tay_cam_game: '🎮',
+  may_anh: '📷', tai_nghe: '🎧', cup: '🏆', tin_nhan: '💬', canh_bao: '⚠️', vu_tru: '🛰️',
+  pin: '🔋', mang: '📶', internet: '🌐', tin_nong: '📰', toc_do: '⚡', ly_nuoc: '🥛',
+  ca_phe: '☕', tra: '🍵', ly_ruou: '🍷', bat_com: '🍚', to_mi: '🍜', dua: '🥢',
+  noi_lau: '🍲', banh_mi: '🥖', banh_kem: '🎂', trai_cay: '🍎', bong_lua: '🌾', con_ca: '🐟',
+  chia_khoa: '🔑', nha: '🏠', den_cay: '🕯️', ghe_sofa: '🛋️', but_chi: '✏️', but_bi: '🖊️',
+  sach: '📚', so_tay: '📒', cap_sach: '🎒', thuoc_ke: '📏', cai_keo: '✂️', ghim: '📌',
+  lich: '📅', ban_do: '🗺️', mu_tot_nghiep: '🎓', ke_hoach: '📋', thu: '✉️', may_tinh_tien: '🧮',
+  o_cung: '💾', may_in: '🖨️', cap_tai_lieu: '💼', dien_thoai_ban: '☎️', bua: '🔨', co_le: '🔧',
+  tua_vit: '🪛', banh_rang: '⚙️', hop_do_nghe: '🧰', cai_thang: '🪜', nam_cham: '🧲', cay_cau: '🏗️',
+  nha_may: '🏭', toa_nha: '🏢', ngan_hang: '🏦', xe_ui: '🚜', ong_tiem: '💉', thuoc: '💊',
+  ong_nghiem: '🧪', kinh_hien_vi: '🔬', kinh_vien_vong: '🔭', adn: '🧬', nhiet_ke: '🌡️', trai_tim: '❤️',
+  tim_vo: '💔', nguyen_tu: '⚛️', dong_xu: '🪙', tien_giay: '💵', kim_cuong: '💎', bat_tay: '🤝',
+  gio_hang: '🛒', hop_qua: '🎁', bieu_do_giam: '📉', bieu_do_cot: '📊', can_cong_ly: '⚖️', vuong_mien: '👑',
+  the_ten: '🏷️', vali: '🧳', xe_may: '🛵', xe_dap: '🚲', xe_buyt: '🚌', tau_hoa: '🚆',
+  may_bay: '✈️', tau_thuy: '🚢', xe_tai: '🚚', tram_xang: '⛽', micro: '🎤', ti_vi: '📺',
+  loa: '📢', dan_guitar: '🎸', not_nhac: '🎵', bang_phim: '🎬', bang_mau: '🎨', mat_na: '🎭',
+  chuong: '🔔', bong_da: '⚽', huy_chuong: '🥇', muc_tieu: '🎯', co_dich: '🏁', co_hieu: '🚩',
+  ngoi_sao: '⭐', phao_hoa: '🎆', bong_bay: '🎈', cay_xanh: '🌳', mam_cay: '🌱', mat_troi: '☀️',
+  mua: '🌧️', bao_giong: '⛈️', ngon_lua: '🔥', giot_nuoc: '💧', bong_tuyet: '❄️', cau_vong: '🌈',
+  ngoi_sao_bang: '🌠', dau_hoi: '❓', dau_than: '❗', dau_tich: '✅', dau_x: '❌', bom: '💣',
+  dong_ho_cat: '⏳', xich: '⛓️', tui_rac: '🗑️',
 }
 const daoCu = []
 loi.forEach((l, i) => {

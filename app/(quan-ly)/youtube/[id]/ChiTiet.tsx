@@ -216,7 +216,7 @@ export default function ChiTiet({ dau, ttDau, dsNhac }: { dau: DuAnYT; ttDau: Tr
     })
 
   const xoa = () => {
-    if (!confirm('Xoá video này khỏi trang? Video đã dựng trên máy nhà vẫn giữ nguyên.')) return
+    if (!confirm('Xoá video này? Xoá khỏi trang và xoá luôn file video trên máy nhà (Desktop\Video-YouTube). Không khôi phục được.')) return
     startTransition(async () => {
       const kq = await xoaVideoYouTube(d.id)
       if (!kq.ok) return thongBao('loi', kq.loi)

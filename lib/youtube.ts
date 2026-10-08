@@ -238,6 +238,7 @@ export async function guiDung(d: DuAnYT, chiPhan?: number) {
 }
 
 // Xoá dự án khỏi trang (video đã dựng trên máy nhà vẫn giữ)
+// Xoá dự án khỏi trang + bỏ các phần đang chờ dựng; gửi lệnh cho máy nhà xoá luôn thư mục video trên máy
 export async function xoaDuAn(id: string) {
   const d = await docDuAn(id)
   if (!d) return
@@ -246,6 +247,7 @@ export async function xoaDuAn(id: string) {
     ...(data ?? []).map((f) => `${thuMuc(id)}/${f.name}`),
     ...d.phan.map((_, i) => `hang-doi/viec/${tenViec(id, i + 1)}`),
   ])
+  await ghiJson(`hang-doi/viec/xoa-${id}.json`, { loai: 'xoa_youtube', du_an: id })
 }
 
 // Ước lượng độ dài (giây) theo số chữ của lời thoại (~19 ký tự mỗi giây + nghỉ giữa câu, đo trên video thật)

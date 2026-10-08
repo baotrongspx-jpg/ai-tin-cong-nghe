@@ -7,6 +7,7 @@ import { truoc } from '@/lib/thoiGian'
 import { TieuDeTrang } from '@/app/DauTrang'
 import { IconYouTube } from '@/app/BieuTuong'
 import TaoVideo from './TaoVideo'
+import NutXoa from './NutXoa'
 
 // AI viết dàn ý trong Server Action, cần thời gian dài
 export const maxDuration = 300
@@ -38,8 +39,8 @@ export default async function TrangYouTube() {
               const daViet = d.phan.filter((p) => p.loi).length
               const giay = d.phan.reduce((t, p) => t + uocGiay(p.loi), 0)
               return (
-                <li key={d.id}>
-                  <Link href={`/youtube/${d.id}`} className="the block p-4 transition hover:ring-red-300">
+                <li key={d.id} className="relative">
+                  <Link href={`/youtube/${d.id}`} className="the block p-4 pr-12 transition hover:ring-red-300">
                     {d.loai === 'tieu_su' && <span className="chip mb-1 bg-violet-100 text-violet-700">🎬 Phim tiểu sử · {d.phim?.ten}</span>}
                     <p className="line-clamp-2 font-bold leading-snug">{d.tieu_de}</p>
                     <p className="mt-1 flex flex-wrap gap-x-3 text-xs text-slate-500">
@@ -48,6 +49,7 @@ export default async function TrangYouTube() {
                       <span>{daViet < d.phan.length ? `AI đã viết ${daViet}/${d.phan.length} phần` : `~${phutGiay(giay)} phút`}</span>
                     </p>
                   </Link>
+                  <NutXoa id={d.id} ten={d.tieu_de} />
                 </li>
               )
             })}

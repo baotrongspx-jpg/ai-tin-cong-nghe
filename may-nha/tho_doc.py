@@ -380,6 +380,15 @@ def main():
                     finally:
                         td.xong()
                     print(f'Xong video hoạt hình {giay:.0f}s trong {time.time() - bat_dau:.0f}s', flush=True)
+                elif yc.get('loai') == 'xoa_youtube':
+                    # Trang web đã xoá dự án: xoá thư mục video (…-<6 ký tự đầu mã>) và thư mục tạm của nó trên máy nhà
+                    du_an = yc['du_an']
+                    so = 0
+                    for tm in [*THU_MUC_YT.glob(f'*-{du_an[:6]}'), *THU_MUC_TAM.glob(f'yt-{du_an}-*')]:
+                        if tm.is_dir():
+                            shutil.rmtree(tm, ignore_errors=True)
+                            so += 1
+                    print(f'Đã xoá {so} thư mục video của dự án {du_an[:6]}', flush=True)
                 elif yc.get('loai') == 'youtube':
                     print(f'Dựng video YouTube "{yc.get("tieu_de")}" phần {yc["phan"]}/{len(yc["ma_phan"])} ({len(yc["loi_thoai"]["loi"])} câu thoại)...', flush=True)
                     dung_youtube(may, ds_giong, yc)

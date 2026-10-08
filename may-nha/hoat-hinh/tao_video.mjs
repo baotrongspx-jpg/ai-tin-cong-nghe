@@ -309,13 +309,8 @@ loi.forEach((l, i) => {
       )
       .join('')
     dem += kyTuDoan
-    const ten = k === 0
-      ? ke
-        ? `<div class="pd-ten ke">🎙 ${esc(nhan_vat.nguoi_ke?.ten ?? 'Người kể')}</div>`
-        : laPhu(ai)
-        ? `<div class="pd-ten" style="background:${NHAN_VAT_PHU[ai].mau}">${NHAN_VAT_PHU[ai].bieu_tuong} ${esc(NHAN_VAT_PHU[ai].ten)}</div>`
-        : `<div class="pd-ten ${ai}">${ai === 'meo' ? '🐱' : '🤖'} ${esc(nhan_vat[ai].ten)}</div>`
-      : ''
+    // Không ghi tên người nói (người xem nhận ra qua giọng, miệng nhép và màu chữ)
+    const ten = ''
     phuDe.push(`
     <div id="pd${i}-${k}" class="phu-de clip" data-start="${f(batDauDoan)}" data-duration="${f(ketThuc - batDauDoan)}" data-track-index="3">
       <div class="pd-khung">${k === 0 && l.tai_hien ? '<div class="pd-tai-hien">Tái hiện</div>' : ''}${ten}${dongHtml}</div>
@@ -550,7 +545,8 @@ loi.forEach((l, i) => {
   const t0 = batDau[i]
   const d = doDai[i]
   const id = `dc${i}`
-  daoCu.push(`<div id="${id}" class="dao-cu ${l.ai}">${bt}</div>`)
+  // Đạo cụ của nhân vật phụ nằm cùng chỗ với đạo cụ của người kể
+  daoCu.push(`<div id="${id}" class="dao-cu ${laPhu(l.ai) ? 'nguoi_ke' : l.ai}">${bt}</div>`)
   tw.push(`tl.fromTo("#${id}", { opacity: 0, scale: 0, rotation: -30 }, { opacity: 1, scale: 1, rotation: 0, duration: 0.5, ease: "back.out(2.2)" }, ${f(t0 + 0.25)});`)
   tw.push(`tl.to("#${id}", { y: -24, rotation: 6, duration: 0.6, yoyo: true, repeat: ${lap(d - 1.2, 0.6) | 1}, ease: "sine.inOut" }, ${f(t0 + 0.75)});`)
   tw.push(`tl.to("#${id}", { opacity: 0, scale: 0.3, duration: 0.3, ease: "power2.in" }, ${f(t0 + d - 0.2)});`)
@@ -588,6 +584,7 @@ if (giatTit.html) {
 const DAU = { meo: { x: 290 - GIAN, dinh: 715 }, robot: { x: 790 + GIAN, dinh: 715 } }
 const DAU_PHU = { x: 540, dinh: 520 + PHU_XUONG }
 const minhHoa = []
+const minhHoaKhung = [] // khung ngang: thẻ minh hoạ ở lớp khung hình
 loi.forEach((l, i) => {
   const m = l.minh_hoa
   const ve = MINH_HOA[m?.kieu]
@@ -605,9 +602,11 @@ loi.forEach((l, i) => {
   tw.push(...mh.tw(bd, kt - bd))
   const dau = laPhu(l.ai) || l.ai === 'nguoi_ke' ? DAU_PHU : DAU[l.ai === 'meo' ? 'meo' : 'robot']
   const trai = Math.min(Math.max(dau.x - 240, 10 - LECH_X), RONG - LECH_X - 490)
-  minhHoa.push(`<div id="${id}" class="mh" style="left:${trai}px;top:${dau.dinh - 345}px">${mh.html}</div>`)
+  // Khung ngang: đặt cố định ở giữa phía trên khung hình (chỗ bảng tin), không phóng theo máy quay nên không bị cắt mép
+  if (NGANG) minhHoaKhung.push(`<div id="${id}" class="mh" style="left:${(RONG - 480) / 2}px;top:14px">${mh.html}</div>`)
+  else minhHoa.push(`<div id="${id}" class="mh" style="left:${trai}px;top:${dau.dinh - 345}px">${mh.html}</div>`)
   // Bảng tin của câu tạm ẩn trong lúc thẻ minh hoạ hiện
-  tw.push(`tl.to("#bang${i}", { opacity: 0, duration: 0.15 }, ${f(bd)});`)
+  tw.push(`tl.to("#bang${i}", { opacity: 0, duration: 0.1 }, ${f(bd - 0.05)});`)
   tw.push(`tl.to("#bang${i}", { opacity: 1, duration: 0.25 }, ${f(kt)});`)
 })
 
@@ -727,8 +726,8 @@ const trang = `<!doctype html>
       .hat { position: absolute; border-radius: 50%; background: radial-gradient(circle, #ffffffcc, #ffffff00 70%); }
       #vien-toi { background: radial-gradient(ellipse 85% 70% at 50% 45%, transparent 55%, #00000099 100%); }
       .dao-cu { position: absolute; top: 560px; width: 190px; height: 190px; display: flex; align-items: center; justify-content: center; font-size: 150px; line-height: 1; font-family: "Emoji", sans-serif; filter: drop-shadow(0 18px 24px #0008); opacity: 0; }
-      .dao-cu.meo { left: ${10 - GIAN}px; top: 470px; }
-      .dao-cu.robot { left: ${880 + GIAN}px; top: 470px; }
+      .dao-cu.meo { left: ${NGANG ? -330 : 10}px; top: ${NGANG ? 690 : 470}px; }
+      .dao-cu.robot { left: ${NGANG ? 1220 : 880}px; top: ${NGANG ? 690 : 470}px; }
       .nv-phu { position: absolute; left: 354px; top: ${440 + PHU_XUONG}px; width: 372px; height: 600px; opacity: 0; }
       #vet-quet { position: absolute; top: 0; left: 0; width: ${RONG}px; height: ${CAO}px; opacity: 0; background: linear-gradient(90deg, transparent, #ffffffaa 45%, #ffffffaa 55%, transparent); }
       .dau-trang { height: 200px; background: linear-gradient(#000000aa, transparent); display: flex; align-items: center; justify-content: space-between; padding: 0 64px; box-sizing: border-box; }
@@ -753,7 +752,7 @@ const trang = `<!doctype html>
       .pd-ten.ke { background: #fde68a; color: #422006; }
       .pd-tai-hien { font-size: 20px; font-weight: 700; padding: 3px 12px; border-radius: 6px; margin-bottom: 4px; background: #00000099; color: #fbbf24; border: 2px solid #fbbf24; letter-spacing: 1px; text-transform: uppercase; }
       .the-moc { position: absolute; left: 56px; top: ${NGANG ? 150 : 240}px; display: flex; align-items: center; gap: 12px; padding: 12px 24px 12px 18px; border-radius: 14px; background: #0f172ae6; border-left: 8px solid #fbbf24; font-size: ${NGANG ? 34 : 38}px; font-weight: 700; color: #fff; box-shadow: 0 16px 36px #0008; opacity: 0; }
-      .dao-cu.nguoi_ke { left: 445px; top: 380px; }
+      .dao-cu.nguoi_ke { left: ${NGANG ? 1220 : 445}px; top: ${NGANG ? 560 : 380}px; }
       .pd-dong { font-size: 48px; font-weight: 700; line-height: 1.2; white-space: nowrap; text-shadow: 0 0 5px #000, 0 3px 0 #000, 2.5px 2.5px 0 #000, -2.5px 2.5px 0 #000, 2.5px -2.5px 0 #000, -2.5px -2.5px 0 #000; }
       .pd-tu { display: inline-block; color: #fff; }${NGANG ? CSS_NGANG : ''}
     </style>
@@ -778,7 +777,7 @@ const trang = `<!doctype html>
         </div></div>
       </div>
       <div id="vien-toi" class="clip" data-start="0" data-duration="${f(TONG)}" data-track-index="5"><div id="den"></div><div id="chop"></div></div>
-      <div id="lop-minh-hoa" class="clip" data-start="0" data-duration="${f(TONG)}" data-track-index="7">${giatTit.html}${theMoc.join('')}</div>${phuDe.join('')}
+      <div id="lop-minh-hoa" class="clip" data-start="0" data-duration="${f(TONG)}" data-track-index="7">${giatTit.html}${theMoc.join('')}${minhHoaKhung.join('')}</div>${phuDe.join('')}
       ${[...amThanh, ...amPhu].join('\n      ')}
     </div>
     <script>

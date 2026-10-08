@@ -15,6 +15,7 @@ import { IconDongHo, IconFacebook, IconLai, IconNhac, IconTikTok, IconXoa, Xoay 
 import { CotPhai, LuuY, NutQuyetDinh, ThongTinBai } from '@/app/PhanDuyet'
 import { choDungSan, useVideoSan } from './DungSan'
 import NhacXemTruoc from './NhacXemTruoc'
+import DangYouTube from './DangYouTube'
 
 type Viec = 'tt' | 'ca_hai' | 'bo_danh_dau' | 'xoa'
 
@@ -423,6 +424,10 @@ export default function TheTikTok({
               if (confirm(`Xoá hẳn bài "${bai.tieu_de_anh}" khỏi trang? Không khôi phục được.${daLen}`)) chay('xoa', () => xoaBai(bai.id), 'Đã xoá bài')
             }}
           />
+        </section>
+        <section className="space-y-2.5">
+          <h3 className="text-sm font-bold text-slate-800">Đăng lên YouTube</h3>
+          <DangYouTube bai={bai} tags={tags} video={video} urlTai={urlTai} dangDung={dangDung} xemTruoc={xemTruoc} />
         </section>
         <LuuY>Nghe thử giọng và xem trước video trước khi đăng. Máy đọc giọng lâu không dùng sẽ ngủ, lần đầu có thể chờ thêm 1–2 phút.</LuuY>
       </CotPhai>

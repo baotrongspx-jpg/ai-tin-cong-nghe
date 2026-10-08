@@ -19,6 +19,8 @@ export const IconFacebook = ({ className }: P) =>
   svg(<path d="M14 8h2.5V4.5H14c-2.5 0-4 1.6-4 4V11H7.5v3.5H10V21h3.5v-6.5H16l.5-3.5h-3V8.8c0-.5.3-.8.5-.8Z" />, className, true)
 export const IconTikTok = ({ className }: P) =>
   svg(<path d="M16.5 3c.4 2.2 1.8 3.7 4 4v3.3c-1.5 0-2.9-.4-4-1.2v6.4a5.6 5.6 0 1 1-5.6-5.6h.6v3.4a2.3 2.3 0 1 0 1.7 2.2V3h3.3Z" />, className, true)
+export const IconYouTube = ({ className }: P) =>
+  svg(<path d="M21.6 7.2a2.5 2.5 0 0 0-1.8-1.8C18.2 5 12 5 12 5s-6.2 0-7.8.4A2.5 2.5 0 0 0 2.4 7.2C2 8.8 2 12 2 12s0 3.2.4 4.8a2.5 2.5 0 0 0 1.8 1.8C5.8 19 12 19 12 19s6.2 0 7.8-.4a2.5 2.5 0 0 0 1.8-1.8c.4-1.6.4-4.8.4-4.8s0-3.2-.4-4.8ZM10 15V9l5.2 3Z" fillRule="evenodd" />, className, true)
 export const IconSao = ({ className }: P) =>
   svg(<><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8Z" /><path d="M19 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8Z" /></>, className)
 export const IconTai = ({ className }: P) => svg(<><path d="M12 4v11" /><path d="m7 10 5 5 5-5" /><path d="M5 20h14" /></>, className)

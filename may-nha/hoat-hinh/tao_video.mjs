@@ -62,13 +62,17 @@ function doTo(file) {
 }
 
 const batDau = []
-// Thẻ chương (video YouTube nhiều phần): 2,4 giây đầu phần là màn tiêu đề chương; màn kết đăng ký kênh 6 giây cuối video
-const MO_CHUONG = the_chuong ? 2.4 : 0
+// Thẻ chương (video YouTube nhiều phần). Có câu người kể đọc tên chương (la_chuong, lib/youtube.ts chèn) thì thẻ
+// hiện đúng trong câu đó; không có thì như cũ: 2,4 giây đầu phần im lặng là màn tiêu đề. Màn kết 6 giây cuối video.
+const I_CHUONG = the_chuong ? loi.findIndex((l) => l.la_chuong) : -1
+const MO_CHUONG = the_chuong && I_CHUONG < 0 ? 2.4 : 0
 const MAN_KET = man_ket ? 6 : 0
 let t = 0.4 + MO_CHUONG // nhịp mở đầu trước câu đầu tiên
 for (const [i, d] of doDai.entries()) {
   // Khoảng lặng có chủ đích (AI đặt lang) trước câu quan trọng: im 0,9 giây, chỉ còn âm nền
   if (i && loi[i]?.lang) t += 0.9
+  // Sau câu đọc tên chương: nghỉ thêm một nhịp cho thẻ chương mờ đi rồi mới vào chuyện
+  if (i && loi[i - 1]?.la_chuong) t += 0.5
   // Đổi bối cảnh: nghỉ thêm 0,55 giây để chuyển cảnh chạy xong đúng lúc câu mới bắt đầu
   const canh = (l) => (BOI_CANH[l?.boi_canh] ? l.boi_canh : 'truong_quay')
   if (i && canh(loi[i]) !== canh(loi[i - 1])) t += 0.55
@@ -106,8 +110,9 @@ for (let k = 1.7; k < TONG - 0.5; k += 3.1) {
   tw.push(`tl.to(["#robot-mat-trai", "#robot-mat-phai"], { scaleY: 0.12, duration: 0.07, yoyo: true, repeat: 1 }, ${f(k + 1.3)});`)
 }
 // Mở đầu: hai nhân vật nhảy vào khung
-tw.push(`tl.from("#o-meo", { x: ${NGANG ? -1150 : -700}, duration: 0.6, ease: "back.out(1.4)" }, ${f(Math.max(0, MO_CHUONG - 0.3))});`)
-tw.push(`tl.from("#o-robot", { x: ${NGANG ? 1150 : 700}, duration: 0.6, ease: "back.out(1.4)" }, ${f(Math.max(0.1, MO_CHUONG - 0.2))});`)
+const VAO_SAN = I_CHUONG === 0 ? batDau[0] + doDai[0] + 0.1 : MO_CHUONG
+tw.push(`tl.from("#o-meo", { x: ${NGANG ? -1150 : -700}, duration: 0.6, ease: "back.out(1.4)" }, ${f(Math.max(0, VAO_SAN - 0.3))});`)
+tw.push(`tl.from("#o-robot", { x: ${NGANG ? 1150 : 700}, duration: 0.6, ease: "back.out(1.4)" }, ${f(Math.max(0.1, VAO_SAN - 0.2))});`)
 
 // ── Nhân vật phụ trên sân khấu: câu do nhân vật phụ nói, hoặc câu nhắc tới họ (AI chọn nhan_vat_phu).
 // Các câu liền nhau cùng một nhân vật phụ gom thành một lần xuất hiện; phuCuaCau[i] là id phần tử của họ ở câu i.
@@ -257,6 +262,7 @@ loi.forEach((l, i) => {
   }
   if (hien.length) dong.push(hien)
   if (dong.length) doanPd.push(dong)
+  if (l.la_chuong) doanPd.length = 0
   const tongKt = tu.join('').length
   const noi = d - 0.25
   let dem = 0
@@ -661,8 +667,11 @@ const anhThat = doanAnh.map((c, k) => {
     tw.push(`tl.to("#bang${bangCuaCau[i]}", { opacity: 0, duration: 0.1 }, ${f(vao - 0.05)});`)
     tw.push(`tl.to("#bang${bangCuaCau[i]}", { opacity: 1, duration: 0.25 }, ${f(ra)});`)
   }
+  const chiNguoiKe = loi.slice(c.tu, c.het + 1).every((l) => l.ai === 'nguoi_ke')
+  const haiPhu = doanPhu.some((dp) => dp.doi && dp.tu <= c.het && dp.het >= c.tu)
+  const kieu = NGANG && chiNguoiKe && !haiPhu ? 'ben' : 'tren'
   const src = `assets/${esc(c.a.tep)}`
-  return `<div id="${id}" class="anh-that"><div class="anh-khung"><img class="anh-nen" src="${src}"/><img id="${id}-anh" class="anh-chinh" src="${src}"/></div><div class="anh-ghi">📷 ${esc(c.a.tac_gia)} · ${esc(c.a.giay_phep)} · Wikimedia Commons</div></div>`
+  return `<div id="${id}" class="anh-that ${kieu}"><div class="anh-khung"><img class="anh-nen" src="${src}"/><img id="${id}-anh" class="anh-chinh" src="${src}"/></div><div class="anh-ghi">📷 ${esc(c.a.tac_gia)} · ${esc(c.a.giay_phep)} · Wikimedia Commons</div></div>`
 })
 
 // Bảng tin phía sau đổi theo lời thoại
@@ -774,13 +783,15 @@ doanCanh.forEach((dc, k) => {
 let theChuongHtml = ''
 if (the_chuong) {
   const ten = esc(the_chuong.ten ?? '')
-  theChuongHtml = `<div id="the-chuong"><div class="tc-kenh">${esc(kenh)}</div><div class="tc-so">CHƯƠNG ${esc(the_chuong.so ?? '')}</div><div class="tc-ten">${ten}</div><div class="tc-vach"></div></div>`
-  tw.push(`tl.fromTo("#the-chuong", { opacity: 0 }, { opacity: 1, duration: 0.35, ease: "power1.out" }, 0.05);`)
-  tw.push(`tl.fromTo("#the-chuong .tc-so", { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 0.45, ease: "power3.out" }, 0.25);`)
-  tw.push(`tl.fromTo("#the-chuong .tc-ten", { y: 60, opacity: 0 }, { y: 0, opacity: 1, duration: 0.55, ease: "power3.out" }, 0.45);`)
-  tw.push(`tl.fromTo("#the-chuong .tc-vach", { scaleX: 0 }, { scaleX: 1, duration: 0.9, ease: "power2.inOut" }, 0.5);`)
-  tw.push(`tl.to("#the-chuong", { opacity: 0, scale: 1.05, duration: 0.45, ease: "power2.in" }, ${f(MO_CHUONG - 0.25)});`)
-  themAm('sfx-vut', 0.4, 0.3)
+  theChuongHtml = `<div id="the-chuong"><div class="tc-kenh">${esc(kenh)}</div><div class="tc-so">${esc(the_chuong.nhan ?? 'CHƯƠNG')} ${esc(the_chuong.so ?? '')}</div><div class="tc-ten">${ten}</div><div class="tc-vach"></div></div>`
+  const tc0 = I_CHUONG >= 0 ? Math.max(0.05, batDau[I_CHUONG] - 0.35) : 0.05
+  const tc1 = I_CHUONG >= 0 ? batDau[I_CHUONG] + doDai[I_CHUONG] - 0.05 : MO_CHUONG - 0.25
+  tw.push(`tl.fromTo("#the-chuong", { opacity: 0, scale: 1 }, { opacity: 1, scale: 1, duration: 0.35, ease: "power1.out", immediateRender: false }, ${f(tc0)});`)
+  tw.push(`tl.fromTo("#the-chuong .tc-so", { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 0.45, ease: "power3.out" }, ${f(tc0 + 0.2)});`)
+  tw.push(`tl.fromTo("#the-chuong .tc-ten", { y: 60, opacity: 0 }, { y: 0, opacity: 1, duration: 0.55, ease: "power3.out" }, ${f(tc0 + 0.4)});`)
+  tw.push(`tl.fromTo("#the-chuong .tc-vach", { scaleX: 0 }, { scaleX: 1, duration: 0.9, ease: "power2.inOut" }, ${f(tc0 + 0.45)});`)
+  tw.push(`tl.to("#the-chuong", { opacity: 0, scale: 1.05, duration: 0.45, ease: "power2.in" }, ${f(tc1)});`)
+  themAm('sfx-vut', tc0 + 0.35, 0.3)
 }
 // ── Màn kết: cảm ơn + nút ĐĂNG KÝ có con trỏ bấm + chuông; Mèo / Bit quay lại vẫy tay ─
 let manKetHtml = ''
@@ -892,11 +903,13 @@ const trang = `<!doctype html>
       .ke-tron { position: absolute; inset: 10px; border-radius: 50%; overflow: hidden; background: radial-gradient(circle at 50% 28%, #93c5fd 0%, #3b5b8c 38%, #1e293b 70%, #0f172a); box-shadow: inset 0 0 0 5px #0f172a; }
       .ke-den { position: absolute; inset: 0; background: radial-gradient(circle at 78% 18%, #fde68a55, transparent 40%), radial-gradient(circle at 15% 85%, #f9731633, transparent 45%); }
       #khung-ke svg { position: relative; display: block; }
-      .anh-that { position: absolute; left: ${(RONG - 600) / 2}px; top: ${NGANG ? 18 : 300}px; width: 600px; opacity: 0; display: flex; flex-direction: column; align-items: center; filter: drop-shadow(0 18px 30px #000b); }
-      .anh-khung { position: relative; width: 600px; height: 360px; overflow: hidden; border: 12px solid #fdfaf3; border-radius: 6px; background: #111; box-sizing: border-box; }
+      .anh-that { position: absolute; opacity: 0; display: flex; flex-direction: column; align-items: center; filter: drop-shadow(0 18px 30px #000b); }
+      .anh-that.tren { left: ${(RONG - 520) / 2}px; top: ${NGANG ? 16 : 300}px; width: 520px; }
+      .anh-that.ben { left: ${RONG - 60 - 720}px; top: 120px; width: 720px; }
+      .anh-khung { position: relative; width: 100%; aspect-ratio: 5 / 3; overflow: hidden; border: 12px solid #fdfaf3; border-radius: 6px; background: #111; box-sizing: border-box; }
       .anh-nen { position: absolute; inset: -30px; width: calc(100% + 60px); height: calc(100% + 60px); object-fit: cover; filter: blur(18px) brightness(0.6); }
       .anh-chinh { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
-      .anh-ghi { margin-top: 6px; max-width: 600px; padding: 4px 14px; border-radius: 8px; background: #000b; color: #f1f5f9; font-size: 17px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: "BVP", "Emoji", sans-serif; }
+      .anh-ghi { margin-top: 6px; max-width: 100%; padding: 4px 14px; border-radius: 8px; background: #000b; color: #f1f5f9; font-size: 17px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: "BVP", "Emoji", sans-serif; }
       .ke-mic { position: absolute; right: 14px; bottom: 18px; width: 62px; height: 62px; border-radius: 50%; background: linear-gradient(#ef4444, #b91c1c); border: 4px solid #fde68a; display: flex; align-items: center; justify-content: center; font-size: 32px; font-family: "Emoji", sans-serif; box-shadow: 0 6px 14px #0008; }${NGANG ? CSS_NGANG : ''}
     </style>
   </head>

@@ -17,7 +17,7 @@ import { kiemDinh, type KetQuaKiemDinh } from './kiemDinh'
 // video và chỉ lưu trên máy nhà (Desktop\Video-YouTube), vì video dài quá nặng để gửi lên kho.
 // Máy nhà báo kết quả: youtube/<id>/phan-<k>.json ({ xong, ma } hoặc { loi, ma }), tien-do.json, xong.json.
 const KHO = 'video-tiktok'
-const PHIEN_BAN = 9 // tăng khi đổi cách dựng để các phần dựng lại (2: thẻ minh hoạ / đạo cụ khung ngang; 3: giọng Mèo Mun; 4: nhịp chuyển cảnh mượt; 5: thẻ chương, màn kết, B-roll; 6: khung người kể, 7: người kể vẽ riêng, 8: nhân vật chính phim tiểu sử, 9: ảnh Wikipedia)
+const PHIEN_BAN = 10 // tăng khi đổi cách dựng để các phần dựng lại (2: thẻ minh hoạ / đạo cụ khung ngang; 3: giọng Mèo Mun; 4: nhịp chuyển cảnh mượt; 5: thẻ chương, màn kết, B-roll; 6: khung người kể, 7: người kể vẽ riêng, 8: nhân vật chính phim tiểu sử, 9: ảnh Wikipedia, 10: lời giới thiệu + đọc tên chương, ảnh đặt linh động)
 const kho = () => db().storage.from(KHO)
 const thuMuc = (id: string) => `youtube/${id}`
 const tenViec = (id: string, k: number) => `yt-${id}-${k}.json`
@@ -76,11 +76,9 @@ export type DuAnYT = {
 
 const bam = (x: unknown) => createHash('sha256').update(JSON.stringify(x)).digest('hex').slice(0, 12)
 // Mã một phần: đổi lời thoại / cách dựng thì đổi mã, máy nhà dựng lại phần đó
-const maPhan = (d: DuAnYT, k: number) =>
-  bam([
-    PHIEN_BAN, d.chu_de, d.phan[k - 1].loi, k === 1 ? d.phan[0].moc : null,
-    ...(d.loai === 'tieu_su' ? [hinhChuong(d, k), Object.entries(anhCuaChuong(d, k)).map(([i, a]) => [i, a.url])] : []),
-  ])
+// Mã một phần = băm toàn bộ những gì gửi máy nhà dựng (lời thoại đã chèn lời giới thiệu / tên chương, hình nhân vật
+// chính, ảnh, giọng…): đổi bất cứ thứ gì trong đó thì phần đó dựng lại
+const maPhan = (d: DuAnYT, k: number) => bam([PHIEN_BAN, loiThoaiGui(d, k)])
 
 // Phim tiểu sử: câu nào hiện ảnh thật nào (chỉ số câu → ảnh). Kịch bản AI viết sau khi có ảnh thì mỗi câu có "anh"
 // (số thứ tự ảnh, -1 = không); kịch bản cũ chưa có thì tự rải: ảnh xếp theo năm chia đều cho các chương theo thứ tự,
@@ -119,21 +117,57 @@ const GIONG_CHINH = { nam: 'Thiện Minh', nu: 'Mỹ Duyên' } as const
 // kể không có ai trên sân khấu thì cho nhân vật chính đứng diễn (người xem luôn thấy người đang được kể)
 function loiThoaiGui(d: DuAnYT, k: number) {
   const p = d.phan[k - 1]
-  const goc = { kho: 'ngang', kenh: 'Công Nghệ 24H', chu_de: d.chu_de, moc: k === 1 ? p.moc : null, the_chuong: { so: k, ten: p.tieu_de }, man_ket: k === d.phan.length }
-  if (d.loai !== 'tieu_su' || !d.phim) return { ...goc, nhan_vat: NHAN_VAT, loi: p.loi }
-  const hinh = hinhChuong(d, k)
+  const phim = d.loai === 'tieu_su' && d.phim ? d.phim : null
+  const nhieuPhan = d.phan.length > 1
+  const goc = {
+    kho: 'ngang', kenh: 'Công Nghệ 24H', chu_de: d.chu_de, moc: k === 1 ? p.moc : null,
+    the_chuong: { so: k, ten: p.tieu_de, nhan: phim ? 'CHƯƠNG' : 'PHẦN' }, man_ket: k === d.phan.length,
+  }
+  const hinh = phim ? hinhChuong(d, k) : null
+  const anhChuong = phim ? anhCuaChuong(d, k) : {}
+  const veAnh = (a: AnhWiki) => ({ anh_wiki: { url: a.url, tac_gia: a.tac_gia, giay_phep: a.giay_phep, nam: a.nam } })
+  const loi: Record<string, unknown>[] = (p.loi ?? []).map((l, i) => ({
+    ...l,
+    // Phim tiểu sử: câu người kể chưa có ai trên sân khấu thì nhân vật chính đứng diễn
+    ...(phim && l.ai === 'nguoi_ke' && (!l.nhan_vat_phu || l.nhan_vat_phu === 'khong') ? { nhan_vat_phu: 'nhan_vat_chinh' } : {}),
+    ...(anhChuong[i] ? veAnh(anhChuong[i]) : {}),
+  }))
+  // Câu người kể chèn thêm (không do AI viết): giữ bối cảnh / bảng tin của câu chuyện kế bên cho khỏi đổi cảnh thừa
+  const mau = (gan: Record<string, unknown> | undefined, them: Record<string, unknown>) => ({
+    ...(gan ?? {}),
+    ai: 'nguoi_ke', cam_xuc: 'suy_nghi', dao_cu: 'khong', nhan_vat_phu: 'khong', khung_hinh: 'toan_canh', may_quay: 'dung_yen',
+    anh_sang: 'binh_thuong', am_thanh: 'khong', lang: false, chuyen_canh: 'tu_dong', the_moc: '', tai_hien: false, anh: -1,
+    minh_hoa: { kieu: 'khong', tu_khoa: '', chu_chinh: '', chu_phu: '', bieu_tuong: '' }, anh_wiki: undefined,
+    ...them,
+  })
+  const cham = (x: string) => (/[.!?…]$/.test(x.trim()) ? x.trim() : `${x.trim()}.`)
+  // Người kể đọc tên chương / phần (thẻ chương hiện đúng lúc này) — chỉ khi video có nhiều phần
+  const docChuong = nhieuPhan ? [mau(loi[0], { chu: cham(`${phim ? 'Chương' : 'Phần'} ${k}. ${p.tieu_de}`), la_chuong: true })] : []
+  if (k === 1) {
+    // Mở đầu: người kể giới thiệu phim kể chuyện gì (dòng chữ móc câu to hiện cùng lúc) → tên chương 1 → vào chuyện
+    const chanDung = phim?.anh?.find((a) => a.chinh)
+    const tieuDe = d.tieu_de.replace(/^Phim tiểu sử:\s*/i, '').trim()
+    const gioiThieu = phim
+      ? `Xin chào các bạn, đây là Công Nghệ 24H. Hôm nay, mời bạn cùng nghe câu chuyện về cuộc đời ${phim.ten}${nhieuPhan ? `, qua ${d.phan.length} chương phim` : ''}${tieuDe && tieuDe !== phim.ten ? `: ${cham(tieuDe)}` : '.'}`
+      : `Xin chào các bạn, chào mừng đến với Công Nghệ 24H. Hôm nay chúng ta cùng tìm hiểu: ${cham(tieuDe)}`
+    const loiGioiThieu = mau(loi[0], {
+      chu: gioiThieu,
+      cam_xuc: 'vui',
+      anh_sang: 'am_ap',
+      may_quay: 'day_vao',
+      khung_hinh: 'trung_canh',
+      gioi_thieu: true,
+      ...(phim ? { nhan_vat_phu: 'nhan_vat_chinh' } : {}),
+      ...(chanDung ? veAnh(chanDung) : {}),
+    })
+    loi.unshift(loiGioiThieu, ...docChuong)
+  } else loi.unshift(...docChuong)
+  if (!phim || !hinh) return { ...goc, nhan_vat: NHAN_VAT, loi }
   return {
     ...goc,
-    nhan_vat: { ...NHAN_VAT, nhan_vat_chinh: { ten: d.phim.ten, giong: GIONG_CHINH[hinh.gioi] } },
-    nhan_vat_chinh: { ten: d.phim.ten, hinh },
-    loi: (p.loi ?? []).map((l, i) => {
-      const anh = anhCuaChuong(d, k)[i]
-      return {
-        ...l,
-        ...(l.ai === 'nguoi_ke' && (!l.nhan_vat_phu || l.nhan_vat_phu === 'khong') ? { nhan_vat_phu: 'nhan_vat_chinh' } : {}),
-        ...(anh ? { anh_wiki: { url: anh.url, tac_gia: anh.tac_gia, giay_phep: anh.giay_phep, nam: anh.nam } } : {}),
-      }
-    }),
+    nhan_vat: { ...NHAN_VAT, nhan_vat_chinh: { ten: phim.ten, giong: GIONG_CHINH[hinh.gioi] } },
+    nhan_vat_chinh: { ten: phim.ten, hinh },
+    loi,
   }
 }
 

@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { daDangNhap } from '@/lib/xacThuc'
 import { mayNhaTat } from '@/lib/giongDoc'
 import {
-  bienTapPhim, chayBuocPhim, chonNhacDuAn, docDuAn, guiDung, kiemDinhLaiPhan, suaThongTin, taoDuAn, taoPhim, trangThaiDuAn, vietLoiPhan, xoaDuAn,
+  bienTapPhim, chayBuocPhim, chonNhacDuAn, docDuAn, guiDung, kiemDinhLaiPhan, luuPhatAm, suaThongTin, taoDuAn, taoPhim, trangThaiDuAn, vietLoiPhan, xoaDuAn,
   type BuocPhim, type DuAnYT, type TrangThaiBienTap, type TrangThaiDuAn,
 } from '@/lib/youtube'
 
@@ -71,6 +71,16 @@ export async function bienTapYouTube(id: string, batDauLai = false): Promise<{ o
   try {
     await chanChuaDangNhap()
     return { ok: true, tt: await bienTapPhim(id, batDauLai) }
+  } catch (e) {
+    return baoLoi(e)
+  }
+}
+
+export async function luuPhatAmYouTube(id: string, phatAm: string): Promise<{ ok: true } | Loi> {
+  try {
+    await chanChuaDangNhap()
+    await luuPhatAm(id, phatAm)
+    return { ok: true }
   } catch (e) {
     return baoLoi(e)
   }

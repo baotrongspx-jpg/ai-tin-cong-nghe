@@ -66,7 +66,8 @@ const batDau = []
 // hiện đúng trong câu đó; không có thì như cũ: 2,4 giây đầu phần im lặng là màn tiêu đề. Màn kết 6 giây cuối video.
 const I_CHUONG = the_chuong ? loi.findIndex((l) => l.la_chuong) : -1
 const MO_CHUONG = the_chuong && I_CHUONG < 0 ? 2.4 : 0
-const MAN_KET = man_ket ? 6 : 0
+// Màn kết: khung ngang (YouTube) 20 giây — đủ chỗ cho "màn hình kết thúc" của YouTube (2 ô video đề xuất); dọc 6 giây
+const MAN_KET = man_ket ? (NGANG ? 20 : 6) : 0
 let t = 0.4 + MO_CHUONG // nhịp mở đầu trước câu đầu tiên
 for (const [i, d] of doDai.entries()) {
   // Khoảng lặng có chủ đích (AI đặt lang) trước câu quan trọng: im 0,9 giây, chỉ còn âm nền
@@ -81,6 +82,7 @@ for (const [i, d] of doDai.entries()) {
 }
 const HET_NOI = t + DUOI // lúc lời cuối cùng dứt
 const TONG = HET_NOI + MAN_KET
+writeFileSync(join(GOC, 'artifacts/phu_de.json'), JSON.stringify(loi.map((l, i) => ({ bd: +batDau[i].toFixed(2), kt: +(batDau[i] + doDai[i]).toFixed(2), chu: l.chu }))))
 const tw = []
 
 // ── Nhân vật chính: nhanVatChinh.mjs (SVG vẽ tay, mỗi bộ phận một nhóm có điểm xoay) ─
@@ -888,8 +890,18 @@ if (the_chuong) {
 let manKetHtml = ''
 if (MAN_KET) {
   const t1 = HET_NOI
-  manKetHtml = `<div id="man-ket"><div class="mk-cam-on">Cảm ơn bạn đã xem!</div><div class="mk-nut"><span class="mk-chua"><span class="mk-play">▶</span> ĐĂNG KÝ</span><span class="mk-da">✓ ĐÃ ĐĂNG KÝ</span></div><div class="mk-chuong">🔔</div><div class="mk-tro">👆</div><div class="mk-phu">${esc(kenh)} · video mới mỗi tuần</div></div>`
+  // Khung ngang: 2 ô trống trái / phải đúng chỗ YouTube đặt video đề xuất (gắn trong YouTube Studio → Màn hình kết thúc)
+  const oXem = NGANG ? [0, 1].map((k) => `<div class="mk-o mk-o${k}"><span>▶ Xem tiếp</span></div>`).join('') : ''
+  manKetHtml = `${oXem}<div id="man-ket"><div class="mk-cam-on">Cảm ơn bạn đã xem!</div><div class="mk-nut"><span class="mk-chua"><span class="mk-play">▶</span> ĐĂNG KÝ</span><span class="mk-da">✓ ĐÃ ĐĂNG KÝ</span></div><div class="mk-chuong">🔔</div><div class="mk-tro">👆</div><div class="mk-phu">${esc(kenh)} · video mới mỗi tuần</div></div>`
   tw.push(`tl.to(["#o-meo", "#o-robot"], { xPercent: 0, duration: 0.5, ease: "power2.out" }, ${f(t1)});`)
+  if (NGANG) {
+    // Mèo / Bit nhỏ lại, đứng sát nhau ở giữa dưới, nhường hai bên cho ô video đề xuất
+    tw.push(`tl.to("#o-meo", { x: 280, scale: 0.6, transformOrigin: "50% 100%", duration: 0.7, ease: "power2.inOut" }, ${f(t1 + 0.2)});`)
+    tw.push(`tl.to("#o-robot", { x: -280, scale: 0.6, transformOrigin: "50% 100%", duration: 0.7, ease: "power2.inOut" }, ${f(t1 + 0.2)});`)
+    tw.push(`tl.fromTo(".mk-o", { opacity: 0, scale: 0.9 }, { opacity: 1, scale: 1, duration: 0.5, ease: "back.out(1.6)", stagger: 0.15, immediateRender: false }, ${f(t1 + 0.8)});`)
+    // nhún nhẹ, lặp hữu hạn cho tới hết màn kết
+    tw.push(`tl.to(["#o-meo", "#o-robot"], { y: -14, duration: 0.8, yoyo: true, repeat: ${lap(MAN_KET - 4, 0.8)}, ease: "sine.inOut" }, ${f(t1 + 3.4)});`)
+  }
   tw.push(`tl.fromTo("#man-ket", { opacity: 0 }, { opacity: 1, duration: 0.4 }, ${f(t1 + 0.1)});`)
   tw.push(`tl.fromTo("#man-ket .mk-nut", { scale: 0 }, { scale: 1, duration: 0.5, ease: "back.out(2)" }, ${f(t1 + 0.4)});`)
   tw.push(`tl.fromTo("#man-ket .mk-tro", { x: 260, y: 200, opacity: 0 }, { x: 0, y: 0, opacity: 1, duration: 0.8, ease: "power2.out" }, ${f(t1 + 1.1)});`)
@@ -932,6 +944,8 @@ const CSS_NGANG = `
       .mk-da { display: none; }
       .mk-chuong { position: absolute; left: calc(50% + 250px); top: 120px; font-size: 80px; font-family: "Emoji", sans-serif; }
       .mk-tro { position: absolute; left: calc(50% + 90px); top: 190px; font-size: 80px; font-family: "Emoji", sans-serif; opacity: 0; }
+      .mk-o { position: absolute; top: 380px; width: 520px; height: 293px; border-radius: 18px; border: 5px dashed #ffffffaa; background: #0f172a99; display: flex; align-items: center; justify-content: center; font-size: 40px; font-weight: 700; color: #fff; opacity: 0; }
+      .mk-o0 { left: 70px; } .mk-o1 { right: 70px; }
       .mk-phu { font-size: 32px; font-weight: 500; color: #e2e8f0; text-shadow: 0 0 8px #000; }`
 
 const trang = `<!doctype html>

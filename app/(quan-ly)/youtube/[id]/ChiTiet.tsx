@@ -7,7 +7,7 @@ import type { DuAnYT, KiemTraVideo, PhanYT, TrangThaiDuAn, TrangThaiPhan } from 
 import { thongBao } from '@/app/ThongBao'
 import { locLoiChao } from '@/lib/kiemDinh'
 import { IconChep, IconMo, IconXong, IconYouTube, Xoay } from '@/app/BieuTuong'
-import { bienTapYouTube, chayBuocPhimYouTube, chonNhacYouTube, dungVideoYouTube, kiemDinhYouTube, layTrangThaiYouTube, luuThongTinYouTube, vietPhanYouTube, xoaVideoYouTube } from '../actions'
+import { bienTapYouTube, chayBuocPhimYouTube, chonNhacYouTube, luuPhatAmYouTube, dungVideoYouTube, kiemDinhYouTube, layTrangThaiYouTube, luuThongTinYouTube, vietPhanYouTube, xoaVideoYouTube } from '../actions'
 import HoSoPhim, { KhoiDuLieu } from './HoSoPhim'
 
 const NGUOI: Record<string, string> = {
@@ -92,6 +92,19 @@ const NHAN: Record<TrangThaiPhan['loai'], [string, string]> = {
 // Ghi nguồn ảnh Wikimedia Commons cho mô tả YouTube (giấy phép CC BY / CC BY-SA bắt buộc ghi tác giả + giấy phép)
 const ghiNguonAnh = (ds: { tac_gia: string; giay_phep: string; nguon: string; ten_tep: string }[]) =>
   ['Nguồn ảnh (Wikimedia Commons):', ...ds.map((a) => `- ${a.ten_tep.replace(/\.[a-z]+$/i, '').replace(/_/g, ' ')}: ${a.tac_gia}, ${a.giay_phep} — ${a.nguon}`)].join('\n')
+
+// Mốc chương YouTube: "0:00 Tên chương 1", "m:ss Tên chương k" (bỏ tiền tố "Phần 1:" AI hay đặt)
+const mocChuong = (d: DuAnYT, moc: number[]) =>
+  d.phan
+    .map((p, i) => {
+      const g = Math.floor(moc[i] ?? 0)
+      const h = Math.floor(g / 3600)
+      const m = Math.floor((g % 3600) / 60)
+      const s = String(g % 60).padStart(2, '0')
+      const ten = p.tieu_de.replace(/^\s*(phần|chương|tập)\s*\d+\s*[:.\-–—]\s*/i, '').trim()
+      return `${h ? `${h}:${String(m).padStart(2, '0')}` : m}:${s} ${d.loai === 'tieu_su' ? 'Chương' : 'Phần'} ${i + 1}: ${ten}`
+    })
+    .join('\n')
 
 function NutChep({ chu, ten = 'Chép' }: { chu: string; ten?: string }) {
   const [da, setDa] = useState(false)
@@ -404,6 +417,20 @@ export default function ChiTiet({ dau, ttDau, dsNhac }: { dau: DuAnYT; ttDau: Tr
                 <p className="text-xs text-slate-500">Ảnh cũng nằm cạnh video trong thư mục trên máy nhà (anh-bia.png). Trong YouTube Studio bấm Tải hình thu nhỏ lên.</p>
               </div>
             )}
+            {tt.xong.moc_chuong && tt.xong.moc_chuong.length >= 3 && (
+              <label className="grid">
+                <span className="label">
+                  Mốc chương (dán vào đầu mô tả YouTube để hiện chương trên thanh thời gian) <NutChep chu={mocChuong(d, tt.xong.moc_chuong)} />
+                </span>
+                <textarea readOnly rows={Math.min(8, d.phan.length)} value={mocChuong(d, tt.xong.moc_chuong)} className="input text-xs" />
+              </label>
+            )}
+            {tt.xong.phu_de && (
+              <a href={tt.xong.phu_de} className="btn btn-sm btn-phu justify-self-start">
+                Tải phụ đề (.srt)
+              </a>
+            )}
+            {tt.xong.phu_de && <p className="text-xs text-slate-500">YouTube Studio → Phụ đề → Thêm → Tải tệp lên → Có thời gian → chọn phu-de.srt (cũng nằm cạnh video trên máy nhà).</p>}
             {tt.xong.kiem_tra && <KiemTra kt={tt.xong.kiem_tra} />}
           </div>
         ) : (
@@ -487,6 +514,29 @@ export default function ChiTiet({ dau, ttDau, dsNhac }: { dau: DuAnYT; ttDau: Tr
         <p className="w-full text-xs text-slate-400">
           Nhạc tự nhỏ đi khi có lời nói, to lên ở chỗ chuyển cảnh và màn kết. Đổi nhạc sau khi đã dựng xong thì bấm Dựng video: máy nhà chỉ ghép lại, không dựng lại hình. Thêm bài nhạc ở trang TikTok → Nhạc nền.
         </p>
+      </section>
+
+      {/* Cách đọc tên riêng: chỉ đổi chữ đưa vào giọng đọc */}
+      <section className="the grid gap-2 p-4">
+        <span className="font-bold">🗣 Cách đọc tên riêng</span>
+        <textarea
+          rows={3}
+          defaultValue={d.phat_am ?? ''}
+          placeholder={'Mỗi dòng một tên, ví dụ:\nGenghis Khan = Ghen-ghít Khan\nKharkov = Khác-cốp'}
+          onBlur={(e) => {
+            const v = e.target.value
+            if (v === (d.phat_am ?? '')) return
+            setD({ ...d, phat_am: v })
+            startTransition(async () => {
+              const kq = await luuPhatAmYouTube(d.id, v)
+              if (!kq.ok) return thongBao('loi', kq.loi)
+              thongBao('ok', 'Đã lưu cách đọc — các phần có tên này sẽ dựng lại')
+              await capNhatTt()
+            })
+          }}
+          className="input text-sm"
+        />
+        <p className="text-xs text-slate-400">Giọng đọc hay đọc sai tên nước ngoài: ghi cách đọc theo kiểu Việt. Phụ đề vẫn hiện tên gốc. Lưu xong bấm Dựng video.</p>
       </section>
 
       {/* Tiêu đề, mô tả, thẻ để đăng YouTube */}

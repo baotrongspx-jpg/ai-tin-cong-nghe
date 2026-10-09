@@ -225,6 +225,48 @@ def tai_anh_wiki(loi, tai_san):
             l.pop('anh_wiki', None)
 
 
+def ap_phat_am(chu, bang):
+    # bang: [[viết, đọc], ...] — thay cả từ (không phân biệt hoa thường) trước khi đọc
+    for viet, doc_la in sorted(bang or [], key=lambda x: -len(x[0] or '')):  # tên dài trước (Genghis Khan trước Genghis)
+        if viet and doc_la:
+            chu = re.sub(r'(?<![\w])' + re.escape(viet) + r'(?![\w])', doc_la, chu, flags=re.IGNORECASE)
+    return chu
+
+
+def gio_srt(giay):
+    ms = int(round(giay * 1000))
+    return f'{ms // 3600000:02d}:{ms // 60000 % 60:02d}:{ms // 1000 % 60:02d},{ms % 1000:03d}'
+
+
+def tao_srt(cac_cau):
+    # cac_cau: [{"bd", "kt", "chu"}] (giây, đã cộng độ lệch của từng phần). Câu dài tách thành đoạn ~84 ký tự (2 dòng),
+    # thời gian chia theo số chữ
+    khoi = []
+    for c in cac_cau:
+        tu = c['chu'].split()
+        doan, hien = [], []
+        for w in tu:
+            if hien and len(' '.join(hien + [w])) > 84:
+                doan.append(hien)
+                hien = [w]
+            else:
+                hien.append(w)
+        if hien:
+            doan.append(hien)
+        tong = max(1, sum(len(' '.join(d)) for d in doan))
+        t = c['bd']
+        for d in doan:
+            chu = ' '.join(d)
+            dai = (c['kt'] - c['bd']) * len(chu) / tong
+            # tách 2 dòng cho dễ đọc
+            if len(chu) > 42:
+                giua = len(d) // 2
+                chu = ' '.join(d[:giua]) + '\n' + ' '.join(d[giua:])
+            khoi.append(f'{len(khoi) + 1}\n{gio_srt(t)} --> {gio_srt(t + dai)}\n{chu}\n')
+            t += dai
+    return '\n'.join(khoi)
+
+
 def dung_video(may, ds_giong, lt, tm, td, fps=30, gioi_han=1500):
     # Đọc từng câu thoại bằng giọng của nhân vật nói câu đó, sinh trang HyperFrames rồi dựng ra tm/video.mp4.
     # Trả độ dài (giây) từng câu. Tiến độ: đọc giọng 10-30%, dựng hình 30-95%.
@@ -242,7 +284,7 @@ def dung_video(may, ds_giong, lt, tm, td, fps=30, gioi_han=1500):
     do_dai = []
     for i, l in enumerate(lt['loi']):
         td.bao(10 + 20 * i / len(lt['loi']), f'Đọc giọng câu {i + 1}/{len(lt["loi"])}')
-        wav, dd = doc(may, ds_giong, [l['chu']], lt['nhan_vat'][l['ai']]['giong'])
+        wav, dd = doc(may, ds_giong, [ap_phat_am(l['chu'], lt.get('phat_am'))], lt['nhan_vat'][l['ai']]['giong'])
         if l['ai'] in CHINH_GIONG:
             wav2, giay = chinh_giong(wav, CHINH_GIONG[l['ai']])
             if giay:
@@ -321,10 +363,12 @@ def dung_youtube(may, ds_giong, yc):
                 uoc = sum(len(l['chu']) for l in yc['loi_thoai']['loi']) / 14
                 dung_video(may, ds_giong, yc['loi_thoai'], tm, td, fps=24, gioi_han=max(1800, int(uoc * 40)))
                 shutil.move(str(tm / 'video.mp4'), str(tep))
+                if (tm / 'artifacts' / 'phu_de.json').exists():
+                    shutil.copy(tm / 'artifacts' / 'phu_de.json', tep.with_suffix('.phu-de.json'))
             finally:
                 shutil.rmtree(tm, ignore_errors=True)
-        for cu in thu_muc.glob(f'phan-{k:02d}-*.mp4'):
-            if cu != tep:
+        for cu in thu_muc.glob(f'phan-{k:02d}-*'):
+            if cu != tep and cu != tep.with_suffix('.phu-de.json'):
                 cu.unlink(missing_ok=True)
         gui(f'{goc}/phan-{k}.json', json.dumps({'xong': True, 'ma': ds_ma[k - 1], 'luc': int(time.time() * 1000)}), 'application/json')
         cac_phan = [thu_muc / f'phan-{j + 1:02d}-{m}.mp4' for j, m in enumerate(ds_ma)]
@@ -350,7 +394,24 @@ def dung_youtube(may, ds_giong, yc):
                 kiem_tra = {'do_dai': do_dai_video(ra), 'lufs': None, 'lufs_goc': None, 'da_chinh_am': False, 'im_lang': [], 'man_den': [],
                             'ghi_chu': [f'Máy nhà chưa tự kiểm tra được: {str(e)[:150]}']}
             anh_bia = bool(yc.get('anh_bia')) and tao_anh_bia(thu_muc, goc, yc['anh_bia'])
+            moc_chuong, cac_cau, lech = [], [], 0.0
+            for ph in cac_phan:
+                moc_chuong.append(round(lech, 2))
+                pd = ph.with_suffix('.phu-de.json')
+                if pd.exists():
+                    cac_cau += [{**c, 'bd': c['bd'] + lech, 'kt': c['kt'] + lech} for c in json.loads(pd.read_text(encoding='utf-8'))]
+                lech += do_dai_video(ph) or 0
+            phu_de = False
+            if cac_cau:
+                try:
+                    srt = tao_srt(cac_cau)
+                    ra.with_suffix('.srt').write_text(srt, encoding='utf-8')
+                    gui(f'{goc}/phu-de.srt', srt.encode('utf-8'), 'application/x-subrip')
+                    phu_de = True
+                except Exception:
+                    traceback.print_exc()
             gui(f'{goc}/xong.json', json.dumps({'tep': str(ra), 'ma': ds_ma, 'nhac': nhac, 'kiem_tra': kiem_tra, 'anh_bia': anh_bia,
+                                                'moc_chuong': moc_chuong, 'phu_de': phu_de,
                                                 'luc': int(time.time() * 1000)}, ensure_ascii=False), 'application/json')
     finally:
         td.xong()

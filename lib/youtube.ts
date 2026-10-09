@@ -19,7 +19,7 @@ import { apBienTap, deBaiBienTap, type DaBienTap, type KetQuaBienTap } from './b
 // video và chỉ lưu trên máy nhà (Desktop\Video-YouTube), vì video dài quá nặng để gửi lên kho.
 // Máy nhà báo kết quả: youtube/<id>/phan-<k>.json ({ xong, ma } hoặc { loi, ma }), tien-do.json, xong.json.
 const KHO = 'video-tiktok'
-const PHIEN_BAN = 12 // tăng khi đổi cách dựng để các phần dựng lại (2: thẻ minh hoạ / đạo cụ khung ngang; 3: giọng Mèo Mun; 4: nhịp chuyển cảnh mượt; 5: thẻ chương, màn kết, B-roll; 6: khung người kể, 7: người kể vẽ riêng, 8: nhân vật chính phim tiểu sử, 9: ảnh Wikipedia, 10: lời giới thiệu + đọc tên chương, ảnh đặt linh động, 11: bố cục chữ không che nhân vật, bỏ ghi nguồn trên ảnh, 12: thanh dòng thời gian, thẻ năm tự thêm)
+const PHIEN_BAN = 13 // tăng khi đổi cách dựng để các phần dựng lại (2: thẻ minh hoạ / đạo cụ khung ngang; 3: giọng Mèo Mun; 4: nhịp chuyển cảnh mượt; 5: thẻ chương, màn kết, B-roll; 6: khung người kể, 7: người kể vẽ riêng, 8: nhân vật chính phim tiểu sử, 9: ảnh Wikipedia, 10: lời giới thiệu + đọc tên chương, ảnh đặt linh động, 11: bố cục chữ không che nhân vật, bỏ ghi nguồn trên ảnh, 12: thanh dòng thời gian, thẻ năm tự thêm, 13: câu móc trước lời chào, màn kết 20 giây, phụ đề .srt, cách đọc tên riêng)
 const kho = () => db().storage.from(KHO)
 const thuMuc = (id: string) => `youtube/${id}`
 const tenViec = (id: string, k: number) => `yt-${id}-${k}.json`
@@ -76,6 +76,7 @@ export type DuAnYT = {
   am_luong_nhac?: number // % (mặc định 30)
   bien_tap?: DaBienTap // vòng biên tập cả phim (AI máy nhà) đã áp
   ai_cho?: { bien_tap?: string } // phiếu việc AI máy nhà đang chờ (mã phiếu)
+  phat_am?: string // cách đọc tên riêng, mỗi dòng "Tên = cách đọc" (chỉ đổi chữ đưa vào giọng đọc, phụ đề giữ nguyên)
 }
 
 const bam = (x: unknown) => createHash('sha256').update(JSON.stringify(x)).digest('hex').slice(0, 12)
@@ -133,7 +134,7 @@ function loiThoaiGui(d: DuAnYT, k: number) {
   // Tên chương AI đặt hay có sẵn "Phần 1: …" — bỏ đi để người kể không đọc "Chương 1. Phần 1"
   const tenChuong = p.tieu_de.replace(/^\s*(phần|chương|tập)\s*\d+\s*[:.\-–—]\s*/i, '').trim() || p.tieu_de
   const goc = {
-    kho: 'ngang', kenh: 'Công Nghệ 24H', chu_de: d.chu_de, moc: k === 1 ? p.moc : null,
+    kho: 'ngang', kenh: 'Công Nghệ 24H', chu_de: d.chu_de, moc: k === 1 ? p.moc : null, phat_am: bangPhatAm(d.phat_am),
     the_chuong: { so: k, ten: tenChuong, nhan: phim ? 'CHƯƠNG' : 'PHẦN' }, man_ket: k === d.phan.length,
   }
   const hinh = phim ? hinhChuong(d, k) : null
@@ -174,7 +175,10 @@ function loiThoaiGui(d: DuAnYT, k: number) {
       ...(phim ? { nhan_vat_phu: 'nhan_vat_chinh' } : {}),
       ...(chanDung ? veAnh(chanDung) : {}),
     })
-    loi.unshift(loiGioiThieu, ...docChuong)
+    // 5 giây đầu quyết định người xem ở lại: câu móc (câu đầu AI viết) mở màn, rồi mới chào + giới thiệu, đọc tên
+    // chương 1, vào chuyện
+    const moc = loi.shift()
+    loi.unshift(...(moc ? [moc] : []), loiGioiThieu, ...docChuong)
   } else loi.unshift(...docChuong)
   if (!phim || !hinh) return { ...goc, nhan_vat: NHAN_VAT, loi }
   // Thẻ năm tự thêm: câu nhắc tới một năm trong đời nhân vật mà AI chưa đặt thẻ (cách thẻ trước ít nhất 4 câu, khác năm
@@ -391,6 +395,20 @@ export async function chonNhacDuAn(id: string, nhac: string, amLuong: number) {
   await luuDuAn({ ...d, nhac, am_luong_nhac: Math.max(5, Math.min(80, Math.round(amLuong))) })
 }
 
+// "Tên = cách đọc" mỗi dòng → [[tên, cách đọc]]
+export function bangPhatAm(chu?: string): [string, string][] {
+  return (chu ?? '')
+    .split('\n')
+    .map((d) => d.split('=').map((x) => x.trim()))
+    .filter((x): x is [string, string] => x.length === 2 && !!x[0] && !!x[1])
+    .slice(0, 100)
+}
+export async function luuPhatAm(id: string, phatAm: string) {
+  const d = await docDuAn(id)
+  if (!d) throw new Error('Không tìm thấy video')
+  await luuDuAn({ ...d, phat_am: phatAm.slice(0, 5000) })
+}
+
 export async function suaThongTin(id: string, o: { tieu_de: string; mo_ta: string; the: string[] }) {
   const d = await docDuAn(id)
   if (!d) throw new Error('Không tìm thấy video')
@@ -405,7 +423,7 @@ export type TrangThaiPhan =
 export type KiemTraVideo = { do_dai: number | null; lufs: number | null; lufs_goc: number | null; da_chinh_am: boolean; im_lang: number[][]; man_den: number[][]; ghi_chu: string[] }
 export type TrangThaiDuAn = {
   phan: TrangThaiPhan[]
-  xong: { tep: string; kiem_tra?: KiemTraVideo; anh_bia?: { xem: string; tai: string } } | null
+  xong: { tep: string; kiem_tra?: KiemTraVideo; anh_bia?: { xem: string; tai: string }; moc_chuong?: number[]; phu_de?: string } | null
   mayNha: string | null
 }
 
@@ -415,7 +433,7 @@ export async function trangThaiDuAn(d: DuAnYT, mayNha: string | null): Promise<T
   const [{ data: viec }, tienDo, xong, ...kq] = await Promise.all([
     kho().list('hang-doi/viec', { limit: 200, search: `yt-${d.id}` }),
     docJson<{ phan: number; phanTram: number; buoc: string; luc: number }>(`${goc}/tien-do.json`),
-    docJson<{ tep: string; ma: string[]; nhac?: string | null; kiem_tra?: KiemTraVideo; anh_bia?: boolean }>(`${goc}/xong.json`),
+    docJson<{ tep: string; ma: string[]; nhac?: string | null; kiem_tra?: KiemTraVideo; anh_bia?: boolean; moc_chuong?: number[]; phu_de?: boolean }>(`${goc}/xong.json`),
     ...d.phan.map((_, i) => docJson<{ xong?: boolean; loi?: string; ma: string }>(`${goc}/phan-${i + 1}.json`)),
   ])
   const dangCho = new Set((viec ?? []).map((f) => f.name))
@@ -434,7 +452,11 @@ export async function trangThaiDuAn(d: DuAnYT, mayNha: string | null): Promise<T
   const khop = xong && xong.ma.length === ma.length && xong.ma.every((m, i) => m === ma[i]) && (xong.nhac ?? null) === nhacChon
   let daGhep: TrangThaiDuAn['xong'] = null
   if (khop) {
-    daGhep = { tep: xong.tep, kiem_tra: xong.kiem_tra }
+    daGhep = { tep: xong.tep, kiem_tra: xong.kiem_tra, moc_chuong: xong.moc_chuong }
+    if (xong.phu_de) {
+      const { data } = await kho().createSignedUrl(`${goc}/phu-de.srt`, 3600, { download: 'phu-de.srt' })
+      if (data) daGhep.phu_de = data.signedUrl
+    }
     if (xong.anh_bia) {
       const [xem, tai] = await Promise.all([
         kho().createSignedUrl(`${goc}/anh-bia.png`, 3600),

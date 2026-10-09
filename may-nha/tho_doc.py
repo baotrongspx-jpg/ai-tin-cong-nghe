@@ -859,8 +859,13 @@ def lam_tiep_viec_do():
         return
     try:
         o = json.loads(VIEC_DO.read_text(encoding='utf-8'))
-        gui(f'hang-doi/viec/{o["ten"]}', json.dumps(o['yc'], ensure_ascii=False).encode('utf-8'), 'application/json')
-        print(f'Làm tiếp việc dang dở lần trước: {o["ten"]}', flush=True)
+        du_an = o['yc'].get('du_an')
+        # Video đã bị xoá trên trang trong lúc máy nhà tắt thì thôi, không dựng lại
+        if du_an and not s.head(f'{URL}/{KHO}/youtube/{du_an}/du-an.json', timeout=30).ok:
+            print(f'Bỏ việc dang dở {o["ten"]}: video đã bị xoá', flush=True)
+        else:
+            gui(f'hang-doi/viec/{o["ten"]}', json.dumps(o['yc'], ensure_ascii=False).encode('utf-8'), 'application/json')
+            print(f'Làm tiếp việc dang dở lần trước: {o["ten"]}', flush=True)
     except Exception:
         traceback.print_exc()
     VIEC_DO.unlink(missing_ok=True)

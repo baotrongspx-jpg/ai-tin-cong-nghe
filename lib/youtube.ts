@@ -19,7 +19,7 @@ import { apBienTap, deBaiBienTap, type DaBienTap, type KetQuaBienTap } from './b
 // video và chỉ lưu trên máy nhà (Desktop\Video-YouTube), vì video dài quá nặng để gửi lên kho.
 // Máy nhà báo kết quả: youtube/<id>/phan-<k>.json ({ xong, ma } hoặc { loi, ma }), tien-do.json, xong.json.
 const KHO = 'video-tiktok'
-const PHIEN_BAN = 14 // tăng khi đổi cách dựng để các phần dựng lại (2: thẻ minh hoạ / đạo cụ khung ngang; 3: giọng Mèo Mun; 4: nhịp chuyển cảnh mượt; 5: thẻ chương, màn kết, B-roll; 6: khung người kể, 7: người kể vẽ riêng, 8: nhân vật chính phim tiểu sử, 9: ảnh Wikipedia, 10: lời giới thiệu + đọc tên chương, ảnh đặt linh động, 11: bố cục chữ không che nhân vật, bỏ ghi nguồn trên ảnh, 12: thanh dòng thời gian, thẻ năm tự thêm, 13: câu móc trước lời chào, màn kết 20 giây, phụ đề .srt, cách đọc tên riêng, 14: biểu cảm, đi vào cảnh, chữ động con số, tiền cảnh)
+const PHIEN_BAN = 15 // tăng khi đổi cách dựng để các phần dựng lại (2: thẻ minh hoạ / đạo cụ khung ngang; 3: giọng Mèo Mun; 4: nhịp chuyển cảnh mượt; 5: thẻ chương, màn kết, B-roll; 6: khung người kể, 7: người kể vẽ riêng, 8: nhân vật chính phim tiểu sử, 9: ảnh Wikipedia, 10: lời giới thiệu + đọc tên chương, ảnh đặt linh động, 11: bố cục chữ không che nhân vật, bỏ ghi nguồn trên ảnh, 12: thanh dòng thời gian, thẻ năm tự thêm, 13: câu móc trước lời chào, màn kết 20 giây, phụ đề .srt, cách đọc tên riêng, 14: biểu cảm, đi vào cảnh, chữ động con số, tiền cảnh, 15: cảnh hành động)
 const kho = () => db().storage.from(KHO)
 const thuMuc = (id: string) => `youtube/${id}`
 const tenViec = (id: string, k: number) => `yt-${id}-${k}.json`
@@ -379,14 +379,53 @@ function anhBia(d: DuAnYT) {
   const boi_canh = Object.entries(dem).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'truong_quay'
   // Phim tiểu sử: nhân vật chính (hình giai đoạn cuối, lúc nổi tiếng nhất) đứng giữa thay cho người kể
   const nhan_vat_chinh = d.loai === 'tieu_su' && d.phim ? hinhChuong(d, d.phan.length) : null
-  return { chu, chu_de: d.chu_de, kenh: 'Công Nghệ 24H', boi_canh, nguoi_ke: !nhan_vat_chinh && d.phan.some((p) => p.loi?.some((l) => l.ai === 'nguoi_ke')), nhan_vat_chinh }
+  // Ảnh bìa kiểu 3: ảnh chân dung thật (Wikimedia Commons) của nhân vật
+  const anh_that = d.loai === 'tieu_su' ? (d.phim?.anh?.find((a) => a.chinh)?.url ?? null) : null
+  return { chu, chu_de: d.chu_de, kenh: 'Công Nghệ 24H', boi_canh, nguoi_ke: !nhan_vat_chinh && d.phan.some((p) => p.loi?.some((l) => l.ai === 'nguoi_ke')), nhan_vat_chinh, anh_that }
 }
 
 // Bài nhạc nền sẽ dùng: bài đã chọn (nếu còn trong thư viện), không chọn thì bài đầu tiên; 'khong' thì không nhạc
 export async function nhacCuaDuAn(d: DuAnYT) {
   if (d.nhac === 'khong') return null
   const ds = await dsNhac().catch(() => [])
+  if (d.nhac === 'cam_xuc') {
+    const theoPhan = nhacTheoCamXuc(d, ds.map((x) => x.ten))
+    return theoPhan.length ? `cam_xuc:${theoPhan.join('|')}` : null
+  }
   return ds.find((x) => x.ten === d.nhac)?.ten ?? ds[0]?.ten ?? null
+}
+
+// Nhạc theo cảm xúc từng chương (chọn "Theo cảm xúc từng chương"): đặt tên bài nhạc có chữ chỉ cảm xúc — hung-trang /
+// buon / hoi-hop / vui / nhe-nhang — rồi mỗi chương lấy bài hợp với cảm xúc chủ đạo của chương (đếm cam_xuc, cảnh
+// hành động). Không có bài đúng cảm xúc thì lấy bài "nhẹ nhàng", rồi bài bất kỳ. Trả tên bài cho từng chương.
+const TU_CAM_XUC: Record<string, RegExp> = {
+  hung: /hung|hao|epic|anh-hung|chien-thang|vinh-quang/,
+  buon: /buon|sad|bi|tiec|mat-mat/,
+  hoi_hop: /hoi-hop|cang|tension|suspense|kich/,
+  vui: /vui|happy|tuoi|fun/,
+  nhe: /nhe|calm|em|chill|nen/,
+}
+function camXucChuong(loi: CauYT[]): keyof typeof TU_CAM_XUC {
+  const dem = { hung: 0, buon: 0, hoi_hop: 0, vui: 0, nhe: 1 }
+  for (const l of loi) {
+    if (l.cam_xuc === 'buon') dem.buon += 2
+    if (l.cam_xuc === 'lo_lang') dem.hoi_hop += 1
+    if (l.cam_xuc === 'tuc_gian' || l.cam_xuc === 'bat_ngo') dem.hoi_hop += 1.5
+    if (l.cam_xuc === 'vui') dem.vui += 1
+    if (l.cam_xuc === 'khang_dinh') dem.hung += 0.6
+    const hd = (l as CauYT & { hanh_dong?: string }).hanh_dong
+    if (hd === 'xung_tran' || hd === 'ky_binh') dem.hung += 3
+    if (hd === 'phao_hoa' || hd === 'dam_dong') dem.hung += 2
+  }
+  return (Object.entries(dem).sort((a, b) => b[1] - a[1])[0][0]) as keyof typeof TU_CAM_XUC
+}
+function nhacTheoCamXuc(d: DuAnYT, dsTen: string[]): string[] {
+  if (!dsTen.length) return []
+  const boDauTen = (x: string) => x.normalize('NFD').replace(/\p{M}/gu, '').replace(/đ/gi, 'd').toLowerCase().replace(/[^a-z0-9]+/g, '-')
+  return d.phan.map((p) => {
+    const cx = camXucChuong(p.loi ?? [])
+    return dsTen.find((t) => TU_CAM_XUC[cx].test(boDauTen(t))) ?? dsTen.find((t) => TU_CAM_XUC.nhe.test(boDauTen(t))) ?? dsTen[0]
+  })
 }
 
 export async function chonNhacDuAn(id: string, nhac: string, amLuong: number) {
@@ -423,7 +462,7 @@ export type TrangThaiPhan =
 export type KiemTraVideo = { do_dai: number | null; lufs: number | null; lufs_goc: number | null; da_chinh_am: boolean; im_lang: number[][]; man_den: number[][]; ghi_chu: string[] }
 export type TrangThaiDuAn = {
   phan: TrangThaiPhan[]
-  xong: { tep: string; kiem_tra?: KiemTraVideo; anh_bia?: { xem: string; tai: string }; moc_chuong?: number[]; phu_de?: string } | null
+  xong: { tep: string; kiem_tra?: KiemTraVideo; anh_bia?: { xem: string; tai: string }[]; moc_chuong?: number[]; phu_de?: string } | null
   mayNha: string | null
 }
 
@@ -433,7 +472,7 @@ export async function trangThaiDuAn(d: DuAnYT, mayNha: string | null): Promise<T
   const [{ data: viec }, tienDo, xong, ...kq] = await Promise.all([
     kho().list('hang-doi/viec', { limit: 200, search: `yt-${d.id}` }),
     docJson<{ phan: number; phanTram: number; buoc: string; luc: number }>(`${goc}/tien-do.json`),
-    docJson<{ tep: string; ma: string[]; nhac?: string | null; kiem_tra?: KiemTraVideo; anh_bia?: boolean; moc_chuong?: number[]; phu_de?: boolean }>(`${goc}/xong.json`),
+    docJson<{ tep: string; ma: string[]; nhac?: string | null; kiem_tra?: KiemTraVideo; anh_bia?: boolean | number; moc_chuong?: number[]; phu_de?: boolean }>(`${goc}/xong.json`),
     ...d.phan.map((_, i) => docJson<{ xong?: boolean; loi?: string; ma: string }>(`${goc}/phan-${i + 1}.json`)),
   ])
   const dangCho = new Set((viec ?? []).map((f) => f.name))
@@ -457,12 +496,17 @@ export async function trangThaiDuAn(d: DuAnYT, mayNha: string | null): Promise<T
       const { data } = await kho().createSignedUrl(`${goc}/phu-de.srt`, 3600, { download: 'phu-de.srt' })
       if (data) daGhep.phu_de = data.signedUrl
     }
-    if (xong.anh_bia) {
-      const [xem, tai] = await Promise.all([
-        kho().createSignedUrl(`${goc}/anh-bia.png`, 3600),
-        kho().createSignedUrl(`${goc}/anh-bia.png`, 3600, { download: 'anh-bia.png' }),
-      ])
-      if (xem.data && tai.data) daGhep.anh_bia = { xem: xem.data.signedUrl, tai: tai.data.signedUrl }
+    // Ảnh bìa: bản cũ ghi true (1 ảnh), bản mới ghi số ảnh (3 kiểu)
+    const soAnh = xong.anh_bia === true ? 1 : typeof xong.anh_bia === 'number' ? xong.anh_bia : 0
+    if (soAnh) {
+      const ten = ['anh-bia.png', 'anh-bia-2.png', 'anh-bia-3.png'].slice(0, Math.max(1, soAnh))
+      const ds = await Promise.all(
+        ten.map(async (t) => {
+          const [xem, tai] = await Promise.all([kho().createSignedUrl(`${goc}/${t}`, 3600), kho().createSignedUrl(`${goc}/${t}`, 3600, { download: t })])
+          return xem.data && tai.data ? { xem: xem.data.signedUrl, tai: tai.data.signedUrl } : null
+        }),
+      )
+      daGhep.anh_bia = ds.filter((x): x is { xem: string; tai: string } => !!x)
     }
   }
   return { phan, xong: daGhep, mayNha }
@@ -474,7 +518,13 @@ export async function guiDung(d: DuAnYT, chiPhan?: number) {
   if (d.phan.some((p) => !p.loi)) throw new Error('Còn phần chưa có lời thoại, chờ AI viết xong đã')
   const tt = await trangThaiDuAn(d, null)
   const ma = d.phan.map((_, i) => maPhan(d, i + 1))
-  const nhac = { nhac: await nhacCuaDuAn(d), am_luong_nhac: d.am_luong_nhac ?? 30 }
+  const maNhac = await nhacCuaDuAn(d)
+  // Nhạc theo cảm xúc: "cam_xuc:bài1|bài2|…" → danh sách bài cho từng chương (máy nhà ghép thành một dải nhạc)
+  const nhac = {
+    nhac: maNhac,
+    nhac_phan: maNhac?.startsWith('cam_xuc:') ? maNhac.slice(8).split('|') : null,
+    am_luong_nhac: d.am_luong_nhac ?? 30,
+  }
   const can = d.phan
     .map((_, i) => i + 1)
     .filter((k) => (chiPhan ? k === chiPhan : true) && ['chua_dung', 'loi'].includes(tt.phan[k - 1].loai))

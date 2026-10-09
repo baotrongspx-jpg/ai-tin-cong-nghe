@@ -406,15 +406,23 @@ export default function ChiTiet({ dau, ttDau, dsNhac }: { dau: DuAnYT; ttDau: Tr
               <NutChep chu={tt.xong.tep} ten="Chép đường dẫn" />
             </div>
             <p className="text-xs text-slate-500">Mở thư mục Desktop → Video-YouTube trên máy nhà để thấy video. Sửa lời thoại một phần thì chỉ phần đó dựng lại.</p>
-            {tt.xong.anh_bia && (
+            {tt.xong.anh_bia && tt.xong.anh_bia.length > 0 && (
               <div className="grid gap-2">
-                <p className="font-semibold">🖼 Ảnh bìa (thumbnail) tự động</p>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={tt.xong.anh_bia.xem} alt="Ảnh bìa video" className="w-full max-w-md rounded-xl ring-1 ring-slate-200" />
-                <a href={tt.xong.anh_bia.tai} className="btn btn-sm btn-phu justify-self-start">
-                  Tải ảnh bìa
-                </a>
-                <p className="text-xs text-slate-500">Ảnh cũng nằm cạnh video trong thư mục trên máy nhà (anh-bia.png). Trong YouTube Studio bấm Tải hình thu nhỏ lên.</p>
+                <p className="font-semibold">🖼 Ảnh bìa (thumbnail) tự động — {tt.xong.anh_bia.length} kiểu</p>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {tt.xong.anh_bia.map((a, i) => (
+                    <div key={i} className="grid gap-1">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={a.xem} alt={`Ảnh bìa kiểu ${i + 1}`} className="w-full rounded-xl ring-1 ring-slate-200" />
+                      <a href={a.tai} className="btn btn-sm btn-phu justify-self-start">
+                        Tải kiểu {i + 1}
+                      </a>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-slate-500">
+                  Ảnh cũng nằm cạnh video trên máy nhà. YouTube Studio → Chi tiết → Hình thu nhỏ → <b>Thử nghiệm và so sánh</b>: tải lên cả 3, YouTube tự chọn ảnh được bấm nhiều nhất.
+                </p>
               </div>
             )}
             {tt.xong.moc_chuong && tt.xong.moc_chuong.length >= 3 && (
@@ -492,6 +500,7 @@ export default function ChiTiet({ dau, ttDau, dsNhac }: { dau: DuAnYT; ttDau: Tr
               Bài {i + 1} · {(n.kichThuoc / 1e6).toFixed(1)} MB
             </option>
           ))}
+          <option value="cam_xuc">🎭 Theo cảm xúc từng chương (tự chọn bài)</option>
           <option value="khong">Không dùng nhạc nền</option>
         </select>
         {d.nhac !== 'khong' && (
@@ -512,7 +521,7 @@ export default function ChiTiet({ dau, ttDau, dsNhac }: { dau: DuAnYT; ttDau: Tr
           </label>
         )}
         <p className="w-full text-xs text-slate-400">
-          Nhạc tự nhỏ đi khi có lời nói, to lên ở chỗ chuyển cảnh và màn kết. Đổi nhạc sau khi đã dựng xong thì bấm Dựng video: máy nhà chỉ ghép lại, không dựng lại hình. Thêm bài nhạc ở trang TikTok → Nhạc nền.
+          Theo cảm xúc từng chương: đặt tên bài nhạc có chữ hung-trang, buon, hoi-hop, vui hoặc nhe-nhang (ví dụ &quot;hoi-hop-trong-tran.mp3&quot;), mỗi chương sẽ dùng bài hợp cảm xúc, chuyển bài êm giữa các chương. Nhạc tự nhỏ đi khi có lời nói, to lên ở chỗ chuyển cảnh và màn kết. Đổi nhạc sau khi đã dựng xong thì bấm Dựng video: máy nhà chỉ ghép lại, không dựng lại hình. Thêm bài nhạc ở trang TikTok → Nhạc nền.
         </p>
       </section>
 

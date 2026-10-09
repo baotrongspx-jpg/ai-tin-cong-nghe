@@ -1,6 +1,9 @@
 // Ảnh bìa (thumbnail) YouTube 1280x720: bối cảnh chính của video làm nền (mờ, tối), Mèo Mun ngạc nhiên bên trái,
 // Robot Bit bên phải, chữ to 3-6 từ viền đen ở giữa, nhãn chủ đề + tên kênh. Chụp bằng Edge chạy ẩn.
-// Chạy: node tao_anh_bia.mjs <vao.json> <ra.png>
+// Chạy: node tao_anh_bia.mjs <vao.json> <ra.png> [kiểu 1|2|3]
+// 3 kiểu (cho tính năng "Thử nghiệm và so sánh" ảnh bìa của YouTube): 1 = Mun, Bit + nhân vật chính / người kể đứng giữa;
+// 2 = cận cảnh nhân vật to bên trái, chữ to bên phải; 3 = ảnh thật (anh_that: tệp ảnh trên máy) bên phải, chữ bên trái,
+// Mun ló ra ngạc nhiên (không có ảnh thật thì như kiểu 2 với Robot Bit)
 //   vao.json: { "chu": "chữ to trên ảnh", "chu_de": "AI", "kenh": "Công Nghệ 24H", "boi_canh": "thanh_pho_dem", "nguoi_ke": false }
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
@@ -11,9 +14,10 @@ import { BOI_CANH } from './boiCanh.mjs'
 import { meoSvg, robotSvg } from './nhanVatChinh.mjs'
 import { nguoiKeSvg, nhanVatChinhSvg } from './nhanVatPhu.mjs'
 
-const [vao, ra] = process.argv.slice(2).map((x) => resolve(x))
+const [vao, ra] = process.argv.slice(2, 4).map((x) => resolve(x))
+const KIEU = Number(process.argv[4] ?? 1)
 // nhan_vat_chinh: hình nhân vật chính phim tiểu sử (nhanVatChinhSvg) — đứng giữa, to, có vầng sáng
-const { chu = '', chu_de = '', kenh = 'Công Nghệ 24H', boi_canh = 'truong_quay', nguoi_ke = false, nhan_vat_chinh = null } = JSON.parse(readFileSync(vao, 'utf8'))
+const { chu = '', chu_de = '', kenh = 'Công Nghệ 24H', boi_canh = 'truong_quay', nguoi_ke = false, nhan_vat_chinh = null, anh_that = null } = JSON.parse(readFileSync(vao, 'utf8'))
 const chinh = nhan_vat_chinh ? nhanVatChinhSvg(nhan_vat_chinh) : null
 const GOC = dirname(fileURLToPath(import.meta.url))
 const FONT = pathToFileURL(join(GOC, '..', '..', 'assets', 'fonts', 'BeVietnamPro-Bold.ttf')).href
@@ -32,6 +36,22 @@ const bc = (BOI_CANH[boi_canh] ?? BOI_CANH.truong_quay)('bia')
 // Mun ngạc nhiên (miệng mở), Bit cười
 const mat = (svg, id) => svg.replace(`id="${id}-mieng-dong"`, `id="${id}-mieng-dong" opacity="0"`).replace(`id="${id}-mieng-mo"`, `id="${id}-mieng-mo" opacity="1"`)
 
+function thanKieu() {
+  const coAnh = KIEU === 3 && anh_that && existsSync(anh_that)
+  const nen = `<div class="nen"><svg viewBox="0 380 1080 760" preserveAspectRatio="xMidYMid slice">${bc.svg}</svg></div>`
+  const nhan = chu_de ? `<div class="nhan" style="left:auto;right:40px;top:70px;transform:rotate(3deg)">${esc(chu_de)}</div>` : ''
+  if (coAnh) {
+    return `${nen}<img class="anh" src="${pathToFileURL(anh_that).href}"/><div class="anh-mo"></div>
+<div class="nv lo">${mat(meoSvg, 'meo').replace(/width="\d+" height="\d+"/, 'width="100%"')}</div>
+${nhan}<div class="chu trai">${chuHtml}</div>`
+  }
+  // Kiểu 2 (hoặc 3 không có ảnh thật): cận cảnh nhân vật chính (hoặc Mun / Bit) bên trái
+  const nv = chinh
+    ? `<svg viewBox="${chinh.viewBox}" width="100%">${chinh.svg('bia-can')}</svg>`
+    : mat(KIEU === 3 ? robotSvg : meoSvg, KIEU === 3 ? 'robot' : 'meo').replace(/width="\d+" height="\d+"/, 'width="100%"')
+  return `${nen}<div class="toi2"></div><div class="tia" style="left:330px;top:420px"></div><div class="can">${nv}</div>${nhan}<div class="chu phai">${chuHtml}</div>`
+}
+
 const html = `<!doctype html><html><head><meta charset="utf-8"><style>
 @font-face { font-family: B; src: url("${FONT}"); }
 * { margin: 0; box-sizing: border-box; }
@@ -49,17 +69,27 @@ body { width: 1280px; height: 720px; overflow: hidden; font-family: B, sans-seri
   -webkit-text-stroke: 14px #111; paint-order: stroke fill; text-shadow: 0 10px 0 #111, 0 18px 30px #000c; letter-spacing: -1px; }
 .chu div { white-space: nowrap; } .vang { color: #facc15; }
 .nhan { position: absolute; left: 50%; transform: translateX(-50%) rotate(-3deg); top: 42px; background: #dc2626; color: #fff; font-size: 34px; padding: 6px 26px; border-radius: 12px; border: 5px solid #fff; box-shadow: 0 8px 18px #0009; text-transform: uppercase; }
+/* Kiểu 2 / 3: chữ dồn một bên, nhân vật / ảnh thật bên kia */
+.chu.trai, .chu.phai { top: 170px; text-align: left; font-size: ${Math.round(coChu * 0.86)}px; }
+.chu.phai { left: 560px; right: 40px; } .chu.trai { left: 50px; right: 640px; }
+.chu.trai div, .chu.phai div { white-space: normal; }
+.can { position: absolute; left: -90px; bottom: -520px; width: 760px; filter: drop-shadow(0 0 18px #fff9) drop-shadow(0 26px 30px #000c); }
+.toi2 { position: absolute; inset: 0; background: linear-gradient(90deg, #0000 25%, #000c 55%, #000e); }
+.anh { position: absolute; right: 0; top: 0; width: 760px; height: 720px; object-fit: cover; }
+.anh-mo { position: absolute; inset: 0; background: linear-gradient(90deg, #0f172a 40%, #0f172acc 50%, #0f172a00 72%); }
+.lo { position: absolute; left: 300px; bottom: -150px; width: 330px; transform: rotate(8deg); filter: drop-shadow(0 16px 20px #000c); }
 .kenh { position: absolute; right: 26px; top: 22px; color: #fff; font-size: 24px; background: #000a; padding: 6px 16px; border-radius: 10px; border-left: 6px solid #38bdf8; }
 </style></head><body>
-<div class="nen"><svg viewBox="0 380 1080 760" preserveAspectRatio="xMidYMid slice">${bc.svg}</svg></div>
-<div class="toi"></div><div class="tia"></div>
+${KIEU === 1 ? '' : thanKieu()}
+<div class="nen" style="${KIEU === 1 ? '' : 'display:none'}"><svg viewBox="0 380 1080 760" preserveAspectRatio="xMidYMid slice">${bc.svg}</svg></div>
+${KIEU === 1 ? `<div class="toi"></div><div class="tia"></div>
 <div class="nv meo">${mat(meoSvg, 'meo').replace(/width="\d+" height="\d+"/, 'width="100%"')}</div>
 <div class="nv robot">${mat(robotSvg, 'robot').replace(/width="\d+" height="\d+"/, 'width="100%"')}</div>
 ${chinh ? `<div class="nv chinh"><svg viewBox="${chinh.viewBox}" width="100%">${chinh.svg('bia-chinh')}</svg></div>` : ''}
 ${nguoi_ke ? `<div class="nv ke"><svg viewBox="80 40 440 660" width="100%">${nguoiKeSvg('ke')}</svg></div>` : ''}
 ${chu_de ? `<div class="nhan">${esc(chu_de)}</div>` : ''}
+<div class="chu">${chuHtml}</div>` : ''}
 <div class="kenh">${esc(kenh)}</div>
-<div class="chu">${chuHtml}</div>
 </body></html>`
 
 const tam = mkdtempSync(join(tmpdir(), 'anh-bia-'))

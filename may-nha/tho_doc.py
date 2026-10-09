@@ -307,16 +307,43 @@ def do_dai_video(tep):
     return int(m.group(1)) * 3600 + int(m.group(2)) * 60 + float(m.group(3)) if m else None
 
 
-def tron_nhac_nen(thu_muc, vao, ra, ten_nhac, am_luong, td):
+def dai_nhac_theo_phan(thu_muc, cac_bai, do_dai_phan):
+    # Ghép dải nhạc nền: chương j dùng bài cac_bai[j] (lặp cho đủ), cắt đúng độ dài chương, chuyển bài êm (mờ dần 1,5 giây
+    # ở hai đầu mỗi đoạn). Trả tệp .m4a hoặc None
+    tep = {}
+    for ten in dict.fromkeys(cac_bai):
+        r = s.get(f'{URL}/{KHO}/nhac/{ten}', timeout=120)
+        if not r.ok:
+            return None
+        p = thu_muc / f'nhac-{len(tep)}{Path(ten).suffix}'
+        p.write_bytes(r.content)
+        tep[ten] = p
+    vao, loc = [], []
+    for j, (ten, dai) in enumerate(zip(cac_bai, do_dai_phan)):
+        vao += ['-stream_loop', '-1', '-i', tep[ten].name]
+        loc.append(f'[{j}:a]atrim=0:{dai:.2f},asetpts=PTS-STARTPTS,aformat=sample_rates=44100:channel_layouts=stereo,'
+                   f'afade=t=in:d=1.5,afade=t=out:st={max(0, dai - 1.5):.2f}:d=1.5[n{j}]')
+    loc.append(''.join(f'[n{j}]' for j in range(len(cac_bai))) + f'concat=n={len(cac_bai)}:v=0:a=1[ra]')
+    ra = thu_muc / 'nhac-dai.m4a'
+    chay([str(FFMPEG), '-hide_banner', '-y', *vao, '-filter_complex', ';'.join(loc), '-map', '[ra]', '-c:a', 'aac', '-b:a', '192k', ra.name], thu_muc, 1800)
+    for p in tep.values():
+        p.unlink(missing_ok=True)
+    return ra
+
+
+def tron_nhac_nen(thu_muc, vao, ra, ten_nhac, am_luong, td, tep_nhac_san=None):
     # Nhạc nền dưới cả video: lặp cho đủ dài, to dần đầu / nhỏ dần cuối, TỰ NHỎ ĐI khi có lời nói (nén theo giọng —
     # sidechain), nghe rõ hơn ở chỗ chuyển cảnh / khoảng lặng / màn kết. Lỗi thì trả False (dùng bản không nhạc).
     try:
         td.bao(98, 'Trộn nhạc nền', ep=True)
-        r = s.get(f'{URL}/{KHO}/nhac/{ten_nhac}', timeout=120)
-        if not r.ok:
-            return False
-        tep_nhac = thu_muc / ('nhac-nen' + Path(ten_nhac).suffix)
-        tep_nhac.write_bytes(r.content)
+        if tep_nhac_san:
+            tep_nhac = tep_nhac_san
+        else:
+            r = s.get(f'{URL}/{KHO}/nhac/{ten_nhac}', timeout=120)
+            if not r.ok:
+                return False
+            tep_nhac = thu_muc / ('nhac-nen' + Path(ten_nhac).suffix)
+            tep_nhac.write_bytes(r.content)
         tong = do_dai_video(vao) or 600
         loc = (f'[0:a]asplit=2[giong][dieu];[1:a]volume={am_luong / 100:.2f},afade=t=in:d=2,afade=t=out:st={max(0, tong - 4):.2f}:d=4[nhac];'
                '[nhac][dieu]sidechaincompress=threshold=0.015:ratio=8:attack=20:release=450[nhacnho];'
@@ -331,18 +358,37 @@ def tron_nhac_nen(thu_muc, vao, ra, ten_nhac, am_luong, td):
 
 
 def tao_anh_bia(thu_muc, goc, thong_tin):
-    # Ảnh bìa 1280x720 (hoat-hinh/tao_anh_bia.mjs) lưu cạnh video và gửi lên kho để trang web hiện / tải. Lỗi thì bỏ qua.
+    # 3 ảnh bìa 1280x720 (hoat-hinh/tao_anh_bia.mjs, kiểu 1-3 cho "Thử nghiệm và so sánh" của YouTube) lưu cạnh video
+    # (anh-bia.png, anh-bia-2.png, anh-bia-3.png) và gửi lên kho. Kiểu 3 cần ảnh chân dung thật: tải về trước.
+    # Trả số ảnh làm được (0 = lỗi).
+    vao = thu_muc / 'anh-bia.json'
+    anh_that = thu_muc / 'anh-that.jpg'
+    so = 0
     try:
-        vao = thu_muc / 'anh-bia.json'
-        ra = thu_muc / 'anh-bia.png'
-        vao.write_text(json.dumps(thong_tin, ensure_ascii=False), encoding='utf-8')
-        chay(['node', str(HOAT_HINH / 'tao_anh_bia.mjs'), str(vao), str(ra)], thu_muc, 180)
+        tt = dict(thong_tin)
+        if tt.get('anh_that'):
+            try:
+                r = requests.get(tt['anh_that'], headers={'User-Agent': UA_WIKI}, timeout=60)
+                if r.ok and r.headers.get('content-type', '').startswith('image/'):
+                    anh_that.write_bytes(r.content)
+                    tt['anh_that'] = str(anh_that)
+                else:
+                    tt['anh_that'] = None
+            except Exception:
+                tt['anh_that'] = None
+        vao.write_text(json.dumps(tt, ensure_ascii=False), encoding='utf-8')
+        for kieu in (1, 2, 3):
+            ten = 'anh-bia.png' if kieu == 1 else f'anh-bia-{kieu}.png'
+            try:
+                chay(['node', str(HOAT_HINH / 'tao_anh_bia.mjs'), str(vao), str(thu_muc / ten), str(kieu)], thu_muc, 180)
+                gui(f'{goc}/{ten}', (thu_muc / ten).read_bytes(), 'image/png')
+                so += 1
+            except Exception:
+                traceback.print_exc()
+    finally:
         vao.unlink(missing_ok=True)
-        gui(f'{goc}/anh-bia.png', ra.read_bytes(), 'image/png')
-        return True
-    except Exception:
-        traceback.print_exc()
-        return False
+        anh_that.unlink(missing_ok=True)
+    return so
 
 
 def dung_youtube(may, ds_giong, yc):
@@ -380,7 +426,14 @@ def dung_youtube(may, ds_giong, yc):
             chay([str(FFMPEG), '-hide_banner', '-y', '-f', 'concat', '-safe', '0', '-i', 'ds.txt', '-c', 'copy', '-movflags', '+faststart', ghep.name], thu_muc, 1800)
             (thu_muc / 'ds.txt').unlink(missing_ok=True)
             nhac = yc.get('nhac')
-            if nhac and tron_nhac_nen(thu_muc, ghep, ra, nhac, yc.get('am_luong_nhac', 30), td):
+            # Nhạc theo cảm xúc từng chương: ghép dải nhạc theo độ dài từng phần rồi trộn như một bài
+            dai_nhac = None
+            if nhac and yc.get('nhac_phan') and len(yc['nhac_phan']) == len(cac_phan):
+                try:
+                    dai_nhac = dai_nhac_theo_phan(thu_muc, yc['nhac_phan'], [do_dai_video(p) or 0 for p in cac_phan])
+                except Exception:
+                    traceback.print_exc()
+            if nhac and (dai_nhac or not yc.get('nhac_phan')) and tron_nhac_nen(thu_muc, ghep, ra, nhac, yc.get('am_luong_nhac', 30), td, dai_nhac):
                 ghep.unlink(missing_ok=True)
             else:
                 nhac = None
@@ -393,7 +446,7 @@ def dung_youtube(may, ds_giong, yc):
                 traceback.print_exc()
                 kiem_tra = {'do_dai': do_dai_video(ra), 'lufs': None, 'lufs_goc': None, 'da_chinh_am': False, 'im_lang': [], 'man_den': [],
                             'ghi_chu': [f'Máy nhà chưa tự kiểm tra được: {str(e)[:150]}']}
-            anh_bia = bool(yc.get('anh_bia')) and tao_anh_bia(thu_muc, goc, yc['anh_bia'])
+            anh_bia = tao_anh_bia(thu_muc, goc, yc['anh_bia']) if yc.get('anh_bia') else 0
             moc_chuong, cac_cau, lech = [], [], 0.0
             for ph in cac_phan:
                 moc_chuong.append(round(lech, 2))

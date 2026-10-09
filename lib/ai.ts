@@ -302,6 +302,8 @@ export const BOI_CANH = [
 ] as const
 // Thời tiết phủ lên bối cảnh (may-nha/hoat-hinh/tao_video.mjs): tuyết rơi, mưa, sương mù
 export const THOI_TIET = ['khong', 'tuyet', 'mua', 'suong'] as const
+// Cảnh hành động dựng sẵn (may-nha/hoat-hinh/hanhDong.mjs)
+export const HANH_DONG = ['khong', 'ky_binh', 'xung_tran', 'dam_dong', 'lich_lat', 'ten_lua', 'phao_hoa'] as const
 export const DAO_CU = [
   'khong', 'dien_thoai', 'laptop', 'kinh_lup', 'bieu_do', 'tien', 'khien', 'coi_bao', 'chip', 'o_to',
   'ten_lua', 'bong_den', 'o_khoa', 'the_ngan_hang', 'robot', 'tai_lieu', 'dong_ho', 'trai_dat', 'tay_cam_game', 'may_anh',
@@ -355,6 +357,7 @@ export const LUAT_HINH = `- cam_xuc: the speaker's emotion and gesture for that 
 - anh_sang (light and colour grade of the whole frame): binh_thuong (neutral), am_ap (warm: friendly, cosy, happy endings), lanh (cool blue: technology, facts, calm analysis, night), cang_thang (dark, high contrast: tension, crime, threats), tuoi_sang (bright: joy, success, fun), mo_mong (dreamy purple: imagination, the future, ideas), bi_an (dark purple: mystery, secrets, hackers), canh_bao (pulsing red: danger, warnings, emergencies), loe_sang (a white flash: a sudden shock or "aha" moment, then neutral). Keep the same light for consecutive lines of the same mood and change it when the mood changes.
 - am_thanh (one sound effect at the start of the line, on about a third of the lines, never the same one twice in a row; prefer a sound that matches what is SEEN or happening in the line — the place, an object, an action — over a generic one): vut (whoosh: fast change, a new idea arriving), bum (deep impact: a shocking number or reveal), ting (chime: a good tip, the right answer, an idea), bop (pop: something small and fun appears), coi_bao (siren: police, danger, alarm), go_phim (keyboard typing: hacking, typing messages, computers working), tim_dap (heartbeat: suspense, fear), tich_tac (clock ticking: deadlines, waiting, time pressure), vui (happy jingle: success, celebration), hut_hang (sad descending tone: disappointment, failure, loss), gio (wind gust: open fields, mountains, cold winter, loneliness, a storm coming), buoc_chan (footsteps: someone arrives, walks in, leaves, a long journey), vo_tay (applause: a speech, an award, a launch event, praise), xe_chay (traffic passing: city streets, roads, commuting, a car), bo_xe (motorbike revving: motorbikes, delivery riders, Vietnamese streets, racing), coi_xe (car horn: traffic jams, busy streets, a warning on the road), mua (rain: sad or hard times, the rainy season, floods), sam (thunder: a sudden disaster, a shock, a storm, a crisis hits), chuong_dt (phone ringing: a call, a scam call, important news arriving), chuong_truong (school bell: school, classes, exams, childhood), tien (cash register "ka-ching": money, sales, profit, prices, getting rich), go_cua (knocking on a door: a visit, the police arrive, an opportunity knocks), chup_anh (camera shutter: photos, the press, paparazzi, a selfie), reo_ho (crowd cheering: sports, a goal, victory, a huge success), bua (hammering: building, construction, repairing, hard work), phao_hoa (fireworks: celebration, Tết, a big milestone), may_bay (airplane flying over: travel, going abroad, airports), nuoc (water splash: the sea, rivers, swimming, pouring), khong (none). Footsteps when an extra first appears and the typical sound of a new place (street traffic, stadium crowd, school bell…) are added automatically, so use am_thanh for the moment itself.
 - lang: true for a deliberate dramatic pause of silence just before this line (before a big reveal, a twist or an emotional moment), at most 1 line in 8; false otherwise.
+- hanh_dong: a big animated action shown behind the characters while the line is spoken, so viewers SEE the event instead of only hearing it: ky_binh (a cavalry troop galloping across: armies on the move, raids, nomad horsemen), xung_tran (two armies charging into each other: a battle, a war breaking out), dam_dong (a cheering crowd: victory, a coronation, a concert, a launch event, public support or protest), lich_lat (calendar pages flipping: years passing, "many years later"), ten_lua (a rocket launching: a bold leap, space, sudden rise), phao_hoa (fireworks: celebration, success, a new era), khong (none, most lines). Use them only at the real big moments, about 1 line in 8, never on two consecutive lines unless the action continues.
 - thoi_tiet: weather drawn over the backdrop when the story calls for it: tuyet (falling snow: winter, cold lands, harsh hardship), mua (rain: sadness, loss, storms, gloomy moments), suong (mist: mystery, dawn, legends, uncertain times), khong (none, most lines). Keep the same weather for consecutive lines in the same scene.
 - chuyen_canh: the transition when this line starts a new backdrop: truot (slide: calm continuation), quet (whip pan: fast, energetic), phong (zoom in: focusing on a detail), mo (fade through black: time passes, serious or sad turn), xuyen (dive through: entering a new world, going inside technology); tu_dong when the backdrop does not change or any transition fits.
 `
@@ -389,6 +392,7 @@ export const CauSchema = z.object({
   lang: z.boolean(),
   chuyen_canh: z.enum(CHUYEN_CANH),
   thoi_tiet: z.enum(THOI_TIET).optional(),
+  hanh_dong: z.enum(HANH_DONG).optional(),
 })
 export const MocSchema = z.object({ chu: z.string(), bieu_tuong: z.string() })
 export const JSON_CAU = {
@@ -425,8 +429,9 @@ export const JSON_CAU = {
     lang: { type: 'boolean' },
     chuyen_canh: { type: 'string', enum: [...CHUYEN_CANH] },
     thoi_tiet: { type: 'string', enum: [...THOI_TIET] },
+    hanh_dong: { type: 'string', enum: [...HANH_DONG] },
   },
-  required: ['ai', 'chu', 'cam_xuc', 'boi_canh', 'dao_cu', 'nhan_vat_phu', 'bang', 'minh_hoa', 'khung_hinh', 'may_quay', 'anh_sang', 'am_thanh', 'lang', 'chuyen_canh', 'thoi_tiet'],
+  required: ['ai', 'chu', 'cam_xuc', 'boi_canh', 'dao_cu', 'nhan_vat_phu', 'bang', 'minh_hoa', 'khung_hinh', 'may_quay', 'anh_sang', 'am_thanh', 'lang', 'chuyen_canh', 'thoi_tiet', 'hanh_dong'],
   additionalProperties: false,
 }
 export const JSON_MOC = {

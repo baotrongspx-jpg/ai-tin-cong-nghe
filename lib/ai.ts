@@ -369,6 +369,7 @@ export const LUAT_HINH = `- cam_xuc: the speaker's emotion and gesture for that 
 - lang: true for a deliberate dramatic pause of silence just before this line (before a big reveal, a twist or an emotional moment), at most 1 line in 8; false otherwise.
 - hanh_dong: a big animated action shown behind the characters while the line is spoken, so viewers SEE the event instead of only hearing it: ky_binh (a cavalry troop galloping across: armies on the move, raids, nomad horsemen), xung_tran (two armies charging into each other: a battle, a war breaking out), dam_dong (a cheering crowd: victory, a coronation, a concert, a launch event, public support or protest), lich_lat (calendar pages flipping: years passing, "many years later"), ten_lua (a rocket launching: a bold leap, space, sudden rise), phao_hoa (fireworks: celebration, success, a new era), khong (none, most lines). Use them only at the real big moments, about 1 line in 8, never on two consecutive lines unless the action continues.
 - thoi_tiet: weather drawn over the backdrop when the story calls for it: tuyet (falling snow: winter, cold lands, harsh hardship), mua (rain: sadness, loss, storms, gloomy moments), suong (mist: mystery, dawn, legends, uncertain times), khong (none, most lines). Keep the same weather for consecutive lines in the same scene.
+- anh_nen: 2 to 4 English words to search a free stock photo site for a real photo shown behind the cartoon backdrop of this scene, describing the exact place, era and mood of the line (for example "tokyo street night", "car factory robots", "rice field sunset", "ancient chinese palace", "empty office night"). Generic places and objects only: no brand names, product models or people's names. Keep the same anh_nen on consecutive lines with the same backdrop (only the first line of a backdrop is used); empty string for truong_quay.
 - chuyen_canh: the transition when this line starts a new backdrop: truot (slide: calm continuation), quet (whip pan: fast, energetic), phong (zoom in: focusing on a detail), mo (fade through black: time passes, serious or sad turn), xuyen (dive through: entering a new world, going inside technology); tu_dong when the backdrop does not change or any transition fits.
 `
 
@@ -403,6 +404,7 @@ export const CauSchema = z.object({
   chuyen_canh: z.enum(CHUYEN_CANH),
   thoi_tiet: z.enum(THOI_TIET).optional(),
   hanh_dong: z.enum(HANH_DONG).optional(),
+  anh_nen: z.string().optional(),
 })
 export const MocSchema = z.object({ chu: z.string(), bieu_tuong: z.string() })
 export const JSON_CAU = {
@@ -440,8 +442,9 @@ export const JSON_CAU = {
     chuyen_canh: { type: 'string', enum: [...CHUYEN_CANH] },
     thoi_tiet: { type: 'string', enum: [...THOI_TIET] },
     hanh_dong: { type: 'string', enum: [...HANH_DONG] },
+    anh_nen: { type: 'string' },
   },
-  required: ['ai', 'chu', 'cam_xuc', 'boi_canh', 'dao_cu', 'nhan_vat_phu', 'bang', 'minh_hoa', 'khung_hinh', 'may_quay', 'anh_sang', 'am_thanh', 'lang', 'chuyen_canh', 'thoi_tiet', 'hanh_dong'],
+  required: ['ai', 'chu', 'cam_xuc', 'boi_canh', 'dao_cu', 'nhan_vat_phu', 'bang', 'minh_hoa', 'khung_hinh', 'may_quay', 'anh_sang', 'am_thanh', 'lang', 'chuyen_canh', 'thoi_tiet', 'hanh_dong', 'anh_nen'],
   additionalProperties: false,
 }
 export const JSON_MOC = {

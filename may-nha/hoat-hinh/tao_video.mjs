@@ -508,7 +508,17 @@ const nenCanh = doanCanh.map((dc, k) => {
   const svg = NGANG
     ? `<svg class="nen-svg" viewBox="-1080 0 3240 1920" width="3240" height="1920" style="margin-left:-1080px"><g>${bc.svg}</g><g transform="scale(-1 1)">${guong}</g><g transform="translate(2160 0) scale(-1 1)">${guong}</g>${song.svg}</svg>`
     : `<svg class="nen-svg" viewBox="0 0 1080 1920" width="1080" height="1920">${bc.svg}${song.svg}</svg>`
-  return `<div id="bc${k}" class="lop-nen"${k ? ' style="opacity:0"' : ''}>${svg}</div>`
+  // Ảnh nền thật (video YouTube: ảnh Pixabay máy nhà tải theo từ khoá của cảnh, anh_nen_tep ở câu đầu cảnh): phủ phần
+  // phía trên mặt sàn (y < 1180), mờ dần xuống sàn vẽ để nhân vật vẫn đứng trên sàn hoạt hình; hơi nhoè + tối nhẹ như
+  // phông sân khấu, từ từ phóng to suốt cảnh. Không có ảnh thì giữ nguyên cảnh vẽ.
+  const tepAnh = loi[dc.tu].anh_nen_tep
+  let anh = ''
+  if (tepAnh && existsSync(join(GOC, 'hyperframes/assets', tepAnh))) {
+    const [x, y, w, h] = NGANG ? [-560, 160, 2200, 1040] : [-60, -60, 1200, 1260]
+    anh = `<img id="bc${k}-anh" class="anh-nen-canh" src="assets/${esc(tepAnh)}" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px"/>`
+    tw.push(`tl.fromTo("#bc${k}-anh", { scale: 1 }, { scale: 1.06, duration: ${f(Math.max(1, het - t0))}, ease: "none", immediateRender: false }, ${f(t0)});`)
+  }
+  return `<div id="bc${k}" class="lop-nen"${k ? ' style="opacity:0"' : ''}>${svg}${anh}</div>`
 })
 
 // ── Máy quay: cảnh rộng, cảnh vừa và cận mặt người nói; nền trôi chậm hơn nhân vật để có chiều sâu ─
@@ -1170,6 +1180,8 @@ const trang = `<!doctype html>
       .nv { filter: drop-shadow(0 0 10px #ffffff66) drop-shadow(0 24px 30px #0000008c); }
       .lop-nen { position: absolute; inset: 0; }
       .nen-svg { display: block; }
+      .anh-nen-canh { position: absolute; object-fit: cover; transform-origin: 50% 70%; filter: blur(3.5px) brightness(0.74) saturate(0.92);
+        -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 92%, transparent 100%); mask-image: linear-gradient(to bottom, #000 0, #000 92%, transparent 100%); }
       .hat { position: absolute; border-radius: 50%; background: radial-gradient(circle, #ffffffcc, #ffffff00 70%); }
       #vien-toi { background: radial-gradient(ellipse 85% 70% at 50% 45%, transparent 55%, #00000099 100%); }
       .dao-cu { position: absolute; top: 560px; width: 190px; height: 190px; display: flex; align-items: center; justify-content: center; font-size: 150px; line-height: 1; font-family: "Emoji", sans-serif; filter: drop-shadow(0 18px 24px #0008); opacity: 0; }

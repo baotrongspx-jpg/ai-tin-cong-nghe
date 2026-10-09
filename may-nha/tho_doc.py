@@ -225,6 +225,82 @@ def tai_anh_wiki(loi, tai_san):
             l.pop('anh_wiki', None)
 
 
+# Ảnh nền thật cho từng cảnh video YouTube (Pixabay: dùng thương mại được, không bắt buộc ghi nguồn). Từ khoá AI đặt ở
+# câu đầu cảnh (anh_nen); kịch bản cũ chưa có thì lấy theo bối cảnh vẽ. Trường quay để trống: giữ cảnh vẽ của kênh.
+TU_KHOA_CANH = {
+    'pho_florida': 'city street sunny', 'may_chu': 'data center servers', 'don_canh_sat': 'police station',
+    'phong_khach': 'living room interior', 'van_phong': 'modern office', 'vu_tru': 'earth from space', 'cua_hang': 'electronics store',
+    'thanh_pho_dem': 'city skyline night', 'nong_thon': 'vietnam rice field', 'truong_hoc': 'classroom', 'benh_vien': 'hospital corridor',
+    'nha_may': 'factory assembly line', 'cong_truong': 'construction site crane', 'san_bay': 'airport terminal', 'bai_bien': 'tropical beach',
+    'nui_rung': 'mountain forest waterfall', 'cho': 'asian street market', 'nha_hang': 'restaurant interior', 'san_van_dong': 'football stadium',
+    'phong_hop': 'meeting room', 'phong_thi_nghiem': 'science laboratory', 'hoi_truong': 'conference hall', 'cang_bien': 'container port ship',
+    'nha_ngheo': 'old wooden house', 'san_khau': 'concert stage lights', 'thanh_pho_tuyet': 'snowy city winter', 'thu_vien': 'library bookshelves',
+    'san_chung_khoan': 'stock market trading', 'thao_nguyen': 'mongolia steppe', 'cung_dien': 'forbidden city palace',
+    'chien_truong': 'battlefield smoke', 'thanh_co': 'medieval castle', 'lang_xua': 'vietnam old village', 'sa_mac': 'desert dunes camel',
+    'bien_ca': 'sailing ship ocean', 'den_chua': 'pagoda temple', 'ga_ra': 'garage workshop', 'be_phong': 'rocket launch',
+    'phong_thu': 'recording studio', 'phim_truong': 'film set camera',
+}
+KHO_PIXABAY = THU_MUC_TAM.parent / 'anh-pixabay'  # ảnh đã tải (theo mã ảnh) + kết quả tìm (Pixabay yêu cầu nhớ 24 giờ)
+
+
+def tim_pixabay(tu_khoa):
+    # Danh sách [{id, url}] ảnh ngang phổ biến cho từ khoá; nhớ kết quả 24 giờ. Không có khoá / lỗi mạng thì trả rỗng.
+    if not env.get('PIXABAY_KEY'):
+        return []
+    tep = KHO_PIXABAY / 'tim.json'
+    try:
+        nho = json.loads(tep.read_text(encoding='utf-8')) if tep.exists() else {}
+    except ValueError:
+        nho = {}
+    o = nho.get(tu_khoa)
+    if o and time.time() - o['luc'] < 86400:
+        return o['anh']
+    try:
+        r = requests.get('https://pixabay.com/api/', params={'key': env['PIXABAY_KEY'], 'q': tu_khoa[:100], 'image_type': 'photo',
+                                                             'orientation': 'horizontal', 'safesearch': 'true', 'order': 'popular',
+                                                             'min_width': 1280, 'per_page': 20}, timeout=20)
+        r.raise_for_status()
+        anh = [{'id': h['id'], 'url': h['largeImageURL']} for h in r.json().get('hits', [])]
+    except Exception:
+        traceback.print_exc()
+        return []
+    nho[tu_khoa] = {'luc': time.time(), 'anh': anh}
+    KHO_PIXABAY.mkdir(parents=True, exist_ok=True)
+    tep.write_text(json.dumps(nho, ensure_ascii=False), encoding='utf-8')
+    return anh
+
+
+def tai_anh_nen(loi, tai_san, lech=0):
+    # Mỗi cảnh (các câu liền nhau cùng boi_canh, như tao_video.mjs) một ảnh Pixabay → assets/px-<mã>.jpg, ghi tên tệp vào
+    # anh_nen_tep của câu đầu cảnh. Không lặp ảnh trong một phần; lech (số phần) để các phần chọn ảnh khác nhau.
+    # Không tìm được thì cảnh giữ nền vẽ.
+    da_dung, lan = set(), {}
+    for i, l in enumerate(loi):
+        if i and l.get('boi_canh') == loi[i - 1].get('boi_canh'):
+            continue
+        tu_khoa = (l.get('anh_nen') or '').strip().lower() or TU_KHOA_CANH.get(l.get('boi_canh'), '')
+        if not tu_khoa:
+            continue
+        ds = [a for a in tim_pixabay(tu_khoa) if a['id'] not in da_dung]
+        if not ds:
+            continue
+        a = ds[(lech * 3 + lan.get(tu_khoa, 0)) % len(ds)]
+        lan[tu_khoa] = lan.get(tu_khoa, 0) + 1
+        goc = KHO_PIXABAY / f'{a["id"]}.jpg'
+        try:
+            if not goc.exists():
+                r = requests.get(a['url'], timeout=60)
+                r.raise_for_status()
+                KHO_PIXABAY.mkdir(parents=True, exist_ok=True)
+                goc.write_bytes(r.content)
+            shutil.copy(goc, tai_san / f'px-{a["id"]}.jpg')
+        except Exception:
+            traceback.print_exc()
+            continue
+        da_dung.add(a['id'])
+        l['anh_nen_tep'] = f'px-{a["id"]}.jpg'
+
+
 def ap_phat_am(chu, bang):
     # bang: [[viết, đọc], ...] — thay cả từ (không phân biệt hoa thường) trước khi đọc
     for viet, doc_la in sorted(bang or [], key=lambda x: -len(x[0] or '')):  # tên dài trước (Genghis Khan trước Genghis)
@@ -267,7 +343,7 @@ def tao_srt(cac_cau):
     return '\n'.join(khoi)
 
 
-def dung_video(may, ds_giong, lt, tm, td, fps=30, gioi_han=1500):
+def dung_video(may, ds_giong, lt, tm, td, fps=30, gioi_han=1500, anh_nen=None):
     # Đọc từng câu thoại bằng giọng của nhân vật nói câu đó, sinh trang HyperFrames rồi dựng ra tm/video.mp4.
     # Trả độ dài (giây) từng câu. Tiến độ: đọc giọng 10-30%, dựng hình 30-95%.
     shutil.rmtree(tm, ignore_errors=True)
@@ -281,6 +357,8 @@ def dung_video(may, ds_giong, lt, tm, td, fps=30, gioi_han=1500):
     for tep in (HOAT_HINH / 'am-thanh').glob('*.wav'):
         shutil.copy(tep, tai_san / tep.name)
     tai_anh_wiki(lt['loi'], tai_san)
+    if anh_nen is not None:  # video YouTube: ảnh nền Pixabay theo cảnh (anh_nen = số phần, để các phần chọn ảnh khác nhau)
+        tai_anh_nen(lt['loi'], tai_san, anh_nen)
     do_dai = []
     for i, l in enumerate(lt['loi']):
         td.bao(10 + 20 * i / len(lt['loi']), f'Đọc giọng câu {i + 1}/{len(lt["loi"])}')
@@ -429,7 +507,7 @@ def dung_youtube(may, ds_giong, yc):
             try:
                 # Phần dài vài phút: 24 khung hình/giây cho nhanh, cho dựng tới ~40 giây mỗi giây video
                 uoc = sum(len(l['chu']) for l in yc['loi_thoai']['loi']) / 14
-                dung_video(may, ds_giong, yc['loi_thoai'], tm, td, fps=24, gioi_han=max(1800, int(uoc * 40)))
+                dung_video(may, ds_giong, yc['loi_thoai'], tm, td, fps=24, gioi_han=max(1800, int(uoc * 40)), anh_nen=k)
                 shutil.move(str(tm / 'video.mp4'), str(tep))
                 if (tm / 'artifacts' / 'phu_de.json').exists():
                     shutil.copy(tm / 'artifacts' / 'phu_de.json', tep.with_suffix('.phu-de.json'))
@@ -506,7 +584,7 @@ def dung_short(may, ds_giong, yc):
     td = TienDo(None, duong=f'{goc}/tien-do-short.json', them={'so': so})
     tm = THU_MUC_TAM / f'yts-{du_an}-{so}'
     try:
-        dung_video(may, ds_giong, yc['loi_thoai'], tm, td, fps=30, gioi_han=1800)
+        dung_video(may, ds_giong, yc['loi_thoai'], tm, td, fps=30, gioi_han=1800, anh_nen=so)
         ra = thu_muc / f'Shorts-{so}.mp4'
         shutil.move(str(tm / 'video.mp4'), str(ra))
         try:

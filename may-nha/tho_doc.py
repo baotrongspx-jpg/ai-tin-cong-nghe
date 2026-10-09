@@ -428,6 +428,63 @@ def cham_anh(a, tu_khoa, nho):
     return diem
 
 
+ANH_SANG_HS = ['binh_thuong', 'am_ap', 'lanh', 'cang_thang', 'tuoi_sang', 'mo_mong', 'bi_an', 'canh_bao']
+THOI_TIET_HS = ['khong', 'tuyet', 'mua', 'suong']
+
+
+def doc_ho_so(lt, td=None):
+    # Phim tiểu sử: trước khi dựng, AI máy nhà (Ollama, không tốn lượt Gemini) đọc hồ sơ hình ảnh (lt['ho_so']: địa điểm,
+    # màu theo giai đoạn đời) cùng lời thoại phần này, rồi cho TỪNG CẢNH (các câu liền nhau cùng bối cảnh): bối cảnh vẽ khớp
+    # địa điểm nhất, từ khoá tranh nền theo mô tả địa điểm + thời đại, ánh sáng theo màu giai đoạn, thời tiết. Ánh sáng chỉ
+    # thay ở câu đang để bình thường (giữ câu AI đã chọn cảm xúc mạnh). Lỗi / AI máy nhà không chạy thì dựng như cũ.
+    hs, loi = lt.get('ho_so'), lt.get('loi') or []
+    if not hs or not loi:
+        return
+    if td:
+        td.bao(2, 'Đọc hồ sơ phim, chỉnh cảnh theo hồ sơ (AI máy nhà)', ep=True)
+    doan = []
+    for i, l in enumerate(loi):
+        if doan and l.get('boi_canh') == loi[doan[-1][0]].get('boi_canh'):
+            doan[-1][1] = i
+        else:
+            doan.append([i, i])
+    boi_canh_ds = ['truong_quay'] + list(TU_KHOA_CANH)
+    canh = [{'so': k, 'boi_canh': loi[tu].get('boi_canh'), 'loi': ' '.join(x.get('chu', '') for x in loi[tu:het + 1])[:500]} for k, (tu, het) in enumerate(doan)]
+    schema = {'type': 'object', 'properties': {'canh': {'type': 'array', 'items': {'type': 'object', 'properties': {
+        'so': {'type': 'integer'}, 'boi_canh': {'type': 'string', 'enum': boi_canh_ds}, 'anh_nen': {'type': 'string'},
+        'anh_sang': {'type': 'string', 'enum': ANH_SANG_HS}, 'thoi_tiet': {'type': 'string', 'enum': THOI_TIET_HS}},
+        'required': ['so', 'boi_canh', 'anh_nen', 'anh_sang', 'thoi_tiet']}}}, 'required': ['canh']}
+    system = ('You are the art director of an animated documentary. Follow the visual bible of the film exactly. For every scene of this '
+              'chapter: boi_canh = the drawn backdrop (from the list) closest to the bible location where the scene happens; anh_nen = 4 to 8 '
+              'English words describing that bible location for a cartoon background picture (place, era, time of day, atmosphere; no people, '
+              'no names); anh_sang = the colour mood of the current life phase from the bible (warm/happy phases am_ap or tuoi_sang, cold or '
+              'crisis phases lanh, cang_thang or bi_an, dreams mo_mong, danger canh_bao, otherwise binh_thuong); thoi_tiet = weather of '
+              'that location in the bible (khong if none). Keep the scene count and numbers.')
+    try:
+        tra = ai_may_nha.goi(system, json.dumps({'ho_so': hs, 'canh': canh}, ensure_ascii=False), schema, nhiet=0.3)
+        kq = {c['so']: c for c in json.loads(tra).get('canh', [])}
+    except Exception:
+        traceback.print_exc()
+        return
+    doi = 0
+    for k, (tu, het) in enumerate(doan):
+        c = kq.get(k)
+        if not c:
+            continue
+        for i in range(tu, het + 1):
+            l = loi[i]
+            if c['boi_canh'] in boi_canh_ds and c['boi_canh'] != l.get('boi_canh'):
+                l['boi_canh'] = c['boi_canh']
+                doi += 1
+            if c['anh_sang'] in ANH_SANG_HS and l.get('anh_sang', 'binh_thuong') == 'binh_thuong':
+                l['anh_sang'] = c['anh_sang']
+            if c['thoi_tiet'] in THOI_TIET_HS and (l.get('thoi_tiet') or 'khong') == 'khong':
+                l['thoi_tiet'] = c['thoi_tiet']
+        if (c.get('anh_nen') or '').strip():
+            loi[tu]['anh_nen'] = c['anh_nen'].strip()[:120]
+    print(f'Đọc hồ sơ phim: chỉnh {len(kq)}/{len(doan)} cảnh theo hồ sơ ({doi} câu đổi bối cảnh)', flush=True)
+
+
 def tai_anh_nen(loi, tai_san, lech=0, td=None):
     # Mỗi cảnh (các câu liền nhau cùng boi_canh, như tao_video.mjs) một tranh nền → assets/px-<mã>.jpg, ghi tên tệp vào
     # anh_nen_tep của câu đầu cảnh. Không lặp tranh trong một phần; lech (số phần) để các phần chọn tranh khác nhau.
@@ -547,6 +604,7 @@ def dung_video(may, ds_giong, lt, tm, td, fps=30, gioi_han=1500, anh_nen=None):
     for tep in (HOAT_HINH / 'am-thanh').glob('*.wav'):
         shutil.copy(tep, tai_san / tep.name)
     tai_anh_wiki(lt['loi'], tai_san, td)
+    doc_ho_so(lt, td)  # phim tiểu sử: chỉnh cảnh theo hồ sơ hình ảnh trước khi chọn tranh nền / dựng
     if anh_nen is not None:  # video YouTube: ảnh nền Pixabay theo cảnh (anh_nen = số phần, để các phần chọn ảnh khác nhau)
         tai_anh_nen(lt['loi'], tai_san, anh_nen, td)
     # Gom các câu cùng giọng đọc một lần (nhanh hơn nhiều so với từng câu, nhất là trên card NVIDIA)
@@ -848,8 +906,8 @@ def dung_hoat_hinh(may, ds_giong, yc, td):
 
 
 # Phiên bản máy nhà (gửi kèm tín hiệu sống): trang web biết máy nhà đã khởi động lại sau lần cập nhật chưa
-# (lib/youtube.ts: BAN_MAY_NHA phải bằng số này). 2: báo việc đang làm (hien-tai.json), Pixabay chặn thì nghỉ; 3: báo lại mỗi 20 giây; 4: tự khởi động lại khi code đổi
-BAN_MAY_NHA = 4
+# (lib/youtube.ts: BAN_MAY_NHA phải bằng số này). 2: báo việc đang làm (hien-tai.json), Pixabay chặn thì nghỉ; 3: báo lại mỗi 20 giây; 4: tự khởi động lại khi code đổi; 5: đọc hồ sơ phim trước khi dựng
+BAN_MAY_NHA = 5
 
 
 def bao_song():

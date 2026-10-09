@@ -24,7 +24,7 @@ const PHIEN_BAN = 23 // tăng khi đổi cách dựng để các phần dựng l
 const kho = () => db().storage.from(KHO)
 const thuMuc = (id: string) => `youtube/${id}`
 // Phiên bản máy nhà mới nhất (may-nha/tho_doc.py: BAN_MAY_NHA)
-const BAN_MAY_NHA = 4
+const BAN_MAY_NHA = 5
 const tenViec = (id: string, k: number) => `yt-${id}-${k}.json`
 
 // Mỗi phần ~3 phút; giọng VieNeu đọc khoảng 4,5 giây một câu thoại (đo trên video thật)
@@ -144,6 +144,15 @@ function loiThoaiGui(d: DuAnYT, k: number) {
   const goc = {
     kho: 'ngang', kenh: 'Công Nghệ 24H', chu_de: d.chu_de, moc: k === 1 ? p.moc : null, phat_am: bangPhatAm(d.phat_am),
     the_chuong: k === 1 ? null : { so: k, ten: tenChuong, nhan: phim ? 'CHƯƠNG' : 'PHẦN' }, man_ket: k === d.phan.length,
+    // Hồ sơ hình ảnh rút gọn (phim tiểu sử): máy nhà đọc trước khi dựng, chỉnh bối cảnh / tranh nền / ánh sáng / thời tiết
+    // từng cảnh theo hồ sơ (may-nha/tho_doc.py: doc_ho_so)
+    ho_so: phim?.ho_so
+      ? {
+          chuong: `${k}/${d.phan.length}: ${tenChuong}`,
+          dia_diem: phim.ho_so.dia_diem.slice(0, 14).map((x) => ({ ten: x.ten, thanh_pho: x.thanh_pho, thoi_ky: x.thoi_ky, kien_truc: x.kien_truc, mau_sac: x.mau_sac, anh_sang: x.anh_sang, thoi_tiet: x.thoi_tiet, khong_khi: x.khong_khi })),
+          mau_theo_giai_doan: phim.ho_so.mau_theo_giai_doan,
+        }
+      : null,
   }
   const hinh = phim ? hinhChuong(d, k) : null
   const anhChuong = phim ? anhCuaChuong(d, k) : {}

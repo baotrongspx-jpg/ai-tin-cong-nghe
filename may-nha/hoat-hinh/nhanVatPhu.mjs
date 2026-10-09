@@ -187,7 +187,7 @@ const PHU_KIEN_THAN = {
   huy_chuong: `<path d="M178 292 L200 360 L222 292" fill="none" stroke="#dc2626" stroke-width="10"/><circle cx="200" cy="372" r="22" fill="${VANG}" ${vien(4)}/><path d="M200 360 l4 9 l10 1 l-7 7 l2 10 l-9 -5 l-9 5 l2 -10 l-7 -7 l10 -1 z" fill="#ca8a04"/>`,
   khan_quang: `<path d="M164 286 Q200 316 236 286 L244 304 Q200 336 156 304 Z" fill="#dc2626" ${vien(4)}/><path d="M222 310 L236 380 L214 380 L208 318 Z" fill="#b91c1c" ${vien(4)}/>`,
   day_chuyen: `<path d="M172 292 Q200 350 228 292" fill="none" stroke="${VANG}" stroke-width="6"/><circle cx="200" cy="336" r="9" fill="${VANG}" ${vien(3)}/>`,
-  ghim_co: `<rect x="226" y="326" width="22" height="15" rx="2" fill="#dc2626" ${vien(2.5)}/><path d="M237 330 l2 4 l4 0 l-3 3 l1 4 l-4 -2 l-4 2 l1 -4 l-3 -3 l4 0 z" fill="${VANG}"/>`,
+  ghim_co: '', // bỏ ghim cờ trên áo (chủ trang yêu cầu 09/10/2026); giữ tên để bản thiết kế cũ vẫn vẽ được
 }
 const kinhRam = `<rect x="148" y="174" width="44" height="30" rx="12" fill="#0b1020" stroke="${VIEN}" stroke-width="4"/><rect x="208" y="174" width="44" height="30" rx="12" fill="#0b1020" stroke="${VIEN}" stroke-width="4"/><path d="M192 186 L208 186 M148 184 L122 178 M252 184 L278 178" stroke="${VIEN}" stroke-width="5"/><path d="M156 182 l10 -4 M216 182 l10 -4" stroke="#ffffff88" stroke-width="4" stroke-linecap="round"/>`
 
@@ -545,7 +545,7 @@ export const NHAN_VAT_PHU = {
         gia: true,
         may: '#475569',
         tocTruoc: `<path d="M110 182 C96 80 304 74 290 180 C284 154 272 140 256 136 C232 122 196 118 170 134 C150 140 132 142 122 150 C114 160 110 170 110 182 Z" fill="#cbd5e1" ${vien(6)}/><path d="M156 112 Q190 96 232 106 M178 132 Q212 116 250 124" fill="none" stroke="#f1f5f9" stroke-width="4" stroke-linecap="round"/>`,
-        than: `${caVat('#1d4ed8')}<circle cx="240" cy="334" r="8" fill="#dc2626" ${vien(3)}/><path d="M240 329 l2 4 h4 l-3 3 l1 4 l-4 -2 l-4 2 l1 -4 l-3 -3 h4 Z" fill="#facc15"/>`,
+        than: `${caVat('#1d4ed8')}`,
         tayPhai: `<rect x="262" y="424" width="36" height="10" rx="3" fill="#cbd5e1" ${vien(3)}/>`,
         tayTrai: `<rect x="94" y="446" width="52" height="66" rx="4" fill="#1d4ed8" ${vien(4)}/><path d="M104 462 h32 M104 474 h26" stroke="#bfdbfe" stroke-width="3"/>`,
       }),

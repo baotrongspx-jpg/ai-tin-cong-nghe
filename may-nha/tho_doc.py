@@ -848,8 +848,8 @@ def dung_hoat_hinh(may, ds_giong, yc, td):
 
 
 # Phiên bản máy nhà (gửi kèm tín hiệu sống): trang web biết máy nhà đã khởi động lại sau lần cập nhật chưa
-# (lib/youtube.ts: BAN_MAY_NHA phải bằng số này). 2: báo việc đang làm (hien-tai.json), Pixabay chặn thì nghỉ; 3: báo lại mỗi 20 giây
-BAN_MAY_NHA = 3
+# (lib/youtube.ts: BAN_MAY_NHA phải bằng số này). 2: báo việc đang làm (hien-tai.json), Pixabay chặn thì nghỉ; 3: báo lại mỗi 20 giây; 4: tự khởi động lại khi code đổi
+BAN_MAY_NHA = 4
 
 
 def bao_song():
@@ -881,6 +881,33 @@ def khong_ngu(bat):
         ctypes.windll.kernel32.SetThreadExecutionState(0x80000000 | (0x00000001 if bat else 0))
     except Exception:
         pass
+
+
+def dau_ma_nguon():
+    # "Dấu" code máy nhà: giờ sửa của các tệp .py cạnh tho_doc.py (tao_video.mjs… chạy mới mỗi lần dựng nên không cần)
+    return {p.name: p.stat().st_mtime for p in Path(__file__).resolve().parent.glob('*.py')}
+
+
+_lan_xem_ma = [0.0]
+
+
+def co_ban_moi(dau_cu):
+    # Có bản mới hợp lệ không (xem tối đa 10 giây một lần). Tệp vừa đổi thì chờ 5 giây cho ghi xong, rồi thử biên dịch:
+    # bản mới lỗi cú pháp thì KHÔNG khởi động lại (giữ bản đang chạy, tránh máy nhà tắt rồi không lên được)
+    if time.time() - _lan_xem_ma[0] < 10:
+        return False
+    _lan_xem_ma[0] = time.time()
+    try:
+        moi = dau_ma_nguon()
+        if moi == dau_cu or time.time() - max(moi.values()) < 5:
+            return False
+        import py_compile
+        for ten in moi:
+            py_compile.compile(str(Path(__file__).resolve().parent / ten), doraise=True)
+        return True
+    except Exception:
+        traceback.print_exc()
+        return False
 
 
 def lam_tiep_viec_do():
@@ -916,6 +943,7 @@ def main():
     ds_giong = {ten for _, ten in may.list_preset_voices()}
     may.infer('Xin chào.', voice=GIONG_MAC_DINH)  # làm nóng: lần đọc đầu tiên chậm gấp đôi
     lam_tiep_viec_do()
+    dau_cu = dau_ma_nguon()
     threading.Thread(target=bao_song, daemon=True).start()
     print('Sẵn sàng. Để cửa sổ này chạy (thu nhỏ được).', flush=True)
     lan_don = 0.0
@@ -926,6 +954,11 @@ def main():
                 lan_don = time.time()
             viec = ds_viec()
             if not viec:
+                # Rảnh: code máy nhà vừa được cập nhật thì tự khởi động lại để chạy bản mới (chay-vieneu-gpu.bat mở lại sau
+                # 10 giây) — chủ trang không phải tự tắt / mở cửa sổ sau mỗi lần sửa. Đang làm việc thì không bao giờ cắt ngang.
+                if co_ban_moi(dau_cu):
+                    print('Code máy nhà vừa cập nhật: tự khởi động lại để chạy bản mới...', flush=True)
+                    sys.exit(0)
                 time.sleep(2)
                 continue
             ten = viec[0]

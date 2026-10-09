@@ -547,6 +547,15 @@ tw.push(`gsap.set("#camera-nen", { scale: 1.03 });`)
 // ── Nhân vật phụ (AI chọn khi lời thoại nhắc tới): đứng phía sau giữa hai nhân vật chính, vẫy tay / gật đầu ─
 const daGioiThieu = new Set()
 const gioiThieu = new Set() // câu có nhân vật phụ lần đầu xuất hiện → máy quay quay sang giới thiệu
+const sanKhau = [] // { vao, ra, lech } từng lượt nhân vật phụ đứng trên sân khấu
+const datMoc = [] // { t, dat } lúc Mèo / Bit bắt đầu dạt tới độ dạt mới
+// Điểm máy quay nhắm khi cận Mèo / Bit: theo chỗ họ đang đứng lúc đó (đã dạt ra hay chưa)
+const tamLuc = (ai, t) => {
+  if (!TAM[ai]) return null
+  let dat = 0
+  for (const m of datMoc) if (m.t <= t + 0.3) dat = m.dat
+  return { ...TAM[ai], x: TAM[ai].x + (ai === 'meo' ? -dat : dat) }
+}
 const nvPhu = doanPhu.map((dp, k) => {
   const id = `phu${k}`
   const t0 = batDau[dp.tu]
@@ -578,15 +587,30 @@ const nvPhu = doanPhu.map((dp, k) => {
   tw.push(`tl.to("#${id}", { x: ${ben * 420}, opacity: 0, duration: 0.35, ease: "power2.in" }, ${f(het - 0.3)});`)
   tw.push(`tl.to("#${id} svg", { y: -12, duration: 0.1, yoyo: true, repeat: 3, ease: "sine.inOut" }, ${f(het - 0.3)});`)
   // Không ghi tên trên đầu (trang phục tự nói lên họ là ai); hai nhân vật chính dạt sang hai bên chừa chỗ cho nhân vật phụ
-  // Trong cả khối liên tục có người trên sân khấu (cùng hetCum), chỉ cần có lúc hai người cùng đứng (lệch trái / phải)
-  // thì Mèo / Bit dạt xa suốt khối: không kéo về gần giữa khi một người rời đi trong lúc người kia vẫn đứng lệch (đè nhau)
-  const dat = doanPhu.some((x) => x.hetCum === dp.hetCum && x.doi) ? 290 : 110
-  tw.push(`tl.to("#o-meo", { x: ${-dat}, duration: 0.5, ease: "power2.inOut" }, ${f(vao)});`)
-  tw.push(`tl.to("#o-robot", { x: ${dat}, duration: 0.5, ease: "power2.inOut" }, ${f(vao)});`)
-  // Mèo / Bit về chỗ cũ khi người cuối cùng của cảnh rời đi
-  if (dp.het === dp.hetCum) tw.push(`tl.to(["#o-meo", "#o-robot"], { x: 0, duration: 0.5, ease: "power2.inOut" }, ${f(het - 0.1)});`)
+  // Mèo / Bit dạt ra bao xa: tính chung cho mọi người trên sân khấu theo thời gian (sanKhau, xem dưới)
+  sanKhau.push({ vao, ra: het - 0.3, lech: dp.lech })
   return `<div id="${id}" class="nv-phu" data-ten="${dp.ten}" style="left:${354 + dp.lech}px"><svg viewBox="${NHAN_VAT_PHU[dp.ten].viewBox ?? '0 0 400 600'}" width="372" height="558" class="nv">${NHAN_VAT_PHU[dp.ten].svg(id)}</svg></div>`
 })
+// Mèo / Bit dạt sang hai bên chừa chỗ cho nhân vật phụ. Tính theo thời gian, mỗi lúc có người vào / ra: ai đang đứng trên
+// sân khấu, đứng ở đâu → độ dạt cần thiết (có người đứng lệch trái / phải hoặc hai người cùng đứng: dạt xa 300; một người
+// đứng giữa: 130; không còn ai: về chỗ cũ). Không để mỗi người tự kéo Mèo / Bit (người rời đi kéo về giữa trong khi người
+// khác vẫn đứng lệch → đè nhau)
+{
+  const moc = [...new Set(sanKhau.flatMap((s) => [s.vao, s.ra]))].sort((a, b) => a - b)
+  let datCu = 0
+  for (const t of moc) {
+    const co = sanKhau.filter((s) => s.vao <= t + 0.01 && t + 0.01 < s.ra)
+    const dat = !co.length ? 0 : co.length >= 2 || co.some((s) => s.lech) ? 300 : 130
+    if (dat === datCu) continue
+    // Dạt ra: ngay lúc người mới bước vào; về giữa: chờ người cuối rời hẳn. Không trước lúc Mèo / Bit nhảy vào khung xong
+    // (hiệu ứng nhảy vào đặt họ về chỗ cũ khi kết thúc, sẽ đè mất độ dạt nếu dạt sớm hơn)
+    const luc = Math.max(dat > datCu ? t : t + 0.2, VAO_SAN + 0.35)
+    tw.push(`tl.to("#o-meo", { x: ${-dat}, duration: 0.5, ease: "power2.inOut" }, ${f(luc)});`)
+    tw.push(`tl.to("#o-robot", { x: ${dat}, duration: 0.5, ease: "power2.inOut" }, ${f(luc)});`)
+    datMoc.push({ t: luc, dat })
+    datCu = dat
+  }
+}
 
 // ── Chỉ dẫn đạo diễn AI chọn cho từng câu (khi có): khung hình + chuyển động máy quay ─
 // Độ phóng theo khung hình; góc thấp / góc cao giả lập bằng cách nhìn thấp xuống chân / cao trên đầu nhân vật
@@ -595,8 +619,8 @@ const KHUNG = { toan_canh: 1, trung_canh: 1.2, can_canh: 1.48, sieu_can: 1.85, g
 const rungTay = (t0, d) =>
   tw.push(`tl.fromTo(".the-gioi", { x: ${LECH_X}, y: ${LECH_Y}, rotation: 0 }, { x: ${LECH_X + 7}, y: ${LECH_Y - 5}, rotation: 0.25, duration: 0.19, yoyo: true, repeat: ${2 * Math.max(1, Math.floor(d / 0.38)) + 1}, ease: "sine.inOut" }, ${f(t0)});`)
 function quayChiDan(l, i, t0, conLai) {
-  const tam = TAM[l.ai] ?? (l.ai === 'nguoi_ke' ? { x: GIUA_X, y: 900 } : TAM.robot)
-  const ben = TAM[l.ai === 'meo' ? 'robot' : 'meo']
+  const tam = tamLuc(l.ai, t0) ?? (l.ai === 'nguoi_ke' ? { x: GIUA_X, y: 900 } : tamLuc('robot', t0))
+  const ben = tamLuc(l.ai === 'meo' ? 'robot' : 'meo', t0)
   const s = KHUNG[l.khung_hinh]
   const ox = l.khung_hinh === 'toan_canh' ? GIUA_X : ['trung_canh', 'goc_cao'].includes(l.khung_hinh) ? (tam.x + GIUA_X) / 2 : tam.x
   const oy = { toan_canh: GIUA_Y, trung_canh: 960, can_canh: tam.y - 40, sieu_can: tam.y - 20, goc_thap: tam.y + 170, goc_cao: tam.y - 230 }[l.khung_hinh]
@@ -639,7 +663,7 @@ const truocDoiCanh = new Set(doanCanh.slice(0, -1).map((dc) => dc.het))
 loi.forEach((l, i) => {
   const t0 = batDau[i]
   const d = doDai[i]
-  const tam = TAM[l.ai] ?? (l.ai === 'nguoi_ke' ? { x: GIUA_X, y: 900 } : TAM.robot)
+  const tam = tamLuc(l.ai, t0) ?? (l.ai === 'nguoi_ke' ? { x: GIUA_X, y: 900 } : tamLuc('robot', t0))
   const nghe = l.ai === 'meo' ? 'robot' : 'meo'
   const lui = truocDoiCanh.has(i) && d > 2.2 ? 0.7 : 0 // chừa cuối câu để lùi về cảnh rộng
   const conLai = Math.max(0.5, d - 0.5 - lui)

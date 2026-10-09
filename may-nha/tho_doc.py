@@ -718,9 +718,22 @@ def dung_video(may, ds_giong, lt, tm, td, fps=30, gioi_han=1500, anh_nen=None):
     (tm / 'artifacts' / 'loi_thoai.json').write_text(json.dumps(lt, ensure_ascii=False), encoding='utf-8')
     (tm / 'artifacts' / 'do_dai.json').write_text(json.dumps(do_dai), encoding='utf-8')
     chay(['node', str(HOAT_HINH / 'tao_video.mjs'), str(tm)], tm, 120)
+    # Nhả AI máy nhà khỏi RAM trước khi dựng hình (đọc hồ sơ / chấm tranh nền vừa dùng ~8 GB) — không thì máy 16 GB hết RAM
+    td.bao(30, 'Nhả bộ nhớ AI máy nhà trước khi dựng hình', ep=True)
+    ai_may_nha.nha_bo_nho()
     td.bao(30, 'Dựng hình 0%', ep=True)
-    chay_theo_doi(['npx.cmd', '--yes', 'hyperframes', 'render', '--quality', 'standard', '--fps', str(fps), '-o', str(tm / 'video.mp4')],
-                  tm / 'hyperframes', gioi_han, lambda pt: td.bao(30 + 0.65 * pt, f'Dựng hình {pt}%'))
+    lenh = ['npx.cmd', '--yes', 'hyperframes', 'render', '--quality', 'standard', '--fps', str(fps), '-o', str(tm / 'video.mp4')]
+    try:
+        chay_theo_doi(lenh, tm / 'hyperframes', gioi_han, lambda pt: td.bao(30 + 0.65 * pt, f'Dựng hình {pt}%'))
+    except RuntimeError as e:
+        # Vẫn thiếu RAM (mỗi luồng dựng là một trình duyệt): dựng lại một lần với 2 luồng, chậm hơn nhưng nhẹ hơn nhiều
+        if not re.search(r'out of memory|INSUFFICIENT_RESOURCES|Allocation failed', str(e), re.I):
+            raise
+        print(f'Dựng hình thiếu bộ nhớ, thử lại với 2 luồng: {e}', flush=True)
+        ai_may_nha.nha_bo_nho()
+        td.bao(30, 'Thiếu bộ nhớ: dựng lại nhẹ hơn (2 luồng) 0%', ep=True)
+        chay_theo_doi(lenh + ['--workers', '2'], tm / 'hyperframes', gioi_han * 2,
+                      lambda pt: td.bao(30 + 0.65 * pt, f'Dựng hình (2 luồng) {pt}%'))
     return do_dai
 
 
@@ -987,8 +1000,8 @@ def dung_hoat_hinh(may, ds_giong, yc, td):
 
 
 # Phiên bản máy nhà (gửi kèm tín hiệu sống): trang web biết máy nhà đã khởi động lại sau lần cập nhật chưa
-# (lib/youtube.ts: BAN_MAY_NHA phải bằng số này). 2: báo việc đang làm (hien-tai.json), Pixabay chặn thì nghỉ; 3: báo lại mỗi 20 giây; 4: tự khởi động lại khi code đổi; 5: đọc hồ sơ phim trước khi dựng; 6: nhân vật phụ có tên vẽ hình riêng theo hồ sơ; 7: video bị xoá thì dừng dựng, dọn sạch
-BAN_MAY_NHA = 7
+# (lib/youtube.ts: BAN_MAY_NHA phải bằng số này). 2: báo việc đang làm (hien-tai.json), Pixabay chặn thì nghỉ; 3: báo lại mỗi 20 giây; 4: tự khởi động lại khi code đổi; 5: đọc hồ sơ phim trước khi dựng; 6: nhân vật phụ có tên vẽ hình riêng theo hồ sơ; 7: video bị xoá thì dừng dựng, dọn sạch; 8: nhả RAM AI máy nhà trước khi dựng hình
+BAN_MAY_NHA = 8
 
 
 def bao_song():

@@ -4,8 +4,8 @@ import { revalidatePath } from 'next/cache'
 import { daDangNhap } from '@/lib/xacThuc'
 import { mayNhaTat } from '@/lib/giongDoc'
 import {
-  chayBuocPhim, chonNhacDuAn, docDuAn, guiDung, kiemDinhLaiPhan, suaThongTin, taoDuAn, taoPhim, trangThaiDuAn, vietLoiPhan, xoaDuAn,
-  type BuocPhim, type DuAnYT, type TrangThaiDuAn,
+  bienTapPhim, chayBuocPhim, chonNhacDuAn, docDuAn, guiDung, kiemDinhLaiPhan, suaThongTin, taoDuAn, taoPhim, trangThaiDuAn, vietLoiPhan, xoaDuAn,
+  type BuocPhim, type DuAnYT, type TrangThaiBienTap, type TrangThaiDuAn,
 } from '@/lib/youtube'
 
 type Loi = { ok: false; loi: string }
@@ -61,6 +61,16 @@ export async function kiemDinhYouTube(id: string, k: number): Promise<{ ok: true
   try {
     await chanChuaDangNhap()
     return { ok: true, duAn: await kiemDinhLaiPhan(id, k) }
+  } catch (e) {
+    return baoLoi(e)
+  }
+}
+
+// Vòng biên tập cả phim bằng AI máy nhà: lần đầu gửi phiếu việc, gọi lại để lấy kết quả (batDauLai: gửi phiếu mới)
+export async function bienTapYouTube(id: string, batDauLai = false): Promise<{ ok: true; tt: TrangThaiBienTap } | Loi> {
+  try {
+    await chanChuaDangNhap()
+    return { ok: true, tt: await bienTapPhim(id, batDauLai) }
   } catch (e) {
     return baoLoi(e)
   }

@@ -1,7 +1,8 @@
 import 'server-only'
 import { createHash, randomUUID } from 'node:crypto'
 import { db, type BaiViet } from './db'
-import { vietDanYYouTube, vietPhanYouTube, type LoiThoai } from './ai'
+import { goiJson, vietDanYYouTube, vietPhanYouTube, type LoiThoai } from './ai'
+import { z } from 'zod'
 import {
   dongGoiYouTube, hoSoHinhAnh, nghienCuuNhanVat, phanCanhChuong, phatTrienCauChuyen, thietKeNhanVatChinh, vietPhanPhim, TAO_HINH_MAC_DINH,
   type CanhPhim, type CauChuyen, type CauPhim, type DongGoi, type HoSoHinhAnh, type NghienCuu, type TaoHinh,
@@ -10,6 +11,7 @@ import { anhWiki, nguonWiki, type AnhWiki } from './wiki'
 import { NHAN_VAT } from './hoatHinh'
 import { dsNhac } from './nhacNen'
 import { kiemDinh, locLoiChao, type KetQuaKiemDinh } from './kiemDinh'
+import { apBienTap, deBaiBienTap, type DaBienTap, type KetQuaBienTap } from './bienTap'
 
 // Video YouTube dài (trang /youtube): hoạt hình Mèo Mun & Robot Bit, khung ngang 16:9, dài tới ~20 phút.
 // Mỗi dự án là một tệp youtube/<id>/du-an.json trong kho (không cần thêm bảng). AI viết dàn ý chia phần (~3 phút
@@ -72,6 +74,8 @@ export type DuAnYT = {
   phim?: PhimTieuSu
   nhac?: string // nhạc nền: tên bài trong thư viện, 'khong' = không nhạc, trống = tự chọn bài đầu tiên
   am_luong_nhac?: number // % (mặc định 30)
+  bien_tap?: DaBienTap // vòng biên tập cả phim (AI máy nhà) đã áp
+  ai_cho?: { bien_tap?: string } // phiếu việc AI máy nhà đang chờ (mã phiếu)
 }
 
 const bam = (x: unknown) => createHash('sha256').update(JSON.stringify(x)).digest('hex').slice(0, 12)
@@ -283,6 +287,72 @@ export async function vietLoiPhan(id: string, k: number) {
 }
 
 // Cho biên tập viên kiểm định chạy lại trên lời thoại đang có (phần viết trước khi có bước này): tự sửa + chấm điểm
+// Vòng biên tập cả phim (lib/bienTap.ts). Gemini làm trước (chất lượng tốt, xong ngay, 1 lượt mỗi phim); Gemini hết lượt
+// thì gửi phiếu việc cho AI máy nhà (may-nha/ai_may_nha.py, miễn phí, ~10 phút) — trang chi tiết hỏi lại mỗi vài giây,
+// máy nhà làm xong thì áp chỗ sửa. Chỗ sửa chỉ được áp khi nguyên văn câu cũ khớp (apBienTap). Trả trạng thái để trang hiện.
+const KetQuaBienTapSchema = z.object({
+  nhan_xet: z.string(),
+  sua: z.array(z.object({ chuong: z.number().int(), cau: z.number().int(), cu: z.string(), kieu: z.enum(['sua', 'xoa']), chu: z.string(), ly_do: z.string() })),
+})
+// Áp kết quả biên tập vào dự án (đọc bản mới nhất), kiểm định lại chương có sửa, ghi nhật ký
+async function apVaoDuAn(id: string, ketQua: KetQuaBienTap, nguon: 'gemini' | 'may_nha', boCho: boolean) {
+  const moi = (await docDuAn(id))!
+  if (boCho) moi.ai_cho = { ...moi.ai_cho, bien_tap: undefined }
+  const ap = apBienTap(moi.phan.map((x) => x.loi ?? []), ketQua)
+  moi.phan = moi.phan.map((x, i) => {
+    if (!x.loi || !ap.chi_tiet.some((c) => c.chuong === i + 1)) return x
+    // Chương có sửa: kiểm định lại (điểm, ghi chú) trên lời mới; lời đổi thì phân cảnh cũ không còn đúng
+    const { loi, ...kd } = kiemDinh(ap.phan[i] as CauYT[], { loai: moi.loai, laCuoi: i === moi.phan.length - 1, coDai: laCoDai(moi) })
+    return { ...x, loi, kiem_dinh: kd, canh: undefined }
+  })
+  moi.bien_tap = { luc: new Date().toISOString(), nguon, nhan_xet: ketQua.nhan_xet, chi_tiet: ap.chi_tiet }
+  await luuDuAn(moi)
+  return moi
+}
+export type TrangThaiBienTap = { trang_thai: 'cho' | 'xong' | 'loi'; loi?: string; duAn: DuAnYT }
+export async function bienTapPhim(id: string, batDauLai = false): Promise<TrangThaiBienTap> {
+  const d = await docDuAn(id)
+  if (!d) throw new Error('Không tìm thấy video')
+  const ma = d.ai_cho?.bien_tap
+  if (ma && !batDauLai) {
+    const kq = await docJson<{ text?: string; loi?: string }>(`hang-doi/xong/${ma}.json`)
+    if (!kq) return { trang_thai: 'cho', duAn: d }
+    await kho().remove([`hang-doi/xong/${ma}.json`])
+    let ketQua: KetQuaBienTap | null = null
+    try {
+      const j = KetQuaBienTapSchema.safeParse(JSON.parse(kq.text ?? 'null'))
+      if (j.success) ketQua = j.data
+    } catch {}
+    if (!ketQua) {
+      const moi = (await docDuAn(id)) ?? d
+      moi.ai_cho = { ...moi.ai_cho, bien_tap: undefined }
+      await luuDuAn(moi)
+      return { trang_thai: 'loi', loi: kq.loi ?? 'AI máy nhà trả kết quả sai dạng, bấm biên tập lại', duAn: moi }
+    }
+    return { trang_thai: 'xong', duAn: await apVaoDuAn(id, ketQua, 'may_nha', true) }
+  }
+  if (!d.phan.length || d.phan.some((x) => !x.loi)) throw new Error('Còn chương chưa có kịch bản, chờ AI viết xong đã')
+  const de = deBaiBienTap({ ten: d.tieu_de, loai: d.loai, phan: d.phan.map((x) => ({ tieu_de: x.tieu_de, loi: locLoiChao(x.loi ?? [], false).loi })) })
+  // Gemini trước
+  const gemini = await goiJson({ system: de.system, noiDung: de.noiDung, kiemTra: KetQuaBienTapSchema, schema: de.schema, effort: 'low' }).catch(() => null)
+  if (gemini) {
+    // Kịch bản đưa AI đã bỏ câu chào giữa phim: lưu bản đó trước để chỉ số / nguyên văn câu khớp khi áp
+    const sach = (await docDuAn(id)) ?? d
+    sach.phan = sach.phan.map((x, i) => (x.loi ? { ...x, loi: locLoiChao(x.loi, i === sach.phan.length - 1).loi } : x))
+    await luuDuAn(sach)
+    return { trang_thai: 'xong', duAn: await apVaoDuAn(id, gemini, 'gemini', false) }
+  }
+  // Gemini hết lượt / lỗi: nhờ AI máy nhà
+  const maMoi = `ai-${id}-bt-${Date.now()}`
+  await ghiJson(`hang-doi/viec/${maMoi}.json`, { loai: 'ai', system: de.system, noi_dung: de.noiDung, schema: de.schema })
+  const moi = (await docDuAn(id)) ?? d
+  moi.ai_cho = { ...moi.ai_cho, bien_tap: maMoi }
+  // Kịch bản đưa AI đã bỏ câu chào giữa phim: lưu luôn bản đó để chỉ số câu AI trả về khớp
+  moi.phan = moi.phan.map((x, i) => (x.loi ? { ...x, loi: locLoiChao(x.loi, i === moi.phan.length - 1).loi } : x))
+  await luuDuAn(moi)
+  return { trang_thai: 'cho', duAn: moi }
+}
+
 export async function kiemDinhLaiPhan(id: string, k: number) {
   const d = await docDuAn(id)
   const p = d?.phan[k - 1]

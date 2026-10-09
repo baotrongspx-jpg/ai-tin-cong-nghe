@@ -7,7 +7,7 @@ import type { DuAnYT, KiemTraVideo, PhanYT, TrangThaiDuAn, TrangThaiPhan } from 
 import { thongBao } from '@/app/ThongBao'
 import { locLoiChao } from '@/lib/kiemDinh'
 import { IconChep, IconMo, IconXong, IconYouTube, Xoay } from '@/app/BieuTuong'
-import { chayBuocPhimYouTube, chonNhacYouTube, dungVideoYouTube, kiemDinhYouTube, layTrangThaiYouTube, luuThongTinYouTube, vietPhanYouTube, xoaVideoYouTube } from '../actions'
+import { bienTapYouTube, chayBuocPhimYouTube, chonNhacYouTube, dungVideoYouTube, kiemDinhYouTube, layTrangThaiYouTube, luuThongTinYouTube, vietPhanYouTube, xoaVideoYouTube } from '../actions'
 import HoSoPhim, { KhoiDuLieu } from './HoSoPhim'
 
 const NGUOI: Record<string, string> = {
@@ -180,6 +180,30 @@ export default function ChiTiet({ dau, ttDau, dsNhac }: { dau: DuAnYT; ttDau: Tr
     if (kq.ok) setTt(kq.tt)
   }
 
+  const [loiBienTap, setLoiBienTap] = useState('')
+
+  // Vòng biên tập cả phim (AI máy nhà): gửi phiếu / hỏi kết quả. Đang chờ thì hỏi lại mỗi 8 giây (effect bên dưới)
+  const bienTap = async (batDauLai = false) => {
+    setLoiBienTap('')
+    const kq = await bienTapYouTube(d.id, batDauLai)
+    if (!kq.ok) return setLoiBienTap(kq.loi)
+    setD(kq.tt.duAn)
+    if (kq.tt.trang_thai === 'loi') setLoiBienTap(kq.tt.loi ?? 'Có lỗi')
+    if (kq.tt.trang_thai === 'xong') {
+      thongBao('ok', `Biên tập xong: sửa ${kq.tt.duAn.bien_tap?.chi_tiet.length ?? 0} chỗ`)
+      await capNhatTt()
+    }
+  }
+  const choBienTap = !!d.ai_cho?.bien_tap
+  useEffect(() => {
+    if (!choBienTap) return
+    const t = setInterval(() => {
+      if (document.visibilityState === 'visible') void bienTap()
+    }, 8000)
+    return () => clearInterval(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [choBienTap])
+
   // AI làm lần lượt mọi việc còn thiếu (mỗi việc một lượt gọi máy chủ để không quá thời gian):
   // video thường: viết lời từng phần; phim tiểu sử: nghiên cứu → câu chuyện → kịch bản từng chương → hồ sơ hình ảnh →
   // phân cảnh từng chương → đóng gói YouTube. chiPhan: chỉ viết lại một phần.
@@ -216,6 +240,14 @@ export default function ChiTiet({ dau, ttDau, dsNhac }: { dau: DuAnYT; ttDau: Tr
       for (let k = 1; k <= moi.phan.length; k++) {
         if (moi.phan[k - 1].loi) continue
         if (!(await lam(`AI đang viết kịch bản ${ten} ${k}/${moi.phan.length}…`, () => vietPhanYouTube(moi.id, k), k))) return
+      }
+      // Viết đủ các chương mà chưa biên tập cả phim: tự gửi máy nhà biên tập (không tốn lượt Gemini)
+      if (moi.phan.every((x) => x.loi) && !moi.bien_tap && !moi.ai_cho?.bien_tap) {
+        const kq = await bienTapYouTube(moi.id)
+        if (kq.ok) {
+          moi = kq.tt.duAn
+          setD(moi)
+        }
       }
       if (!phim) return
       if (!moi.phim?.ho_so && !(await lam('Hồ sơ hình ảnh: nhân vật, bối cảnh, thiết kế, màu, nhạc…', () => chayBuocPhimYouTube(moi.id, 'ho_so')))) return
@@ -571,6 +603,44 @@ export default function ChiTiet({ dau, ttDau, dsNhac }: { dau: DuAnYT; ttDau: Tr
 
       {/* Các phần */}
       <section className="grid gap-3">
+        {d.phan.length > 0 && d.phan.every((p) => p.loi) && (
+          <div className="the grid gap-2 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="font-bold">🎬 Biên tập cả phim</p>
+              <button
+                type="button"
+                disabled={choBienTap || !!dangChay || dangLam}
+                onClick={() => (!d.bien_tap || confirm('Biên tập lại cả phim? Các chương được sửa sẽ phải dựng lại.')) && void bienTap(!!d.bien_tap)}
+                className="btn btn-sm btn-phu"
+              >
+                {choBienTap ? <Xoay /> : null}
+                {choBienTap ? 'Máy nhà đang đọc kịch bản…' : d.bien_tap ? 'Biên tập lại' : 'Biên tập cả phim'}
+              </button>
+            </div>
+            <p className="text-xs text-slate-500">
+              Như biên tập viên thật: đọc trọn mọi chương một lượt, viết lại câu lặp ý / câu hỏi rập khuôn của Mèo Mun / câu nhạt, bỏ câu thừa — không thêm sự kiện mới. Gemini làm trước (1 lượt, xong ngay); Gemini hết lượt thì AI trên máy nhà làm (miễn phí, khoảng 10 phút, có thể đóng trang). Biên tập trước khi bấm Dựng video.
+            </p>
+            {loiBienTap && <p className="text-sm text-red-600">{loiBienTap}</p>}
+            {d.bien_tap && (
+              <details className="rounded-xl bg-slate-50 p-3 ring-1 ring-slate-100">
+                <summary className="cursor-pointer text-sm font-semibold text-slate-700">
+                  Đã sửa {d.bien_tap.chi_tiet.length} chỗ{d.bien_tap.nguon ? (d.bien_tap.nguon === 'gemini' ? ' (Gemini)' : ' (AI máy nhà)') : ''} · {d.bien_tap.nhan_xet}
+                </summary>
+                <ul className="mt-2 grid gap-2 text-sm">
+                  {d.bien_tap.chi_tiet.map((c, i) => (
+                    <li key={i} className="grid gap-0.5">
+                      <span className="text-xs font-semibold text-slate-500">
+                        Chương {c.chuong}, câu {c.cau} · {c.kieu === 'xoa' ? 'bỏ' : 'viết lại'} — {c.ly_do}
+                      </span>
+                      <span className="text-slate-400 line-through">{c.truoc}</span>
+                      {c.sau && <span className="text-emerald-700">{c.sau}</span>}
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )}
+          </div>
+        )}
         <h2 className="font-bold">Kịch bản</h2>
         {d.phan.map((p, i) => {
           const k = i + 1

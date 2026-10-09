@@ -26,6 +26,7 @@ import requests
 from vieneu import Vieneu
 
 from kiem_tra_video import kiem_tra_video
+import ai_may_nha
 
 REPO = Path(__file__).resolve().parent.parent
 env = {}
@@ -453,6 +454,12 @@ def main():
                                 shutil.rmtree(tm, ignore_errors=True)
                             so += 1
                     print(f'Đã xoá {so} thư mục video của dự án {du_an[:6]}', flush=True)
+                elif yc.get('loai') == 'ai':
+                    # Việc AI (vòng biên tập cả phim…): chạy AI máy nhà (Ollama, ổ D), trả chuỗi JSON
+                    print(f'AI máy nhà: {ma}...', flush=True)
+                    text = ai_may_nha.goi(yc['system'], yc['noi_dung'], yc.get('schema'))
+                    gui(f'hang-doi/xong/{ma}.json', json.dumps({'text': text}, ensure_ascii=False), 'application/json')
+                    print(f'AI máy nhà xong trong {time.time() - bat_dau:.0f}s', flush=True)
                 elif yc.get('loai') == 'youtube':
                     print(f'Dựng video YouTube "{yc.get("tieu_de")}" phần {yc["phan"]}/{len(yc["ma_phan"])} ({len(yc["loi_thoai"]["loi"])} câu thoại)...', flush=True)
                     dung_youtube(may, ds_giong, yc)

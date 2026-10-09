@@ -171,6 +171,9 @@ const MU = {
     `<ellipse cx="200" cy="120" rx="120" ry="20" fill="#1f2937" ${vien(5)}/><path d="M140 120 Q138 58 200 56 Q262 58 260 120 Z" fill="#1f2937" ${vien(5)}/><path d="M142 106 Q200 96 258 106 L258 118 Q200 108 142 118 Z" fill="#b91c1c"/>`,
   tai_nghe: () =>
     `<path d="M116 186 C108 70 292 70 284 186" fill="none" stroke="#111827" stroke-width="14" stroke-linecap="round"/><rect x="96" y="166" width="32" height="54" rx="14" fill="#111827" ${vien(4)}/><rect x="272" y="166" width="32" height="54" rx="14" fill="#111827" ${vien(4)}/><rect x="102" y="176" width="10" height="34" rx="5" fill="#a855f7"/><rect x="288" y="176" width="10" height="34" rx="5" fill="#a855f7"/>`,
+  // Nón lá Việt Nam: chóp nhọn, vành rộng, quai dưới cằm
+  non_la: () =>
+    `<path d="M200 46 L320 150 Q200 176 80 150 Z" fill="#fde68a" ${vien(5)}/><path d="M200 46 L140 156 M200 46 L260 156 M200 46 L200 166" stroke="#d6a84a" stroke-width="3"/><path d="M118 160 Q130 240 186 252 M282 160 Q270 240 214 252" fill="none" stroke="#fde68a" stroke-width="4"/>`,
   hoa_cai: () => `<g transform="translate(250 110)">${[0, 72, 144, 216, 288].map((g) => `<ellipse cx="0" cy="-14" rx="9" ry="14" fill="#f472b6" transform="rotate(${g})" ${vien(2)}/>`).join('')}<circle r="7" fill="${VANG}"/></g>`,
 }
 
@@ -193,7 +196,7 @@ export function nhanVatChinhSvg(h) {
   const da = MAU_DA[h.da] ?? MAU_DA.sang
   const sang = MAU_NHOM[h.nhom] ?? MAU_NHOM.khac
   // Mũ trùm kín đầu thì không vẽ tóc trước (vương miện, mũ lưỡi trai, mũ phớt vẫn lộ tóc)
-  const coMu = ['mu_vua', 'khan_dong', 'mu_giap'].includes(h.mu)
+  const coMu = ['mu_vua', 'khan_dong', 'mu_giap', 'non_la'].includes(h.mu)
   const tocVe = {
     ngan: { truoc: toc.ngan(mt) },
     re_ngoi: { truoc: toc.reNgoi(mt) },
@@ -247,8 +250,7 @@ export function nhanVatChinhSvg(h) {
     viewBox: treEm ? '-56 -169 512 769' : '0 0 400 600',
     svg: (id) => `
   <defs><radialGradient id="${id}-hq"><stop offset="0" stop-color="${sang}" stop-opacity="0.9"/><stop offset="1" stop-color="${sang}" stop-opacity="0"/></radialGradient></defs>
-  <ellipse cx="200" cy="584" rx="190" ry="34" fill="url(#${id}-hq)"/>
-  ${lapLanh}
+  ${h.phu ? '' : `<ellipse cx="200" cy="584" rx="190" ry="34" fill="url(#${id}-hq)"/>${lapLanh}`}
   ${nguoi(id, {
     da,
     ao: aoHien,
@@ -625,4 +627,20 @@ export const NHAN_VAT_PHU = {
         tayPhai: `<rect x="258" y="430" width="52" height="40" rx="8" fill="#111827" ${vien(4)}/><circle cx="284" cy="450" r="13" fill="#475569" ${vien(4)}/><circle cx="284" cy="450" r="6" fill="#38bdf8"/><rect x="294" y="424" width="12" height="8" rx="2" fill="#111827"/>`,
       }),
   },
+
+  // ── Vai cổ trang (chuyện lịch sử / tiểu sử người xưa): vẽ bằng bộ vẽ nhân vật chính, không vầng sáng ──
+  vua: coTrang('#fde047', '👑', 'Nhà vua', { ao: 'long_bao', mau_ao: '#eab308', mu: 'mu_vua', rau: 'ria' }),
+  hoang_hau: coTrang('#f9a8d4', '👸', 'Hoàng hậu', { gioi: 'nu', toc: 'buoi', ao: 'long_bao', mau_ao: '#be185d', mu: 'vuong_mien', phu_kien: 'day_chuyen' }),
+  tuong_quan: coTrang('#fca5a5', '⚔️', 'Tướng quân', { ao: 'giap', mu: 'mu_giap', rau: 'day', vat_dung: 'khien' }),
+  chien_binh: coTrang('#d6d3d1', '🛡️', 'Chiến binh', { tuoi: 'thanh_nien', ao: 'giap', mu: 'mu_giap', da: 'trung_binh' }),
+  nha_su: coTrang('#fdba74', '🙏', 'Nhà sư, thầy cúng', { tuoi: 'gia', toc: 'hoi', mau_toc: 'bac', ao: 'long_bao', mau_ao: '#d97706', vat_dung: 'den_cay' }),
+  phu_nu_xua: coTrang('#fcd34d', '👩', 'Phụ nữ thời xưa', { gioi: 'nu', toc: 'buoi', ao: 'ao_dai', mau_ao: '#92400e', mau_quan: '#1c1917' }),
+  nong_dan_xua: coTrang('#bef264', '🌾', 'Nông dân thời xưa', { ao: 'ao_ba_ba', mau_ao: '#78350f', mau_quan: '#1c1917', mu: 'non_la', da: 'trung_binh', vat_dung: 'bong_lua' }),
+  quan_lai: coTrang('#93c5fd', '📜', 'Quan lại, nho sĩ', { ao: 'long_bao', mau_ao: '#1e3a8a', mu: 'khan_dong', rau: 'quai_non', vat_dung: 'tai_lieu' }),
+}
+
+// Vai cổ trang: hình người dựng từ nhanVatChinhSvg (long bào, giáp trụ, mũ vua, khăn đóng, nón lá…), `phu` = không vầng sáng
+function coTrang(mau, bieu_tuong, ten, h) {
+  const v = nhanVatChinhSvg({ phu: true, nhom: 'khac', gioi: 'nam', da: 'sang', tuoi: 'trung_nien', toc: 'ngan', mau_toc: 'den', mau_quan: '#1f2937', kinh: false, rau: 'khong', mu: 'khong', phu_kien: 'khong', so_ao: 0, vat_dung: 'khong', ...h })
+  return { mau, bieu_tuong, ten, svg: v.svg }
 }

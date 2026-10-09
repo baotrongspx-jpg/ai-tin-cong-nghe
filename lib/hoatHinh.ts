@@ -39,6 +39,15 @@ export const NHAN_VAT = {
   dau_bep: { ten: 'Đầu bếp', giong: 'Phạm Tuyên' },
   nu_doanh_nhan: { ten: 'Nữ doanh nhân', giong: 'Kim Thanh' },
   nguoi_nuoc_ngoai: { ten: 'Người nước ngoài', giong: 'Adam bựa' },
+  // Vai cổ trang
+  vua: { ten: 'Nhà vua', giong: 'Minh Đức' },
+  hoang_hau: { ten: 'Hoàng hậu', giong: 'Đoan Trang' },
+  tuong_quan: { ten: 'Tướng quân', giong: 'Xuân Vĩnh' },
+  chien_binh: { ten: 'Chiến binh', giong: 'Quốc Tuấn' },
+  nha_su: { ten: 'Nhà sư', giong: 'Thiền Tâm Đức' },
+  phu_nu_xua: { ten: 'Phụ nữ thời xưa', giong: 'Ngọc Trân' },
+  nong_dan_xua: { ten: 'Nông dân thời xưa', giong: 'Quang Sơn' },
+  quan_lai: { ten: 'Quan lại', giong: 'Minh Triết' },
   // Người kể phim tài liệu (trang YouTube, phim tiểu sử): giọng kể chuyện, không đứng trên sân khấu
   nguoi_ke: { ten: 'Người kể', giong: 'Thanh Bình' },
 }

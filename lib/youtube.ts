@@ -17,7 +17,7 @@ import { kiemDinh, locLoiChao, type KetQuaKiemDinh } from './kiemDinh'
 // video và chỉ lưu trên máy nhà (Desktop\Video-YouTube), vì video dài quá nặng để gửi lên kho.
 // Máy nhà báo kết quả: youtube/<id>/phan-<k>.json ({ xong, ma } hoặc { loi, ma }), tien-do.json, xong.json.
 const KHO = 'video-tiktok'
-const PHIEN_BAN = 11 // tăng khi đổi cách dựng để các phần dựng lại (2: thẻ minh hoạ / đạo cụ khung ngang; 3: giọng Mèo Mun; 4: nhịp chuyển cảnh mượt; 5: thẻ chương, màn kết, B-roll; 6: khung người kể, 7: người kể vẽ riêng, 8: nhân vật chính phim tiểu sử, 9: ảnh Wikipedia, 10: lời giới thiệu + đọc tên chương, ảnh đặt linh động, 11: bố cục chữ không che nhân vật, bỏ ghi nguồn trên ảnh)
+const PHIEN_BAN = 12 // tăng khi đổi cách dựng để các phần dựng lại (2: thẻ minh hoạ / đạo cụ khung ngang; 3: giọng Mèo Mun; 4: nhịp chuyển cảnh mượt; 5: thẻ chương, màn kết, B-roll; 6: khung người kể, 7: người kể vẽ riêng, 8: nhân vật chính phim tiểu sử, 9: ảnh Wikipedia, 10: lời giới thiệu + đọc tên chương, ảnh đặt linh động, 11: bố cục chữ không che nhân vật, bỏ ghi nguồn trên ảnh, 12: thanh dòng thời gian, thẻ năm tự thêm)
 const kho = () => db().storage.from(KHO)
 const thuMuc = (id: string) => `youtube/${id}`
 const tenViec = (id: string, k: number) => `yt-${id}-${k}.json`
@@ -110,6 +110,13 @@ function hinhChuong(d: DuAnYT, k: number) {
   const gd = [...th.giai_doan].sort((a, b) => a.tu_chuong - b.tu_chuong).filter((g, i) => i === 0 || g.tu_chuong <= k).at(-1)!
   return { nhom: th.nhom ?? 'khac', gioi: th.gioi, da: th.da, ...gd }
 }
+// Phim tiểu sử: mốc năm đầu / cuối đời nhân vật (từ các mốc đời đã nghiên cứu) — cho thanh dòng thời gian
+function namDoi(d: DuAnYT): { tu: number; den: number } | null {
+  const nam = (d.phim?.nghien_cuu?.moc_doi ?? []).flatMap((m) => [...`${m.nam} ${m.giai_doan}`.matchAll(/\b(\d{3,4})\b/g)].map((x) => Number(x[1]))).filter((n) => n > 500 && n < 2100)
+  return nam.length >= 2 ? { tu: Math.min(...nam), den: Math.max(...nam) } : null
+}
+// Chuyện xưa (trước thế kỷ 20): nhân vật thuộc nhóm lịch sử / hoàng gia, hoặc đời người bắt đầu trước năm 1850
+const laCoDai = (d: DuAnYT) => ['lich_su', 'hoang_gia'].includes(d.phim?.tao_hinh?.nhom ?? '') || (namDoi(d)?.tu ?? 9999) < 1850
 // Giọng nhân vật chính theo giới tính (giọng kể chuyện còn trống trong bộ VieNeu)
 const GIONG_CHINH = { nam: 'Thiện Minh', nu: 'Mỹ Duyên' } as const
 
@@ -166,10 +173,31 @@ function loiThoaiGui(d: DuAnYT, k: number) {
     loi.unshift(loiGioiThieu, ...docChuong)
   } else loi.unshift(...docChuong)
   if (!phim || !hinh) return { ...goc, nhan_vat: NHAN_VAT, loi }
+  // Thẻ năm tự thêm: câu nhắc tới một năm trong đời nhân vật mà AI chưa đặt thẻ (cách thẻ trước ít nhất 4 câu, khác năm
+  // đang hiện) → thẻ chỉ ghi năm, để người xem luôn biết đang ở thời điểm nào
+  const doi = namDoi(d)
+  if (doi) {
+    let namHien = 0
+    let cachThe = 99
+    for (const l of loi) {
+      const theCo = typeof l.the_moc === 'string' && l.the_moc ? l.the_moc : ''
+      const nam = Number((theCo || String(l.chu ?? '')).match(/\b(\d{3,4})\b/)?.[1] ?? 0)
+      const trongDoi = nam >= doi.tu - 5 && nam <= doi.den + 5
+      if (theCo) {
+        if (trongDoi) namHien = nam
+        cachThe = 0
+      } else if (trongDoi && nam !== namHien && cachThe >= 4 && !l.la_chuong && !l.gioi_thieu) {
+        l.the_moc = String(nam)
+        namHien = nam
+        cachThe = 0
+      } else cachThe++
+    }
+  }
   return {
     ...goc,
     nhan_vat: { ...NHAN_VAT, nhan_vat_chinh: { ten: phim.ten, giong: GIONG_CHINH[hinh.gioi] } },
     nhan_vat_chinh: { ten: phim.ten, hinh },
+    dong_thoi_gian: doi,
     loi,
   }
 }
@@ -246,7 +274,7 @@ export async function vietLoiPhan(id: string, k: number) {
       : await vietPhanYouTube({ nguon: d.nguon_chu, danY: d, k, soCau: Math.round(giay / 4.5), noiTiep })
   if (!kb) throw new Error(`AI chưa viết được phần ${k}, thử lại sau ít phút`)
   // Biên tập viên kiểm định: tự sửa nhịp hình ảnh, chấm điểm, ghi chú
-  const { loi, ...kd } = kiemDinh(kb.loi as CauYT[], { loai: d.loai, laCuoi: k === d.phan.length })
+  const { loi, ...kd } = kiemDinh(kb.loi as CauYT[], { loai: d.loai, laCuoi: k === d.phan.length, coDai: laCoDai(d) })
   // Đọc lại ngay trước khi lưu: lúc AI viết, phần khác có thể vừa được lưu
   const moi = (await docDuAn(id)) ?? d
   moi.phan[k - 1] = { ...moi.phan[k - 1], loi, moc: kb.moc, canh: undefined, kiem_dinh: kd } // lời đổi thì phân cảnh cũ không còn đúng
@@ -259,7 +287,7 @@ export async function kiemDinhLaiPhan(id: string, k: number) {
   const d = await docDuAn(id)
   const p = d?.phan[k - 1]
   if (!d || !p?.loi) throw new Error('Phần này chưa có lời thoại')
-  const { loi, ...kd } = kiemDinh(p.loi, { loai: d.loai, laCuoi: k === d.phan.length })
+  const { loi, ...kd } = kiemDinh(p.loi, { loai: d.loai, laCuoi: k === d.phan.length, coDai: laCoDai(d) })
   const doi = JSON.stringify(loi) !== JSON.stringify(p.loi)
   d.phan[k - 1] = { ...p, loi, kiem_dinh: kd, canh: doi ? undefined : p.canh }
   await luuDuAn(d)

@@ -37,6 +37,14 @@ const NGUOI: Record<string, string> = {
   dau_bep: '🧑‍🍳 Đầu bếp',
   nu_doanh_nhan: '👩‍💼 Nữ doanh nhân',
   nguoi_nuoc_ngoai: '🌍 Người nước ngoài',
+  vua: '👑 Nhà vua',
+  hoang_hau: '👸 Hoàng hậu',
+  tuong_quan: '⚔️ Tướng quân',
+  chien_binh: '🛡️ Chiến binh',
+  nha_su: '🙏 Nhà sư',
+  phu_nu_xua: '👩 Phụ nữ xưa',
+  nong_dan_xua: '🌾 Nông dân xưa',
+  quan_lai: '📜 Quan lại',
 }
 
 // Ước lượng độ dài theo số chữ (~19 ký tự mỗi giây + nghỉ giữa câu), giống lib/youtube.ts

@@ -49,7 +49,10 @@ export function locLoiChao<T extends { chu: string }>(loi: T[], laCuoi: boolean)
   return { loi: loi.filter((_, i) => !bo.includes(i)), bo }
 }
 
-export function kiemDinh<T extends Cau>(goc: T[], o: { loai?: 'thuong' | 'tieu_su'; laCuoi?: boolean } = {}): KetQuaKiemDinh & { loi: T[] } {
+// Nhân vật phụ hiện đại: không được xuất hiện trong chuyện xưa (phóng viên phỏng vấn vua chúa…)
+const HIEN_DAI = new Set(['phong_vien', 'bac_si', 'chinh_khach', 'bo_doi', 'nguoi_dung', 'hacker', 'canh_sat', 'doanh_nhan', 'nu_doanh_nhan', 'cong_nhan', 'ky_su', 'nghe_si', 'van_dong_vien', 'dau_bep', 'giao_vien', 'hoc_sinh'])
+
+export function kiemDinh<T extends Cau>(goc: T[], o: { loai?: 'thuong' | 'tieu_su'; laCuoi?: boolean; coDai?: boolean } = {}): KetQuaKiemDinh & { loi: T[] } {
   const tieuSu = o.loai === 'tieu_su'
   const daSua: string[] = []
   const dem = (ten: string) => {
@@ -159,6 +162,11 @@ export function kiemDinh<T extends Cau>(goc: T[], o: { loai?: 'thuong' | 'tieu_s
   if (n >= 8 && dc < 0.3) ghiChu.push({ muc: 'nhac', chu: `Chỉ ${Math.round(dc * 100)}% số câu có đạo cụ minh hoạ, hình hơi trống` })
   if (n >= 8 && dc > 0.9) ghiChu.push({ muc: 'nhac', chu: 'Gần như câu nào cũng có đạo cụ, dễ rối mắt' })
 
+  // Phim cổ trang mà có nhân vật hiện đại
+  if (o.coDai) {
+    const sai = loi.filter((l) => HIEN_DAI.has(l.ai) || HIEN_DAI.has((l as Cau & { nhan_vat_phu?: string }).nhan_vat_phu ?? ''))
+    if (sai.length) ghiChu.push({ muc: 'loi', chu: `${sai.length} câu dùng nhân vật hiện đại (phóng viên, bác sĩ, chính khách…) trong chuyện xưa: bấm AI viết lại phần này để dùng vai cổ trang` })
+  }
   // Câu mở đầu: móc câu nên ngắn, gọn
   if (loi[0] && loi[0].chu.length > 140) ghiChu.push({ muc: 'nhac', chu: 'Câu mở đầu dài, khó giữ chân người xem trong 5 giây đầu: nên mở bằng một câu ngắn gây tò mò' })
 

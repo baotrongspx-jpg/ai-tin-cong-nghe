@@ -53,9 +53,19 @@ async function timTieuDe(ngonNgu: 'vi' | 'en', ten: string, daSua = false): Prom
   return null
 }
 
-async function layWiki(ngonNgu: 'vi' | 'en', ten: string, toiDa: number): Promise<NguonWiki | null> {
+// Tiêu đề bài vi + en của CÙNG một người: tìm bài tiếng Việt trước rồi đi theo liên kết ngôn ngữ (langlinks) sang bài
+// tiếng Anh — không tìm tên tiếng Việt trên Wikipedia tiếng Anh ("Thành Cát Tư Hãn" từng khớp nhầm "Tân Thành, Cà Mau").
+// Không có bài tiếng Việt (gõ tên tiếng Anh) thì mới tìm thẳng bên tiếng Anh.
+async function cacTieuDe(ten: string): Promise<{ vi: string | null; en: string | null }> {
+  const vi = await timTieuDe('vi', ten).catch(() => null)
+  if (!vi) return { vi: null, en: await timTieuDe('en', ten).catch(() => null) }
+  const lk = await hoi('vi', { action: 'query', titles: vi, redirects: '1', prop: 'langlinks', lllang: 'en' }).catch(() => null)
+  const en: string | undefined = lk?.query?.pages?.[0]?.langlinks?.[0]?.title
+  return { vi, en: en ?? null }
+}
+
+async function layWiki(ngonNgu: 'vi' | 'en', tieuDe: string | null, toiDa: number): Promise<NguonWiki | null> {
   try {
-    const tieuDe = await timTieuDe(ngonNgu, ten)
     if (!tieuDe) return null
     const bai = await hoi(ngonNgu, { action: 'query', prop: 'extracts', explaintext: '1', redirects: '1', titles: tieuDe })
     const trang = bai?.query?.pages?.[0]
@@ -116,7 +126,8 @@ async function anhCuaBai(ngonNgu: 'vi' | 'en', tieuDe: string): Promise<AnhWiki[
 
 // Ảnh của nhân vật từ bài vi + en (bỏ trùng), ảnh chân dung chính của bài lên đầu, rồi theo năm; tối đa 16 ảnh
 export async function anhWiki(ten: string): Promise<AnhWiki[]> {
-  const bai = await Promise.all((['vi', 'en'] as const).map(async (ng) => ({ ng, tieuDe: await timTieuDe(ng, ten).catch(() => null) })))
+  const td = await cacTieuDe(ten)
+  const bai = (['vi', 'en'] as const).map((ng) => ({ ng, tieuDe: td[ng] }))
   const ds = (await Promise.all(bai.filter((b) => b.tieuDe).map((b) => anhCuaBai(b.ng, b.tieuDe!).catch(() => [])))).flat()
   const daCo = new Set<string>()
   const kq = ds.filter((a) => !daCo.has(a.ten_tep) && daCo.add(a.ten_tep))
@@ -125,6 +136,7 @@ export async function anhWiki(ten: string): Promise<AnhWiki[]> {
 
 // Bài tiếng Việt (dài hơn) + tiếng Anh; không có bài nào đúng người thì trả mảng rỗng
 export async function nguonWiki(ten: string) {
-  const ds = await Promise.all([layWiki('vi', ten, 24_000), layWiki('en', ten, 16_000)])
+  const td = await cacTieuDe(ten)
+  const ds = await Promise.all([layWiki('vi', td.vi, 24_000), layWiki('en', td.en, 16_000)])
   return ds.filter((x): x is NguonWiki => !!x)
 }

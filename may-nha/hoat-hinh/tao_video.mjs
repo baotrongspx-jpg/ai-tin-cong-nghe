@@ -11,7 +11,7 @@ import { DAO_CU } from './daoCu.mjs'
 import { CSS_MINH_HOA, MINH_HOA, mocMoDau } from './minhHoa.mjs'
 
 const GOC = resolve(process.argv[2] ?? '.')
-const { nhan_vat, loi, moc, kenh = 'Công Nghệ 24H', chu_de = 'AI', kho = 'doc', the_chuong = null, man_ket = false, nhan_vat_chinh = null } = JSON.parse(readFileSync(join(GOC, 'artifacts/loi_thoai.json'), 'utf8'))
+const { nhan_vat, loi, moc, kenh = 'Công Nghệ 24H', chu_de = 'AI', kho = 'doc', the_chuong = null, man_ket = false, nhan_vat_chinh = null, dong_thoi_gian = null } = JSON.parse(readFileSync(join(GOC, 'artifacts/loi_thoai.json'), 'utf8'))
 const doDai = JSON.parse(readFileSync(join(GOC, 'artifacts/do_dai.json'), 'utf8'))
 // Câu có ảnh thật (phim tiểu sử): máy quay lùi ra toàn cảnh để khung ảnh phía trên không đè lên đầu nhân vật
 for (const l of loi) if (l.anh_wiki?.tep) l.khung_hinh = 'toan_canh'
@@ -648,14 +648,31 @@ let khungKeHtml = ''
     }
   }
 }
+// Phim tiểu sử: dưới thẻ có năm hiện thanh dòng thời gian (năm đầu → năm cuối đời nhân vật), chấm vàng trượt từ năm
+// trước tới năm này, phần đã qua tô sáng — người xem luôn biết đang ở đâu trong cuộc đời nhân vật
+const tg = dong_thoi_gian && dong_thoi_gian.den > dong_thoi_gian.tu ? dong_thoi_gian : null
+const viTriNam = (n) => Math.max(0, Math.min(1, (n - tg.tu) / (tg.den - tg.tu)))
+let namTruoc = tg ? tg.tu : 0
 const theMoc = []
 loi.forEach((l, i) => {
   if (!l.the_moc) return
   const t0 = batDau[i] + 0.15
   const het = Math.min(t0 + 3.6, (batDau[i + 1] ?? TONG) - 0.1)
   if (het - t0 < 1) return
-  theMoc.push(`<div id="tm${i}" class="the-moc">📍 ${esc(l.the_moc)}</div>`)
+  const nam = Number(String(l.the_moc).match(/\b(\d{3,4})\b/)?.[1] ?? 0)
+  const coThanh = tg && nam >= tg.tu - 5 && nam <= tg.den + 5
+  const thanh = coThanh
+    ? `<div class="tg-thanh"><span class="tg-dau">${tg.tu}</span><div class="tg-ray"><div id="tm${i}-da" class="tg-da"></div><div id="tm${i}-cham" class="tg-cham"></div></div><span class="tg-dau">${tg.den}</span></div>`
+    : ''
+  theMoc.push(`<div id="tm${i}" class="the-moc-khoi"><div class="the-moc">📍 ${esc(l.the_moc)}</div>${thanh}</div>`)
   tw.push(`tl.fromTo("#tm${i}", { opacity: 0, x: -60 }, { opacity: 1, x: 0, duration: 0.45, ease: "power3.out", immediateRender: false }, ${f(t0)});`)
+  if (coThanh) {
+    const a = viTriNam(namTruoc) * 100
+    const b = viTriNam(nam) * 100
+    tw.push(`tl.fromTo("#tm${i}-cham", { left: "${f(a)}%" }, { left: "${f(b)}%", duration: 1.1, ease: "power2.inOut", immediateRender: false }, ${f(t0 + 0.35)});`)
+    tw.push(`tl.fromTo("#tm${i}-da", { width: "${f(a)}%" }, { width: "${f(b)}%", duration: 1.1, ease: "power2.inOut", immediateRender: false }, ${f(t0 + 0.35)});`)
+    namTruoc = nam
+  }
   tw.push(`tl.to("#tm${i}", { opacity: 0, x: -40, duration: 0.35, ease: "power2.in" }, ${f(het - 0.35)});`)
 })
 
@@ -969,7 +986,12 @@ const trang = `<!doctype html>
       .pd-ten.robot { background: #22d3ee; color: #082f49; }
       .pd-ten.ke { background: #fde68a; color: #422006; }
       .pd-tai-hien { font-size: 20px; font-weight: 700; padding: 3px 12px; border-radius: 6px; margin-bottom: 4px; background: #00000099; color: #fbbf24; border: 2px solid #fbbf24; letter-spacing: 1px; text-transform: uppercase; }
-      .the-moc { position: absolute; left: 56px; top: ${NGANG ? 150 : 240}px; display: flex; align-items: center; gap: 12px; padding: 12px 24px 12px 18px; border-radius: 14px; background: #0f172ae6; border-left: 8px solid #fbbf24; font-size: ${NGANG ? 34 : 38}px; font-weight: 700; color: #fff; box-shadow: 0 16px 36px #0008; opacity: 0; }
+      .the-moc-khoi { position: absolute; left: 56px; top: ${NGANG ? 150 : 240}px; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; opacity: 0; }
+      .tg-thanh { display: flex; align-items: center; gap: 12px; padding: 8px 16px; border-radius: 12px; background: #0f172acc; font-size: 22px; font-weight: 700; color: #cbd5e1; box-shadow: 0 10px 24px #0007; }
+      .tg-ray { position: relative; width: 340px; height: 8px; border-radius: 4px; background: #334155; }
+      .tg-da { position: absolute; left: 0; top: 0; height: 100%; border-radius: 4px; background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+      .tg-cham { position: absolute; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; background: #fde68a; border: 4px solid #f59e0b; box-shadow: 0 0 12px #fbbf24; }
+      .the-moc { position: relative; display: flex; align-items: center; gap: 12px; padding: 12px 24px 12px 18px; border-radius: 14px; background: #0f172ae6; border-left: 8px solid #fbbf24; font-size: ${NGANG ? 34 : 38}px; font-weight: 700; color: #fff; box-shadow: 0 16px 36px #0008; }
       .dao-cu.nguoi_ke { left: ${NGANG ? 1220 : 445}px; top: ${NGANG ? 560 : 380}px; }
       .pd-dong { font-size: 48px; font-weight: 700; line-height: 1.2; white-space: nowrap; text-shadow: 0 0 5px #000, 0 3px 0 #000, 2.5px 2.5px 0 #000, -2.5px 2.5px 0 #000, 2.5px -2.5px 0 #000, -2.5px -2.5px 0 #000; }
       .pd-tu { display: inline-block; color: #fff; }

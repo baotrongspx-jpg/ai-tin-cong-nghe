@@ -296,21 +296,30 @@ def ghi_nho(ten, du_lieu):
 
 
 _lan_goi_pixabay = [0.0]
+NGHI_PIXABAY = 1800  # bị Pixabay chặn (429) thì thôi gọi Pixabay 30 phút: cảnh dùng nền vẽ / tranh đã tải, dựng không phải chờ
 
 
 def goi_pixabay(url, params=None):
     # Mọi lần gọi pixabay.com (tìm + tải tranh lớn) đều tính vào giới hạn ~100 lượt / phút dùng chung với trang tin:
-    # cách nhau tối thiểu 1 giây (≤ 60 / phút); bị chặn (429) thì đợi 1 phút rồi thử lại, tối đa 3 lần.
-    for lan_thu in range(4):
-        cho = _lan_goi_pixabay[0] + 1.0 - time.time()
-        if cho > 0:
-            time.sleep(cho)
-        _lan_goi_pixabay[0] = time.time()
-        r = requests.get(url, params=params, timeout=60)
-        if r.status_code != 429 or lan_thu == 3:
-            r.raise_for_status()
-            return r
-        time.sleep(60)
+    # cách nhau tối thiểu 1 giây (≤ 60 / phút). Bị chặn (429) thì KHÔNG thử lại (gọi tiếp lúc đang bị chặn làm Pixabay chặn
+    # lâu hơn, và mỗi cảnh chờ vài phút làm phần video kẹt rất lâu): ghi giờ được gọi lại vào nghi-den.txt rồi báo lỗi ngay.
+    tep = KHO_PIXABAY / 'nghi-den.txt'
+    try:
+        if time.time() < float(tep.read_text()):
+            raise RuntimeError('Pixabay đang tạm chặn, bỏ qua')
+    except (OSError, ValueError):
+        pass
+    cho = _lan_goi_pixabay[0] + 1.0 - time.time()
+    if cho > 0:
+        time.sleep(cho)
+    _lan_goi_pixabay[0] = time.time()
+    r = requests.get(url, params=params, timeout=60)
+    if r.status_code == 429:
+        KHO_PIXABAY.mkdir(parents=True, exist_ok=True)
+        tep.write_text(str(time.time() + NGHI_PIXABAY))
+        print(f'Pixabay chặn (429): tạm không dùng tranh Pixabay {NGHI_PIXABAY // 60} phút, cảnh giữ nền vẽ', flush=True)
+    r.raise_for_status()
+    return r
 
 
 def tim_pixabay(tu_khoa):
@@ -335,8 +344,8 @@ def tim_pixabay(tu_khoa):
             if len(anh) >= 6 or len(tu) <= 2:
                 break
             tu = tu[:-1]
-    except Exception:
-        traceback.print_exc()
+    except Exception as e:
+        print(f'Không tìm được tranh "{tu_khoa}": {str(e)[:120]}', flush=True)
         return anh
     nho[tu_khoa] = {'luc': time.time(), 'anh': anh}
     ghi_nho('tim-hoat-hinh-2.json', nho)

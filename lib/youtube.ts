@@ -20,7 +20,7 @@ import { apBienTap, deBaiBienTap, type DaBienTap, type KetQuaBienTap } from './b
 // video và chỉ lưu trên máy nhà (Desktop\Video-YouTube), vì video dài quá nặng để gửi lên kho.
 // Máy nhà báo kết quả: youtube/<id>/phan-<k>.json ({ xong, ma } hoặc { loi, ma }), tien-do.json, xong.json.
 const KHO = 'video-tiktok'
-const PHIEN_BAN = 22 // tăng khi đổi cách dựng để các phần dựng lại (2: thẻ minh hoạ / đạo cụ khung ngang; 3: giọng Mèo Mun; 4: nhịp chuyển cảnh mượt; 5: thẻ chương, màn kết, B-roll; 6: khung người kể, 7: người kể vẽ riêng, 8: nhân vật chính phim tiểu sử, 9: ảnh Wikipedia, 10: lời giới thiệu + đọc tên chương, ảnh đặt linh động, 11: bố cục chữ không che nhân vật, bỏ ghi nguồn trên ảnh, 12: thanh dòng thời gian, thẻ năm tự thêm, 13: câu móc trước lời chào, màn kết 20 giây, phụ đề .srt, cách đọc tên riêng, 14: biểu cảm, đi vào cảnh, chữ động con số, tiền cảnh, 15: cảnh hành động, 16: bỏ nhạc nền, màn kết 8 giây, nhân vật phụ ở lại theo đợt, lớp sự sống cho bối cảnh, 17: nhân vật hết nhiệm vụ rời đi trước khi người mới vào, 18: ảnh nền Pixabay theo cảnh, 19: tranh nền hoạt hình, Mèo / Bit dạt xa suốt cụm có hai nhân vật phụ (hết đè nhau), 20: Mèo Mun đọc lời mời đăng ký ở màn kết, 21: bỏ ghim cờ trên áo nhân vật, 22: Mèo / Bit dạt theo người đang đứng trên sân khấu, máy quay cận theo chỗ họ đứng)
+const PHIEN_BAN = 23 // tăng khi đổi cách dựng để các phần dựng lại (2: thẻ minh hoạ / đạo cụ khung ngang; 3: giọng Mèo Mun; 4: nhịp chuyển cảnh mượt; 5: thẻ chương, màn kết, B-roll; 6: khung người kể, 7: người kể vẽ riêng, 8: nhân vật chính phim tiểu sử, 9: ảnh Wikipedia, 10: lời giới thiệu + đọc tên chương, ảnh đặt linh động, 11: bố cục chữ không che nhân vật, bỏ ghi nguồn trên ảnh, 12: thanh dòng thời gian, thẻ năm tự thêm, 13: câu móc trước lời chào, màn kết 20 giây, phụ đề .srt, cách đọc tên riêng, 14: biểu cảm, đi vào cảnh, chữ động con số, tiền cảnh, 15: cảnh hành động, 16: bỏ nhạc nền, màn kết 8 giây, nhân vật phụ ở lại theo đợt, lớp sự sống cho bối cảnh, 17: nhân vật hết nhiệm vụ rời đi trước khi người mới vào, 18: ảnh nền Pixabay theo cảnh, 19: tranh nền hoạt hình, Mèo / Bit dạt xa suốt cụm có hai nhân vật phụ (hết đè nhau), 20: Mèo Mun đọc lời mời đăng ký ở màn kết, 21: bỏ ghim cờ trên áo nhân vật, 22: Mèo / Bit dạt theo người đang đứng trên sân khấu, máy quay cận theo chỗ họ đứng, 23: màn hình gọn (bảng tin chỉ khi đổi cảnh, khung người kể một lần, bỏ nhãn chủ đề, phụ đề nhỏ), lời kể nền rõ nét, mở đầu vào thẳng chuyện)
 const kho = () => db().storage.from(KHO)
 const thuMuc = (id: string) => `youtube/${id}`
 const tenViec = (id: string, k: number) => `yt-${id}-${k}.json`
@@ -141,7 +141,7 @@ function loiThoaiGui(d: DuAnYT, k: number) {
   const tenChuong = p.tieu_de.replace(/^\s*(phần|chương|tập)\s*\d+\s*[:.\-–—]\s*/i, '').trim() || p.tieu_de
   const goc = {
     kho: 'ngang', kenh: 'Công Nghệ 24H', chu_de: d.chu_de, moc: k === 1 ? p.moc : null, phat_am: bangPhatAm(d.phat_am),
-    the_chuong: { so: k, ten: tenChuong, nhan: phim ? 'CHƯƠNG' : 'PHẦN' }, man_ket: k === d.phan.length,
+    the_chuong: k === 1 ? null : { so: k, ten: tenChuong, nhan: phim ? 'CHƯƠNG' : 'PHẦN' }, man_ket: k === d.phan.length,
   }
   const hinh = phim ? hinhChuong(d, k) : null
   const anhChuong = phim ? anhCuaChuong(d, k) : {}
@@ -169,8 +169,8 @@ function loiThoaiGui(d: DuAnYT, k: number) {
     const chanDung = phim?.anh?.find((a) => a.chinh)
     const tieuDe = d.tieu_de.replace(/^Phim tiểu sử:\s*/i, '').trim()
     const gioiThieu = phim
-      ? `Xin chào các bạn, đây là Công Nghệ 24H. Hôm nay, mời bạn cùng nghe câu chuyện về cuộc đời ${phim.ten}${nhieuPhan ? `, qua ${d.phan.length} chương phim` : ''}${tieuDe && tieuDe !== phim.ten ? `: ${cham(tieuDe)}` : '.'}`
-      : `Xin chào các bạn, chào mừng đến với Công Nghệ 24H. Hôm nay chúng ta cùng tìm hiểu: ${cham(tieuDe)}`
+      ? `Đây là Công Nghệ 24H, và đây là câu chuyện về ${phim.ten}${tieuDe && tieuDe !== phim.ten ? `: ${cham(tieuDe)}` : '.'}`
+      : `Bạn đang xem Công Nghệ 24H. Hôm nay chúng ta cùng tìm hiểu: ${cham(tieuDe)}`
     const loiGioiThieu = mau(loi[0], {
       chu: gioiThieu,
       cam_xuc: 'vui',
@@ -181,10 +181,10 @@ function loiThoaiGui(d: DuAnYT, k: number) {
       ...(phim ? { nhan_vat_phu: 'nhan_vat_chinh' } : {}),
       ...(chanDung ? veAnh(chanDung) : {}),
     })
-    // 5 giây đầu quyết định người xem ở lại: câu móc (câu đầu AI viết) mở màn, rồi mới chào + giới thiệu, đọc tên
-    // chương 1, vào chuyện
-    const moc = loi.shift()
-    loi.unshift(...(moc ? [moc] : []), loiGioiThieu, ...docChuong)
+    // 30 giây đầu quyết định người xem ở lại: vào thẳng chuyện — câu móc + 2 câu tiếp theo của câu chuyện (~15 giây gay
+    // cấn), rồi mới chào ngắn một câu, kể tiếp. Không đọc tên chương 1 / không thẻ chương ở phần 1 (làm chậm phút đầu)
+    const dau = loi.splice(0, Math.min(3, Math.max(1, loi.length - 2)))
+    loi.unshift(...dau, loiGioiThieu)
   } else loi.unshift(...docChuong)
   if (!phim || !hinh) return { ...goc, nhan_vat: NHAN_VAT, loi }
   // Thẻ năm tự thêm: câu nhắc tới một năm trong đời nhân vật mà AI chưa đặt thẻ (cách thẻ trước ít nhất 4 câu, khác năm

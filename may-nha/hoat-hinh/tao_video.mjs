@@ -735,6 +735,13 @@ loi.forEach((l, i) => {
     // B-roll: lời kể đi cùng cảnh minh hoạ, Mèo / Bit lui hẳn ra hai mép (quay lại khi tới lượt họ)
     tw.push(`tl.to("#o-meo", { xPercent: -150, duration: 0.6, ease: "power2.inOut" }, ${f(Math.max(0, t0 - 0.35))});`)
     tw.push(`tl.to("#o-robot", { xPercent: 150, duration: 0.6, ease: "power2.inOut" }, ${f(Math.max(0, t0 - 0.35))});`)
+    // Sân khấu trống (không nhân vật phụ / nhân vật chính đứng): nền thành cảnh minh hoạ toàn màn hình — rõ nét, sáng hơn
+    // (bình thường nền hơi nhoè để nhân vật nổi); câu sau không phải lời kể trống thì nhoè lại
+    const trong = (j) => loi[j]?.ai === 'nguoi_ke' && !phuCuaCau[j]
+    if (!phuCuaCau[i]) {
+      if (!trong(i - 1)) tw.push(`tl.to("#camera-nen", { filter: "blur(0px) saturate(1.12) brightness(1.06)", duration: 0.6, ease: "power1.inOut" }, ${f(Math.max(0, t0 - 0.3))});`)
+      if (!trong(i + 1)) tw.push(`tl.to("#camera-nen", { filter: "blur(1.6px) saturate(1.08) brightness(1)", duration: 0.6, ease: "power1.inOut" }, ${f(t0 + d - 0.2)});`)
+    }
   } else {
     tw.push(`tl.to("#o-${nghe}", { xPercent: ${canCanh ? (nghe === 'robot' ? 45 : -45) : 0}, duration: 0.55, ease: "power2.inOut" }, ${f(Math.max(0, t0 - 0.3))});`)
     tw.push(`tl.to("#o-${nghe === 'robot' ? 'meo' : 'robot'}", { xPercent: 0, duration: 0.55, ease: "power2.inOut" }, ${f(Math.max(0, t0 - 0.3))});`)
@@ -863,7 +870,8 @@ let khungKeHtml = ''
   if (dot.length) {
     khungKeHtml = `<div id="khung-ke"><div class="ke-vong"></div><div class="ke-tron"><div class="ke-den"></div><svg viewBox="100 70 400 400" width="340" height="340">${nguoiKeSvg('nguoi_ke')}</svg></div><div class="ke-mic">🎙</div></div>`
     tw.push('gsap.set("#nguoi_ke-dau", { svgOrigin: "300 440" }); gsap.set("#nguoi_ke-mieng-mo", { svgOrigin: "300 340" }); gsap.set("#nguoi_ke-mat-trai", { svgOrigin: "238 268" }); gsap.set("#nguoi_ke-mat-phai", { svgOrigin: "362 268" });')
-    for (const c of dot) {
+    // Chỉ hiện ở lượt kể đầu tiên của phần (giới thiệu giọng kể); các lượt sau chỉ còn giọng, màn hình gọn
+    for (const c of dot.slice(0, 1)) {
       const vao = Math.max(0, batDau[c.tu] - 0.4)
       const ra = batDau[c.het] + doDai[c.het] - 0.1
       tw.push(`tl.fromTo("#khung-ke", { x: -400, opacity: 0 }, { x: 0, opacity: 1, duration: 0.5, ease: "back.out(1.4)", immediateRender: false }, ${f(vao)});`)
@@ -918,8 +926,8 @@ const bangCuaCau = []
   let cuoi = -99
   loi.forEach((l, i) => {
     const canhMoi = i === 0 || (BOI_CANH[l.boi_canh] ? l.boi_canh : 'truong_quay') !== (BOI_CANH[loi[i - 1].boi_canh] ? loi[i - 1].boi_canh : 'truong_quay')
-    const doi = i > 0 && (l.bang?.chu !== loi[cuoi]?.bang?.chu || l.bang?.bieu_tuong !== loi[cuoi]?.bang?.bieu_tuong)
-    if (l.bang?.chu && (canhMoi || (doi && i - cuoi >= 3))) {
+    // Chỉ khi đổi cảnh (màn hình gọn: một điểm nhấn mỗi lúc), giữ ~5 giây rồi mờ đi
+    if (l.bang?.chu && canhMoi) {
       bangHien.push(i)
       cuoi = i
     }
@@ -988,8 +996,9 @@ const anhThat = doanAnh.map((c, k) => {
 const bang = bangHien.map((i, j) => {
   const l = loi[i]
   const t0 = batDau[i]
-  const het = j === bangHien.length - 1 ? HET_NOI : batDau[bangHien[j + 1]]
+  const het = Math.min(j === bangHien.length - 1 ? HET_NOI : batDau[bangHien[j + 1]], t0 + 5.2)
   tw.push(`tl.from("#bang${i} .bang-noi", { scale: 0.6, opacity: 0, duration: 0.4, ease: "back.out(2)" }, ${f(t0 + 0.05)});`)
+  tw.push(`tl.to("#bang${i} .bang-noi", { opacity: 0, y: -16, duration: 0.4, ease: "power1.in" }, ${f(het - 0.45)});`)
   return `
     <div id="bang${i}" class="bang clip" data-start="${f(t0)}" data-duration="${f(het - t0)}" data-track-index="${NGANG ? 2500 : 2}">
       <div class="bang-noi"><div class="bang-bt">${l.bang?.bieu_tuong ?? ''}</div><div class="bang-chu">${esc(l.bang?.chu ?? '')}</div></div>
@@ -1166,7 +1175,7 @@ if (MAN_KET) {
 const CSS_NGANG = `
       .dau-trang { height: 130px; padding: 0 56px; }
       .kenh { font-size: 34px; }
-      .chude { font-size: 26px; }
+      .chude { display: none; }
       .bang { padding-top: 30px; z-index: 6; }
       .bang-noi { width: auto; max-width: 860px; height: 74px; gap: 16px; padding: 0 30px 0 22px; border-radius: 40px; border-width: 4px; box-shadow: 0 0 0 4px #1e293b, 0 12px 28px #0009; }
       .bang-bt { font-size: 42px; }
@@ -1184,8 +1193,8 @@ const CSS_NGANG = `
       .dao-cu-khung { position: absolute; right: 80px; top: 140px; width: 170px; height: 170px; display: flex; align-items: center; justify-content: center; font-size: 128px; line-height: 1; font-family: "Emoji", sans-serif; filter: drop-shadow(0 14px 20px #0008); opacity: 0; }
       .moc { top: 110px; height: 400px; }
       .moc-chu { font-size: 76px; }
-      .phu-de { height: 330px; padding: 0 160px 44px; background: linear-gradient(transparent, #00000080 45%, #00000099); }
-      .pd-dong { font-size: 50px; }
+      .phu-de { height: 250px; padding: 0 200px 40px; background: linear-gradient(transparent, #00000066 50%, #00000088); }
+      .pd-dong { font-size: 42px; }
       #the-chuong { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: radial-gradient(ellipse at center, #1e1b4bf2, #020617fa); opacity: 0; }
       .tc-kenh { font-size: 30px; font-weight: 700; letter-spacing: 8px; color: #38bdf8; }
       .tc-so { font-size: 40px; font-weight: 700; letter-spacing: 12px; color: #fbbf24; }
@@ -1219,7 +1228,7 @@ const trang = `<!doctype html>
       .the-gioi { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; transform: translate(${LECH_X}px, ${LECH_Y}px); }
       .camera { position: absolute; inset: 0; transform-origin: ${GIUA_X}px ${GIUA_Y}px; }${CSS_MINH_HOA}
       /* Nền hơi nhoè như ống kính lấy nét vào nhân vật; nhân vật có viền sáng và bóng đổ mềm */
-      #camera-nen { filter: blur(1.6px) saturate(1.08); }
+      #camera-nen { filter: blur(1.6px) saturate(1.08) brightness(1); }
       #toi-chuyen { position: absolute; inset: 0; background: #000; opacity: 0; }
       #den { position: absolute; inset: 0; background: #000; opacity: 0; mix-blend-mode: soft-light; }
       #chop { position: absolute; inset: 0; background: #fff; opacity: 0; }

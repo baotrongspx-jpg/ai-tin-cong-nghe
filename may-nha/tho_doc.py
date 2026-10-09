@@ -443,7 +443,7 @@ def tai_anh_nen(loi, tai_san, lech=0, td=None):
                 continue
             bd = (lech * 2 + lan.get(tu_khoa, 0) * 3) % len(ds)
             lan[tu_khoa] = lan.get(tu_khoa, 0) + 1
-            tot, diem_tot = None, 4
+            tot, diem_tot = None, 6  # chỉ nhận tranh AI chấm từ 7 điểm
             for a in (ds[bd:] + ds[:bd])[:8]:
                 d = cham_anh(a, tu_khoa, nho)
                 if d > diem_tot:
@@ -465,6 +465,15 @@ def tai_anh_nen(loi, tai_san, lech=0, td=None):
                 continue
             da_dung.add(tot['id'])
             l['anh_nen_tep'] = f'px-{tot["id"]}.jpg'
+        # Thống nhất phong cách: cả phần dùng tranh chỉ khi ít nhất 60% số cảnh (có từ khoá) tìm được tranh đạt; ít hơn thì
+        # cả phần giữ nền vẽ (tránh cảnh tranh, cảnh vẽ xen kẽ, mỗi cảnh một kiểu)
+        co_tu = [l for i, l in enumerate(loi) if (i == 0 or l.get('boi_canh') != loi[i - 1].get('boi_canh'))
+                 and ((l.get('anh_nen') or '').strip() or TU_KHOA_CANH.get(l.get('boi_canh')))]
+        co_anh = [l for l in co_tu if l.get('anh_nen_tep')]
+        if co_tu and len(co_anh) < 0.6 * len(co_tu):
+            for l in co_anh:
+                (tai_san / l.pop('anh_nen_tep')).unlink(missing_ok=True)
+            print(f'Chỉ {len(co_anh)}/{len(co_tu)} cảnh có tranh đạt: cả phần dùng nền vẽ cho đồng bộ', flush=True)
     finally:
         ghi_nho('cham.json', nho)
 

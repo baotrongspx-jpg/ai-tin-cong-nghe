@@ -516,6 +516,7 @@ export default function ChiTiet({ dau, ttDau }: { dau: DuAnYT; ttDau: TrangThaiD
                 }}
               />
             </div>
+            {daVietDu && <MayNhaDangLam tt={tt} soPhan={d.phan.length} />}
             {soXong === d.phan.length && !tt.xong && !tt.ketGhep && (
               <p className="flex items-center gap-2 text-sm text-violet-700">
                 <Xoay /> Đang ghép các phần thành một video…
@@ -978,5 +979,55 @@ function AnhBia({ d, tt, khoa, setD, capNhatTt }: { d: DuAnYT; tt: TrangThaiDuAn
         </p>
       )}
     </section>
+  )
+}
+
+// Lỗi máy nhà → lời dễ hiểu + cách xử lý
+function giaiThichLoi(loi: string) {
+  if (/Disk capture|free at|ENOSPC|No space/i.test(loi)) return 'Ổ C hết chỗ trống khi dựng hình. Giải phóng ổ C hoặc khởi động lại máy nhà (bản mới để tệp tạm ở ổ D), rồi bấm Dựng lại phần này.'
+  if (/chạy quá \d+ giây/.test(loi)) return 'Dựng hình quá lâu nên máy nhà dừng lại. Bấm Dựng lại phần này; nếu lặp lại, khởi động lại máy tính.'
+  if (/429|Too Many Requests/i.test(loi)) return 'Pixabay đang tạm chặn. Bấm Dựng lại phần này (cảnh sẽ dùng nền vẽ).'
+  return null
+}
+
+// Máy nhà đang làm gì: bước hiện tại của video này, hay đang bận việc khác; lâu không báo tiến độ → cảnh báo có thể kẹt;
+// phần nào lỗi → hiện lỗi + cách xử lý (khỏi chờ vô vọng)
+function MayNhaDangLam({ tt, soPhan }: { tt: TrangThaiDuAn; soPhan: number }) {
+  const [bayGio, setBayGio] = useState(() => Date.now())
+  useEffect(() => {
+    const t = setInterval(() => setBayGio(Date.now()), 5000)
+    return () => clearInterval(t)
+  }, [])
+  const ml = tt.mayNhaLam
+  const coCho = tt.phan.some((p) => p.loai === 'cho')
+  const loi = tt.phan.map((p, i) => (p.loai === 'loi' ? { k: i + 1, loi: p.loi } : null)).filter((x): x is { k: number; loi: string } => !!x)
+  const truoc = (luc: number) => {
+    const g = Math.max(0, Math.round((bayGio - luc) / 1000))
+    return g < 60 ? `${g} giây trước` : `${Math.floor(g / 60)} phút trước`
+  }
+  return (
+    <div className="grid gap-2">
+      {ml && (
+        <p className={`rounded-xl p-3 text-sm ring-1 ${ml.cuaVideo ? 'bg-violet-50 text-violet-800 ring-violet-200' : 'bg-slate-50 text-slate-700 ring-slate-200'}`}>
+          🖥 <b>Máy nhà đang làm:</b>{' '}
+          {ml.cuaVideo ? (ml.phan ? `Phần ${ml.phan}/${soPhan} — ` : '') : `việc khác (${ml.mo_ta}${ml.tieu_de ? ` «${ml.tieu_de}»` : ''}) — `}
+          {ml.buoc}
+          {ml.phanTram != null && ml.phanTram > 0 ? ` (${ml.phanTram}%)` : ''} · <span className="text-xs opacity-70">cập nhật {truoc(ml.luc)}</span>
+          {!ml.cuaVideo && coCho && <span className="block text-xs">Video này đang xếp hàng, máy nhà làm xong việc kia sẽ làm tiếp.</span>}
+        </p>
+      )}
+      {ml && bayGio - ml.luc > 4 * 60_000 && (
+        <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800 ring-1 ring-amber-200">
+          ⚠ Máy nhà chưa báo tiến độ {Math.floor((bayGio - ml.luc) / 60_000)} phút, có thể đang kẹt. Đóng cửa sổ đen <b>chay-vieneu-gpu.bat</b> rồi bấm đúp mở lại: máy nhà tự làm tiếp việc dang dở.
+        </p>
+      )}
+      {!ml && coCho && !tt.mayNha && <p className="text-sm text-slate-500">🖥 Máy nhà đang rảnh, sắp nhận việc…</p>}
+      {loi.map((x) => (
+        <p key={x.k} className="rounded-xl bg-red-50 p-3 text-sm text-red-700 ring-1 ring-red-200">
+          ❌ <b>Phần {x.k} lỗi.</b> {giaiThichLoi(x.loi) ?? 'Bấm Dựng lại phần này ở thẻ phần bên dưới.'}
+          <span className="mt-1 block break-all text-xs opacity-70">Chi tiết: {x.loi}</span>
+        </p>
+      ))}
+    </div>
   )
 }

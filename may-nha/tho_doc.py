@@ -166,6 +166,21 @@ def ten_tep(tieu_de):
     return t or 'video'
 
 
+# Bảng tin chung "máy nhà đang làm gì" (hang-doi/hien-tai.json) cho trang web: việc nào (mã, dự án, phần), bước nào, lúc
+# nào. Ghi khi nhận việc, mỗi lần báo tiến độ, xoá khi xong việc. VIEC_HIEN_TAI: việc đang làm (main đặt).
+VIEC_HIEN_TAI = {}
+
+
+def bao_hien_tai(buoc, phan_tram=None):
+    if not VIEC_HIEN_TAI:
+        return
+    try:
+        gui('hang-doi/hien-tai.json', json.dumps({**VIEC_HIEN_TAI, 'buoc': buoc, 'phanTram': phan_tram, 'luc': int(time.time() * 1000)},
+                                                 ensure_ascii=False), 'application/json')
+    except Exception:
+        traceback.print_exc()
+
+
 class TienDo:
     # Ghi tiến độ (phần trăm + bước đang làm) lên kho để trang web vẽ thanh chạy; tối đa 3 giây ghi một lần.
     # `duong`: chỗ ghi khác (video YouTube ghi ở youtube/<dự án>/tien-do.json), `them`: thông tin kèm (phần đang dựng)
@@ -182,6 +197,7 @@ class TienDo:
         self.lan, self.cuoi = time.time(), (phan_tram, buoc)
         try:
             gui(self.duong, json.dumps({**self.them, 'phanTram': phan_tram, 'buoc': buoc, 'luc': int(time.time() * 1000)}, ensure_ascii=False), 'application/json')
+            bao_hien_tai(buoc, phan_tram)
         except Exception:
             traceback.print_exc()
 
@@ -299,6 +315,13 @@ _lan_goi_pixabay = [0.0]
 NGHI_PIXABAY = 1800  # bị Pixabay chặn (429) thì thôi gọi Pixabay 30 phút: cảnh dùng nền vẽ / tranh đã tải, dựng không phải chờ
 
 
+def pixabay_dang_chan():
+    try:
+        return time.time() < float((KHO_PIXABAY / 'nghi-den.txt').read_text())
+    except (OSError, ValueError):
+        return False
+
+
 def goi_pixabay(url, params=None):
     # Mọi lần gọi pixabay.com (tìm + tải tranh lớn) đều tính vào giới hạn ~100 lượt / phút dùng chung với trang tin:
     # cách nhau tối thiểu 1 giây (≤ 60 / phút). Bị chặn (429) thì KHÔNG thử lại (gọi tiếp lúc đang bị chặn làm Pixabay chặn
@@ -396,7 +419,7 @@ def cham_anh(a, tu_khoa, nho):
     return diem
 
 
-def tai_anh_nen(loi, tai_san, lech=0):
+def tai_anh_nen(loi, tai_san, lech=0, td=None):
     # Mỗi cảnh (các câu liền nhau cùng boi_canh, như tao_video.mjs) một tranh nền → assets/px-<mã>.jpg, ghi tên tệp vào
     # anh_nen_tep của câu đầu cảnh. Không lặp tranh trong một phần; lech (số phần) để các phần chọn tranh khác nhau.
     # Chấm tối đa 8 ứng viên mỗi cảnh, lấy tranh điểm cao nhất (từ 5 trở lên). Không có tranh đạt thì giữ nền vẽ.
@@ -409,6 +432,12 @@ def tai_anh_nen(loi, tai_san, lech=0):
             tu_khoa = ' '.join((l.get('anh_nen') or '').lower().split()) or TU_KHOA_CANH.get(l.get('boi_canh'), '')
             if not tu_khoa:
                 continue
+            if td:
+                so_canh = sum(1 for j in range(len(loi)) if j == 0 or loi[j].get('boi_canh') != loi[j - 1].get('boi_canh'))
+                canh_thu = sum(1 for j in range(i + 1) if j == 0 or loi[j].get('boi_canh') != loi[j - 1].get('boi_canh'))
+                bi_chan = pixabay_dang_chan()
+                td.bao(3 + 6 * canh_thu / max(1, so_canh), f'Chọn tranh nền cảnh {canh_thu}/{so_canh}'
+                       + (' — Pixabay đang tạm chặn, dùng nền vẽ / tranh đã tải' if bi_chan else ' (AI máy nhà xem tranh)'), ep=True)
             ds = [a for a in tim_pixabay(tu_khoa) if a['id'] not in da_dung]
             if not ds:
                 continue
@@ -489,6 +518,7 @@ def dung_video(may, ds_giong, lt, tm, td, fps=30, gioi_han=1500, anh_nen=None):
     # Đọc từng câu thoại bằng giọng của nhân vật nói câu đó, sinh trang HyperFrames rồi dựng ra tm/video.mp4.
     # Trả độ dài (giây) từng câu. Tiến độ: đọc giọng 10-30%, dựng hình 30-95%.
     shutil.rmtree(tm, ignore_errors=True)
+    td.bao(2, 'Chuẩn bị (phông chữ, âm thanh, ảnh tư liệu)', ep=True)
     (tm / 'artifacts').mkdir(parents=True)
     tai_san = tm / 'hyperframes' / 'assets'
     tai_san.mkdir(parents=True)
@@ -500,7 +530,7 @@ def dung_video(may, ds_giong, lt, tm, td, fps=30, gioi_han=1500, anh_nen=None):
         shutil.copy(tep, tai_san / tep.name)
     tai_anh_wiki(lt['loi'], tai_san)
     if anh_nen is not None:  # video YouTube: ảnh nền Pixabay theo cảnh (anh_nen = số phần, để các phần chọn ảnh khác nhau)
-        tai_anh_nen(lt['loi'], tai_san, anh_nen)
+        tai_anh_nen(lt['loi'], tai_san, anh_nen, td)
     # Gom các câu cùng giọng đọc một lần (nhanh hơn nhiều so với từng câu, nhất là trên card NVIDIA)
     theo_giong = {}
     for i, l in enumerate(lt['loi']):
@@ -874,6 +904,13 @@ def main():
             # Việc dài (dựng video): ghi phiếu ra máy để lỡ máy nhà tắt / khởi động lại giữa chừng thì lần chạy sau gửi
             # lại phiếu làm tiếp (main → lam_tiep_viec_do); giữ máy không ngủ trong lúc làm
             viec_dai = yc.get('loai') in VIEC_DAI
+            # Bảng tin chung cho trang web: việc gì, của video nào, phần nào
+            MO_TA_VIEC = {'youtube': 'Dựng video YouTube', 'youtube_short': 'Dựng Shorts', 'yt_anh_bia': 'Vẽ ảnh bìa', 'hoat_hinh': 'Dựng video TikTok',
+                          'ai': 'AI máy nhà biên tập kịch bản', 'xoa_youtube': 'Xoá video'}
+            VIEC_HIEN_TAI.clear()
+            VIEC_HIEN_TAI.update({'viec': ma, 'loai': yc.get('loai') or 'doc_giong', 'mo_ta': MO_TA_VIEC.get(yc.get('loai'), 'Đọc giọng'),
+                                  'du_an': yc.get('du_an'), 'tieu_de': yc.get('tieu_de') or yc.get('ten'), 'phan': yc.get('phan') or yc.get('so')})
+            bao_hien_tai('Bắt đầu', 0)
             if viec_dai:
                 VIEC_DO.write_text(json.dumps({'ten': ten, 'yc': yc}, ensure_ascii=False), encoding='utf-8')
                 khong_ngu(True)
@@ -941,6 +978,8 @@ def main():
                 if viec_dai:
                     VIEC_DO.unlink(missing_ok=True)
                     khong_ngu(False)
+                VIEC_HIEN_TAI.clear()
+                xoa('hang-doi/hien-tai.json')
         except Exception:
             traceback.print_exc()  # mất mạng... thì chờ rồi thử lại
             time.sleep(10)

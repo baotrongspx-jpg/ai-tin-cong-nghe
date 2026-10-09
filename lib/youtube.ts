@@ -494,7 +494,7 @@ export async function suaThongTin(id: string, o: { tieu_de: string; mo_ta: strin
 
 export type TrangThaiPhan =
   | { loai: 'chua_viet' | 'chua_dung' | 'cho' | 'xong' }
-  | { loai: 'dang_lam'; phanTram: number; buoc: string }
+  | { loai: 'dang_lam'; phanTram: number; buoc: string; luc: number }
   | { loai: 'loi'; loi: string }
 // Máy nhà tự kiểm tra video sau khi ghép (may-nha/tho_doc.py: kiem_tra_video)
 export type KiemTraVideo = { do_dai: number | null; lufs: number | null; lufs_goc: number | null; da_chinh_am: boolean; im_lang: number[][]; man_den: number[][]; ghi_chu: string[] }
@@ -505,27 +505,34 @@ export type TrangThaiDuAn = {
   ketGhep?: boolean // đủ phần mà máy nhà chưa ghép được (bấm Ghép lại)
   anh_bia?: { xem: string; tai: string }[] // các kiểu ảnh bìa đã vẽ (có thể vẽ trước khi dựng xong video)
   ve_bia?: boolean // máy nhà đang có phiếu vẽ ảnh bìa
+  // Máy nhà đang làm gì (hang-doi/hien-tai.json, may-nha/tho_doc.py: bao_hien_tai): việc của video này hay việc khác
+  mayNhaLam?: { mo_ta: string; buoc: string; phanTram: number | null; luc: number; phan: number | null; cuaVideo: boolean; tieu_de: string | null } | null
 }
 
 // Trạng thái từng phần + video đã ghép (chỉ tính khi khớp mã lời thoại hiện tại)
 export async function trangThaiDuAn(d: DuAnYT, mayNha: string | null): Promise<TrangThaiDuAn> {
   const goc = thuMuc(d.id)
-  const [{ data: viec }, { data: viecBia }, bia, tienDo, xong, ...kq] = await Promise.all([
+  const [{ data: viec }, { data: viecBia }, bia, hienTai, tienDo, xong, ...kq] = await Promise.all([
     kho().list('hang-doi/viec', { limit: 200, search: `yt-${d.id}` }),
     kho().list('hang-doi/viec', { limit: 5, search: `ytb-${d.id}` }),
     docJson<{ so: number; luc: number }>(`${goc}/anh-bia.json`),
+    docJson<{ loai: string; mo_ta: string; buoc: string; phanTram: number | null; luc: number; du_an: string | null; phan: number | null; tieu_de: string | null }>('hang-doi/hien-tai.json'),
     docJson<{ phan: number; phanTram: number; buoc: string; luc: number }>(`${goc}/tien-do.json`),
     docJson<{ tep: string; ma: string[]; nhac?: string | null; kiem_tra?: KiemTraVideo; anh_bia?: boolean | number; moc_chuong?: number[]; phu_de?: boolean }>(`${goc}/xong.json`),
     ...d.phan.map((_, i) => docJson<{ xong?: boolean; loi?: string; ma: string; luc?: number }>(`${goc}/phan-${i + 1}.json`)),
   ])
   const dangCho = new Set((viec ?? []).map((f) => f.name))
+  // Bảng tin máy nhà còn mới (máy nhà báo ít nhất mỗi vài phút khi đang làm); cũ hơn 30 phút là sót lại, bỏ
+  const moiDay = !!hienTai && Date.now() - hienTai.luc < 30 * 60_000
   const ma = d.phan.map((p, i) => (p.loi ? maPhan(d, i + 1) : ''))
   const phan = d.phan.map((p, i): TrangThaiPhan => {
     const k = i + 1
     if (!p.loi) return { loai: 'chua_viet' }
     const r = kq[i]
     if (r?.ma === ma[i] && r.xong) return { loai: 'xong' }
-    if (tienDo?.phan === k && Date.now() - tienDo.luc < 10 * 60_000) return { loai: 'dang_lam', phanTram: tienDo.phanTram, buoc: tienDo.buoc }
+    if (tienDo?.phan === k && Date.now() - tienDo.luc < 10 * 60_000) return { loai: 'dang_lam', phanTram: tienDo.phanTram, buoc: tienDo.buoc, luc: tienDo.luc }
+    // Máy nhà đã nhận phần này nhưng chưa tới bước báo tiến độ riêng (bảng tin chung)
+    if (moiDay && hienTai?.du_an === d.id && hienTai.phan === k && hienTai.loai !== 'yt_anh_bia') return { loai: 'dang_lam', phanTram: hienTai.phanTram ?? 0, buoc: hienTai.buoc, luc: hienTai.luc }
     if (dangCho.has(tenViec(d.id, k))) return { loai: 'cho' }
     if (r?.ma === ma[i] && r.loi) return { loai: 'loi', loi: r.loi }
     return { loai: 'chua_dung' }
@@ -554,7 +561,8 @@ export async function trangThaiDuAn(d: DuAnYT, mayNha: string | null): Promise<T
   // Kẹt ghép: đủ phần đã dựng, chưa có video ghép, không còn phiếu nào chờ, phần xong cuối cùng đã quá 5 phút
   const xongCuoi = Math.max(0, ...kq.map((r) => r?.luc ?? 0))
   const ketGhep = !daGhep && phan.length > 0 && phan.every((p) => p.loai === 'xong') && !dangCho.size && Date.now() - xongCuoi > 5 * 60_000
-  return { phan, xong: daGhep, mayNha, ketGhep, anh_bia, ve_bia: !!viecBia?.length }
+  const mayNhaLam = moiDay && hienTai ? { mo_ta: hienTai.mo_ta, buoc: hienTai.buoc, phanTram: hienTai.phanTram, luc: hienTai.luc, phan: hienTai.phan, cuaVideo: hienTai.du_an === d.id, tieu_de: hienTai.tieu_de } : null
+  return { phan, xong: daGhep, mayNha, ketGhep, anh_bia, ve_bia: !!viecBia?.length, mayNhaLam }
 }
 
 // Gửi máy nhà dựng các phần chưa xong (hoặc chỉ phần `chiPhan`). Mọi phần phải có lời thoại: máy nhà cần mã của

@@ -89,6 +89,17 @@ def don_rac():
         xoa(*cu)
 
 
+def ghi_wav(phan, sr):
+    pcm = (np.clip(np.concatenate(phan), -1, 1) * 32767).astype('<i2').tobytes()
+    buf = io.BytesIO()
+    with wave.open(buf, 'wb') as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(sr)
+        w.writeframes(pcm)
+    return buf.getvalue()
+
+
 def doc(may, ds_giong, cau, giong):
     giong = giong if giong in ds_giong else GIONG_MAC_DINH
     doan = may.infer_batch(cau, voice=giong)
@@ -99,14 +110,25 @@ def doc(may, ds_giong, cau, giong):
         a = np.asarray(a, dtype=np.float32).reshape(-1)
         phan += [a, lang]
         do_dai.append(round((len(a) + len(lang)) / sr, 3))
-    pcm = (np.clip(np.concatenate(phan), -1, 1) * 32767).astype('<i2').tobytes()
-    buf = io.BytesIO()
-    with wave.open(buf, 'wb') as w:
-        w.setnchannels(1)
-        w.setsampwidth(2)
-        w.setframerate(sr)
-        w.writeframes(pcm)
-    return buf.getvalue(), do_dai
+    return ghi_wav(phan, sr), do_dai
+
+
+def doc_rieng(may, ds_giong, cac_cau, giong):
+    # Đọc cả loạt câu cùng một giọng trong một lần (card NVIDIA: nhanh ~9 lần so với từng câu), trả [(wav, giây)] từng câu.
+    # Lỗi (vd thiếu bộ nhớ card khi AI máy nhà đang chiếm) thì đọc lại từng câu.
+    giong = giong if giong in ds_giong else GIONG_MAC_DINH
+    try:
+        doan = may.infer_batch(cac_cau, voice=giong)
+    except Exception:
+        traceback.print_exc()
+        doan = [may.infer_batch([c], voice=giong)[0] for c in cac_cau]
+    sr = may.sample_rate
+    lang = np.zeros(int(sr * NGAT), dtype=np.float32)
+    ra = []
+    for a in doan:
+        a = np.asarray(a, dtype=np.float32).reshape(-1)
+        ra.append((ghi_wav([a, lang], sr), round((len(a) + len(lang)) / sr, 3)))
+    return ra
 
 
 # Chỉnh giọng theo nhân vật sau khi đọc: Mèo Mun nâng tông 3,5 nửa cung, nói nhanh hơn 6%, sáng tiếng (chủ trang chọn
@@ -359,16 +381,23 @@ def dung_video(may, ds_giong, lt, tm, td, fps=30, gioi_han=1500, anh_nen=None):
     tai_anh_wiki(lt['loi'], tai_san)
     if anh_nen is not None:  # video YouTube: ảnh nền Pixabay theo cảnh (anh_nen = số phần, để các phần chọn ảnh khác nhau)
         tai_anh_nen(lt['loi'], tai_san, anh_nen)
-    do_dai = []
+    # Gom các câu cùng giọng đọc một lần (nhanh hơn nhiều so với từng câu, nhất là trên card NVIDIA)
+    theo_giong = {}
     for i, l in enumerate(lt['loi']):
-        td.bao(10 + 20 * i / len(lt['loi']), f'Đọc giọng câu {i + 1}/{len(lt["loi"])}')
-        wav, dd = doc(may, ds_giong, [ap_phat_am(l['chu'], lt.get('phat_am'))], lt['nhan_vat'][l['ai']]['giong'])
-        if l['ai'] in CHINH_GIONG:
-            wav2, giay = chinh_giong(wav, CHINH_GIONG[l['ai']])
-            if giay:
-                wav, dd = wav2, [giay]
-        (tai_san / f'loi-{i}.wav').write_bytes(wav)
-        do_dai.append(dd[0])
+        theo_giong.setdefault(lt['nhan_vat'][l['ai']]['giong'], []).append(i)
+    do_dai = [0.0] * len(lt['loi'])
+    xong = 0
+    for giong, ds in theo_giong.items():
+        td.bao(10 + 20 * xong / len(lt['loi']), f'Đọc giọng câu {xong + 1}/{len(lt["loi"])}')
+        kq = doc_rieng(may, ds_giong, [ap_phat_am(lt['loi'][i]['chu'], lt.get('phat_am')) for i in ds], giong)
+        for i, (wav, giay) in zip(ds, kq):
+            if lt['loi'][i]['ai'] in CHINH_GIONG:
+                wav2, giay2 = chinh_giong(wav, CHINH_GIONG[lt['loi'][i]['ai']])
+                if giay2:
+                    wav, giay = wav2, giay2
+            (tai_san / f'loi-{i}.wav').write_bytes(wav)
+            do_dai[i] = giay
+        xong += len(ds)
     (tm / 'artifacts' / 'loi_thoai.json').write_text(json.dumps(lt, ensure_ascii=False), encoding='utf-8')
     (tm / 'artifacts' / 'do_dai.json').write_text(json.dumps(do_dai), encoding='utf-8')
     chay(['node', str(HOAT_HINH / 'tao_video.mjs'), str(tm)], tm, 120)
@@ -649,7 +678,14 @@ def bao_song():
 def main():
     print('Đang nạp giọng VieNeu...', flush=True)
     # int8 nhanh hơn ~1,4 lần nhưng cần CPU có VNNI (Intel đời 12 trở lên...), máy cũ hơn đặt DO_CHINH_XAC=fp32
-    may = Vieneu(precision=os.environ.get('DO_CHINH_XAC', 'int8'))
+    # Có card NVIDIA + PyTorch CUDA (môi trường D:\vieneu-gpu, chay-vieneu.bat) thì đọc bằng card, nhanh hơn nhiều
+    try:
+        import torch
+        co_card = torch.cuda.is_available()
+    except ImportError:
+        co_card = False
+    may = Vieneu(device='cuda') if co_card else Vieneu(precision=os.environ.get('DO_CHINH_XAC', 'int8'))
+    print('Đọc giọng bằng ' + ('card NVIDIA' if co_card else 'CPU'), flush=True)
     ds_giong = {ten for _, ten in may.list_preset_voices()}
     may.infer('Xin chào.', voice=GIONG_MAC_DINH)  # làm nóng: lần đọc đầu tiên chậm gấp đôi
     threading.Thread(target=bao_song, daemon=True).start()

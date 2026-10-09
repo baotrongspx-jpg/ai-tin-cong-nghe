@@ -391,14 +391,36 @@ def tao_anh_bia(thu_muc, goc, thong_tin):
     return so
 
 
+def thu_muc_du_an(du_an, tieu_de):
+    # MỘT thư mục cho mỗi video, nhận theo mã dự án (đuôi -<6 ký tự đầu mã>), tên theo tiêu đề hiện tại. Đổi tiêu đề thì
+    # đổi tên thư mục cũ (không tạo thư mục mới); lỡ có nhiều thư mục cùng mã thì gom các phần đã dựng (phan-*) về một chỗ
+    # để đủ phần mà ghép — trước đây đổi tiêu đề làm các phần nằm rải rác hai thư mục, máy nhà không bao giờ ghép được.
+    dich = THU_MUC_YT / f'{ten_tep(tieu_de)}-{du_an[:6]}'
+    cu = [p for p in THU_MUC_YT.glob(f'*-{du_an[:6]}') if p.is_dir() and p != dich]
+    if not dich.exists() and len(cu) == 1:
+        try:
+            cu[0].rename(dich)
+            cu = []
+        except OSError:
+            pass
+    dich.mkdir(parents=True, exist_ok=True)
+    for p in cu:
+        for tep in p.glob('phan-*'):
+            if not (dich / tep.name).exists():
+                try:
+                    shutil.move(str(tep), str(dich / tep.name))
+                except OSError:
+                    traceback.print_exc()
+    return dich
+
+
 def dung_youtube(may, ds_giong, yc):
     # Một phần của video YouTube dài (lib/youtube.ts): {"du_an", "tieu_de", "phan" (1, 2...), "ma_phan": [mã từng phần],
     # "loi_thoai"}. Dựng xong lưu phan-<số>-<mã>.mp4 trong thư mục dự án ở máy nhà, báo youtube/<dự án>/phan-<số>.json.
     # Đủ mọi phần (đúng mã hiện tại) thì ghép thành một video, báo youtube/<dự án>/xong.json.
     du_an, k, ds_ma = yc['du_an'], yc['phan'], yc['ma_phan']
     goc = f'youtube/{du_an}'
-    thu_muc = THU_MUC_YT / f'{ten_tep(yc.get("tieu_de"))}-{du_an[:6]}'
-    thu_muc.mkdir(parents=True, exist_ok=True)
+    thu_muc = thu_muc_du_an(du_an, yc.get("tieu_de"))
     tep = thu_muc / f'phan-{k:02d}-{ds_ma[k - 1]}.mp4'
     td = TienDo(None, duong=f'{goc}/tien-do.json', them={'phan': k})
     try:
@@ -475,8 +497,7 @@ def dung_short(may, ds_giong, yc):
     # Shorts-<số>.mp4 trong thư mục video trên máy nhà, báo youtube/<dự án>/short-<số>.json
     du_an, so = yc['du_an'], yc['so']
     goc = f'youtube/{du_an}'
-    thu_muc = THU_MUC_YT / f'{ten_tep(yc.get("tieu_de"))}-{du_an[:6]}'
-    thu_muc.mkdir(parents=True, exist_ok=True)
+    thu_muc = thu_muc_du_an(du_an, yc.get("tieu_de"))
     td = TienDo(None, duong=f'{goc}/tien-do-short.json', them={'so': so})
     tm = THU_MUC_TAM / f'yts-{du_an}-{so}'
     try:

@@ -515,9 +515,17 @@ export default function ChiTiet({ dau, ttDau }: { dau: DuAnYT; ttDau: TrangThaiD
                 }}
               />
             </div>
-            {soXong === d.phan.length && !tt.xong && (
+            {soXong === d.phan.length && !tt.xong && !tt.ketGhep && (
               <p className="flex items-center gap-2 text-sm text-violet-700">
                 <Xoay /> Đang ghép các phần thành một video…
+              </p>
+            )}
+            {tt.ketGhep && (
+              <p className="flex flex-wrap items-center gap-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-800 ring-1 ring-amber-200">
+                ⚠ Đủ {d.phan.length} phần nhưng máy nhà chưa ghép được video.
+                <button type="button" disabled={dangLam} onClick={() => dung()} className="btn btn-sm btn-phu">
+                  Ghép lại
+                </button>
               </p>
             )}
             <p className="text-xs text-slate-400">

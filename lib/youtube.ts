@@ -433,6 +433,7 @@ export type TrangThaiDuAn = {
   phan: TrangThaiPhan[]
   xong: { tep: string; kiem_tra?: KiemTraVideo; anh_bia?: { xem: string; tai: string }[]; moc_chuong?: number[]; phu_de?: string } | null
   mayNha: string | null
+  ketGhep?: boolean // đủ phần mà máy nhà chưa ghép được (bấm Ghép lại)
 }
 
 // Trạng thái từng phần + video đã ghép (chỉ tính khi khớp mã lời thoại hiện tại)
@@ -442,7 +443,7 @@ export async function trangThaiDuAn(d: DuAnYT, mayNha: string | null): Promise<T
     kho().list('hang-doi/viec', { limit: 200, search: `yt-${d.id}` }),
     docJson<{ phan: number; phanTram: number; buoc: string; luc: number }>(`${goc}/tien-do.json`),
     docJson<{ tep: string; ma: string[]; nhac?: string | null; kiem_tra?: KiemTraVideo; anh_bia?: boolean | number; moc_chuong?: number[]; phu_de?: boolean }>(`${goc}/xong.json`),
-    ...d.phan.map((_, i) => docJson<{ xong?: boolean; loi?: string; ma: string }>(`${goc}/phan-${i + 1}.json`)),
+    ...d.phan.map((_, i) => docJson<{ xong?: boolean; loi?: string; ma: string; luc?: number }>(`${goc}/phan-${i + 1}.json`)),
   ])
   const dangCho = new Set((viec ?? []).map((f) => f.name))
   const ma = d.phan.map((p, i) => (p.loi ? maPhan(d, i + 1) : ''))
@@ -477,7 +478,10 @@ export async function trangThaiDuAn(d: DuAnYT, mayNha: string | null): Promise<T
       daGhep.anh_bia = ds.filter((x): x is { xem: string; tai: string } => !!x)
     }
   }
-  return { phan, xong: daGhep, mayNha }
+  // Kẹt ghép: đủ phần đã dựng, chưa có video ghép, không còn phiếu nào chờ, phần xong cuối cùng đã quá 5 phút
+  const xongCuoi = Math.max(0, ...kq.map((r) => r?.luc ?? 0))
+  const ketGhep = !daGhep && phan.length > 0 && phan.every((p) => p.loai === 'xong') && !dangCho.size && Date.now() - xongCuoi > 5 * 60_000
+  return { phan, xong: daGhep, mayNha, ketGhep }
 }
 
 // Gửi máy nhà dựng các phần chưa xong (hoặc chỉ phần `chiPhan`). Mọi phần phải có lời thoại: máy nhà cần mã của

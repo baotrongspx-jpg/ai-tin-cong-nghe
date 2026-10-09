@@ -4,8 +4,8 @@ import { revalidatePath } from 'next/cache'
 import { daDangNhap } from '@/lib/xacThuc'
 import { mayNhaTat } from '@/lib/giongDoc'
 import {
-  bienTapPhim, chayBuocPhim, chonNhacDuAn, docDuAn, guiDung, kiemDinhLaiPhan, luuPhatAm, suaThongTin, taoDuAn, taoPhim, trangThaiDuAn, vietLoiPhan, xoaDuAn,
-  type BuocPhim, type DuAnYT, type TrangThaiBienTap, type TrangThaiDuAn,
+  bienTapPhim, chayBuocPhim, chonNhacDuAn, docDuAn, guiDung, kiemDinhLaiPhan, luuPhatAm, taoShorts, trangThaiShorts, suaThongTin, taoDuAn, taoPhim, trangThaiDuAn, vietLoiPhan, xoaDuAn,
+  type BuocPhim, type DuAnYT, type TrangThaiBienTap, type TrangThaiDuAn, type TrangThaiShort,
 } from '@/lib/youtube'
 
 type Loi = { ok: false; loi: string }
@@ -81,6 +81,25 @@ export async function luuPhatAmYouTube(id: string, phatAm: string): Promise<{ ok
     await chanChuaDangNhap()
     await luuPhatAm(id, phatAm)
     return { ok: true }
+  } catch (e) {
+    return baoLoi(e)
+  }
+}
+
+export async function taoShortsYouTube(id: string): Promise<{ ok: true; duAn: DuAnYT } | Loi> {
+  try {
+    await chanChuaDangNhap()
+    return { ok: true, duAn: await taoShorts(id) }
+  } catch (e) {
+    return baoLoi(e)
+  }
+}
+export async function layShortsYouTube(id: string): Promise<{ ok: true; ds: TrangThaiShort[] } | Loi> {
+  try {
+    await chanChuaDangNhap()
+    const d = await docDuAn(id)
+    if (!d) throw new Error('Không tìm thấy video')
+    return { ok: true, ds: await trangThaiShorts(d) }
   } catch (e) {
     return baoLoi(e)
   }

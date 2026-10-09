@@ -3,11 +3,11 @@
 import { useEffect, useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import type { DuAnYT, KiemTraVideo, PhanYT, TrangThaiDuAn, TrangThaiPhan } from '@/lib/youtube'
+import type { DuAnYT, KiemTraVideo, PhanYT, TrangThaiDuAn, TrangThaiPhan, TrangThaiShort } from '@/lib/youtube'
 import { thongBao } from '@/app/ThongBao'
 import { locLoiChao } from '@/lib/kiemDinh'
 import { IconChep, IconMo, IconXong, IconYouTube, Xoay } from '@/app/BieuTuong'
-import { bienTapYouTube, chayBuocPhimYouTube, chonNhacYouTube, luuPhatAmYouTube, dungVideoYouTube, kiemDinhYouTube, layTrangThaiYouTube, luuThongTinYouTube, vietPhanYouTube, xoaVideoYouTube } from '../actions'
+import { bienTapYouTube, chayBuocPhimYouTube, chonNhacYouTube, layShortsYouTube, luuPhatAmYouTube, taoShortsYouTube, dungVideoYouTube, kiemDinhYouTube, layTrangThaiYouTube, luuThongTinYouTube, vietPhanYouTube, xoaVideoYouTube } from '../actions'
 import HoSoPhim, { KhoiDuLieu } from './HoSoPhim'
 
 const NGUOI: Record<string, string> = {
@@ -194,6 +194,25 @@ export default function ChiTiet({ dau, ttDau, dsNhac }: { dau: DuAnYT; ttDau: Tr
   }
 
   const [loiBienTap, setLoiBienTap] = useState('')
+  // Shorts: trạng thái dựng 3 đoạn (hỏi lại mỗi 10 giây khi còn đang chờ / đang dựng)
+  const [shorts, setShorts] = useState<TrangThaiShort[]>([])
+  const capNhatShorts = async () => {
+    const kq = await layShortsYouTube(d.id)
+    if (kq.ok) setShorts(kq.ds)
+  }
+  const coShorts = !!d.shorts
+  const choShorts = shorts.some((x) => x.trang_thai === 'cho' || x.trang_thai === 'dang_lam')
+  useEffect(() => {
+    if (!coShorts) return
+    // Hỏi ngay sau lượt vẽ (không đặt state trong thân effect), rồi mỗi 10 giây khi còn đang chờ / đang dựng
+    const dau = setTimeout(() => void capNhatShorts(), 0)
+    const t = choShorts || !shorts.length ? setInterval(() => document.visibilityState === 'visible' && void capNhatShorts(), 10000) : undefined
+    return () => {
+      clearTimeout(dau)
+      if (t) clearInterval(t)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [coShorts, choShorts])
 
   // Vòng biên tập cả phim (AI máy nhà): gửi phiếu / hỏi kết quả. Đang chờ thì hỏi lại mỗi 8 giây (effect bên dưới)
   const bienTap = async (batDauLai = false) => {
@@ -476,6 +495,64 @@ export default function ChiTiet({ dau, ttDau, dsNhac }: { dau: DuAnYT; ttDau: Tr
           </>
         )}
       </section>
+
+      {/* Shorts: 3 đoạn gay cấn nhất dựng lại khung dọc 9:16 */}
+      {daVietDu && (
+        <section className="the grid gap-2 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="font-bold">✂ Shorts (khung dọc 9:16)</span>
+            <button
+              type="button"
+              disabled={dangLam || choShorts}
+              onClick={() =>
+                (!d.shorts || confirm('Tạo lại 3 Shorts? Máy nhà sẽ dựng lại từ đầu.')) &&
+                startTransition(async () => {
+                  const kq = await taoShortsYouTube(d.id)
+                  if (!kq.ok) return thongBao('loi', kq.loi)
+                  setD(kq.duAn)
+                  thongBao('ok', 'Đã gửi máy nhà dựng 3 Shorts')
+                  await capNhatShorts()
+                })
+              }
+              className="btn btn-sm btn-phu"
+            >
+              {d.shorts ? 'Tạo lại Shorts' : 'Tạo 3 Shorts'}
+            </button>
+          </div>
+          <p className="text-xs text-slate-500">
+            Máy tự chọn 3 đoạn gay cấn nhất (25–55 giây: cảm xúc mạnh, cảnh hành động, con số, lời nhân vật chính), dựng lại khung dọc có chữ móc câu ở đầu và lời mời xem bản đầy đủ ở cuối. Shorts là cách kéo người xem mới mạnh nhất. Mỗi Shorts mất khoảng 10–15 phút dựng.
+          </p>
+          {d.shorts && (
+            <ul className="grid gap-1.5 text-sm">
+              {d.shorts.doan.map((x) => {
+                const s = shorts.find((y) => y.so === x.so)
+                return (
+                  <li key={x.so} className="flex flex-wrap items-center gap-2">
+                    <span className="chip bg-slate-100 text-slate-700">Shorts {x.so}</span>
+                    <span className="min-w-0 flex-1">
+                      “{x.tieu_de}” · {d.loai === 'tieu_su' ? 'chương' : 'phần'} {x.phan}, câu {x.tu}–{x.den}
+                    </span>
+                    {!s || s.trang_thai === 'cho' ? (
+                      <span className="chip bg-amber-100 text-amber-800">Chờ máy nhà</span>
+                    ) : s.trang_thai === 'dang_lam' ? (
+                      <span className="chip bg-violet-100 text-violet-700">Đang dựng {s.phan_tram ?? 0}%</span>
+                    ) : s.trang_thai === 'xong' ? (
+                      <span className="flex items-center gap-1">
+                        <span className="chip bg-emerald-100 text-emerald-700">Xong</span>
+                        <NutChep chu={s.tep ?? ''} ten="Chép đường dẫn" />
+                      </span>
+                    ) : (
+                      <span className="chip bg-red-100 text-red-700" title={s.loi}>
+                        Lỗi
+                      </span>
+                    )}
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </section>
+      )}
 
       {/* Nhạc nền: máy nhà trộn dưới cả video, tự nhỏ đi khi có lời */}
       <section className="the flex flex-wrap items-center gap-x-4 gap-y-2 p-4">

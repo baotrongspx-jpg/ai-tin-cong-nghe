@@ -74,7 +74,7 @@ def ds_viec():
     # cùng nhóm thì việc nào đặt trước làm trước
     ten = [n for n in liet_ke('hang-doi/viec') if n.endswith('.json')]
     uu_tien = set(liet_ke('hang-doi/uu-tien'))
-    return sorted(ten, key=lambda n: 3 if n.startswith('yt-') else 0 if not n.startswith('hh-') else 1 if n in uu_tien else 2)
+    return sorted(ten, key=lambda n: 3 if n.startswith(('yt-', 'yts-')) else 0 if not n.startswith('hh-') else 1 if n in uu_tien else 2)
 
 
 def don_rac():
@@ -470,6 +470,32 @@ def dung_youtube(may, ds_giong, yc):
         td.xong()
 
 
+def dung_short(may, ds_giong, yc):
+    # Shorts (khung dọc 9:16) từ đoạn gay cấn của video YouTube dài: dựng như video TikTok, chỉnh tiếng chuẩn, lưu
+    # Shorts-<số>.mp4 trong thư mục video trên máy nhà, báo youtube/<dự án>/short-<số>.json
+    du_an, so = yc['du_an'], yc['so']
+    goc = f'youtube/{du_an}'
+    thu_muc = THU_MUC_YT / f'{ten_tep(yc.get("tieu_de"))}-{du_an[:6]}'
+    thu_muc.mkdir(parents=True, exist_ok=True)
+    td = TienDo(None, duong=f'{goc}/tien-do-short.json', them={'so': so})
+    tm = THU_MUC_TAM / f'yts-{du_an}-{so}'
+    try:
+        dung_video(may, ds_giong, yc['loi_thoai'], tm, td, fps=30, gioi_han=1800)
+        ra = thu_muc / f'Shorts-{so}.mp4'
+        shutil.move(str(tm / 'video.mp4'), str(ra))
+        try:
+            kiem_tra_video(ra)
+        except Exception:
+            traceback.print_exc()
+        gui(f'{goc}/short-{so}.json', json.dumps({'tep': str(ra), 'luc': int(time.time() * 1000)}, ensure_ascii=False), 'application/json')
+    except Exception as e:
+        gui(f'{goc}/short-{so}.json', json.dumps({'loi': str(e)[:300]}, ensure_ascii=False), 'application/json')
+        raise
+    finally:
+        shutil.rmtree(tm, ignore_errors=True)
+        td.xong()
+
+
 def dung_hoat_hinh(may, ds_giong, yc, td):
     ten = yc['ten']
     bai_id = ten.split('/')[0]
@@ -557,7 +583,7 @@ def main():
                     # Trang web đã xoá dự án: xoá thư mục video (…-<6 ký tự đầu mã>) và thư mục tạm của nó trên máy nhà
                     du_an = yc['du_an']
                     so = 0
-                    for tm in [*THU_MUC_YT.glob(f'*-{du_an[:6]}'), *THU_MUC_TAM.glob(f'yt-{du_an}-*')]:
+                    for tm in [*THU_MUC_YT.glob(f'*-{du_an[:6]}'), *THU_MUC_TAM.glob(f'yt-{du_an}-*'), *THU_MUC_TAM.glob(f'yts-{du_an}-*')]:
                         if tm.is_dir():
                             shutil.rmtree(tm, ignore_errors=True)
                             # OneDrive đôi khi còn giữ thư mục lúc vừa xoá tệp bên trong: đợi rồi xoá lại thư mục rỗng
@@ -568,6 +594,13 @@ def main():
                                 shutil.rmtree(tm, ignore_errors=True)
                             so += 1
                     print(f'Đã xoá {so} thư mục video của dự án {du_an[:6]}', flush=True)
+                elif yc.get('loai') == 'youtube_short':
+                    print(f'Dựng Shorts {yc["so"]} của "{yc.get("tieu_de")}" ({len(yc["loi_thoai"]["loi"])} câu)...', flush=True)
+                    try:
+                        dung_short(may, ds_giong, yc)
+                    except Exception:
+                        traceback.print_exc()
+                    print(f'Xong Shorts trong {time.time() - bat_dau:.0f}s', flush=True)
                 elif yc.get('loai') == 'ai':
                     # Việc AI (vòng biên tập cả phim…): chạy AI máy nhà (Ollama, ổ D), trả chuỗi JSON
                     print(f'AI máy nhà: {ma}...', flush=True)

@@ -76,6 +76,7 @@ export type DuAnYT = {
   am_luong_nhac?: number // % (mặc định 30)
   bien_tap?: DaBienTap // vòng biên tập cả phim (AI máy nhà) đã áp
   ai_cho?: { bien_tap?: string } // phiếu việc AI máy nhà đang chờ (mã phiếu)
+  shorts?: { luc: string; doan: { so: number; phan: number; tu: number; den: number; tieu_de: string }[] } // Shorts đã gửi dựng
   phat_am?: string // cách đọc tên riêng, mỗi dòng "Tên = cách đọc" (chỉ đổi chữ đưa vào giọng đọc, phụ đề giữ nguyên)
 }
 
@@ -561,6 +562,104 @@ export async function guiDung(d: DuAnYT, chiPhan?: number) {
 
 // Xoá dự án khỏi trang (video đã dựng trên máy nhà vẫn giữ)
 // Xoá dự án khỏi trang + bỏ các phần đang chờ dựng; gửi lệnh cho máy nhà xoá luôn thư mục video trên máy
+// ── Shorts: 3 đoạn gay cấn nhất (25-55 giây) dựng lại ở khung dọc 9:16 ──
+// Chấm điểm từng câu: cảm xúc mạnh, khoảng lặng, cảnh hành động, con số, nhân vật chính nói, tái hiện; bỏ câu chào /
+// giới thiệu / đọc tên chương. Cửa sổ câu liền nhau trong một chương có tổng điểm cao nhất, không chồng nhau.
+type CauGui = Record<string, unknown> & { ai?: string; chu?: string }
+function diemCau(l: CauGui) {
+  if (l.la_chuong || l.gioi_thieu) return -99
+  let d = 0
+  if (['bat_ngo', 'buon', 'tuc_gian'].includes(String(l.cam_xuc))) d += 2
+  if (l.cam_xuc === 'lo_lang') d += 1
+  if (l.lang) d += 2
+  if (l.hanh_dong && l.hanh_dong !== 'khong') d += 2
+  if (/\d/.test(String(l.chu))) d += 1
+  if (l.ai === 'nhan_vat_chinh') d += 2
+  if (l.tai_hien) d += 1
+  if (l.anh_wiki) d += 1
+  return d
+}
+export function chonDoanShorts(d: DuAnYT) {
+  const ung: { phan: number; tu: number; den: number; diem: number }[] = []
+  d.phan.forEach((_, i) => {
+    const loi = loiThoaiGui(d, i + 1).loi as CauGui[]
+    for (let tu = 0; tu < loi.length; tu++) {
+      let giay = 0
+      let diem = 0
+      for (let den = tu; den < loi.length; den++) {
+        const dc = diemCau(loi[den])
+        if (dc < 0) break
+        giay += String(loi[den].chu ?? '').length / 19 + 0.25
+        diem += dc
+        if (giay > 55) break
+        if (giay >= 25) ung.push({ phan: i + 1, tu, den, diem: diem / Math.sqrt(den - tu + 1) })
+      }
+    }
+  })
+  const chon: typeof ung = []
+  for (const u of ung.sort((a, b) => b.diem - a.diem)) {
+    if (chon.length === 3) break
+    if (chon.some((c) => c.phan === u.phan && !(u.den < c.tu || u.tu > c.den))) continue
+    chon.push(u)
+  }
+  return chon.sort((a, b) => a.phan - b.phan || a.tu - b.tu)
+}
+export async function taoShorts(id: string) {
+  const d = await docDuAn(id)
+  if (!d) throw new Error('Không tìm thấy video')
+  if (d.phan.some((p) => !p.loi)) throw new Error('Còn chương chưa có kịch bản')
+  const doan = chonDoanShorts(d)
+  if (!doan.length) throw new Error('Không tìm được đoạn đủ dài để làm Shorts')
+  const ds: NonNullable<DuAnYT['shorts']>['doan'] = []
+  for (const [n, c] of doan.entries()) {
+    const { phieu, tieuDe } = phieuShort(d, c, n + 1)
+    const so = n + 1
+    await kho().remove([`${thuMuc(id)}/short-${so}.json`])
+    await ghiJson(`hang-doi/viec/yts-${id}-${so}.json`, phieu)
+    ds.push({ so, phan: c.phan, tu: c.tu + 1, den: c.den + 1, tieu_de: tieuDe })
+  }
+  const moi = (await docDuAn(id)) ?? d
+  moi.shorts = { luc: new Date().toISOString(), doan: ds }
+  await luuDuAn(moi)
+  return moi
+}
+// Phiếu dựng một Shorts: lời thoại đoạn đã chọn (khung dọc) + chữ móc câu + câu kết mời xem bản đầy đủ
+export function phieuShort(d: DuAnYT, c: { phan: number; tu: number; den: number }, so: number) {
+  const goc = loiThoaiGui(d, c.phan)
+  const loi = (goc.loi as CauGui[]).slice(c.tu, c.den + 1)
+  const dauNhat = loi.reduce((a, b) => (diemCau(b) > diemCau(a) ? b : a), loi[0])
+  const bang = (dauNhat.bang ?? {}) as { chu?: string; bieu_tuong?: string }
+  const tieuDe = (bang.chu || d.tieu_de).split(/\s+/).slice(0, 8).join(' ')
+  // Câu kết mời xem bản đầy đủ (Mèo Mun)
+  const ket = { ...loi[loi.length - 1], ai: 'meo', chu: 'Muốn biết chuyện gì xảy ra tiếp theo? Xem trọn câu chuyện trên kênh Công Nghệ 24H nhé!', cam_xuc: 'vui', dao_cu: 'khong', nhan_vat_phu: 'khong', anh_wiki: undefined, hanh_dong: 'khong', la_chuong: false, the_moc: '', lang: false, minh_hoa: { kieu: 'khong', tu_khoa: '', chu_chinh: '', chu_phu: '', bieu_tuong: '' } }
+  const phieu = {
+    loai: 'youtube_short',
+    du_an: d.id,
+    so,
+    tieu_de: d.tieu_de,
+    loi_thoai: { ...goc, kho: 'doc', loi: [...loi, ket], moc: { chu: tieuDe, bieu_tuong: bang.bieu_tuong || '🎬' }, the_chuong: null, man_ket: false },
+  }
+  return { phieu, tieuDe }
+}
+export type TrangThaiShort = { so: number; trang_thai: 'cho' | 'dang_lam' | 'xong' | 'loi'; tep?: string; loi?: string; phan_tram?: number }
+export async function trangThaiShorts(d: DuAnYT): Promise<TrangThaiShort[]> {
+  if (!d.shorts) return []
+  const goc = thuMuc(d.id)
+  const [{ data: viec }, tienDo, ...kq] = await Promise.all([
+    kho().list('hang-doi/viec', { limit: 200, search: `yts-${d.id}` }),
+    docJson<{ so: number; phanTram: number; luc: number }>(`${goc}/tien-do-short.json`),
+    ...d.shorts.doan.map((x) => docJson<{ tep?: string; loi?: string }>(`${goc}/short-${x.so}.json`)),
+  ])
+  const cho = new Set((viec ?? []).map((f) => f.name))
+  return d.shorts.doan.map((x, i) => {
+    const r = kq[i]
+    if (r?.tep) return { so: x.so, trang_thai: 'xong', tep: r.tep }
+    if (r?.loi) return { so: x.so, trang_thai: 'loi', loi: r.loi }
+    if (tienDo?.so === x.so && Date.now() - tienDo.luc < 10 * 60_000) return { so: x.so, trang_thai: 'dang_lam', phan_tram: tienDo.phanTram }
+    return { so: x.so, trang_thai: cho.has(`yts-${d.id}-${x.so}.json`) ? 'cho' : 'loi', loi: cho.has(`yts-${d.id}-${x.so}.json`) ? undefined : 'Mất phiếu việc, bấm tạo lại' }
+  })
+}
+
 export async function xoaDuAn(id: string) {
   const d = await docDuAn(id)
   if (!d) return
@@ -568,6 +667,7 @@ export async function xoaDuAn(id: string) {
   await kho().remove([
     ...(data ?? []).map((f) => `${thuMuc(id)}/${f.name}`),
     ...d.phan.map((_, i) => `hang-doi/viec/${tenViec(id, i + 1)}`),
+    ...[1, 2, 3].map((so) => `hang-doi/viec/yts-${id}-${so}.json`),
   ])
   await ghiJson(`hang-doi/viec/xoa-${id}.json`, { loai: 'xoa_youtube', du_an: id })
 }

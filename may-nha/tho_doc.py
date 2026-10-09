@@ -573,8 +573,8 @@ def tron_nhac_nen(thu_muc, vao, ra, ten_nhac, am_luong, td, tep_nhac_san=None):
 
 
 def tao_anh_bia(thu_muc, goc, thong_tin):
-    # 3 ảnh bìa 1280x720 (hoat-hinh/tao_anh_bia.mjs, kiểu 1-3 cho "Thử nghiệm và so sánh" của YouTube) lưu cạnh video
-    # (anh-bia.png, anh-bia-2.png, anh-bia-3.png) và gửi lên kho. Kiểu 3 cần ảnh chân dung thật: tải về trước.
+    # 4 ảnh bìa 1280x720 (hoat-hinh/tao_anh_bia.mjs kiểu 1-4; phim tiểu sử có ảnh chân dung thật thêm kiểu 5) lưu cạnh
+    # video (anh-bia.png, anh-bia-2.png…), gửi lên kho + youtube/<dự án>/anh-bia.json {so, luc} cho trang chọn.
     # Trả số ảnh làm được (0 = lỗi).
     vao = thu_muc / 'anh-bia.json'
     anh_that = thu_muc / 'anh-that.jpg'
@@ -592,14 +592,16 @@ def tao_anh_bia(thu_muc, goc, thong_tin):
             except Exception:
                 tt['anh_that'] = None
         vao.write_text(json.dumps(tt, ensure_ascii=False), encoding='utf-8')
-        for kieu in (1, 2, 3):
-            ten = 'anh-bia.png' if kieu == 1 else f'anh-bia-{kieu}.png'
+        for kieu in (1, 2, 3, 4, 5) if tt.get('anh_that') else (1, 2, 3, 4):
+            ten = 'anh-bia.png' if so == 0 else f'anh-bia-{so + 1}.png'
             try:
                 chay(['node', str(HOAT_HINH / 'tao_anh_bia.mjs'), str(vao), str(thu_muc / ten), str(kieu)], thu_muc, 180)
                 gui(f'{goc}/{ten}', (thu_muc / ten).read_bytes(), 'image/png')
                 so += 1
             except Exception:
                 traceback.print_exc()
+        if so:
+            gui(f'{goc}/anh-bia.json', json.dumps({'so': so, 'luc': int(time.time() * 1000)}), 'application/json')
     finally:
         vao.unlink(missing_ok=True)
         anh_that.unlink(missing_ok=True)
@@ -783,6 +785,33 @@ def bao_song():
         time.sleep(20)
 
 
+VIEC_DAI = ('youtube', 'youtube_short', 'hoat_hinh')
+VIEC_DO = THU_MUC_TAM / 'viec-dang-lam.json'  # phiếu việc dài đang làm (xoá khi xong, kể cả lỗi)
+
+
+def khong_ngu(bat):
+    # Windows: giữ máy không tự ngủ trong lúc dựng (máy ngủ là dựng dừng giữa chừng); tắt thì trả lại như thường
+    try:
+        import ctypes
+        ctypes.windll.kernel32.SetThreadExecutionState(0x80000000 | (0x00000001 if bat else 0))
+    except Exception:
+        pass
+
+
+def lam_tiep_viec_do():
+    # Lần trước máy nhà tắt / khởi động lại khi đang dựng: gửi lại phiếu vào hàng đợi để làm tiếp (phần đã dựng xong
+    # nằm sẵn trên máy nên không dựng lại)
+    if not VIEC_DO.exists():
+        return
+    try:
+        o = json.loads(VIEC_DO.read_text(encoding='utf-8'))
+        gui(f'hang-doi/viec/{o["ten"]}', json.dumps(o['yc'], ensure_ascii=False).encode('utf-8'), 'application/json')
+        print(f'Làm tiếp việc dang dở lần trước: {o["ten"]}', flush=True)
+    except Exception:
+        traceback.print_exc()
+    VIEC_DO.unlink(missing_ok=True)
+
+
 def main():
     print('Đang nạp giọng VieNeu...', flush=True)
     # int8 nhanh hơn ~1,4 lần nhưng cần CPU có VNNI (Intel đời 12 trở lên...), máy cũ hơn đặt DO_CHINH_XAC=fp32
@@ -796,6 +825,7 @@ def main():
     print('Đọc giọng bằng ' + ('card NVIDIA' if co_card else 'CPU'), flush=True)
     ds_giong = {ten for _, ten in may.list_preset_voices()}
     may.infer('Xin chào.', voice=GIONG_MAC_DINH)  # làm nóng: lần đọc đầu tiên chậm gấp đôi
+    lam_tiep_viec_do()
     threading.Thread(target=bao_song, daemon=True).start()
     print('Sẵn sàng. Để cửa sổ này chạy (thu nhỏ được).', flush=True)
     lan_don = 0.0
@@ -817,6 +847,12 @@ def main():
                 continue
             yc = r.json()
             bat_dau = time.time()
+            # Việc dài (dựng video): ghi phiếu ra máy để lỡ máy nhà tắt / khởi động lại giữa chừng thì lần chạy sau gửi
+            # lại phiếu làm tiếp (main → lam_tiep_viec_do); giữ máy không ngủ trong lúc làm
+            viec_dai = yc.get('loai') in VIEC_DAI
+            if viec_dai:
+                VIEC_DO.write_text(json.dumps({'ten': ten, 'yc': yc}, ensure_ascii=False), encoding='utf-8')
+                khong_ngu(True)
             try:
                 if yc.get('loai') == 'hoat_hinh':
                     gui('hang-doi/dang-lam.json', json.dumps({'ten': yc['ten'], 'luc': int(time.time() * 1000)}), 'application/json')
@@ -842,6 +878,10 @@ def main():
                                 shutil.rmtree(tm, ignore_errors=True)
                             so += 1
                     print(f'Đã xoá {so} thư mục video của dự án {du_an[:6]}', flush=True)
+                elif yc.get('loai') == 'yt_anh_bia':
+                    # Vẽ (lại) ảnh bìa theo chữ chủ trang đặt, không cần dựng video
+                    so = tao_anh_bia(thu_muc_du_an(yc['du_an'], yc.get('tieu_de')), f'youtube/{yc["du_an"]}', yc['anh_bia'])
+                    print(f'Vẽ {so} ảnh bìa trong {time.time() - bat_dau:.0f}s', flush=True)
                 elif yc.get('loai') == 'youtube_short':
                     print(f'Dựng Shorts {yc["so"]} của "{yc.get("tieu_de")}" ({len(yc["loi_thoai"]["loi"])} câu)...', flush=True)
                     try:
@@ -874,6 +914,9 @@ def main():
             finally:
                 if yc.get('loai') == 'hoat_hinh':
                     xoa('hang-doi/dang-lam.json')
+                if viec_dai:
+                    VIEC_DO.unlink(missing_ok=True)
+                    khong_ngu(False)
         except Exception:
             traceback.print_exc()  # mất mạng... thì chờ rồi thử lại
             time.sleep(10)

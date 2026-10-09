@@ -1,7 +1,7 @@
 import 'server-only'
 import { createHash, randomUUID } from 'node:crypto'
 import { db, type BaiViet } from './db'
-import { goiJson, vietDanYYouTube, vietPhanYouTube, type LoiThoai } from './ai'
+import { goiJson, vietDanYYouTube, vietPhanYouTube, type AnhBiaGoiY, type LoiThoai } from './ai'
 import { z } from 'zod'
 import {
   dongGoiYouTube, hoSoHinhAnh, nghienCuuNhanVat, phanCanhChuong, phatTrienCauChuyen, thietKeNhanVatChinh, vietPhanPhim, TAO_HINH_MAC_DINH,
@@ -20,7 +20,7 @@ import { apBienTap, deBaiBienTap, type DaBienTap, type KetQuaBienTap } from './b
 // video và chỉ lưu trên máy nhà (Desktop\Video-YouTube), vì video dài quá nặng để gửi lên kho.
 // Máy nhà báo kết quả: youtube/<id>/phan-<k>.json ({ xong, ma } hoặc { loi, ma }), tien-do.json, xong.json.
 const KHO = 'video-tiktok'
-const PHIEN_BAN = 18 // tăng khi đổi cách dựng để các phần dựng lại (2: thẻ minh hoạ / đạo cụ khung ngang; 3: giọng Mèo Mun; 4: nhịp chuyển cảnh mượt; 5: thẻ chương, màn kết, B-roll; 6: khung người kể, 7: người kể vẽ riêng, 8: nhân vật chính phim tiểu sử, 9: ảnh Wikipedia, 10: lời giới thiệu + đọc tên chương, ảnh đặt linh động, 11: bố cục chữ không che nhân vật, bỏ ghi nguồn trên ảnh, 12: thanh dòng thời gian, thẻ năm tự thêm, 13: câu móc trước lời chào, màn kết 20 giây, phụ đề .srt, cách đọc tên riêng, 14: biểu cảm, đi vào cảnh, chữ động con số, tiền cảnh, 15: cảnh hành động, 16: bỏ nhạc nền, màn kết 8 giây, nhân vật phụ ở lại theo đợt, lớp sự sống cho bối cảnh, 17: nhân vật hết nhiệm vụ rời đi trước khi người mới vào, 18: ảnh nền Pixabay theo cảnh)
+const PHIEN_BAN = 19 // tăng khi đổi cách dựng để các phần dựng lại (2: thẻ minh hoạ / đạo cụ khung ngang; 3: giọng Mèo Mun; 4: nhịp chuyển cảnh mượt; 5: thẻ chương, màn kết, B-roll; 6: khung người kể, 7: người kể vẽ riêng, 8: nhân vật chính phim tiểu sử, 9: ảnh Wikipedia, 10: lời giới thiệu + đọc tên chương, ảnh đặt linh động, 11: bố cục chữ không che nhân vật, bỏ ghi nguồn trên ảnh, 12: thanh dòng thời gian, thẻ năm tự thêm, 13: câu móc trước lời chào, màn kết 20 giây, phụ đề .srt, cách đọc tên riêng, 14: biểu cảm, đi vào cảnh, chữ động con số, tiền cảnh, 15: cảnh hành động, 16: bỏ nhạc nền, màn kết 8 giây, nhân vật phụ ở lại theo đợt, lớp sự sống cho bối cảnh, 17: nhân vật hết nhiệm vụ rời đi trước khi người mới vào, 18: ảnh nền Pixabay theo cảnh, 19: tranh nền hoạt hình, Mèo / Bit dạt xa suốt cụm có hai nhân vật phụ (hết đè nhau))
 const kho = () => db().storage.from(KHO)
 const thuMuc = (id: string) => `youtube/${id}`
 const tenViec = (id: string, k: number) => `yt-${id}-${k}.json`
@@ -80,6 +80,9 @@ export type DuAnYT = {
   ai_cho?: { bien_tap?: string } // phiếu việc AI máy nhà đang chờ (mã phiếu)
   shorts?: { luc: string; doan: { so: number; phan: number; tu: number; den: number; tieu_de: string }[] } // Shorts đã gửi dựng
   phat_am?: string // cách đọc tên riêng, mỗi dòng "Tên = cách đọc" (chỉ đổi chữ đưa vào giọng đọc, phụ đề giữ nguyên)
+  anh_bia_goi_y?: AnhBiaGoiY[] // 3 ý ảnh bìa AI đề xuất ở bước dàn ý (chữ 2-5 từ, emoji, nhân vật lớn)
+  anh_bia_chu?: string // chữ trên ảnh bìa chủ trang tự đặt (ưu tiên hơn gợi ý)
+  anh_bia_chon?: number // kiểu ảnh bìa chủ trang chọn làm ảnh chính (0 = kiểu 1)
 }
 
 const bam = (x: unknown) => createHash('sha256').update(JSON.stringify(x)).digest('hex').slice(0, 12)
@@ -266,6 +269,7 @@ export async function taoDuAn(o: { baiIds: string[]; yTuong: string; phut: numbe
     the: dy.the.map((t) => t.replace(/^#/, '').trim()).filter(Boolean).slice(0, 20),
     chu_de: dy.chu_de.slice(0, 20) || 'Công nghệ',
     phan: dy.phan.map((p) => ({ tieu_de: p.tieu_de, noi_dung: p.noi_dung, nhip: p.nhip, loi: null, moc: null })),
+    anh_bia_goi_y: dy.anh_bia.slice(0, 3),
     ...(pb ? { phan_bien: { dan_y: pb } } : {}),
   }
   await luuDuAn(d)
@@ -424,20 +428,48 @@ export async function kiemDinhLaiPhan(id: string, k: number) {
   return d
 }
 
-// Ảnh bìa: chữ to (phim tiểu sử: chữ AI đề xuất ở bước đóng gói; video thường: vế đầu của tiêu đề), bối cảnh hay gặp
-// nhất ở phần 1 làm nền, có người kể thì người kể đứng giữa. Máy nhà vẽ khi ghép xong (hoat-hinh/tao_anh_bia.mjs).
-function anhBia(d: DuAnYT) {
+// Ảnh bìa (hoat-hinh/tao_anh_bia.mjs): MỘT tình huống, MỘT nhân vật to, chữ 2-5 từ. Chữ: chủ trang tự đặt → ý AI đề xuất
+// (dàn ý / đóng gói phim tiểu sử) → vế đầu tiêu đề. Nhân vật lớn: nhân vật chính phim tiểu sử, hoặc nhân vật phụ AI chọn /
+// xuất hiện nhiều nhất. Emoji: của ý ảnh bìa, không có thì của câu móc phần 1. Nền: bối cảnh hay gặp nhất ở phần 1.
+export function anhBia(d: DuAnYT) {
   const vat = (x: string) => x.replace(/[#\p{Extended_Pictographic}️]/gu, '').replace(/\s+/g, ' ').trim()
-  const tuTieuDe = vat(d.tieu_de.replace(/^Phim tiểu sử:\s*/i, '')).split(/\s*[:|–—]\s+|\s+-\s+/)[0]
-  const chu = vat(d.phim?.dong_goi?.thumbnail[0]?.chu ?? '') || tuTieuDe.split(' ').slice(0, 8).join(' ')
+  const tuTieuDe = vat(d.tieu_de.replace(/^Phim tiểu sử:\s*/i, '')).split(/\s*[:|–—?]\s*|\s+-\s+/)[0]
+  const goiY = d.anh_bia_goi_y?.[0]
+  const chu = vat(d.anh_bia_chu ?? '') || vat(goiY?.chu ?? '') || vat(d.phim?.dong_goi?.thumbnail[0]?.chu ?? '') || tuTieuDe.split(' ').slice(0, 5).join(' ')
   const dem: Record<string, number> = {}
   for (const l of d.phan[0]?.loi ?? []) dem[l.boi_canh] = (dem[l.boi_canh] ?? 0) + 1
   const boi_canh = Object.entries(dem).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'truong_quay'
-  // Phim tiểu sử: nhân vật chính (hình giai đoạn cuối, lúc nổi tiếng nhất) đứng giữa thay cho người kể
+  const demPhu: Record<string, number> = {}
+  for (const p of d.phan) for (const l of p.loi ?? []) if (l.nhan_vat_phu && l.nhan_vat_phu !== 'khong') demPhu[l.nhan_vat_phu] = (demPhu[l.nhan_vat_phu] ?? 0) + 1
+  const nhan_vat = goiY && !['meo', 'robot'].includes(goiY.nhan_vat) ? goiY.nhan_vat : (Object.entries(demPhu).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null)
+  const bieu_tuong = goiY?.bieu_tuong || d.phan[0]?.moc?.bieu_tuong || ''
+  // Phim tiểu sử: nhân vật chính (hình giai đoạn cuối, lúc nổi tiếng nhất) là gương mặt lớn
   const nhan_vat_chinh = d.loai === 'tieu_su' && d.phim ? hinhChuong(d, d.phan.length) : null
-  // Ảnh bìa kiểu 3: ảnh chân dung thật (Wikimedia Commons) của nhân vật
+  // Kiểu 5: ảnh chân dung thật (Wikimedia Commons) của nhân vật
   const anh_that = d.loai === 'tieu_su' ? (d.phim?.anh?.find((a) => a.chinh)?.url ?? null) : null
-  return { chu, chu_de: d.chu_de, kenh: 'Công Nghệ 24H', boi_canh, nguoi_ke: !nhan_vat_chinh && d.phan.some((p) => p.loi?.some((l) => l.ai === 'nguoi_ke')), nhan_vat_chinh, anh_that }
+  return { chu, bieu_tuong, nhan_vat, kenh: 'Công Nghệ 24H', boi_canh, nhan_vat_chinh, anh_that }
+}
+
+// Gợi ý chữ ảnh bìa cho trang (ý AI + ý thumbnail của bước đóng gói phim tiểu sử)
+export const goiYChuAnhBia = (d: DuAnYT) =>
+  [...(d.anh_bia_goi_y ?? []).map((g) => g.chu), ...(d.phim?.dong_goi?.thumbnail ?? []).map((t) => t.chu)].map((x) => x.trim()).filter(Boolean).slice(0, 6)
+
+// Vẽ (lại) ảnh bìa ngay, không cần dựng video: lưu chữ chủ trang đặt rồi gửi phiếu cho máy nhà (ưu tiên cao, vẽ ~10 giây)
+export async function veAnhBia(id: string, chu: string) {
+  const d = await docDuAn(id)
+  if (!d) throw new Error('Không tìm thấy video')
+  const moi = { ...d, anh_bia_chu: chu.trim().slice(0, 60) || undefined }
+  await luuDuAn(moi)
+  await ghiJson(`hang-doi/viec/ytb-${id}.json`, { loai: 'yt_anh_bia', du_an: id, tieu_de: moi.tieu_de, anh_bia: anhBia(moi) })
+  return moi
+}
+
+export async function chonAnhBia(id: string, k: number) {
+  const d = await docDuAn(id)
+  if (!d) throw new Error('Không tìm thấy video')
+  const moi = { ...d, anh_bia_chon: Math.max(0, Math.min(4, Math.round(k))) }
+  await luuDuAn(moi)
+  return moi
 }
 
 // "Tên = cách đọc" mỗi dòng → [[tên, cách đọc]]
@@ -471,13 +503,17 @@ export type TrangThaiDuAn = {
   xong: { tep: string; kiem_tra?: KiemTraVideo; anh_bia?: { xem: string; tai: string }[]; moc_chuong?: number[]; phu_de?: string } | null
   mayNha: string | null
   ketGhep?: boolean // đủ phần mà máy nhà chưa ghép được (bấm Ghép lại)
+  anh_bia?: { xem: string; tai: string }[] // các kiểu ảnh bìa đã vẽ (có thể vẽ trước khi dựng xong video)
+  ve_bia?: boolean // máy nhà đang có phiếu vẽ ảnh bìa
 }
 
 // Trạng thái từng phần + video đã ghép (chỉ tính khi khớp mã lời thoại hiện tại)
 export async function trangThaiDuAn(d: DuAnYT, mayNha: string | null): Promise<TrangThaiDuAn> {
   const goc = thuMuc(d.id)
-  const [{ data: viec }, tienDo, xong, ...kq] = await Promise.all([
+  const [{ data: viec }, { data: viecBia }, bia, tienDo, xong, ...kq] = await Promise.all([
     kho().list('hang-doi/viec', { limit: 200, search: `yt-${d.id}` }),
+    kho().list('hang-doi/viec', { limit: 5, search: `ytb-${d.id}` }),
+    docJson<{ so: number; luc: number }>(`${goc}/anh-bia.json`),
     docJson<{ phan: number; phanTram: number; buoc: string; luc: number }>(`${goc}/tien-do.json`),
     docJson<{ tep: string; ma: string[]; nhac?: string | null; kiem_tra?: KiemTraVideo; anh_bia?: boolean | number; moc_chuong?: number[]; phu_de?: boolean }>(`${goc}/xong.json`),
     ...d.phan.map((_, i) => docJson<{ xong?: boolean; loi?: string; ma: string; luc?: number }>(`${goc}/phan-${i + 1}.json`)),
@@ -502,23 +538,23 @@ export async function trangThaiDuAn(d: DuAnYT, mayNha: string | null): Promise<T
       const { data } = await kho().createSignedUrl(`${goc}/phu-de.srt`, 3600, { download: 'phu-de.srt' })
       if (data) daGhep.phu_de = data.signedUrl
     }
-    // Ảnh bìa: bản cũ ghi true (1 ảnh), bản mới ghi số ảnh (3 kiểu)
-    const soAnh = xong.anh_bia === true ? 1 : typeof xong.anh_bia === 'number' ? xong.anh_bia : 0
-    if (soAnh) {
-      const ten = ['anh-bia.png', 'anh-bia-2.png', 'anh-bia-3.png'].slice(0, Math.max(1, soAnh))
-      const ds = await Promise.all(
-        ten.map(async (t) => {
-          const [xem, tai] = await Promise.all([kho().createSignedUrl(`${goc}/${t}`, 3600), kho().createSignedUrl(`${goc}/${t}`, 3600, { download: t })])
-          return xem.data && tai.data ? { xem: xem.data.signedUrl, tai: tai.data.signedUrl } : null
-        }),
-      )
-      daGhep.anh_bia = ds.filter((x): x is { xem: string; tai: string } => !!x)
-    }
   }
+  // Ảnh bìa: anh-bia.json (máy nhà ghi mỗi lần vẽ, kể cả lúc ghép video) → số kiểu; dự án cũ chỉ có trong xong.json
+  // (true = 1 ảnh, số = số kiểu). Tên tệp cố định: anh-bia.png, anh-bia-2.png…
+  const soAnh = bia?.so ?? (xong?.anh_bia === true ? 1 : typeof xong?.anh_bia === 'number' ? xong.anh_bia : 0)
+  const anh_bia = (
+    await Promise.all(
+      Array.from({ length: soAnh }, (_, i) => (i ? `anh-bia-${i + 1}.png` : 'anh-bia.png')).map(async (t) => {
+        const [xem, tai] = await Promise.all([kho().createSignedUrl(`${goc}/${t}`, 3600), kho().createSignedUrl(`${goc}/${t}`, 3600, { download: t })])
+        return xem.data && tai.data ? { xem: `${xem.data.signedUrl}&v=${bia?.luc ?? 0}`, tai: tai.data.signedUrl } : null
+      }),
+    )
+  ).filter((x): x is { xem: string; tai: string } => !!x)
+  if (daGhep) daGhep.anh_bia = anh_bia
   // Kẹt ghép: đủ phần đã dựng, chưa có video ghép, không còn phiếu nào chờ, phần xong cuối cùng đã quá 5 phút
   const xongCuoi = Math.max(0, ...kq.map((r) => r?.luc ?? 0))
   const ketGhep = !daGhep && phan.length > 0 && phan.every((p) => p.loai === 'xong') && !dangCho.size && Date.now() - xongCuoi > 5 * 60_000
-  return { phan, xong: daGhep, mayNha, ketGhep }
+  return { phan, xong: daGhep, mayNha, ketGhep, anh_bia, ve_bia: !!viecBia?.length }
 }
 
 // Gửi máy nhà dựng các phần chưa xong (hoặc chỉ phần `chiPhan`). Mọi phần phải có lời thoại: máy nhà cần mã của

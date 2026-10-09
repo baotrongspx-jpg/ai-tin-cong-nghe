@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { daDangNhap } from '@/lib/xacThuc'
 import { mayNhaTat } from '@/lib/giongDoc'
 import {
-  bienTapPhim, chayBuocPhim, docDuAn, guiDung, kiemDinhLaiPhan, luuPhatAm, taoShorts, trangThaiShorts, suaThongTin, taoDuAn, taoPhim, trangThaiDuAn, vietLoiPhan, suaLoiPhan, xoaDuAn,
+  bienTapPhim, chayBuocPhim, docDuAn, guiDung, kiemDinhLaiPhan, luuPhatAm, taoShorts, trangThaiShorts, suaThongTin, taoDuAn, taoPhim, trangThaiDuAn, vietLoiPhan, suaLoiPhan, veAnhBia, chonAnhBia, xoaDuAn,
   type BuocPhim, type DuAnYT, type TrangThaiBienTap, type TrangThaiDuAn, type TrangThaiShort,
 } from '@/lib/youtube'
 
@@ -51,6 +51,25 @@ export async function vietPhanYouTube(id: string, k: number): Promise<{ ok: true
   try {
     await chanChuaDangNhap()
     return { ok: true, duAn: await vietLoiPhan(id, k) }
+  } catch (e) {
+    return baoLoi(e)
+  }
+}
+
+// Ảnh bìa: vẽ lại theo chữ chủ trang đặt (máy nhà vẽ ~10 giây) / chọn kiểu làm ảnh chính
+export async function veAnhBiaYouTube(id: string, chu: string): Promise<{ ok: true; duAn: DuAnYT } | Loi> {
+  try {
+    await chanChuaDangNhap()
+    return { ok: true, duAn: await veAnhBia(id, chu) }
+  } catch (e) {
+    return baoLoi(e)
+  }
+}
+
+export async function chonAnhBiaYouTube(id: string, k: number): Promise<{ ok: true; duAn: DuAnYT } | Loi> {
+  try {
+    await chanChuaDangNhap()
+    return { ok: true, duAn: await chonAnhBia(id, k) }
   } catch (e) {
     return baoLoi(e)
   }

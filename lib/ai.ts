@@ -594,8 +594,11 @@ A narrator ("nguoi_ke") also speaks as a documentary voiceover that is not on st
 The source in the user turn is either news articles from the channel, or an idea / story written by the channel owner, or both. For news articles: tell everything they say, never invent facts, quotes or numbers. For the owner's idea or story: develop it into a full, engaging story or explainer with scenes, examples and dialogue; you may invent story details and characters' lines, but never present invented things as real news, and keep any real-world facts truthful.
 Audience: everyone, from teenagers to grandparents. Natural spoken Vietnamese (casual, warm, like friends chatting), short sentences, everyday words, explain technical terms the first time. Always write proper Vietnamese with full diacritics (tiếng Việt có dấu đầy đủ), never unaccented Vietnamese.`
 
+const AnhBiaGoiYSchema = z.object({ chu: z.string(), bieu_tuong: z.string(), nhan_vat: z.string() })
+export type AnhBiaGoiY = z.infer<typeof AnhBiaGoiYSchema>
 const DanYSchema = z.object({
   tieu_de: z.string().min(1),
+  anh_bia: z.array(AnhBiaGoiYSchema).default([]),
   mo_ta: z.string(),
   the: z.array(z.string()),
   chu_de: z.string(),
@@ -609,7 +612,8 @@ export async function vietDanYYouTube(nguon: string, phut: number, soPhan: numbe
     system: `${YT_DAU}
 
 Plan a video of about ${phut} minutes, split into exactly ${soPhan} parts of about ${Math.round((phut / soPhan) * 10) / 10} minutes each that follow each other naturally (part 1 opens with a hook and greets viewers, the last part wraps up). Return:
-- tieu_de: the YouTube title in Vietnamese, at most 90 characters, catchy but truthful.
+- tieu_de: the YouTube title in Vietnamese, at most 90 characters, built around the MAIN EVENT or TWIST of this specific story and leaving a question the video answers (an open loop), e.g. "Bị từ chối 1009 lần, ông lão 65 tuổi làm gì để thành tỷ phú?" rather than a generic "Câu chuyện truyền cảm hứng về KFC". Specific and truthful: never promise something the video does not show.
+- anh_bia: exactly 3 thumbnail ideas, each focused on ONE curious situation: chu = 2 to 5 Vietnamese words in big letters that tease the twist without repeating the title word for word (e.g. "1009 LẦN BỊ TỪ CHỐI", "SẾP AN TOÀN BỎ ĐI?"), bieu_tuong = exactly one emoji for the key object or situation, nhan_vat = the face shown big: meo (Mèo Mun shocked), robot (Robot Bit) or one extra that is the story's main person.
 - mo_ta: the YouTube description in Vietnamese, 3 to 6 sentences summing up what viewers will learn, then a line inviting them to subscribe to Công Nghệ 24H. No URLs.
 - the: 8 to 15 YouTube tags (Vietnamese and English keywords, without #).
 - chu_de: a short topic label of 1 or 2 words shown in the corner of the video (for example "AI", "Bảo mật", "Điện thoại").
@@ -621,6 +625,15 @@ Plan a video of about ${phut} minutes, split into exactly ${soPhan} parts of abo
       type: 'object',
       properties: {
         tieu_de: { type: 'string' },
+        anh_bia: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: { chu: { type: 'string' }, bieu_tuong: { type: 'string' }, nhan_vat: { type: 'string', enum: ['meo', 'robot', ...NHAN_VAT_PHU.filter((n) => n !== 'khong')] } },
+            required: ['chu', 'bieu_tuong', 'nhan_vat'],
+            additionalProperties: false,
+          },
+        },
         mo_ta: { type: 'string' },
         the: { type: 'array', items: { type: 'string' } },
         chu_de: { type: 'string' },
@@ -634,7 +647,7 @@ Plan a video of about ${phut} minutes, split into exactly ${soPhan} parts of abo
           },
         },
       },
-      required: ['tieu_de', 'mo_ta', 'the', 'chu_de', 'phan'],
+      required: ['tieu_de', 'anh_bia', 'mo_ta', 'the', 'chu_de', 'phan'],
       additionalProperties: false,
     },
   })

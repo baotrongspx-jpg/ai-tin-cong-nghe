@@ -7,7 +7,7 @@ import type { DuAnYT, KiemTraVideo, PhanYT, TrangThaiDuAn, TrangThaiPhan, TrangT
 import { thongBao } from '@/app/ThongBao'
 import { locLoiChao } from '@/lib/kiemDinh'
 import { IconChep, IconMo, IconXong, IconYouTube, Xoay } from '@/app/BieuTuong'
-import { bienTapYouTube, chayBuocPhimYouTube, layShortsYouTube, luuPhatAmYouTube, taoShortsYouTube, dungVideoYouTube, kiemDinhYouTube, layTrangThaiYouTube, luuThongTinYouTube, suaPhanYouTube, vietPhanYouTube, xoaVideoYouTube } from '../actions'
+import { bienTapYouTube, chayBuocPhimYouTube, layShortsYouTube, luuPhatAmYouTube, taoShortsYouTube, dungVideoYouTube, kiemDinhYouTube, layTrangThaiYouTube, luuThongTinYouTube, suaPhanYouTube, vietPhanYouTube, veAnhBiaYouTube, chonAnhBiaYouTube, xoaVideoYouTube } from '../actions'
 import HoSoPhim, { KhoiDuLieu } from './HoSoPhim'
 
 const NGUOI: Record<string, string> = {
@@ -383,8 +383,8 @@ export default function ChiTiet({ dau, ttDau }: { dau: DuAnYT; ttDau: TrangThaiD
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Đang chờ / đang dựng / đã dựng đủ mà chưa ghép xong: hỏi lại trạng thái mỗi 8 giây
-  const dangCho = tt.phan.some((p) => p.loai === 'cho' || p.loai === 'dang_lam') || (!tt.xong && tt.phan.length > 0 && tt.phan.every((p) => p.loai === 'xong'))
+  // Đang chờ / đang dựng / đã dựng đủ mà chưa ghép xong / đang vẽ ảnh bìa: hỏi lại trạng thái mỗi 8 giây
+  const dangCho = !!tt.ve_bia || tt.phan.some((p) => p.loai === 'cho' || p.loai === 'dang_lam') || (!tt.xong && tt.phan.length > 0 && tt.phan.every((p) => p.loai === 'xong'))
   useEffect(() => {
     if (!dangCho) return
     const t = setInterval(() => {
@@ -476,25 +476,6 @@ export default function ChiTiet({ dau, ttDau }: { dau: DuAnYT; ttDau: TrangThaiD
               <NutChep chu={tt.xong.tep} ten="Chép đường dẫn" />
             </div>
             <p className="text-xs text-slate-500">Mở thư mục Desktop → Video-YouTube trên máy nhà để thấy video. Sửa lời thoại một phần thì chỉ phần đó dựng lại.</p>
-            {tt.xong.anh_bia && tt.xong.anh_bia.length > 0 && (
-              <div className="grid gap-2">
-                <p className="font-semibold">🖼 Ảnh bìa (thumbnail) tự động — {tt.xong.anh_bia.length} kiểu</p>
-                <div className="grid gap-3 sm:grid-cols-3">
-                  {tt.xong.anh_bia.map((a, i) => (
-                    <div key={i} className="grid gap-1">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={a.xem} alt={`Ảnh bìa kiểu ${i + 1}`} className="w-full rounded-xl ring-1 ring-slate-200" />
-                      <a href={a.tai} className="btn btn-sm btn-phu justify-self-start">
-                        Tải kiểu {i + 1}
-                      </a>
-                    </div>
-                  ))}
-                </div>
-                <p className="text-xs text-slate-500">
-                  Ảnh cũng nằm cạnh video trên máy nhà. YouTube Studio → Chi tiết → Hình thu nhỏ → <b>Thử nghiệm và so sánh</b>: tải lên cả 3, YouTube tự chọn ảnh được bấm nhiều nhất.
-                </p>
-              </div>
-            )}
             {tt.xong.moc_chuong && tt.xong.moc_chuong.length >= 3 && (
               <label className="grid">
                 <span className="label">
@@ -556,6 +537,7 @@ export default function ChiTiet({ dau, ttDau }: { dau: DuAnYT; ttDau: TrangThaiD
       </section>
 
       {/* Shorts: 3 đoạn gay cấn nhất dựng lại khung dọc 9:16 */}
+      {daVietDu && <AnhBia d={d} tt={tt} khoa={dangLam} setD={setD} capNhatTt={capNhatTt} />}
       {daVietDu && (
         <section className="the grid gap-2 p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -914,5 +896,87 @@ export default function ChiTiet({ dau, ttDau }: { dau: DuAnYT; ttDau: TrangThaiD
         })}
       </section>
     </div>
+  )
+}
+
+// Ảnh bìa (thumbnail): gợi ý chữ của AI, ô tự đặt chữ (2-5 từ), nút vẽ (máy nhà vẽ 4-5 kiểu ~10 giây), chọn kiểu làm ảnh
+// chính (lưu lại, tải về đúng ảnh đó)
+function AnhBia({ d, tt, khoa, setD, capNhatTt }: { d: DuAnYT; tt: TrangThaiDuAn; khoa: boolean; setD: (d: DuAnYT) => void; capNhatTt: () => Promise<void> }) {
+  const goiY = [...(d.anh_bia_goi_y ?? []).map((g) => g.chu), ...(d.phim?.dong_goi?.thumbnail ?? []).map((t) => t.chu)].map((x) => x.trim()).filter(Boolean).slice(0, 6)
+  const [chu, setChu] = useState(d.anh_bia_chu ?? goiY[0] ?? '')
+  const [dangGui, setDangGui] = useState(false)
+  const [loi, setLoi] = useState('')
+  const ds = tt.anh_bia ?? []
+  const chon = Math.min(d.anh_bia_chon ?? 0, Math.max(0, ds.length - 1))
+  const soTu = chu.trim().split(/\s+/).filter(Boolean).length
+  const ve = async () => {
+    setLoi('')
+    setDangGui(true)
+    const kq = await veAnhBiaYouTube(d.id, chu)
+    setDangGui(false)
+    if (!kq.ok) return setLoi(kq.loi)
+    setD(kq.duAn)
+    await capNhatTt()
+  }
+  const chonKieu = async (k: number) => {
+    const kq = await chonAnhBiaYouTube(d.id, k)
+    if (!kq.ok) return setLoi(kq.loi)
+    setD(kq.duAn)
+  }
+  return (
+    <section className="the grid gap-3 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="font-bold">🖼 Ảnh bìa (thumbnail)</span>
+        {tt.ve_bia && <span className="chip bg-violet-100 text-violet-800">Máy nhà đang vẽ…</span>}
+      </div>
+      <p className="text-xs text-slate-500">
+        Ảnh bìa tốt: MỘT tình huống gây tò mò, nhân vật to rõ mặt, chữ 2-5 từ đọc được trên điện thoại. Bấm một gợi ý hoặc tự gõ, rồi bấm Vẽ ảnh bìa.
+      </p>
+      {goiY.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {goiY.map((g) => (
+            <button key={g} type="button" onClick={() => setChu(g)} className={`chip ${g === chu ? 'bg-red-600 text-white' : 'bg-slate-100 text-slate-700'}`}>
+              {g}
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="flex flex-wrap items-center gap-2">
+        <input value={chu} onChange={(e) => setChu(e.target.value)} maxLength={60} placeholder="Chữ trên ảnh bìa, 2-5 từ" className="input min-w-0 flex-1" />
+        <button type="button" onClick={() => void ve()} disabled={khoa || dangGui || tt.ve_bia || !chu.trim()} className="btn btn-phu">
+          🎨 {ds.length ? 'Vẽ lại ảnh bìa' : 'Vẽ ảnh bìa'}
+        </button>
+      </div>
+      {soTu > 5 && <p className="text-xs text-amber-700">Chữ dài {soTu} từ: ảnh bìa chỉ lấy 5 từ đầu. Nên rút gọn còn 2-5 từ.</p>}
+      {loi && <p className="text-xs text-red-600">Lỗi: {loi}</p>}
+      {ds.length > 0 && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          {ds.map((a, i) => (
+            <div key={i} className={`grid gap-1 rounded-xl p-1 ${i === chon ? 'ring-4 ring-red-500' : ''}`}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={a.xem} alt={`Ảnh bìa kiểu ${i + 1}`} className="w-full rounded-lg ring-1 ring-slate-200" />
+              <div className="flex flex-wrap items-center gap-2">
+                {i === chon ? (
+                  <span className="chip bg-red-600 text-white">⭐ Ảnh bìa chính</span>
+                ) : (
+                  <button type="button" onClick={() => void chonKieu(i)} className="btn btn-sm btn-phu">
+                    Chọn ảnh này
+                  </button>
+                )}
+                <a href={a.tai} className="btn btn-sm btn-nhat">
+                  Tải về
+                </a>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {ds.length > 0 && (
+        <p className="text-xs text-slate-500">
+          Ảnh cũng nằm cạnh video trên máy nhà (anh-bia.png, anh-bia-2.png…). YouTube Studio → Chi tiết → Hình thu nhỏ: tải ảnh chính lên, hoặc chọn <b>Thử nghiệm và so sánh</b> để
+          tải lên 3 ảnh cho YouTube tự chọn ảnh được bấm nhiều nhất.
+        </p>
+      )}
+    </section>
   )
 }

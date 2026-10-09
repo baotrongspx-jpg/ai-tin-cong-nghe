@@ -1,10 +1,12 @@
-// Ảnh bìa (thumbnail) YouTube 1280x720: bối cảnh chính của video làm nền (mờ, tối), Mèo Mun ngạc nhiên bên trái,
-// Robot Bit bên phải, chữ to 3-6 từ viền đen ở giữa, nhãn chủ đề + tên kênh. Chụp bằng Edge chạy ẩn.
-// Chạy: node tao_anh_bia.mjs <vao.json> <ra.png> [kiểu 1|2|3]
-// 3 kiểu (cho tính năng "Thử nghiệm và so sánh" ảnh bìa của YouTube): 1 = Mun, Bit + nhân vật chính / người kể đứng giữa;
-// 2 = cận cảnh nhân vật to bên trái, chữ to bên phải; 3 = ảnh thật (anh_that: tệp ảnh trên máy) bên phải, chữ bên trái,
-// Mun ló ra ngạc nhiên (không có ảnh thật thì như kiểu 2 với Robot Bit)
-//   vao.json: { "chu": "chữ to trên ảnh", "chu_de": "AI", "kenh": "Công Nghệ 24H", "boi_canh": "thanh_pho_dem", "nguoi_ke": false }
+// Ảnh bìa (thumbnail) YouTube 1280x720, dễ nhìn trên điện thoại: MỘT tình huống gây tò mò, MỘT nhân vật thật to rõ mặt,
+// chữ ngắn (tối đa 5 từ) cỡ lớn viền đen, một biểu tượng (emoji) to cho tình huống, nền bối cảnh tối + mờ để tương phản
+// rõ; không nhồi thêm nhãn / chữ nhỏ (chỉ góc tên kênh). Chụp bằng Edge chạy ẩn.
+// Chạy: node tao_anh_bia.mjs <vao.json> <ra.png> [kiểu 1-5]
+//   1 = Mèo Mun ngạc nhiên to bên phải, chữ trái; 2 = Robot Bit bên phải, chữ trái; 3 = nhân vật của câu chuyện (nhân vật
+//   chính phim tiểu sử / nhân vật phụ AI chọn) to bên trái, chữ phải; 4 = biểu tượng khổng lồ giữa-phải + dấu hỏi, Mèo
+//   ló ở góc, chữ trên; 5 = ảnh thật (anh_that: tệp trên máy) bên phải, Mèo ló, chữ trái (không có ảnh thì như kiểu 1)
+//   vao.json: { "chu": "chữ to", "bieu_tuong": "🚪", "nhan_vat": "doanh_nhan", "kenh": "Công Nghệ 24H", "boi_canh": "van_phong",
+//               "nhan_vat_chinh": {…bản thiết kế, phim tiểu sử} | null, "anh_that": "đường dẫn ảnh" | null }
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
@@ -12,83 +14,100 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { BOI_CANH } from './boiCanh.mjs'
 import { meoSvg, robotSvg } from './nhanVatChinh.mjs'
-import { nguoiKeSvg, nhanVatChinhSvg } from './nhanVatPhu.mjs'
+import { NHAN_VAT_PHU, nhanVatChinhSvg } from './nhanVatPhu.mjs'
 
 const [vao, ra] = process.argv.slice(2, 4).map((x) => resolve(x))
 const KIEU = Number(process.argv[4] ?? 1)
-// nhan_vat_chinh: hình nhân vật chính phim tiểu sử (nhanVatChinhSvg) — đứng giữa, to, có vầng sáng
-const { chu = '', chu_de = '', kenh = 'Công Nghệ 24H', boi_canh = 'truong_quay', nguoi_ke = false, nhan_vat_chinh = null, anh_that = null } = JSON.parse(readFileSync(vao, 'utf8'))
-const chinh = nhan_vat_chinh ? nhanVatChinhSvg(nhan_vat_chinh) : null
+const { chu = '', bieu_tuong = '', nhan_vat = null, kenh = 'Công Nghệ 24H', boi_canh = 'truong_quay', nhan_vat_chinh = null, anh_that = null } = JSON.parse(readFileSync(vao, 'utf8'))
 const GOC = dirname(fileURLToPath(import.meta.url))
 const FONT = pathToFileURL(join(GOC, '..', '..', 'assets', 'fonts', 'BeVietnamPro-Bold.ttf')).href
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
-// Chữ to: tối đa 8 từ, chia 2 dòng cân nhau, cỡ chữ theo dòng dài nhất; từ cuối tô vàng cho nổi
-const tu = chu.trim().split(/\s+/).filter(Boolean).slice(0, 8)
-const giua = Math.ceil(tu.length / 2)
-const dong = tu.length > 3 ? [tu.slice(0, giua), tu.slice(giua)] : [tu]
-const coChu = Math.round(Math.min(118, 1250 / Math.max(6, ...dong.map((d) => d.join(' ').length))))
-const chuHtml = dong
-  .map((d, k) => `<div>${d.map((w, j) => `<span class="${k === dong.length - 1 && j === d.length - 1 ? 'vang' : ''}">${esc(w)}</span>`).join(' ')}</div>`)
-  .join('')
+// Chữ: tối đa 5 từ, chia 1-3 dòng sao cho cỡ chữ lớn nhất (vừa bề ngang vùng chữ và chiều cao 560); dòng cuối tô vàng
+function chuTo(rong, toiDaDong = 3) {
+  const tu = chu.trim().split(/\s+/).filter(Boolean).slice(0, 5)
+  const coChu = (dong) => Math.min(168, rong / (Math.max(3, ...dong.map((d) => d.join(' ').length)) * 0.66), 560 / dong.length / 1.18)
+  let tot = [tu]
+  const thu = (dong) => {
+    if (dong.every((d) => d.length) && coChu(dong) > coChu(tot)) tot = dong
+  }
+  for (let a = 1; a < tu.length; a++) {
+    thu([tu.slice(0, a), tu.slice(a)])
+    if (toiDaDong >= 3) for (let b = a + 1; b < tu.length; b++) thu([tu.slice(0, a), tu.slice(a, b), tu.slice(b)])
+  }
+  const html = tot.map((d, k) => `<div class="${tot.length > 1 && k === tot.length - 1 ? 'vang' : ''}">${esc(d.join(' '))}</div>`).join('')
+  return { co: Math.round(coChu(tot)), html }
+}
+
+// Nhân vật cận (đầu + vai) với miệng mở (ngạc nhiên / đang nói)
+const moMieng = (svg, id) => svg.replace(`id="${id}-mieng-dong"`, `id="${id}-mieng-dong" opacity="0"`).replace(`id="${id}-mieng-mo" opacity="0"`, `id="${id}-mieng-mo"`).replace(`id="${id}-mieng-mo"`, `id="${id}-mieng-mo" opacity="1"`)
+const linhVat = (svg, id, lat = false) =>
+  moMieng(svg, id).replace(/viewBox="0 0 600 700" width="\d+" height="\d+"/, `viewBox="40 70 520 560" width="100%" height="100%"${lat ? ' style="transform:scaleX(-1)"' : ''}`)
+function nhanVatTruyen() {
+  if (nhan_vat_chinh) {
+    const v = nhanVatChinhSvg(nhan_vat_chinh)
+    return `<svg viewBox="${v.viewBox === '0 0 400 600' ? '50 40 300 330' : '30 -20 340 380'}" width="100%" height="100%">${moMieng(v.svg('bia'), 'bia')}</svg>`
+  }
+  const p = NHAN_VAT_PHU[nhan_vat]
+  if (p) return `<svg viewBox="${p.viewBox && p.viewBox !== '0 0 400 600' ? '30 -20 340 380' : '50 40 300 330'}" width="100%" height="100%">${moMieng(p.svg('bia'), 'bia')}</svg>`
+  return null
+}
 
 const bc = (BOI_CANH[boi_canh] ?? BOI_CANH.truong_quay)('bia')
-// Mun ngạc nhiên (miệng mở), Bit cười
-const mat = (svg, id) => svg.replace(`id="${id}-mieng-dong"`, `id="${id}-mieng-dong" opacity="0"`).replace(`id="${id}-mieng-mo"`, `id="${id}-mieng-mo" opacity="1"`)
+const nen = `<div class="nen"><svg viewBox="0 380 1080 760" preserveAspectRatio="xMidYMid slice">${bc.svg}</svg></div><div class="toi"></div>`
+const bt = bieu_tuong ? `<div class="bt">${esc(bieu_tuong)}</div>` : ''
 
-function thanKieu() {
-  const coAnh = KIEU === 3 && anh_that && existsSync(anh_that)
-  const nen = `<div class="nen"><svg viewBox="0 380 1080 760" preserveAspectRatio="xMidYMid slice">${bc.svg}</svg></div>`
-  const nhan = chu_de ? `<div class="nhan" style="left:auto;right:40px;top:70px;transform:rotate(3deg)">${esc(chu_de)}</div>` : ''
-  if (coAnh) {
-    return `${nen}<img class="anh" src="${pathToFileURL(anh_that).href}"/><div class="anh-mo"></div>
-<div class="nv lo">${mat(meoSvg, 'meo').replace(/width="\d+" height="\d+"/, 'width="100%"')}</div>
-${nhan}<div class="chu trai">${chuHtml}</div>`
+function than() {
+  const coAnh = KIEU === 5 && anh_that && existsSync(anh_that)
+  if (KIEU === 3) {
+    const nv = nhanVatTruyen()
+    const c = chuTo(600)
+    return `${nen}<div class="lua" style="left:330px"></div><div class="nv-to trai">${nv ?? linhVat(meoSvg, 'meo', true)}</div>
+<div class="chu" style="left:640px;right:30px;font-size:${c.co}px">${c.html}</div>`
   }
-  // Kiểu 2 (hoặc 3 không có ảnh thật): cận cảnh nhân vật chính (hoặc Mun / Bit) bên trái
-  const nv = chinh
-    ? `<svg viewBox="${chinh.viewBox}" width="100%">${chinh.svg('bia-can')}</svg>`
-    : mat(KIEU === 3 ? robotSvg : meoSvg, KIEU === 3 ? 'robot' : 'meo').replace(/width="\d+" height="\d+"/, 'width="100%"')
-  return `${nen}<div class="toi2"></div><div class="tia" style="left:330px;top:420px"></div><div class="can">${nv}</div>${nhan}<div class="chu phai">${chuHtml}</div>`
+  if (KIEU === 4) {
+    const c = chuTo(1120, 2)
+    return `${nen}<div class="lua" style="left:820px;top:430px"></div><div class="bt-khung"><div class="bt-to">${esc(bieu_tuong || '❓')}</div><div class="hoi">?</div></div>
+<div class="nv-lo">${linhVat(meoSvg, 'meo')}</div><div class="chu tren" style="font-size:${Math.min(c.co, 130)}px">${c.html}</div>`
+  }
+  const c = chuTo(540)
+  const chuTrai = `<div class="chu" style="left:40px;right:700px;font-size:${c.co}px">${c.html}</div>`
+  if (coAnh) {
+    return `${nen}<img class="anh" src="${pathToFileURL(anh_that).href}"/><div class="anh-mo"></div><div class="nv-lo phai">${linhVat(meoSvg, 'meo', true)}</div>${chuTrai}${bt.replace('class="bt"', 'class="bt" style="left:500px;top:470px"')}`
+  }
+  const robot = KIEU === 2
+  return `${nen}<div class="lua"></div><div class="nv-to phai">${robot ? linhVat(robotSvg, 'robot', true) : linhVat(meoSvg, 'meo', true)}</div>${chuTrai}${bt}`
 }
 
 const html = `<!doctype html><html><head><meta charset="utf-8"><style>
 @font-face { font-family: B; src: url("${FONT}"); }
 * { margin: 0; box-sizing: border-box; }
-body { width: 1280px; height: 720px; overflow: hidden; font-family: B, sans-serif; background: #0f172a; }
-.nen { position: absolute; inset: -40px; filter: blur(5px) saturate(1.3); }
+body { width: 1280px; height: 720px; overflow: hidden; font-family: B, "Segoe UI Emoji", sans-serif; background: #0b1020; position: relative; }
+.nen { position: absolute; inset: -40px; filter: blur(8px) saturate(1.15) brightness(0.5); }
 .nen svg { width: 100%; height: 100%; }
-.toi { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 45%, #0000 20%, #000b 85%), linear-gradient(90deg, #0008, #0000 30%, #0000 70%, #0008); }
-.tia { position: absolute; left: 640px; top: 330px; width: 1600px; height: 1600px; margin: -800px; background: repeating-conic-gradient(#fde68a22 0 6deg, #0000 6deg 18deg); border-radius: 50%; mask: radial-gradient(#000 10%, #0000 60%); }
-.nv { position: absolute; bottom: -70px; filter: drop-shadow(0 0 14px #fff8) drop-shadow(0 20px 26px #000c); }
-.meo { left: -50px; width: 470px; transform: rotate(-6deg); }
-.robot { right: -50px; width: 470px; transform: rotate(5deg) scaleX(-1); }
-.ke { left: 50%; margin-left: -150px; bottom: -40px; width: 300px; }
-.chinh { left: 50%; margin-left: -250px; bottom: -250px; width: 500px; }
-.chu { position: absolute; left: 80px; right: 80px; top: 120px; text-align: center; font-size: ${coChu}px; line-height: 1.08; color: #fff; text-transform: uppercase;
-  -webkit-text-stroke: 14px #111; paint-order: stroke fill; text-shadow: 0 10px 0 #111, 0 18px 30px #000c; letter-spacing: -1px; }
-.chu div { white-space: nowrap; } .vang { color: #facc15; }
-.nhan { position: absolute; left: 50%; transform: translateX(-50%) rotate(-3deg); top: 42px; background: #dc2626; color: #fff; font-size: 34px; padding: 6px 26px; border-radius: 12px; border: 5px solid #fff; box-shadow: 0 8px 18px #0009; text-transform: uppercase; }
-/* Kiểu 2 / 3: chữ dồn một bên, nhân vật / ảnh thật bên kia */
-.chu.trai, .chu.phai { top: 170px; text-align: left; font-size: ${Math.round(coChu * 0.86)}px; }
-.chu.phai { left: 560px; right: 40px; } .chu.trai { left: 50px; right: 640px; }
-.chu.trai div, .chu.phai div { white-space: normal; }
-.can { position: absolute; left: -90px; bottom: -520px; width: 760px; filter: drop-shadow(0 0 18px #fff9) drop-shadow(0 26px 30px #000c); }
-.toi2 { position: absolute; inset: 0; background: linear-gradient(90deg, #0000 25%, #000c 55%, #000e); }
-.anh { position: absolute; right: 0; top: 0; width: 760px; height: 720px; object-fit: cover; }
-.anh-mo { position: absolute; inset: 0; background: linear-gradient(90deg, #0f172a 40%, #0f172acc 50%, #0f172a00 72%); }
-.lo { position: absolute; left: 300px; bottom: -150px; width: 330px; transform: rotate(8deg); filter: drop-shadow(0 16px 20px #000c); }
-.kenh { position: absolute; right: 26px; top: 22px; color: #fff; font-size: 24px; background: #000a; padding: 6px 16px; border-radius: 10px; border-left: 6px solid #38bdf8; }
+.toi { position: absolute; inset: 0; background: radial-gradient(ellipse 70% 80% at 50% 50%, #0000 30%, #000c 100%); }
+/* Vầng sáng sau nhân vật: tách nhân vật khỏi nền */
+.lua { position: absolute; left: 930px; top: 420px; width: 900px; height: 900px; margin: -450px; border-radius: 50%;
+  background: radial-gradient(circle, #fde047 0, #f97316aa 28%, #dc262655 45%, #0000 65%); }
+.nv-to { position: absolute; bottom: -40px; width: 620px; height: 680px; filter: drop-shadow(0 0 6px #fff) drop-shadow(0 0 22px #fffa) drop-shadow(0 28px 34px #000d); }
+.nv-to.phai { right: -40px; } .nv-to.trai { left: 0; width: 640px; }
+.nv-lo { position: absolute; left: -40px; bottom: -120px; width: 380px; height: 420px; transform: rotate(10deg); filter: drop-shadow(0 0 6px #fff) drop-shadow(0 20px 26px #000c); }
+.nv-lo.phai { left: auto; right: 520px; transform: rotate(-8deg); }
+.chu { position: absolute; top: 50%; transform: translateY(-50%) rotate(-2deg); line-height: 1.16; color: #fff; text-transform: uppercase;
+  -webkit-text-stroke: 16px #000; paint-order: stroke fill; text-shadow: 0 10px 0 #000, 0 16px 30px #000; letter-spacing: -1px; }
+.chu.tren { top: 40px; left: 40px; right: 40px; transform: rotate(-2deg); }
+.chu div { white-space: nowrap; position: relative; } .chu div:nth-child(1) { z-index: 3; } .chu div:nth-child(2) { z-index: 2; } .vang { color: #facc15; }
+.bt { position: absolute; left: 520px; top: 500px; font-size: 170px; line-height: 1; font-family: "Segoe UI Emoji", sans-serif; transform: rotate(-10deg);
+  filter: drop-shadow(0 0 4px #fff) drop-shadow(0 14px 18px #000c); }
+.bt-khung { position: absolute; left: 600px; top: 230px; width: 460px; height: 460px; }
+.bt-to { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 330px; line-height: 1;
+  font-family: "Segoe UI Emoji", sans-serif; filter: drop-shadow(0 0 6px #fff) drop-shadow(0 24px 30px #000d); }
+.hoi { position: absolute; right: -60px; top: -30px; font-size: 230px; color: #facc15; -webkit-text-stroke: 14px #000; paint-order: stroke fill; transform: rotate(14deg); }
+.anh { position: absolute; right: 0; top: 0; width: 700px; height: 720px; object-fit: cover; }
+.anh-mo { position: absolute; inset: 0; background: linear-gradient(90deg, #0b1020 42%, #0b1020cc 52%, #0b102000 72%); }
+.kenh { position: absolute; right: 24px; top: 20px; color: #fff; font-size: 26px; background: #000b; padding: 6px 16px; border-radius: 10px; border-left: 6px solid #ef4444; }
 </style></head><body>
-${KIEU === 1 ? '' : thanKieu()}
-<div class="nen" style="${KIEU === 1 ? '' : 'display:none'}"><svg viewBox="0 380 1080 760" preserveAspectRatio="xMidYMid slice">${bc.svg}</svg></div>
-${KIEU === 1 ? `<div class="toi"></div><div class="tia"></div>
-<div class="nv meo">${mat(meoSvg, 'meo').replace(/width="\d+" height="\d+"/, 'width="100%"')}</div>
-<div class="nv robot">${mat(robotSvg, 'robot').replace(/width="\d+" height="\d+"/, 'width="100%"')}</div>
-${chinh ? `<div class="nv chinh"><svg viewBox="${chinh.viewBox}" width="100%">${chinh.svg('bia-chinh')}</svg></div>` : ''}
-${nguoi_ke ? `<div class="nv ke"><svg viewBox="80 40 440 660" width="100%">${nguoiKeSvg('ke')}</svg></div>` : ''}
-${chu_de ? `<div class="nhan">${esc(chu_de)}</div>` : ''}
-<div class="chu">${chuHtml}</div>` : ''}
+${than()}
 <div class="kenh">${esc(kenh)}</div>
 </body></html>`
 

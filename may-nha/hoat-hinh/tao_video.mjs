@@ -575,9 +575,11 @@ const nvPhu = doanPhu.map((dp, k) => {
   tw.push(`tl.to("#${id}", { x: ${ben * 420}, opacity: 0, duration: 0.35, ease: "power2.in" }, ${f(het - 0.3)});`)
   tw.push(`tl.to("#${id} svg", { y: -12, duration: 0.1, yoyo: true, repeat: 3, ease: "sine.inOut" }, ${f(het - 0.3)});`)
   // Không ghi tên trên đầu (trang phục tự nói lên họ là ai); hai nhân vật chính dạt sang hai bên chừa chỗ cho nhân vật phụ
-  // Hai người cùng đứng thì Mèo / Bit dạt xa hơn
-  tw.push(`tl.to("#o-meo", { x: ${dp.doi ? -240 : -80}, duration: 0.5, ease: "power2.inOut" }, ${f(vao)});`)
-  tw.push(`tl.to("#o-robot", { x: ${dp.doi ? 240 : 80}, duration: 0.5, ease: "power2.inOut" }, ${f(vao)});`)
+  // Trong cả khối liên tục có người trên sân khấu (cùng hetCum), chỉ cần có lúc hai người cùng đứng (lệch trái / phải)
+  // thì Mèo / Bit dạt xa suốt khối: không kéo về gần giữa khi một người rời đi trong lúc người kia vẫn đứng lệch (đè nhau)
+  const dat = doanPhu.some((x) => x.hetCum === dp.hetCum && x.doi) ? 290 : 110
+  tw.push(`tl.to("#o-meo", { x: ${-dat}, duration: 0.5, ease: "power2.inOut" }, ${f(vao)});`)
+  tw.push(`tl.to("#o-robot", { x: ${dat}, duration: 0.5, ease: "power2.inOut" }, ${f(vao)});`)
   // Mèo / Bit về chỗ cũ khi người cuối cùng của cảnh rời đi
   if (dp.het === dp.hetCum) tw.push(`tl.to(["#o-meo", "#o-robot"], { x: 0, duration: 0.5, ease: "power2.inOut" }, ${f(het - 0.1)});`)
   return `<div id="${id}" class="nv-phu" data-ten="${dp.ten}" style="left:${354 + dp.lech}px"><svg viewBox="${NHAN_VAT_PHU[dp.ten].viewBox ?? '0 0 400 600'}" width="372" height="558" class="nv">${NHAN_VAT_PHU[dp.ten].svg(id)}</svg></div>`

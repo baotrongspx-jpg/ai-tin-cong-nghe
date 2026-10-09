@@ -90,6 +90,20 @@ def don_rac():
                 cu.append(f'{thu_muc}/{f["name"]}')
     if cu:
         xoa(*cu)
+    # Video YouTube đã xoá mà còn sót đồ (trên kho hoặc thư mục tạm trên máy nhà): dọn nốt
+    con = set()
+    for f in liet_ke('youtube', day_du=True):
+        ten = f['name']
+        if f.get('id') or ten == DANG_DUNG.get('du_an'):  # tệp lẻ có id, thư mục thì không
+            continue
+        if 'du-an.json' in liet_ke(f'youtube/{ten}'):
+            con.add(ten)
+        else:
+            don_du_an(ten)
+    for tm in [*THU_MUC_TAM.glob('yt-*'), *THU_MUC_TAM.glob('yts-*')]:
+        du_an = re.sub(r'^yts?-|-\d+$', '', tm.name)
+        if tm.is_dir() and du_an != DANG_DUNG.get('du_an') and du_an not in con:
+            shutil.rmtree(tm, ignore_errors=True)
 
 
 def ghi_wav(phan, sr):
@@ -184,6 +198,56 @@ def bao_hien_tai(buoc, phan_tram=None):
         traceback.print_exc()
 
 
+class DaXoa(Exception):
+    # Dự án video đã bị xoá trên trang trong lúc máy nhà đang dựng: bỏ dở ngay, không ghi gì của nó lên kho nữa
+    pass
+
+
+# Dự án của việc dài đang làm (youtube / youtube_short): cứ ~15 giây hỏi kho xem du-an.json còn không
+DANG_DUNG = {'du_an': None, 'lan': 0.0, 'da_xoa': False}
+
+
+def kiem_da_xoa():
+    du_an = DANG_DUNG['du_an']
+    if not du_an:
+        return
+    if not DANG_DUNG['da_xoa'] and time.time() - DANG_DUNG['lan'] > 15:
+        DANG_DUNG['lan'] = time.time()
+        try:
+            # Chỉ coi là đã xoá khi kho trả lời rõ "không có" (mất mạng thì làm tiếp)
+            DANG_DUNG['da_xoa'] = s.head(f'{URL}/{KHO}/youtube/{du_an}/du-an.json', timeout=30).status_code in (400, 404)
+        except Exception:
+            pass
+    if DANG_DUNG['da_xoa']:
+        raise DaXoa(f'Video {du_an[:6]} đã bị xoá trên trang')
+
+
+def don_du_an(du_an):
+    # Xoá sạch mọi thứ của một dự án video đã xoá: thư mục video (…-<6 ký tự đầu mã>), thư mục tạm trên máy nhà, và các
+    # tệp máy nhà lỡ ghi lên kho sau lúc xoá (tiến độ, kết quả phần), phiếu việc còn sót — để video mới không dính video cũ
+    so = 0
+    for tm in [*THU_MUC_YT.glob(f'*-{du_an[:6]}'), *THU_MUC_TAM.glob(f'yt-{du_an}-*'), *THU_MUC_TAM.glob(f'yts-{du_an}-*')]:
+        if tm.is_dir():
+            shutil.rmtree(tm, ignore_errors=True)
+            # OneDrive / trình duyệt dựng hình đôi khi còn giữ thư mục lúc vừa xoá tệp bên trong: đợi rồi xoá lại
+            for _ in range(3):
+                if not tm.exists():
+                    break
+                time.sleep(2)
+                shutil.rmtree(tm, ignore_errors=True)
+            so += 1
+    try:
+        con = [f'youtube/{du_an}/{n}' for n in liet_ke(f'youtube/{du_an}')]
+        if con and f'youtube/{du_an}/du-an.json' not in con:
+            xoa(*con)
+        viec = [f'{t}/{n}' for t in ('hang-doi/viec', 'hang-doi/uu-tien') for n in liet_ke(t) if du_an in n]
+        if viec:
+            xoa(*viec)
+    except Exception:
+        traceback.print_exc()
+    return so
+
+
 class TienDo:
     # Ghi tiến độ (phần trăm + bước đang làm) lên kho để trang web vẽ thanh chạy; tối đa 3 giây ghi một lần.
     # `duong`: chỗ ghi khác (video YouTube ghi ở youtube/<dự án>/tien-do.json), `them`: thông tin kèm (phần đang dựng)
@@ -194,6 +258,7 @@ class TienDo:
         self.cuoi = None
 
     def bao(self, phan_tram, buoc, ep=False):
+        kiem_da_xoa()  # video bị xoá giữa chừng thì dừng (DaXoa)
         phan_tram = int(max(0, min(100, phan_tram)))
         if not ep and (self.cuoi == (phan_tram, buoc) or time.time() - self.lan < 3):
             return
@@ -223,19 +288,30 @@ def chay_theo_doi(lenh, cwd, gioi_han, khi_co_phan_tram):
     p = subprocess.Popen(lenh, cwd=cwd, env=moi_truong, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     het_gio = time.time() + gioi_han
     duoi = ''
-    while True:
-        khuc = p.stdout.read1(4096)
-        if not khuc:
-            break
-        duoi = (duoi + khuc.decode('utf-8', 'replace'))[-3000:]
-        so = re.findall(r'(\d{1,3})%', duoi[-200:])
-        if so:
-            khi_co_phan_tram(int(so[-1]))
-        if time.time() > het_gio:
-            p.kill()
-            raise RuntimeError(f'{lenh[0]} chạy quá {gioi_han} giây')
+    try:
+        while True:
+            khuc = p.stdout.read1(4096)
+            if not khuc:
+                break
+            duoi = (duoi + khuc.decode('utf-8', 'replace'))[-6000:]
+            so = re.findall(r'(\d{1,3})%', duoi[-200:])
+            if so:
+                khi_co_phan_tram(int(so[-1]))
+            if time.time() > het_gio:
+                raise RuntimeError(f'{lenh[0]} chạy quá {gioi_han} giây')
+    except BaseException:
+        p.kill()  # dừng giữa chừng (quá giờ, video bị xoá…): tắt luôn trình dựng hình, không để chạy ngầm
+        raise
     if p.wait() != 0:
-        raise RuntimeError(f'{lenh[0]} lỗi: {duoi[-500:]}')
+        raise RuntimeError(f'{lenh[0]} lỗi: {dong_loi(duoi)}')
+
+
+def dong_loi(ra):
+    # Lấy đúng dòng lỗi trong đầu ra dài (bỏ thanh tiến độ, mã màu, cảnh báo lint) để trang web hiện được lý do thật
+    sach = re.sub(r'\x1b\[[0-9;?]*[A-Za-z]', '', ra).replace('\r', '\n')
+    dong = [d.strip() for d in sach.split('\n') if d.strip() and not d.strip().startswith('@hf-progress') and '%' not in d]
+    loi = [d for d in dong if re.search(r'error|lỗi|failed|exception|cannot|không', d, re.I) and not re.search(r'lint', d, re.I)]
+    return ' | '.join((loi or dong)[-4:])[-400:]
 
 
 def chay(lenh, cwd, gioi_han):
@@ -243,7 +319,7 @@ def chay(lenh, cwd, gioi_han):
     moi_truong['PATH'] = os.pathsep.join([str(FFMPEG.parent), str(FFPROBE_DIR), moi_truong.get('PATH', '')])
     kq = subprocess.run(lenh, cwd=cwd, env=moi_truong, capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=gioi_han)
     if kq.returncode != 0:
-        raise RuntimeError(f'{lenh[0]} lỗi: {(kq.stderr or kq.stdout)[-500:]}')
+        raise RuntimeError(f'{lenh[0]} lỗi: {dong_loi(kq.stderr or kq.stdout or "")}')
     return kq.stdout
 
 
@@ -594,9 +670,9 @@ def dung_video(may, ds_giong, lt, tm, td, fps=30, gioi_han=1500, anh_nen=None):
     # Trả độ dài (giây) từng câu. Tiến độ: đọc giọng 10-30%, dựng hình 30-95%.
     shutil.rmtree(tm, ignore_errors=True)
     td.bao(2, 'Chuẩn bị (phông chữ, âm thanh, ảnh tư liệu)', ep=True)
-    (tm / 'artifacts').mkdir(parents=True)
+    (tm / 'artifacts').mkdir(parents=True, exist_ok=True)
     tai_san = tm / 'hyperframes' / 'assets'
-    tai_san.mkdir(parents=True)
+    tai_san.mkdir(parents=True, exist_ok=True)
     for tep in ('BeVietnamPro-Bold.ttf', 'BeVietnamPro-Medium.ttf'):
         shutil.copy(REPO / 'assets' / 'fonts' / tep, tai_san / tep)
     shutil.copy(HOAT_HINH / 'gsap.min.js', tai_san / 'gsap.min.js')
@@ -861,8 +937,10 @@ def dung_short(may, ds_giong, yc):
         except Exception:
             traceback.print_exc()
         gui(f'{goc}/short-{so}.json', json.dumps({'tep': str(ra), 'luc': int(time.time() * 1000)}, ensure_ascii=False), 'application/json')
+    except DaXoa:
+        raise
     except Exception as e:
-        gui(f'{goc}/short-{so}.json', json.dumps({'loi': str(e)[:300]}, ensure_ascii=False), 'application/json')
+        gui(f'{goc}/short-{so}.json', json.dumps({'loi': str(e)[:400]}, ensure_ascii=False), 'application/json')
         raise
     finally:
         shutil.rmtree(tm, ignore_errors=True)
@@ -906,8 +984,8 @@ def dung_hoat_hinh(may, ds_giong, yc, td):
 
 
 # Phiên bản máy nhà (gửi kèm tín hiệu sống): trang web biết máy nhà đã khởi động lại sau lần cập nhật chưa
-# (lib/youtube.ts: BAN_MAY_NHA phải bằng số này). 2: báo việc đang làm (hien-tai.json), Pixabay chặn thì nghỉ; 3: báo lại mỗi 20 giây; 4: tự khởi động lại khi code đổi; 5: đọc hồ sơ phim trước khi dựng; 6: nhân vật phụ có tên vẽ hình riêng theo hồ sơ
-BAN_MAY_NHA = 6
+# (lib/youtube.ts: BAN_MAY_NHA phải bằng số này). 2: báo việc đang làm (hien-tai.json), Pixabay chặn thì nghỉ; 3: báo lại mỗi 20 giây; 4: tự khởi động lại khi code đổi; 5: đọc hồ sơ phim trước khi dựng; 6: nhân vật phụ có tên vẽ hình riêng theo hồ sơ; 7: video bị xoá thì dừng dựng, dọn sạch
+BAN_MAY_NHA = 7
 
 
 def bao_song():
@@ -918,7 +996,7 @@ def bao_song():
             # Đang làm việc dài: gửi lại bước hiện tại (kèm đã làm bao lâu) để trang web biết máy nhà vẫn chạy, chỉ là bước
             # này lâu — cảnh báo "có thể đang kẹt" chỉ hiện khi máy nhà ngừng hẳn
             b = dict(BUOC_CUOI)
-            if VIEC_HIEN_TAI and b.get('buoc'):
+            if VIEC_HIEN_TAI and b.get('buoc') and not DANG_DUNG['da_xoa']:
                 phut = int((time.time() - b['tu']) // 60)
                 buoc = b['buoc'] + (f' (đã {phut} phút)' if phut >= 1 else '')
                 gui(b['duong'], json.dumps({**b['them'], 'phanTram': b['phan_tram'], 'buoc': buoc, 'luc': int(time.time() * 1000)}, ensure_ascii=False), 'application/json')
@@ -1037,6 +1115,17 @@ def main():
             VIEC_HIEN_TAI.clear()
             VIEC_HIEN_TAI.update({'viec': ma, 'loai': yc.get('loai') or 'doc_giong', 'mo_ta': MO_TA_VIEC.get(yc.get('loai'), 'Đọc giọng'),
                                   'du_an': yc.get('du_an'), 'tieu_de': yc.get('tieu_de') or yc.get('ten'), 'phan': yc.get('phan') or yc.get('so')})
+            # Việc của video YouTube: theo dõi video còn trên trang không (bị xoá thì dừng ngay, xem kiem_da_xoa)
+            DANG_DUNG.update({'du_an': yc.get('du_an') if yc.get('loai') in ('youtube', 'youtube_short', 'yt_anh_bia') else None, 'lan': 0.0, 'da_xoa': False})
+            try:
+                kiem_da_xoa()
+            except DaXoa:
+                print(f'Bỏ việc {ten}: video đã bị xoá trên trang', flush=True)
+                don_du_an(yc['du_an'])
+                DANG_DUNG['du_an'] = None
+                VIEC_HIEN_TAI.clear()
+                xoa('hang-doi/hien-tai.json')
+                continue
             bao_hien_tai('Bắt đầu', 0)
             if viec_dai:
                 VIEC_DO.write_text(json.dumps({'ten': ten, 'yc': yc}, ensure_ascii=False), encoding='utf-8')
@@ -1052,19 +1141,9 @@ def main():
                         td.xong()
                     print(f'Xong video hoạt hình {giay:.0f}s trong {time.time() - bat_dau:.0f}s', flush=True)
                 elif yc.get('loai') == 'xoa_youtube':
-                    # Trang web đã xoá dự án: xoá thư mục video (…-<6 ký tự đầu mã>) và thư mục tạm của nó trên máy nhà
+                    # Trang web đã xoá dự án: xoá sạch thư mục video, thư mục tạm và đồ còn sót trên kho
                     du_an = yc['du_an']
-                    so = 0
-                    for tm in [*THU_MUC_YT.glob(f'*-{du_an[:6]}'), *THU_MUC_TAM.glob(f'yt-{du_an}-*'), *THU_MUC_TAM.glob(f'yts-{du_an}-*')]:
-                        if tm.is_dir():
-                            shutil.rmtree(tm, ignore_errors=True)
-                            # OneDrive đôi khi còn giữ thư mục lúc vừa xoá tệp bên trong: đợi rồi xoá lại thư mục rỗng
-                            for _ in range(3):
-                                if not tm.exists():
-                                    break
-                                time.sleep(2)
-                                shutil.rmtree(tm, ignore_errors=True)
-                            so += 1
+                    so = don_du_an(du_an)
                     print(f'Đã xoá {so} thư mục video của dự án {du_an[:6]}', flush=True)
                 elif yc.get('loai') == 'yt_anh_bia':
                     # Vẽ (lại) ảnh bìa theo chữ chủ trang đặt, không cần dựng video
@@ -1092,9 +1171,13 @@ def main():
                     gui(f'hang-doi/xong/{ma}.wav', wav, 'audio/wav')
                     gui(f'hang-doi/xong/{ma}.json', json.dumps({'doDai': do_dai}), 'application/json')
                     print(f'Đọc xong {len(do_dai)} câu ({sum(do_dai):.0f}s âm thanh) trong {time.time() - bat_dau:.0f}s', flush=True)
+            except DaXoa as e:
+                # Video bị xoá trong lúc dựng: dừng, dọn sạch, không báo lỗi gì lên trang (để video mới không dính video cũ)
+                print(f'{e}: dừng dựng, dọn sạch', flush=True)
+                don_du_an(yc['du_an'])
             except Exception as e:
                 if yc.get('loai') == 'youtube':
-                    loi = {'loi': str(e)[:300], 'ma': yc['ma_phan'][yc['phan'] - 1], 'luc': int(time.time() * 1000)}
+                    loi = {'loi': str(e)[:400], 'ma': yc['ma_phan'][yc['phan'] - 1], 'luc': int(time.time() * 1000)}
                     gui(f'youtube/{yc["du_an"]}/phan-{yc["phan"]}.json', json.dumps(loi, ensure_ascii=False), 'application/json')
                 else:
                     gui(f'hang-doi/xong/{ma}.json', json.dumps({'loi': str(e)[:300]}, ensure_ascii=False), 'application/json')
@@ -1106,6 +1189,7 @@ def main():
                     VIEC_DO.unlink(missing_ok=True)
                     khong_ngu(False)
                 VIEC_HIEN_TAI.clear()
+                DANG_DUNG.update({'du_an': None, 'da_xoa': False})
                 xoa('hang-doi/hien-tai.json')
         except Exception:
             traceback.print_exc()  # mất mạng... thì chờ rồi thử lại

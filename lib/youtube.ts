@@ -24,7 +24,7 @@ const PHIEN_BAN = 23 // tăng khi đổi cách dựng để các phần dựng l
 const kho = () => db().storage.from(KHO)
 const thuMuc = (id: string) => `youtube/${id}`
 // Phiên bản máy nhà mới nhất (may-nha/tho_doc.py: BAN_MAY_NHA)
-const BAN_MAY_NHA = 6
+const BAN_MAY_NHA = 7
 const tenViec = (id: string, k: number) => `yt-${id}-${k}.json`
 
 // Mỗi phần ~3 phút; giọng VieNeu đọc khoảng 4,5 giây một câu thoại (đo trên video thật)
@@ -756,11 +756,19 @@ export async function trangThaiShorts(d: DuAnYT): Promise<TrangThaiShort[]> {
 export async function xoaDuAn(id: string) {
   const d = await docDuAn(id)
   if (!d) return
-  const { data } = await kho().list(thuMuc(id), { limit: 100 })
+  // Xoá sạch: mọi tệp của dự án và MỌI phiếu việc còn chờ của nó (dựng phần, Shorts, ảnh bìa, dấu ưu tiên) — để máy nhà
+  // không dựng tiếp video đã xoá và video mới không dính gì tới video cũ. Máy nhà đang dựng dở thì tự thấy và dừng.
+  const [{ data }, { data: viec }, { data: uuTien }] = await Promise.all([
+    kho().list(thuMuc(id), { limit: 200 }),
+    kho().list('hang-doi/viec', { limit: 200, search: id }),
+    kho().list('hang-doi/uu-tien', { limit: 200, search: id }),
+  ])
   await kho().remove([
     ...(data ?? []).map((f) => `${thuMuc(id)}/${f.name}`),
     ...d.phan.map((_, i) => `hang-doi/viec/${tenViec(id, i + 1)}`),
     ...[1, 2, 3].map((so) => `hang-doi/viec/yts-${id}-${so}.json`),
+    ...(viec ?? []).map((f) => `hang-doi/viec/${f.name}`),
+    ...(uuTien ?? []).map((f) => `hang-doi/uu-tien/${f.name}`),
   ])
   await ghiJson(`hang-doi/viec/xoa-${id}.json`, { loai: 'xoa_youtube', du_an: id })
 }

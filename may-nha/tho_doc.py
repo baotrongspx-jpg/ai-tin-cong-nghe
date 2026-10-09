@@ -47,7 +47,10 @@ s.headers.update({'authorization': f'Bearer {KHOA}', 'apikey': KHOA})
 HOAT_HINH = REPO / 'may-nha' / 'hoat-hinh'
 FFMPEG = REPO / 'node_modules' / 'ffmpeg-static' / 'ffmpeg.exe'
 FFPROBE_DIR = Path(os.environ.get('FFPROBE_DIR', r'C:\Users\Admin\VieNeu-TTS\cong-cu\node_modules\ffprobe-static\bin\win32\x64'))
-THU_MUC_TAM = Path(os.environ.get('HOAT_HINH_TAM', r'C:\Users\Admin\VieNeu-TTS\hoat-hinh-tam'))
+# Thư mục dựng tạm (mỗi phần video vài trăm MB tới vài GB): ổ D nếu có — ổ C gần đầy thì trình dựng hình HyperFrames từ
+# chối chạy ("Low disk space", đo 09/10/2026: C còn 0,7 GB). Chỗ cũ trên ổ C giữ cho phiếu việc dang dở + kho tranh Pixabay.
+THU_MUC_TAM_CU = Path(r'C:\Users\Admin\VieNeu-TTS\hoat-hinh-tam')
+THU_MUC_TAM = Path(os.environ.get('HOAT_HINH_TAM', r'D:\hoat-hinh-tam' if Path('D:/').exists() else str(THU_MUC_TAM_CU)))
 # Mỗi video dựng xong lưu thêm một bản trên máy nhà, tên theo ngày + tiêu đề bài
 THU_MUC_LUU = Path(os.environ.get('HOAT_HINH_LUU', r'C:\Users\Admin\OneDrive\Desktop\Video-Hoat-Hinh'))
 # Video YouTube dài (trang /youtube): dựng từng phần rồi ghép, chỉ lưu trên máy nhà (quá nặng để gửi lên kho)
@@ -100,7 +103,7 @@ def don_rac():
             con.add(ten)
         else:
             don_du_an(ten)
-    for tm in [*THU_MUC_TAM.glob('yt-*'), *THU_MUC_TAM.glob('yts-*')]:
+    for tm in [x for g in {THU_MUC_TAM, THU_MUC_TAM_CU} for x in (*g.glob('yt-*'), *g.glob('yts-*'))]:
         du_an = re.sub(r'^yts?-|-\d+$', '', tm.name)
         if tm.is_dir() and du_an != DANG_DUNG.get('du_an') and du_an not in con:
             shutil.rmtree(tm, ignore_errors=True)
@@ -226,7 +229,7 @@ def don_du_an(du_an):
     # Xoá sạch mọi thứ của một dự án video đã xoá: thư mục video (…-<6 ký tự đầu mã>), thư mục tạm trên máy nhà, và các
     # tệp máy nhà lỡ ghi lên kho sau lúc xoá (tiến độ, kết quả phần), phiếu việc còn sót — để video mới không dính video cũ
     so = 0
-    for tm in [*THU_MUC_YT.glob(f'*-{du_an[:6]}'), *THU_MUC_TAM.glob(f'yt-{du_an}-*'), *THU_MUC_TAM.glob(f'yts-{du_an}-*')]:
+    for tm in [*THU_MUC_YT.glob(f'*-{du_an[:6]}'), *[x for g in {THU_MUC_TAM, THU_MUC_TAM_CU} for x in (*g.glob(f'yt-{du_an}-*'), *g.glob(f'yts-{du_an}-*'))]]:
         if tm.is_dir():
             shutil.rmtree(tm, ignore_errors=True)
             # OneDrive / trình duyệt dựng hình đôi khi còn giữ thư mục lúc vừa xoá tệp bên trong: đợi rồi xoá lại
@@ -381,7 +384,7 @@ TU_KHOA_CANH = {
     'ga_ra': 'garage workshop with tools on the wall', 'be_phong': 'rocket launch pad at dawn',
     'phong_thu': 'music recording studio with microphone', 'phim_truong': 'film studio set with cameras and lights',
 }
-KHO_PIXABAY = THU_MUC_TAM.parent / 'anh-pixabay'  # tranh đã tải (theo mã) + kết quả tìm (Pixabay yêu cầu nhớ 24 giờ) + điểm AI chấm
+KHO_PIXABAY = THU_MUC_TAM_CU.parent / 'anh-pixabay'  # tranh đã tải (theo mã) + kết quả tìm (Pixabay yêu cầu nhớ 24 giờ) + điểm AI chấm
 
 
 def doc_nho(ten):
@@ -1007,7 +1010,7 @@ def bao_song():
 
 
 VIEC_DAI = ('youtube', 'youtube_short', 'hoat_hinh')
-VIEC_DO = THU_MUC_TAM / 'viec-dang-lam.json'  # phiếu việc dài đang làm (xoá khi xong, kể cả lỗi)
+VIEC_DO = THU_MUC_TAM_CU / 'viec-dang-lam.json'  # phiếu việc dài đang làm (xoá khi xong, kể cả lỗi)
 
 
 def khong_ngu(bat):

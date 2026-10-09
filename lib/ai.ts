@@ -644,9 +644,9 @@ Plan a video of about ${phut} minutes, split into exactly ${soPhan} parts of abo
 
 // Video YouTube (thường): ngoài Mèo / Bit / nhân vật phụ còn có người kể (nguoi_ke, giọng dẫn chuyện không đứng trên sân khấu)
 export const NGUOI_NOI_YT = ['nguoi_ke', ...NGUOI_NOI] as const
-const CauYTSchema = CauSchema.extend({ ai: z.enum(NGUOI_NOI_YT) })
+export const CauYTSchema = CauSchema.extend({ ai: z.enum(NGUOI_NOI_YT) })
 export type KichBanYT = { loi: z.infer<typeof CauYTSchema>[]; moc: { chu: string; bieu_tuong: string } }
-const JSON_CAU_YT = { ...JSON_CAU, properties: { ...JSON_CAU.properties, ai: { type: 'string', enum: [...NGUOI_NOI_YT] } } }
+export const JSON_CAU_YT = { ...JSON_CAU, properties: { ...JSON_CAU.properties, ai: { type: 'string', enum: [...NGUOI_NOI_YT] } } }
 const PhanSchema = z.object({ loi: z.array(CauYTSchema).min(6).max(70), moc: MocSchema })
 
 // Lời thoại một phần (k bắt đầu từ 1). `noiTiep`: vài câu cuối của phần trước để nối mạch.

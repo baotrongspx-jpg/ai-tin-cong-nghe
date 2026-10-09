@@ -7,7 +7,7 @@ import type { DuAnYT, KiemTraVideo, PhanYT, TrangThaiDuAn, TrangThaiPhan, TrangT
 import { thongBao } from '@/app/ThongBao'
 import { locLoiChao } from '@/lib/kiemDinh'
 import { IconChep, IconMo, IconXong, IconYouTube, Xoay } from '@/app/BieuTuong'
-import { bienTapYouTube, chayBuocPhimYouTube, layShortsYouTube, luuPhatAmYouTube, taoShortsYouTube, dungVideoYouTube, kiemDinhYouTube, layTrangThaiYouTube, luuThongTinYouTube, vietPhanYouTube, xoaVideoYouTube } from '../actions'
+import { bienTapYouTube, chayBuocPhimYouTube, layShortsYouTube, luuPhatAmYouTube, taoShortsYouTube, dungVideoYouTube, kiemDinhYouTube, layTrangThaiYouTube, luuThongTinYouTube, suaPhanYouTube, vietPhanYouTube, xoaVideoYouTube } from '../actions'
 import HoSoPhim, { KhoiDuLieu } from './HoSoPhim'
 
 const NGUOI: Record<string, string> = {
@@ -148,7 +148,7 @@ function PhanBien({ pb, ten }: { pb: PB; ten?: string }) {
         {pb.giu === 'moi_chua_cham' && ' · đã viết lại theo góp ý, chưa chấm lại được (hết lượt AI)'}
       </summary>
       {pb.lan > 1 && !pb.dat && ten === 'Hội đồng chấm kịch bản' && (
-        <p className="mt-2 text-xs">Hệ thống chỉ tự viết lại một lần. Muốn thử thêm, bấm «AI viết lại phần này» bên dưới (tốn lượt AI).</p>
+        <p className="mt-2 text-xs">Hệ thống chỉ tự viết lại một lần. Muốn cải thiện thêm, bấm «AI sửa theo góp ý» bên dưới: chỉ sửa đúng những câu bị chê (tốn lượt AI).</p>
       )}
       {pb.van_de.length > 0 && (
         <ul className="mt-2 grid gap-1 text-sm">
@@ -330,6 +330,20 @@ export default function ChiTiet({ dau, ttDau }: { dau: DuAnYT; ttDau: TrangThaiD
       setDangViet(null)
       await capNhatTt()
     }
+  }
+  // AI sửa đúng những câu hội đồng chê trong phần k (giữ nguyên các câu khác), hội đồng chấm lại
+  const suaTheoGopY = async (k: number) => {
+    setLoiViet('')
+    setDangChay(`AI đang sửa phần ${k} theo góp ý của hội đồng…`)
+    setDangViet(k)
+    const kq = await suaPhanYouTube(d.id, k)
+    setDangChay(null)
+    setDangViet(null)
+    if (!kq.ok) return setLoiViet(kq.loi)
+    setD(kq.duAn)
+    if (kq.giu === 'cu') thongBao('loi', `AI sửa ${kq.soCho} chỗ nhưng hội đồng chấm thấp hơn (${kq.diem}/10) nên giữ bản cũ`)
+    else thongBao('ok', `AI đã sửa ${kq.soCho} chỗ${kq.diem !== null ? `, hội đồng chấm lại ${kq.diem}/10` : ''} — phần này cần dựng lại`)
+    await capNhatTt()
   }
   // Chạy lại một giai đoạn của phim (nút "AI làm lại bước này"), rồi làm tiếp các việc còn thiếu
   const chayLaiBuoc = async (buoc: 'nghien_cuu' | 'lay_anh' | 'cau_chuyen' | 'tao_hinh' | 'ho_so' | 'dong_goi' | 'phan_canh', k?: number) => {
@@ -859,6 +873,16 @@ export default function ChiTiet({ dau, ttDau }: { dau: DuAnYT; ttDau: TrangThaiD
                     className="btn btn-sm btn-phu"
                   >
                     AI viết lại phần này
+                  </button>
+                )}
+                {p.loi && p.phan_bien && (p.phan_bien.van_de.length > 0 || !!p.phan_bien.goi_y) && (
+                  <button
+                    type="button"
+                    disabled={khoa || tp.loai === 'cho' || tp.loai === 'dang_lam'}
+                    onClick={() => confirm(`AI chỉ sửa những câu hội đồng chê trong phần ${k}, giữ nguyên các câu khác? Phần này sẽ phải dựng lại.`) && void suaTheoGopY(k)}
+                    className="btn btn-sm btn-phu"
+                  >
+                    ✍️ AI sửa theo góp ý
                   </button>
                 )}
                 {p.loi && !p.kiem_dinh && (

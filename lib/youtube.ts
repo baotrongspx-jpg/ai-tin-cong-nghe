@@ -10,7 +10,8 @@ import {
 import { anhWiki, nguonWiki, type AnhWiki } from './wiki'
 import { NHAN_VAT } from './hoatHinh'
 import { kiemDinh, locLoiChao, type KetQuaKiemDinh } from './kiemDinh'
-import { voiPhanBien, type KetQuaPhanBien, type KhauPhanBien } from './phanBien'
+import { chuGopY, phanBien, voiPhanBien, type KetQuaPhanBien, type KhauPhanBien } from './phanBien'
+import { suaKichBan } from './suaKichBan'
 import { apBienTap, deBaiBienTap, type DaBienTap, type KetQuaBienTap } from './bienTap'
 
 // Video YouTube dài (trang /youtube): hoạt hình Mèo Mun & Robot Bit, khung ngang 16:9, dài tới ~20 phút.
@@ -284,21 +285,15 @@ export async function vietLoiPhan(id: string, k: number) {
     phim
       ? vietPhanPhim({ ten: phim.ten, nghienCuu: phim.nghien_cuu!, cauChuyen: phim.cau_chuyen!, k, soCau: Math.round(giay / 5.5), noiTiep, anh: phim.anh ?? [] })
       : vietPhanYouTube({ nguon: d.nguon_chu, danY: d, k, soCau: Math.round(giay / 4.5), noiTiep })
-  // Hội đồng phản biện chấm kịch bản chương; điểm thấp thì viết lại một lần theo góp ý
-  const nguCanh = `${phim ? `Phim tiểu sử hoạt hình về ${phim.ten}` : `Video hoạt hình: ${d.tieu_de}`}, ${d.phut} phút, ${d.phan.length} ${phim ? 'chương' : 'phần'}. Đang chấm ${phim ? 'chương' : 'phần'} ${k}: "${d.phan[k - 1].tieu_de}" — ${d.phan[k - 1].noi_dung}${phim?.cau_chuyen ? `\nBig idea: ${phim.cau_chuyen.big_idea}` : ''}${noiTiep.length ? `\nCuối chương trước:\n${noiTiep.join('\n')}` : ''}`
-  const { kq: kb, pb } = await voiPhanBien(
-    'kich_ban',
-    nguCanh,
-    viet,
-    (x) =>
-      x.loi
-        .map((l) => {
-          const c = l as CauYT & { hanh_dong?: string }
-          return `[${c.ai}|${c.cam_xuc}|${c.boi_canh}|${c.nhan_vat_phu}${c.hanh_dong && c.hanh_dong !== 'khong' ? `|${c.hanh_dong}` : ''}${c.tai_hien ? '|tái hiện' : ''}] ${c.chu}`
-        })
-        .join('\n'),
-    { conGiay: 120 },
-  )
+  // Hội đồng phản biện chấm kịch bản chương; điểm thấp thì sửa đúng những câu bị chê một lần theo góp ý
+  const nguCanh = nguCanhPhan(d, k)
+  const { kq: kb, pb } = await voiPhanBien('kich_ban', nguCanh, viet, (x) => tomTatLoi(x.loi), {
+    conGiay: 120,
+    sua: async (x, gopY) => {
+      const s = await suaKichBan({ loi: x.loi, gopY, nguCanh, phim: !!phim })
+      return s && { ...x, loi: s.loi }
+    },
+  })
   if (!kb) throw new Error(`AI chưa viết được phần ${k}, thử lại sau ít phút`)
   // Biên tập viên kiểm định: tự sửa nhịp hình ảnh, chấm điểm, ghi chú
   const { loi, ...kd } = kiemDinh(kb.loi as CauYT[], { loai: d.loai, laCuoi: k === d.phan.length, coDai: laCoDai(d) })
@@ -307,6 +302,48 @@ export async function vietLoiPhan(id: string, k: number) {
   moi.phan[k - 1] = { ...moi.phan[k - 1], loi, moc: kb.moc, canh: undefined, kiem_dinh: kd, phan_bien: pb ?? undefined, phan_bien_canh: undefined } // lời đổi thì phân cảnh cũ không còn đúng
   await luuDuAn(moi)
   return moi
+}
+
+// Phim gì, phần nào, nối tiếp câu nào: bối cảnh cho hội đồng chấm và biên tập viên sửa kịch bản phần k
+function nguCanhPhan(d: DuAnYT, k: number) {
+  const phim = d.loai === 'tieu_su' && d.phim?.cau_chuyen ? d.phim : null
+  const noiTiep = locLoiChao(d.phan[k - 2]?.loi ?? [], false).loi.slice(-6).map((l) => `${l.ai}: ${l.chu}`)
+  return `${phim ? `Phim tiểu sử hoạt hình về ${phim.ten}` : `Video hoạt hình: ${d.tieu_de}`}, ${d.phut} phút, ${d.phan.length} ${phim ? 'chương' : 'phần'}. Đang chấm ${phim ? 'chương' : 'phần'} ${k}: "${d.phan[k - 1].tieu_de}" — ${d.phan[k - 1].noi_dung}${phim?.cau_chuyen ? `\nBig idea: ${phim.cau_chuyen.big_idea}` : ''}${noiTiep.length ? `\nCuối chương trước:\n${noiTiep.join('\n')}` : ''}`
+}
+
+// Lời thoại rút gọn cho hội đồng chấm: [người nói|cảm xúc|bối cảnh|nhân vật phụ|cảnh hành động] lời
+const tomTatLoi = (loi: CauYT[]) =>
+  loi
+    .map((l) => {
+      const c = l as CauYT & { hanh_dong?: string }
+      return `[${c.ai}|${c.cam_xuc}|${c.boi_canh}|${c.nhan_vat_phu}${c.hanh_dong && c.hanh_dong !== 'khong' ? `|${c.hanh_dong}` : ''}${c.tai_hien ? '|tái hiện' : ''}] ${c.chu}`
+    })
+    .join('\n')
+
+// Nút "AI sửa theo góp ý": biên tập viên AI chỉ sửa / xoá / chèn đúng những câu hội đồng chê (lib/suaKichBan.ts), giữ
+// nguyên phần còn lại, rồi hội đồng chấm lại. Bản sửa bị chấm thấp hơn thì giữ bản cũ.
+export async function suaLoiPhan(id: string, k: number): Promise<{ duAn: DuAnYT; soCho: number; diem: number | null; giu: 'moi' | 'cu' | 'moi_chua_cham' }> {
+  const d = await docDuAn(id)
+  const p = d?.phan[k - 1]
+  if (!d || !p?.loi) throw new Error('Phần này chưa có lời thoại')
+  if (!p.phan_bien || (!p.phan_bien.van_de.length && !p.phan_bien.goi_y)) throw new Error('Hội đồng chưa có góp ý cho phần này')
+  const nguCanh = nguCanhPhan(d, k)
+  const s = await suaKichBan({ loi: p.loi, gopY: chuGopY(p.phan_bien), nguCanh, phim: d.loai === 'tieu_su' })
+  if (!s) throw new Error('AI chưa sửa được (có thể hết lượt AI), thử lại sau ít phút')
+  const pb2 = await phanBien('kich_ban', nguCanh, tomTatLoi(s.loi)).catch(() => null)
+  const diemCu = p.phan_bien.diem
+  const luc = new Date().toISOString()
+  const moi = (await docDuAn(id)) ?? d
+  if (pb2 && pb2.diem < diemCu) {
+    moi.phan[k - 1] = { ...moi.phan[k - 1], phan_bien: { ...p.phan_bien, lan: p.phan_bien.lan + 1, luc, diem_dau: diemCu, giu: 'cu' } }
+    await luuDuAn(moi)
+    return { duAn: moi, soCho: s.soCho, diem: pb2.diem, giu: 'cu' }
+  }
+  const { loi, ...kd } = kiemDinh(s.loi, { loai: d.loai, laCuoi: k === d.phan.length, coDai: laCoDai(d) })
+  const pb: KetQuaPhanBien = { ...(pb2 ?? p.phan_bien), lan: p.phan_bien.lan + 1, luc, diem_dau: diemCu, giu: pb2 ? 'moi' : 'moi_chua_cham' }
+  moi.phan[k - 1] = { ...moi.phan[k - 1], loi, canh: undefined, kiem_dinh: kd, phan_bien: pb, phan_bien_canh: undefined }
+  await luuDuAn(moi)
+  return { duAn: moi, soCho: s.soCho, diem: pb2?.diem ?? null, giu: pb.giu! }
 }
 
 // Cho biên tập viên kiểm định chạy lại trên lời thoại đang có (phần viết trước khi có bước này): tự sửa + chấm điểm

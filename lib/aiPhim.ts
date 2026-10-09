@@ -201,10 +201,10 @@ STAGE 2b — CARTOON DESIGN of the protagonist for the animated version. The per
 // những câu trích dẫn có thật (hoặc tái hiện có gắn nhãn)
 export const NGUOI_NOI_PHIM = ['nguoi_ke', 'nhan_vat_chinh', ...NGUOI_NOI] as const
 const NHAN_VAT_PHU_PHIM = [...NHAN_VAT_PHU, 'nhan_vat_chinh'] as const
-const CauPhimSchema = CauSchema.extend({ ai: z.enum(NGUOI_NOI_PHIM), nhan_vat_phu: z.enum(NHAN_VAT_PHU_PHIM), tai_hien: z.boolean(), the_moc: z.string(), anh: z.number().int().optional() })
+export const CauPhimSchema = CauSchema.extend({ ai: z.enum(NGUOI_NOI_PHIM), nhan_vat_phu: z.enum(NHAN_VAT_PHU_PHIM), tai_hien: z.boolean(), the_moc: z.string(), anh: z.number().int().optional() })
 export type CauPhim = z.infer<typeof CauPhimSchema>
 const PhanPhimSchema = z.object({ loi: z.array(CauPhimSchema).min(6).max(80), moc: MocSchema })
-const JSON_CAU_PHIM = {
+export const JSON_CAU_PHIM = {
   ...JSON_CAU,
   properties: {
     ...JSON_CAU.properties,

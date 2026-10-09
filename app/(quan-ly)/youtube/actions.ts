@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { daDangNhap } from '@/lib/xacThuc'
 import { mayNhaTat } from '@/lib/giongDoc'
 import {
-  bienTapPhim, chayBuocPhim, docDuAn, guiDung, kiemDinhLaiPhan, luuPhatAm, taoShorts, trangThaiShorts, suaThongTin, taoDuAn, taoPhim, trangThaiDuAn, vietLoiPhan, xoaDuAn,
+  bienTapPhim, chayBuocPhim, docDuAn, guiDung, kiemDinhLaiPhan, luuPhatAm, taoShorts, trangThaiShorts, suaThongTin, taoDuAn, taoPhim, trangThaiDuAn, vietLoiPhan, suaLoiPhan, xoaDuAn,
   type BuocPhim, type DuAnYT, type TrangThaiBienTap, type TrangThaiDuAn, type TrangThaiShort,
 } from '@/lib/youtube'
 
@@ -51,6 +51,19 @@ export async function vietPhanYouTube(id: string, k: number): Promise<{ ok: true
   try {
     await chanChuaDangNhap()
     return { ok: true, duAn: await vietLoiPhan(id, k) }
+  } catch (e) {
+    return baoLoi(e)
+  }
+}
+
+// AI sửa đúng những câu hội đồng chê, giữ nguyên phần còn lại, rồi hội đồng chấm lại
+export async function suaPhanYouTube(
+  id: string,
+  k: number,
+): Promise<{ ok: true; duAn: DuAnYT; soCho: number; diem: number | null; giu: 'moi' | 'cu' | 'moi_chua_cham' } | Loi> {
+  try {
+    await chanChuaDangNhap()
+    return { ok: true, ...(await suaLoiPhan(id, k)) }
   } catch (e) {
     return baoLoi(e)
   }

@@ -70,14 +70,17 @@ Return: diem = a score from 0 to 10 (7 or more means good enough to publish, bel
   return { diem: Math.round(kq.diem * 10) / 10, dat: kq.diem >= 7, van_de: kq.van_de.slice(0, 5), goi_y: kq.goi_y }
 }
 
+export const chuGopY = (pb: { van_de: string[]; goi_y: string }) => [...pb.van_de.map((v) => `- ${v}`), pb.goi_y && `→ ${pb.goi_y}`].filter(Boolean).join('\n')
+
 // Chạy một khâu có hội đồng: làm → chấm → (điểm < 6 và còn thời gian) làm lại kèm góp ý → chấm lại.
+// o.sua: sửa đúng chỗ hội đồng chê trên bản đầu (kịch bản: lib/suaKichBan.ts) thay vì làm lại từ đầu.
 // Hội đồng không trả lời được (hết lượt…) thì giữ kết quả, không chặn quy trình.
 export async function voiPhanBien<T>(
   khau: KhauPhanBien,
   nguCanh: string,
   lam: () => Promise<T | null>,
   tomTat: (kq: T) => string,
-  o: { conGiay?: number } = {},
+  o: { conGiay?: number; sua?: (kq: T, gopY: string) => Promise<T | null> } = {},
 ): Promise<{ kq: T | null; pb: KetQuaPhanBien | null }> {
   const batDau = Date.now()
   const kq = await lam()
@@ -87,8 +90,8 @@ export async function voiPhanBien<T>(
   const daDung = (Date.now() - batDau) / 1000
   // Chỉ làm lại khi điểm dưới 6 và còn đủ thời gian (máy chủ cho tối đa 300 giây mỗi lượt)
   if (pb.diem >= 6 || daDung > (o.conGiay ?? 110)) return { kq, pb: { ...pb, lan: 1, luc: new Date().toISOString() } }
-  const gopY = [...pb.van_de.map((v) => `- ${v}`), pb.goi_y && `→ ${pb.goi_y}`].filter(Boolean).join('\n')
-  const kq2 = await gopYPhanBien.run(gopY, lam)
+  const gopY = chuGopY(pb)
+  const kq2 = o.sua ? await o.sua(kq, gopY).catch(() => null) : await gopYPhanBien.run(gopY, lam)
   if (!kq2) return { kq, pb: { ...pb, lan: 1, luc: new Date().toISOString() } }
   const pb2 = await phanBien(khau, nguCanh, tomTat(kq2)).catch(() => null)
   // Bản làm lại chỉ được nhận nếu hội đồng không chấm thấp hơn bản đầu

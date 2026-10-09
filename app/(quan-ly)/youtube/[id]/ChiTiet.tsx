@@ -1056,6 +1056,7 @@ function MayNhaDangLam({ tt, soPhan }: { tt: TrangThaiDuAn; soPhan: number }) {
       ) : (
         !ml && coCho && !tt.mayNha && <p className="text-sm text-slate-500">🖥 Đang chờ máy nhà nhận việc…</p>
       )}
+      {tt.mayNhaSapCapNhat && <p className="text-xs text-slate-400">Máy nhà sẽ tự cập nhật bản mới khi làm xong việc đang dở, không cần làm gì.</p>}
       {loi.map((x) => (
         <p key={x.k} className="rounded-xl bg-red-50 p-3 text-sm text-red-700 ring-1 ring-red-200">
           ❌ <b>Phần {x.k} lỗi.</b> {giaiThichLoi(x.loi) ?? 'Bấm Dựng lại phần này ở thẻ phần bên dưới.'}

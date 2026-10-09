@@ -550,7 +550,8 @@ export type TrangThaiDuAn = {
   anh_bia?: { xem: string; tai: string }[] // các kiểu ảnh bìa đã vẽ (có thể vẽ trước khi dựng xong video)
   ve_bia?: boolean // máy nhà đang có phiếu vẽ ảnh bìa
   // Máy nhà đang làm gì (hang-doi/hien-tai.json, may-nha/tho_doc.py: bao_hien_tai): việc của video này hay việc khác
-  mayNhaCu?: boolean // máy nhà đang chạy bản cũ (chưa khởi động lại sau lần cập nhật)
+  mayNhaCu?: boolean // máy nhà chạy bản quá cũ (trước bản 4, chưa biết tự cập nhật): phải tự đóng / mở lại cửa sổ
+  mayNhaSapCapNhat?: boolean // máy nhà sau bản mới nhất nhưng tự cập nhật khi làm xong việc đang dở
   mayNhaLam?: { mo_ta: string; buoc: string; phanTram: number | null; luc: number; phan: number | null; cuaVideo: boolean; tieu_de: string | null } | null
 }
 
@@ -608,7 +609,8 @@ export async function trangThaiDuAn(d: DuAnYT, mayNha: string | null): Promise<T
   const xongCuoi = Math.max(0, ...kq.map((r) => r?.luc ?? 0))
   const ketGhep = !daGhep && phan.length > 0 && phan.every((p) => p.loai === 'xong') && !dangCho.size && Date.now() - xongCuoi > 5 * 60_000
   const mayNhaLam = moiDay && hienTai ? { mo_ta: hienTai.mo_ta, buoc: hienTai.buoc, phanTram: hienTai.phanTram, luc: hienTai.luc, phan: hienTai.phan, cuaVideo: hienTai.du_an === d.id, tieu_de: hienTai.tieu_de } : null
-  return { phan, xong: daGhep, mayNha, ketGhep, anh_bia, ve_bia: !!viecBia?.length, mayNhaLam, mayNhaCu: !mayNha && (song?.ban ?? 0) < BAN_MAY_NHA }
+  // Từ bản 4 máy nhà tự khởi động lại khi rảnh để chạy code mới: chỉ bản cũ hơn mới phải tự đóng / mở lại cửa sổ
+  return { phan, xong: daGhep, mayNha, ketGhep, anh_bia, ve_bia: !!viecBia?.length, mayNhaLam, mayNhaCu: !mayNha && (song?.ban ?? 0) < 4, mayNhaSapCapNhat: !mayNha && (song?.ban ?? 0) >= 4 && (song?.ban ?? 0) < BAN_MAY_NHA }
 }
 
 // Gửi máy nhà dựng các phần chưa xong (hoặc chỉ phần `chiPhan`). Mọi phần phải có lời thoại: máy nhà cần mã của

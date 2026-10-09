@@ -100,7 +100,8 @@ function Muc({ tieuDe, children, mo = false }: { tieuDe: string; children: React
   )
 }
 
-const phutGiay = (giay: number) => `${Math.floor(giay / 60)}:${String(Math.round(giay % 60)).padStart(2, '0')}`
+// Làm tròn tổng số giây trước (479,6 giây → 8:00, không phải 7:60)
+const phutGiay = (giay: number) => `${Math.floor(Math.round(giay) / 60)}:${String(Math.round(giay) % 60).padStart(2, '0')}`
 const uocGiay = (loi: { chu: string }[] | null) => (loi ? loi.reduce((t, l) => t + l.chu.length / 19 + 0.25, 0) : 0)
 
 // Mốc thời gian chương (ước tính theo số chữ lời thoại) cho phần mô tả YouTube

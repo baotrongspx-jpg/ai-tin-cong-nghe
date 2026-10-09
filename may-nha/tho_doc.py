@@ -838,11 +838,16 @@ def dung_hoat_hinh(may, ds_giong, yc, td):
         shutil.rmtree(tm, ignore_errors=True)
 
 
+# Phiên bản máy nhà (gửi kèm tín hiệu sống): trang web biết máy nhà đã khởi động lại sau lần cập nhật chưa
+# (lib/youtube.ts: BAN_MAY_NHA phải bằng số này). 2: báo việc đang làm (hien-tai.json), Pixabay chặn thì nghỉ
+BAN_MAY_NHA = 2
+
+
 def bao_song():
     # Chạy riêng một luồng: lúc dựng video vài phút trang web vẫn biết máy nhà đang chạy
     while True:
         try:
-            gui('hang-doi/song.json', json.dumps({'luc': int(time.time() * 1000)}), 'application/json')
+            gui('hang-doi/song.json', json.dumps({'luc': int(time.time() * 1000), 'ban': BAN_MAY_NHA}), 'application/json')
         except Exception:
             traceback.print_exc()
         time.sleep(20)

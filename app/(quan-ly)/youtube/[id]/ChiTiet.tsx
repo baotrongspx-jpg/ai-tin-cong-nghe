@@ -49,7 +49,8 @@ const NGUOI: Record<string, string> = {
 
 // Ước lượng độ dài theo số chữ (~19 ký tự mỗi giây + nghỉ giữa câu), giống lib/youtube.ts
 const uocGiay = (loi: { chu: string }[] | null) => (loi ? loi.reduce((t, l) => t + l.chu.length / 19 + 0.25, 0) : 0)
-const phutGiay = (giay: number) => `${Math.floor(giay / 60)}:${String(Math.round(giay % 60)).padStart(2, '0')}`
+// Làm tròn tổng số giây trước (479,6 giây → 8:00, không phải 7:60)
+const phutGiay = (giay: number) => `${Math.floor(Math.round(giay) / 60)}:${String(Math.round(giay) % 60).padStart(2, '0')}`
 
 // Chỉ dẫn đạo diễn AI chọn cho từng câu (hiện thành nhãn nhỏ dưới lời thoại)
 const KHUNG: Record<string, string> = { toan_canh: 'toàn cảnh', trung_canh: 'trung cảnh', can_canh: 'cận cảnh', sieu_can: 'siêu cận', goc_thap: 'góc thấp', goc_cao: 'góc cao' }
@@ -1021,7 +1022,14 @@ function MayNhaDangLam({ tt, soPhan }: { tt: TrangThaiDuAn; soPhan: number }) {
           ⚠ Máy nhà chưa báo tiến độ {Math.floor((bayGio - ml.luc) / 60_000)} phút, có thể đang kẹt. Đóng cửa sổ đen <b>chay-vieneu-gpu.bat</b> rồi bấm đúp mở lại: máy nhà tự làm tiếp việc dang dở.
         </p>
       )}
-      {!ml && coCho && !tt.mayNha && <p className="text-sm text-slate-500">🖥 Máy nhà đang rảnh, sắp nhận việc…</p>}
+      {tt.mayNhaCu ? (
+        <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800 ring-1 ring-amber-200">
+          ⚠ Máy nhà đang chạy <b>bản cũ</b> (chưa khởi động lại sau lần cập nhật) nên không báo được đang làm gì và dễ bị kẹt. Đóng cửa sổ đen <b>chay-vieneu-gpu.bat</b> rồi
+          bấm đúp mở lại tệp đó trong thư mục VieNeu-TTS: máy nhà tự làm tiếp việc dang dở.
+        </p>
+      ) : (
+        !ml && coCho && !tt.mayNha && <p className="text-sm text-slate-500">🖥 Đang chờ máy nhà nhận việc…</p>
+      )}
       {loi.map((x) => (
         <p key={x.k} className="rounded-xl bg-red-50 p-3 text-sm text-red-700 ring-1 ring-red-200">
           ❌ <b>Phần {x.k} lỗi.</b> {giaiThichLoi(x.loi) ?? 'Bấm Dựng lại phần này ở thẻ phần bên dưới.'}

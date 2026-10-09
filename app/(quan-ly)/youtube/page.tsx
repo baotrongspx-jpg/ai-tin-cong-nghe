@@ -12,7 +12,8 @@ import NutXoa from './NutXoa'
 // AI viết dàn ý trong Server Action, cần thời gian dài
 export const maxDuration = 300
 
-const phutGiay = (giay: number) => `${Math.floor(giay / 60)}:${String(Math.round(giay % 60)).padStart(2, '0')}`
+// Làm tròn tổng số giây trước (479,6 giây → 8:00, không phải 7:60)
+const phutGiay = (giay: number) => `${Math.floor(Math.round(giay) / 60)}:${String(Math.round(giay) % 60).padStart(2, '0')}`
 
 export default async function TrangYouTube() {
   if (!(await daDangNhap())) redirect('/dang-nhap')

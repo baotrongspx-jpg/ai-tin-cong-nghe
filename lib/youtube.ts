@@ -5,7 +5,7 @@ import { goiJson, vietDanYYouTube, vietPhanYouTube, type AnhBiaGoiY, type LoiTho
 import { z } from 'zod'
 import {
   dongGoiYouTube, hoSoHinhAnh, nghienCuuNhanVat, phanCanhChuong, phatTrienCauChuyen, thietKeNhanVatChinh, vietPhanPhim, TAO_HINH_MAC_DINH,
-  type CanhPhim, type CauChuyen, type CauPhim, type DongGoi, type HoSoHinhAnh, type NghienCuu, type TaoHinh,
+  VAI_PHU, type CanhPhim, type CauChuyen, type CauPhim, type DongGoi, type HoSoHinhAnh, type NghienCuu, type TaoHinh, type VaiPhu,
 } from './aiPhim'
 import { anhWiki, nguonWiki, type AnhWiki } from './wiki'
 import { NHAN_VAT } from './hoatHinh'
@@ -24,7 +24,7 @@ const PHIEN_BAN = 23 // tăng khi đổi cách dựng để các phần dựng l
 const kho = () => db().storage.from(KHO)
 const thuMuc = (id: string) => `youtube/${id}`
 // Phiên bản máy nhà mới nhất (may-nha/tho_doc.py: BAN_MAY_NHA)
-const BAN_MAY_NHA = 5
+const BAN_MAY_NHA = 6
 const tenViec = (id: string, k: number) => `yt-${id}-${k}.json`
 
 // Mỗi phần ~3 phút; giọng VieNeu đọc khoảng 4,5 giây một câu thoại (đo trên video thật)
@@ -132,6 +132,35 @@ function namDoi(d: DuAnYT): { tu: number; den: number } | null {
 const laCoDai = (d: DuAnYT) => ['lich_su', 'hoang_gia'].includes(d.phim?.tao_hinh?.nhom ?? '') || (namDoi(d)?.tu ?? 9999) < 1850
 // Giọng nhân vật chính theo giới tính (giọng kể chuyện còn trống trong bộ VieNeu)
 const GIONG_CHINH = { nam: 'Thiện Minh', nu: 'Mỹ Duyên' } as const
+// Giọng dự phòng cho nhân vật phụ có tên khi giọng của kiểu chung (loai) đã có người trong dàn vai dùng
+const GIONG_DU_PHONG = {
+  nam: ['Minh Đức', 'Quốc Tuấn', 'Phạm Tuyên', 'Thiền Tâm Đức', 'Đức Trí', 'Quang Sơn', 'Minh Triết', 'Xuân Vĩnh', 'Thái Sơn', 'Adam'],
+  nu: ['Đoan Trang', 'Thục Đoan', 'Quỳnh Anh', 'Mai Anh', 'Ngọc Linh', 'Thùy Dung', 'Trúc Ly', 'Kim Thanh', 'Ngọc Trân'],
+} as const
+// Dàn nhân vật phụ có tên của phim (thiết kế theo hồ sơ): mã vai_n, tên, hình, giọng riêng (không trùng nhau, không trùng
+// giọng nhân vật chính / người kể / Mèo / Bit khi còn giọng khác)
+function danVai(d: DuAnYT) {
+  const th = d.loai === 'tieu_su' ? d.phim?.tao_hinh : undefined
+  const ds = (th?.vai_phu ?? []).slice(0, VAI_PHU.length)
+  const daDung = new Set<string>([GIONG_CHINH[th?.gioi ?? 'nam'], NHAN_VAT.nguoi_ke.giong, NHAN_VAT.meo.giong, NHAN_VAT.robot.giong])
+  return ds.map((v: VaiPhu, i) => {
+    const goc = NHAN_VAT[v.loai as keyof typeof NHAN_VAT]?.giong
+    const giong = goc && !daDung.has(goc) ? goc : (GIONG_DU_PHONG[v.gioi].find((g) => !daDung.has(g)) ?? goc ?? GIONG_DU_PHONG[v.gioi][0])
+    daDung.add(giong)
+    return { ma: VAI_PHU[i] as string, ten: v.ten, loai: v.loai, giong, hinh: { ...v, nhom: 'khac', phu: true } }
+  })
+}
+// Câu kịch bản → đúng người trong dàn vai: mã vai không có trong dàn (AI ghi thừa) thì về kiểu chung / người kể; kịch bản
+// viết trước khi có dàn vai chỉ ghi kiểu chung (vd. ba_lao) mà dàn vai có đúng MỘT người kiểu đó thì dùng hình người ấy
+function theoDanVai<T extends { ai: string; nhan_vat_phu?: string }>(l: T, vai: ReturnType<typeof danVai>): T {
+  const ma = new Set(vai.map((v) => v.ma))
+  const motNguoi = (loai?: string) => {
+    const x = vai.filter((v) => v.loai === loai)
+    return x.length === 1 ? x[0].ma : null
+  }
+  const doi = (x: string | undefined, khiThieu: string) => (!x ? x : x.startsWith('vai_') ? (ma.has(x) ? x : khiThieu) : (motNguoi(x) ?? x))
+  return { ...l, ai: doi(l.ai, 'nguoi_ke')!, nhan_vat_phu: doi(l.nhan_vat_phu, 'khong') } as T
+}
 
 // Lời thoại + nhân vật gửi máy nhà. Phim tiểu sử: thêm nhân vật chính (hình theo chương, giọng theo giới tính); câu người
 // kể không có ai trên sân khấu thì cho nhân vật chính đứng diễn (người xem luôn thấy người đang được kể)
@@ -158,7 +187,9 @@ function loiThoaiGui(d: DuAnYT, k: number) {
   const anhChuong = phim ? anhCuaChuong(d, k) : {}
   const veAnh = (a: AnhWiki) => ({ anh_wiki: { url: a.url, tac_gia: a.tac_gia, giay_phep: a.giay_phep, nam: a.nam } })
   // Phim xem liền một mạch: bỏ câu chào / hẹn chương sau giữa phim, chương cuối chỉ giữ 2 câu chào kết (lib/kiemDinh.ts)
-  const loi: Record<string, unknown>[] = locLoiChao((p.loi ?? []).map((l, i) => ({
+  // Phim tiểu sử: nhân vật phụ có tên trong hồ sơ đứng diễn / nói bằng hình và giọng riêng của họ
+  const vai = phim ? danVai(d) : []
+  const loi: Record<string, unknown>[] = locLoiChao((p.loi ?? []).map((x) => (phim ? theoDanVai(x, vai) : x)).map((l, i) => ({
     ...l,
     // Phim tiểu sử: câu người kể chưa có ai trên sân khấu thì nhân vật chính đứng diễn
     ...(phim && l.ai === 'nguoi_ke' && (!l.nhan_vat_phu || l.nhan_vat_phu === 'khong') ? { nhan_vat_phu: 'nhan_vat_chinh' } : {}),
@@ -220,8 +251,10 @@ function loiThoaiGui(d: DuAnYT, k: number) {
   }
   return {
     ...goc,
-    nhan_vat: { ...NHAN_VAT, nhan_vat_chinh: { ten: phim.ten, giong: GIONG_CHINH[hinh.gioi] } },
+    nhan_vat: { ...NHAN_VAT, nhan_vat_chinh: { ten: phim.ten, giong: GIONG_CHINH[hinh.gioi] }, ...Object.fromEntries(vai.map((v) => [v.ma, { ten: v.ten, giong: v.giong }])) },
     nhan_vat_chinh: { ten: phim.ten, hinh },
+    // Nhân vật phụ có tên: máy nhà vẽ mỗi người một hình riêng (tao_video.mjs), không dùng hình chung
+    vai_phu: vai.map((v) => ({ ma: v.ma, ten: v.ten, hinh: v.hinh })),
     dong_thoi_gian: doi,
     loi,
   }
@@ -298,7 +331,7 @@ export async function vietLoiPhan(id: string, k: number) {
   const phim = d.loai === 'tieu_su' && d.phim?.nghien_cuu && d.phim.cau_chuyen ? d.phim : null
   const viet = (): Promise<{ loi: CauYT[]; moc: { chu: string; bieu_tuong: string } } | null> =>
     phim
-      ? vietPhanPhim({ ten: phim.ten, nghienCuu: phim.nghien_cuu!, cauChuyen: phim.cau_chuyen!, k, soCau: Math.round(giay / 5.5), noiTiep, anh: phim.anh ?? [], hoSo: phim.ho_so ?? null })
+      ? vietPhanPhim({ ten: phim.ten, nghienCuu: phim.nghien_cuu!, cauChuyen: phim.cau_chuyen!, k, soCau: Math.round(giay / 5.5), noiTiep, anh: phim.anh ?? [], hoSo: phim.ho_so ?? null, vaiPhu: phim.tao_hinh?.vai_phu ?? [] })
       : vietPhanYouTube({ nguon: d.nguon_chu, danY: d, k, soCau: Math.round(giay / 4.5), noiTiep })
   // Hội đồng phản biện chấm kịch bản chương; điểm thấp thì sửa đúng những câu bị chê một lần theo góp ý
   const nguCanh = nguCanhPhan(d, k)
@@ -802,7 +835,8 @@ export async function chayBuocPhim(id: string, buoc: BuocPhim, k?: number) {
     // AI chưa làm được thì dùng hình mặc định để phim vẫn dựng được; bấm "Thiết kế lại" sau
     const nc = p.nghien_cuu
     const cc = p.cau_chuyen
-    const { kq, pb } = await voiPhanBien('tao_hinh', nguCanh, () => thietKeNhanVatChinh({ ten: p.ten, nghienCuu: nc, cauChuyen: cc }), json)
+    // Có hồ sơ hình ảnh thì nhân vật chính bám ngoại hình trong hồ sơ, và mỗi nhân vật phụ trong hồ sơ có hình riêng
+    const { kq, pb } = await voiPhanBien('tao_hinh', nguCanh, () => thietKeNhanVatChinh({ ten: p.ten, nghienCuu: nc, cauChuyen: cc, hoSo: p.ho_so ?? null }), json)
     p.tao_hinh = kq ?? TAO_HINH_MAC_DINH
     if (pb) pbMoi.tao_hinh = pb
   } else if (buoc === 'ho_so') {

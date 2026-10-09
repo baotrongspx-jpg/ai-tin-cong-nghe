@@ -13,7 +13,7 @@ import { lopSong } from './lopSong.mjs'
 import { CSS_MINH_HOA, MINH_HOA, mocMoDau } from './minhHoa.mjs'
 
 const GOC = resolve(process.argv[2] ?? '.')
-const { nhan_vat, loi, moc, kenh = 'Công Nghệ 24H', chu_de = 'AI', kho = 'doc', the_chuong = null, man_ket = false, nhan_vat_chinh = null, dong_thoi_gian = null } = JSON.parse(readFileSync(join(GOC, 'artifacts/loi_thoai.json'), 'utf8'))
+const { nhan_vat, loi, moc, kenh = 'Công Nghệ 24H', chu_de = 'AI', kho = 'doc', the_chuong = null, man_ket = false, nhan_vat_chinh = null, vai_phu = [], dong_thoi_gian = null } = JSON.parse(readFileSync(join(GOC, 'artifacts/loi_thoai.json'), 'utf8'))
 const doDai = JSON.parse(readFileSync(join(GOC, 'artifacts/do_dai.json'), 'utf8'))
 // Câu có ảnh thật (phim tiểu sử): máy quay lùi ra toàn cảnh để khung ảnh phía trên không đè lên đầu nhân vật
 for (const l of loi) if (l.anh_wiki?.tep) l.khung_hinh = 'toan_canh'
@@ -22,6 +22,14 @@ for (const l of loi) if (l.anh_wiki?.tep) l.khung_hinh = 'toan_canh'
 if (nhan_vat_chinh?.hinh) {
   const v = nhanVatChinhSvg(nhan_vat_chinh.hinh)
   NHAN_VAT_PHU.nhan_vat_chinh = { mau: '#fde68a', bieu_tuong: '⭐', ten: nhan_vat_chinh.ten ?? 'Nhân vật chính', svg: v.svg, viewBox: v.viewBox }
+}
+// Phim tiểu sử: nhân vật phụ có tên trong hồ sơ phim (vai_1..): mỗi người một hình riêng theo bản thiết kế AI, cùng khung
+// người với nhân vật chính nhưng không có vầng sáng dưới chân; xuất hiện / nói như các nhân vật phụ khác
+const MAU_VAI = ['#a78bfa', '#34d399', '#fb923c', '#f472b6', '#38bdf8', '#facc15', '#f87171', '#4ade80']
+for (const [i, v] of (vai_phu ?? []).entries()) {
+  if (!v?.ma || !v.hinh) continue
+  const h = nhanVatChinhSvg({ ...v.hinh, phu: true })
+  NHAN_VAT_PHU[v.ma] = { mau: MAU_VAI[i % MAU_VAI.length], bieu_tuong: '👤', ten: v.ten ?? 'Nhân vật phụ', svg: h.svg, viewBox: h.viewBox }
 }
 // kho "ngang" (YouTube 1920x1080): "thế giới" (nền, nhân vật, đạo cụ) vẫn vẽ theo toạ độ dọc 1080x1920, chỉ đặt lệch
 // để khung hình thấy vùng x -420..1500, y 300..1380; nền nối dài hai bên bằng bản soi gương; hai nhân vật đứng giãn ra.

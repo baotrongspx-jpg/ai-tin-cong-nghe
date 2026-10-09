@@ -16,7 +16,7 @@ export const TEN_KHAU: Record<KhauPhanBien, string> = {
   dan_y: 'Dàn ý video',
   nghien_cuu: 'Nghiên cứu tư liệu',
   cau_chuyen: 'Phát triển câu chuyện',
-  tao_hinh: 'Thiết kế nhân vật chính',
+  tao_hinh: 'Thiết kế nhân vật chính và phụ',
   kich_ban: 'Kịch bản',
   ho_so: 'Hồ sơ hình ảnh',
   phan_canh: 'Phân cảnh',
@@ -34,7 +34,8 @@ const TIEU_CHI: Record<KhauPhanBien, string> = {
 - Emotional curve across chapters (rise, fall, turning point, climax, payoff); each chapter distinct, no repetition.
 - Open loops between chapters; faithful to the research; fits the duration; title intriguing but truthful.`,
   tao_hinh: `- Matches the real person's era, culture, gender, age stages and the group they belong to (royalty, general, scientist…).
-- Signature traits recognisable at a glance; costumes historically plausible; no modern clothing in ancient times; respectful.`,
+- Signature traits recognisable at a glance; costumes historically plausible; no modern clothing in ancient times; respectful.
+- When there is a supporting cast (vai_phu): every important supporting person of the story is there, each looks right for their role, age, gender and era, and they are easy to tell apart from each other and from the protagonist.`,
   kich_ban: `- Hook / opening grabs attention; every line adds something (fact, scene, emotion, question); no padding, no repetition.
 - Faithful to the research: no invented events, numbers or quotes; reconstructions labelled.
 - Engaging for a general Vietnamese audience: natural spoken Vietnamese with full diacritics, varied rhythm (short punchy lines and longer ones), emotional moments, the protagonist's own voice at key turns.

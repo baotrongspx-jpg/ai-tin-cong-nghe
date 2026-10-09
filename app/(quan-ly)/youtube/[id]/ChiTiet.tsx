@@ -131,7 +131,7 @@ const TEN_KHAU: Record<string, string> = {
   dan_y: 'Dàn ý video',
   nghien_cuu: 'Nghiên cứu tư liệu',
   cau_chuyen: 'Phát triển câu chuyện',
-  tao_hinh: 'Thiết kế nhân vật chính',
+  tao_hinh: 'Thiết kế nhân vật chính và phụ',
   ho_so: 'Hồ sơ hình ảnh',
   dong_goi: 'Đóng gói YouTube',
 }
@@ -306,9 +306,11 @@ export default function ChiTiet({ dau, ttDau }: { dau: DuAnYT; ttDau: TrangThaiD
       if (phim && !moi.phim?.nghien_cuu && !(await lam('Nghiên cứu nhân vật: đọc Wikipedia + tài liệu, kiểm chứng từng sự thật…', () => chayBuocPhimYouTube(moi.id, 'nghien_cuu')))) return
       if (phim && moi.phim?.anh === undefined && !(await lam('Lấy ảnh thật trong bài Wikipedia (Wikimedia Commons)…', () => chayBuocPhimYouTube(moi.id, 'lay_anh')))) return
       if (phim && !moi.phim?.cau_chuyen && !(await lam('Phát triển câu chuyện: khán giả, góc kể, big idea, cấu trúc, hook, chia chương…', () => chayBuocPhimYouTube(moi.id, 'cau_chuyen')))) return
-      if (phim && !moi.phim?.tao_hinh?.nhom && !(await lam('Thiết kế nhân vật chính: tuổi từng giai đoạn, tóc, trang phục, đồ vật đặc trưng…', () => chayBuocPhimYouTube(moi.id, 'tao_hinh')))) return
       // Hồ sơ hình ảnh trước khi viết chương: chỉ dẫn hình từng câu (bối cảnh, ánh sáng, đạo cụ, nhân vật phụ) bám theo hồ sơ
       if (phim && !moi.phim?.ho_so && !(await lam('Hồ sơ hình ảnh: nhân vật, bối cảnh, thiết kế, màu, nhạc…', () => chayBuocPhimYouTube(moi.id, 'ho_so')))) return
+      // Thiết kế nhân vật sau hồ sơ: nhân vật chính bám ngoại hình trong hồ sơ, mỗi nhân vật phụ trong hồ sơ một hình riêng
+      // (bản thiết kế cũ chưa có dàn nhân vật phụ thì thiết kế lại)
+      if (phim && (!moi.phim?.tao_hinh?.nhom || (moi.phim.ho_so && !moi.phim.tao_hinh.vai_phu)) && !(await lam('Thiết kế nhân vật chính và phụ theo hồ sơ phim: tuổi, tóc, trang phục, đồ vật đặc trưng…', () => chayBuocPhimYouTube(moi.id, 'tao_hinh')))) return
       for (let k = 1; k <= moi.phan.length; k++) {
         if (moi.phan[k - 1].loi) continue
         if (!(await lam(`AI đang viết kịch bản ${ten} ${k}/${moi.phan.length}…`, () => vietPhanYouTube(moi.id, k), k))) return
@@ -378,7 +380,7 @@ export default function ChiTiet({ dau, ttDau }: { dau: DuAnYT; ttDau: TrangThaiD
     const conThieu =
       dau.phan.some((x) => !x.loi) ||
       dau.phan.length === 0 ||
-      (dau.loai === 'tieu_su' && (!p?.nghien_cuu || p.anh === undefined || !p.cau_chuyen || !p.tao_hinh?.nhom || !p.ho_so || !p.dong_goi || dau.phan.some((x) => !x.canh)))
+      (dau.loai === 'tieu_su' && (!p?.nghien_cuu || p.anh === undefined || !p.cau_chuyen || !p.tao_hinh?.nhom || !p.ho_so || !p.tao_hinh.vai_phu || !p.dong_goi || dau.phan.some((x) => !x.canh)))
     // Gọi sau lượt vẽ đầu (không đặt state ngay trong effect)
     if (conThieu) setTimeout(() => void chayTiep(), 0)
     // Chỉ chạy một lần khi mở trang
@@ -667,7 +669,7 @@ export default function ChiTiet({ dau, ttDau }: { dau: DuAnYT; ttDau: TrangThaiD
             <button
               type="button"
               disabled={!!dangChay || dangLam}
-              onClick={() => confirm('AI thiết kế lại nhân vật chính? Các chương sẽ phải dựng lại.') && void chayLaiBuoc('tao_hinh')}
+              onClick={() => confirm('AI thiết kế lại nhân vật chính và phụ theo hồ sơ phim? Các chương sẽ phải dựng lại.') && void chayLaiBuoc('tao_hinh')}
               className="btn btn-sm btn-phu"
             >
               Thiết kế lại
@@ -687,6 +689,29 @@ export default function ChiTiet({ dau, ttDau }: { dau: DuAnYT; ttDau: TrangThaiD
               </li>
             ))}
           </ul>
+          {d.phim.tao_hinh.vai_phu && (
+            <>
+              <h3 className="mt-2 font-semibold">👥 Nhân vật phụ theo hồ sơ phim ({d.phim.tao_hinh.vai_phu.length})</h3>
+              {d.phim.tao_hinh.vai_phu.length === 0 ? (
+                <p className="text-sm text-slate-500">Hồ sơ phim không có nhân vật phụ nào: người khác trong phim dùng hình chung (bà lão, doanh nhân…).</p>
+              ) : (
+                <ul className="grid gap-1.5 text-sm">
+                  {d.phim.tao_hinh.vai_phu.map((v, i) => (
+                    <li key={i} className="flex flex-wrap items-center gap-2">
+                      <span className="chip bg-sky-100 text-sky-800">{v.ten}</span>
+                      <span className="text-slate-500">{v.vai_tro}</span>
+                      <span className="h-4 w-4 rounded-full ring-1 ring-slate-300" style={{ background: v.mau_ao }} title="Màu áo" />
+                      <span className="h-4 w-4 rounded-full ring-1 ring-slate-300" style={{ background: v.mau_quan }} title="Màu quần" />
+                      <span>{v.mo_ta}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </>
+          )}
+          {d.phim.ho_so && !d.phim.tao_hinh.vai_phu && (
+            <p className="text-sm text-amber-700">Nhân vật phụ chưa có hình riêng theo hồ sơ phim: bấm Thiết kế lại để AI vẽ cho từng người.</p>
+          )}
         </section>
       )}
 

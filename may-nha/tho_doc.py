@@ -906,8 +906,8 @@ def dung_hoat_hinh(may, ds_giong, yc, td):
 
 
 # Phiên bản máy nhà (gửi kèm tín hiệu sống): trang web biết máy nhà đã khởi động lại sau lần cập nhật chưa
-# (lib/youtube.ts: BAN_MAY_NHA phải bằng số này). 2: báo việc đang làm (hien-tai.json), Pixabay chặn thì nghỉ; 3: báo lại mỗi 20 giây; 4: tự khởi động lại khi code đổi; 5: đọc hồ sơ phim trước khi dựng
-BAN_MAY_NHA = 5
+# (lib/youtube.ts: BAN_MAY_NHA phải bằng số này). 2: báo việc đang làm (hien-tai.json), Pixabay chặn thì nghỉ; 3: báo lại mỗi 20 giây; 4: tự khởi động lại khi code đổi; 5: đọc hồ sơ phim trước khi dựng; 6: nhân vật phụ có tên vẽ hình riêng theo hồ sơ
+BAN_MAY_NHA = 6
 
 
 def bao_song():

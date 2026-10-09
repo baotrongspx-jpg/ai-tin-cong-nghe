@@ -141,11 +141,24 @@ const GiaiDoanHinhSchema = zDoi({
   // Bản thiết kế cũ (trước khi có nhóm) không có các trường này: máy nhà dùng mặc định
   mu: z.enum(MU).optional(), phu_kien: z.enum(PHU_KIEN).optional(), so_ao: z.number().int().min(0).max(99).optional(),
 })
+// Dàn nhân vật phụ của phim (người trong hồ sơ hình ảnh: gia đình, thầy, cộng sự, đối thủ…): mỗi người một hình hoạt hình
+// riêng, cố định suốt phim, vẽ bằng cùng khung người với nhân vật chính; mã vai_1..vai_8 theo thứ tự trong danh sách.
+// loai = kiểu nhân vật phụ chung gần nhất (lấy giọng đọc, và thay khi kịch bản viết trước chỉ ghi kiểu chung)
+export const VAI_PHU = ['vai_1', 'vai_2', 'vai_3', 'vai_4', 'vai_5', 'vai_6', 'vai_7', 'vai_8'] as const
+const LOAI_VAI = NHAN_VAT_PHU.filter((x) => x !== 'khong')
+const VaiPhuSchema = zDoi({
+  ten: z.string(), vai_tro: z.string(), loai: z.enum(LOAI_VAI as [string, ...string[]]), gioi: z.enum(['nam', 'nu']), da: z.enum(['sang', 'trung_binh', 'ngam']),
+  tuoi: z.enum(TUOI), toc: z.enum(KIEU_TOC), mau_toc: z.enum(MAU_TOC), ao: z.enum(KIEU_AO), mau_ao: MAU, mau_quan: MAU, kinh: z.boolean(),
+  rau: z.enum(RAU), mu: z.enum(MU), phu_kien: z.enum(PHU_KIEN), vat_dung: z.enum(DAO_CU), mo_ta: z.string(),
+})
+export type VaiPhu = z.infer<typeof VaiPhuSchema>
 const TaoHinhSchema = zDoi({
   nhom: z.enum(NHOM_NHAN_VAT).optional(),
   gioi: z.enum(['nam', 'nu']),
   da: z.enum(['sang', 'trung_binh', 'ngam']),
   giai_doan: z.array(GiaiDoanHinhSchema).min(1).max(5),
+  // Thiết kế trước khi có bước này không có trường vai_phu: nhân vật phụ dùng hình chung
+  vai_phu: z.array(VaiPhuSchema).max(VAI_PHU.length).optional(),
 })
 export type TaoHinh = z.infer<typeof TaoHinhSchema> & { mac_dinh?: boolean }
 export const TAO_HINH_MAC_DINH: TaoHinh = {
@@ -156,7 +169,7 @@ export const TAO_HINH_MAC_DINH: TaoHinh = {
   giai_doan: [{ tu_chuong: 1, tuoi: 'trung_nien', toc: 're_ngoi', mau_toc: 'den', ao: 'vest', mau_ao: '#1e3a8a', mau_quan: '#1f2937', kinh: false, rau: 'khong', mu: 'khong', phu_kien: 'khong', so_ao: 0, vat_dung: 'khong', mo_ta: 'Hình mặc định (AI chưa thiết kế được)' }],
 }
 
-export async function thietKeNhanVatChinh(o: { ten: string; nghienCuu: NghienCuu; cauChuyen: CauChuyen }): Promise<TaoHinh | null> {
+export async function thietKeNhanVatChinh(o: { ten: string; nghienCuu: NghienCuu; cauChuyen: CauChuyen; hoSo?: HoSoHinhAnh | null }): Promise<TaoHinh | null> {
   const enumChuoi = (ds: readonly string[]) => ({ type: 'string', enum: [...ds] })
   const chuong = o.cauChuyen.phan.map((p, i) => `${i + 1}. ${p.tieu_de}`).join(' | ')
   return goiJson({
@@ -176,9 +189,19 @@ STAGE 2b — CARTOON DESIGN of the protagonist for the animated version. The per
   · doanh_nhan: vest or their famous casual style (for example a black ao_len turtleneck), vat_dung cap_tai_lieu / dien_thoai / bieu_do / kim_cuong / the product they are known for.
   Childhood and youth stages wear simple everyday clothes (ao_thun, so_mi, ao_ba_ba) before the signature look appears.
 - giai_doan: 1 to 4 life stages that the chapters actually show, in chapter order; tu_chuong = the chapter number (1..${o.cauChuyen.phan.length}) from which this look is used (the first stage has tu_chuong 1). For each: tuoi (tre_em child, thanh_nien young adult, trung_nien middle-aged, gia elderly), toc (ngan short, re_ngoi side part, vuot quiff swept up, dai long, buoi bun, hoi balding, xoan curly), mau_toc (den black, nau brown, vang blond, bac grey or white, do ginger), ao (vest suit, so_mi shirt, ao_thun t-shirt, ao_khoac jacket, ao_len sweater or turtleneck, ao_dai Vietnamese long dress, quan_phuc military uniform, ao_ba_ba Southern Vietnamese peasant shirt, long_bao royal robe, giap armour with cape, ao_the_thao sports jersey with number, ao_san_khau sparkly stage jacket, ao_blouse white lab coat), mau_ao and mau_quan as #rrggbb colours that suit the person and the era, kinh (glasses) true or false, rau (khong none, ria moustache, quai_non chin beard, day full beard), mu (headwear: khong none, vuong_mien crown, mu_vua emperor hat, khan_dong Vietnamese turban, mu_giap warrior helmet, mu_luoi_trai cap, mu_phot fedora, tai_nghe headphones, hoa_cai flower in the hair, non_la Vietnamese conical hat), phu_kien (khong none, kinh_ram sunglasses, huy_chuong medal, khan_quang scarf, day_chuyen necklace, ghim_co flag pin), so_ao (shirt number for ao_the_thao, otherwise 0), vat_dung: one signature object from the prop list that fits this stage of life (or khong), mo_ta: one short Vietnamese sentence describing this look and why.
-- Base the look on documented facts (era, job, a famous personal style such as a black turtleneck or a military uniform); if unsure keep it neutral and simple.`,
-    noiDung: `Person: ${o.ten}\nChapters: ${chuong}\n\n<research>\n${JSON.stringify({ ho_so: o.nghienCuu.ho_so, moc_doi: o.nghienCuu.moc_doi })}\n</research>`,
-    effort: 'low',
+- Base the look on documented facts (era, job, a famous personal style such as a black turtleneck or a military uniform); if unsure keep it neutral and simple.
+- Visual bible: when a <visual_bible> is given, the cartoon must follow it. Each giai_doan matches the bible's nhan_vat_chinh stage of that age (hair style and colour, beard, glasses, clothing and its colours, headwear, accessories, signature object), simplified to the options above.
+- vai_phu: the cartoon cast of the supporting people, one entry for EVERY person in the bible's nhan_vat_phu, in the same order (at most ${VAI_PHU.length}; an empty list when there is no bible). Same simple chibi style, designed from their bible appearance (ngoai_hinh), role, era and culture, so viewers recognise each of them every time they appear and can tell them apart from each other and from the protagonist (different hair, clothing colours or headwear). ten = their name exactly as in the bible; vai_tro = their role in a short Vietnamese phrase; loai = the generic extra closest to them (${LOAI_VAI.join(', ')}; in a story set before the 20th century only the period cast vua, hoang_hau, tuong_quan, chien_binh, nha_su, phu_nu_xua, nong_dan_xua, quan_lai, or ong_lao / ba_lao); gioi; da; tuoi = their age when they mostly appear in the story; then toc, mau_toc, ao, mau_ao, mau_quan, kinh, rau, mu, phu_kien, vat_dung with the same options as above; mo_ta = one short Vietnamese sentence describing the look.`,
+    noiDung: `Person: ${o.ten}\nChapters: ${chuong}\n\n<research>\n${JSON.stringify({ ho_so: o.nghienCuu.ho_so, moc_doi: o.nghienCuu.moc_doi })}\n</research>${
+      o.hoSo
+        ? `\n\n<visual_bible>\n${JSON.stringify({
+            nhan_vat_chinh: o.hoSo.nhan_vat_chinh.map((x) => ({ giai_doan: x.giai_doan, tuoi: x.tuoi, ngoai_hinh: x.ngoai_hinh })),
+            nhan_vat_phu: o.hoSo.nhan_vat_phu.slice(0, VAI_PHU.length).map((x) => ({ ten: x.ten, vai_tro: x.vai_tro, ngoai_hinh: x.ngoai_hinh })),
+            trang_phuc_thoi_dai: o.hoSo.thiet_ke.trang_phuc,
+          })}\n</visual_bible>`
+        : ''
+    }`,
+    effort: o.hoSo ? 'medium' : 'low',
     kiemTra: TaoHinhSchema,
     schema: doiTuong({
       nhom: enumChuoi(NHOM_NHAN_VAT),
@@ -192,6 +215,14 @@ STAGE 2b — CARTOON DESIGN of the protagonist for the animated version. The per
           so_ao: { type: 'integer' }, vat_dung: enumChuoi(DAO_CU), mo_ta: chuoi,
         }),
       },
+      vai_phu: {
+        type: 'array',
+        items: doiTuong({
+          ten: chuoi, vai_tro: chuoi, loai: enumChuoi(LOAI_VAI), gioi: enumChuoi(['nam', 'nu']), da: enumChuoi(['sang', 'trung_binh', 'ngam']),
+          tuoi: enumChuoi(TUOI), toc: enumChuoi(KIEU_TOC), mau_toc: enumChuoi(MAU_TOC), ao: enumChuoi(KIEU_AO), mau_ao: chuoi, mau_quan: chuoi,
+          kinh: { type: 'boolean' }, rau: enumChuoi(RAU), mu: enumChuoi(MU), phu_kien: enumChuoi(PHU_KIEN), vat_dung: enumChuoi(DAO_CU), mo_ta: chuoi,
+        }),
+      },
     }),
   })
 }
@@ -199,8 +230,9 @@ STAGE 2b — CARTOON DESIGN of the protagonist for the animated version. The per
 // ---------- 3. Kịch bản: giọng kể (nguoi_ke) dẫn chính, Mèo Mun & Robot Bit xen vào ----------
 // nhan_vat_chinh: chính người được kể (nhân vật hoạt hình ở bước 2b) — đứng trên sân khấu khi người kể nói về họ, nói
 // những câu trích dẫn có thật (hoặc tái hiện có gắn nhãn)
-export const NGUOI_NOI_PHIM = ['nguoi_ke', 'nhan_vat_chinh', ...NGUOI_NOI] as const
-const NHAN_VAT_PHU_PHIM = [...NHAN_VAT_PHU, 'nhan_vat_chinh'] as const
+// vai_1..vai_8: nhân vật phụ có tên trong hồ sơ (tao_hinh.vai_phu) — nói và đứng diễn bằng hình riêng của họ
+export const NGUOI_NOI_PHIM = ['nguoi_ke', 'nhan_vat_chinh', ...NGUOI_NOI, ...VAI_PHU] as const
+const NHAN_VAT_PHU_PHIM = [...NHAN_VAT_PHU, 'nhan_vat_chinh', ...VAI_PHU] as const
 export const CauPhimSchema = CauSchema.extend({ ai: z.enum(NGUOI_NOI_PHIM), nhan_vat_phu: z.enum(NHAN_VAT_PHU_PHIM), tai_hien: z.boolean(), the_moc: z.string(), anh: z.number().int().optional() })
 export type CauPhim = z.infer<typeof CauPhimSchema>
 const PhanPhimSchema = z.object({ loi: z.array(CauPhimSchema).min(6).max(80), moc: MocSchema })
@@ -226,6 +258,7 @@ export async function vietPhanPhim(o: {
   noiTiep: string[]
   anh?: { nam: string; mo_ta: string; chinh?: boolean }[] // ảnh thật từ Wikimedia Commons (lib/wiki.ts)
   hoSo?: HoSoHinhAnh | null // hồ sơ hình ảnh (bước 4): địa điểm, màu theo giai đoạn, nhân vật phụ — chỉ dẫn hình từng câu bám theo
+  vaiPhu?: VaiPhu[] // dàn nhân vật phụ đã có hình riêng (vai_1..): câu họ nói / câu nhắc tới họ dùng đúng mã của họ
 }): Promise<{ loi: CauPhim[]; moc: { chu: string; bieu_tuong: string } } | null> {
   const { k, cauChuyen: cc } = o
   const n = cc.phan.length
@@ -254,7 +287,12 @@ Rules:
 - Each line at most 30 words, written to be read aloud: no emoji, hashtags or URLs. Keep the channel name exactly as "Công Nghệ 24H".
 - nhan_vat_phu shows who the line is about on stage: when the narrator (or Mèo Mun / Robot Bit) talks about ${o.ten}, set nhan_vat_phu to nhan_vat_chinh so the protagonist acts the scene while it is told; when it is about another person, show the kind of person (for example doanh_nhan for a business partner, ba_lao for a grandmother) as a generic cartoon figure, never a real likeness; when an extra speaks, the same extra; when nhan_vat_chinh speaks, nhan_vat_chinh. dao_cu / bang / minh_hoa illustrate the line as usual. cam_xuc of narrator lines describes the mood of the line.
 ${LUAT_HINH}- moc: the hook shown in big letters for the first 2 seconds of the film: chu at most 8 Vietnamese words, truthful; bieu_tuong one emoji. (Only used for chapter 1, but always fill it.)
-- Visual bible: when a <visual_bible> is given, the film's look must follow it. For each scene pick the boi_canh closest to the bible location where it happens, and write anh_nen from that location's description, era and atmosphere (in English, places only, no people); choose anh_sang from the colour language of the current life phase (warm phases am_ap / tuoi_sang, dark or crisis phases lanh / cang_thang / bi_an), thoi_tiet from the location's weather, dao_cu from its props and the era's design; when the line is about one of the bible's supporting people, pick the nhan_vat_phu that matches their role, age and gender.`
+- Visual bible: when a <visual_bible> is given, the film's look must follow it. For each scene pick the boi_canh closest to the bible location where it happens, and write anh_nen from that location's description, era and atmosphere (in English, places only, no people); choose anh_sang from the colour language of the current life phase (warm phases am_ap / tuoi_sang, dark or crisis phases lanh / cang_thang / bi_an), thoi_tiet from the location's weather, dao_cu from its props and the era's design; when the line is about one of the bible's supporting people, pick the nhan_vat_phu that matches their role, age and gender.${
+    o.vaiPhu?.length
+      ? `
+- Film cast: these supporting people have their own cartoon look in this film: ${o.vaiPhu.map((v, i) => `${VAI_PHU[i]} = ${v.ten} (${v.vai_tro})`).join('; ')}. When one of them speaks, ai is their code; when a line is about one of them, nhan_vat_phu is their code (never a generic extra for them, so viewers always see the same face). Generic extras only for people who are not in this cast.`
+      : ''
+  }`
   const keHoach = cc.phan.map((p, i) => `Chapter ${i + 1}${i + 1 === k ? ' (WRITE THIS ONE)' : ''}: ${p.tieu_de}\nEmotional curve: ${p.nhip}\n${p.noi_dung}`).join('\n\n')
   // Hồ sơ hình ảnh rút gọn (địa điểm, màu theo giai đoạn, nhân vật phụ, thiết kế thời đại) cho chỉ dẫn hình từng câu
   const hs = o.hoSo

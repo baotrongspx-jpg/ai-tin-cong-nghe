@@ -39,12 +39,49 @@ export async function goiJson<T>(opts: YeuCauJson<T>): Promise<T | null> {
   const text = process.env.GEMINI_API_KEY ? await goiGemini(opts) : await goiClaude(opts)
   if (text === null) return null
   try {
-    const kq = opts.kiemTra.safeParse(JSON.parse(text))
+    const kq = opts.kiemTra.safeParse(await suaChuHong(JSON.parse(text)))
     if (!kq.success) console.error('AI trả JSON sai dạng:', kq.error.issues.slice(0, 3).map((v) => `${v.path.join('.')}: ${v.message}`).join(' | '))
     return kq.success ? kq.data : null
   } catch {
     return null
   }
+}
+
+// Chữ AI trả về: chuẩn hoá dấu tiếng Việt (NFC). Tiếng Việt đúng luôn ghép được thành chữ có dấu sẵn, nên còn dấu rời
+// (U+0300-036F) nghĩa là AI làm rơi nguyên âm, vd "Di S̉n Vĩnh Cửu" (đúng: "Di Sản Vĩnh Cửu"). Các chuỗi hỏng gửi riêng cho
+// bản AI nhẹ sửa (1 lượt, chỉ khi có lỗi); sửa không được thì giữ nguyên.
+const DAU_ROI = /[̀-ͯ]/
+async function suaChuHong(x: unknown): Promise<unknown> {
+  const hong = new Set<string>()
+  const duyet = (v: unknown, f: (s: string) => string): unknown =>
+    typeof v === 'string' ? f(v) : Array.isArray(v) ? v.map((y) => duyet(y, f)) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, y]) => [k, duyet(y, f)])) : v
+  const chuan = duyet(x, (s) => {
+    const n = s.normalize('NFC')
+    if (DAU_ROI.test(n)) hong.add(n)
+    return n
+  })
+  if (!hong.size) return chuan
+  const ds = [...hong].slice(0, 40)
+  console.error(`AI viết ${hong.size} chuỗi có dấu rời (mất nguyên âm), nhờ AI sửa:`, ds.slice(0, 3))
+  const opts: YeuCauJson<unknown> = {
+    system: 'Each Vietnamese string below lost a vowel: a tone mark is left floating on a consonant (for example "Di S̉n Vĩnh Cửu" should be "Di Sản Vĩnh Cửu", "Ng̀y mai" should be "Ngày mai"). Return every string corrected, in the same order, changing nothing else.',
+    noiDung: JSON.stringify(ds),
+    kiemTra: z.object({ sua: z.array(z.string()) }),
+    schema: { type: 'object', properties: { sua: { type: 'array', items: { type: 'string' } } }, required: ['sua'] },
+    effort: 'low',
+    moHinh: ['gemini-flash-lite-latest', 'gemini-flash-latest'],
+  }
+  const text = await (process.env.GEMINI_API_KEY ? goiGemini(opts) : goiClaude(opts)).catch(() => null)
+  let sua: string[] = []
+  try {
+    sua = text ? (JSON.parse(text) as { sua: string[] }).sua : []
+  } catch {}
+  const bang = new Map<string, string>()
+  ds.forEach((s, i) => {
+    const t = (sua[i] ?? '').normalize('NFC')
+    if (t && !DAU_ROI.test(t)) bang.set(s, t)
+  })
+  return duyet(chuan, (s) => bang.get(s) ?? s)
 }
 
 const cho = (ms: number) => new Promise((r) => setTimeout(r, ms))

@@ -485,6 +485,11 @@ def dung_youtube(may, ds_giong, yc):
                     phu_de = True
                 except Exception:
                     traceback.print_exc()
+            # Dọn các bản phần cũ không còn dùng (mã khác mã hiện tại), vd bản cũ gom từ thư mục trước khi đổi tiêu đề
+            dung = {p.name for p in cac_phan} | {p.with_suffix('.phu-de.json').name for p in cac_phan}
+            for cu in thu_muc.glob('phan-*'):
+                if cu.name not in dung:
+                    cu.unlink(missing_ok=True)
             gui(f'{goc}/xong.json', json.dumps({'tep': str(ra), 'ma': ds_ma, 'nhac': nhac, 'kiem_tra': kiem_tra, 'anh_bia': anh_bia,
                                                 'moc_chuong': moc_chuong, 'phu_de': phu_de,
                                                 'luc': int(time.time() * 1000)}, ensure_ascii=False), 'application/json')

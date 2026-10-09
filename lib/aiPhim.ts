@@ -225,6 +225,7 @@ export async function vietPhanPhim(o: {
   soCau: number
   noiTiep: string[]
   anh?: { nam: string; mo_ta: string; chinh?: boolean }[] // ảnh thật từ Wikimedia Commons (lib/wiki.ts)
+  hoSo?: HoSoHinhAnh | null // hồ sơ hình ảnh (bước 4): địa điểm, màu theo giai đoạn, nhân vật phụ — chỉ dẫn hình từng câu bám theo
 }): Promise<{ loi: CauPhim[]; moc: { chu: string; bieu_tuong: string } } | null> {
   const { k, cauChuyen: cc } = o
   const n = cc.phan.length
@@ -252,8 +253,23 @@ Rules:
 - anh: the number of a REAL PHOTO from the <photos> list that shows exactly what this line talks about (the person at that age or event, the place, the building, the product, the artwork…), shown framed on screen like in a documentary while the line is spoken; -1 when no photo truly fits. Use photos on about 15-25% of the lines, mostly narrator lines, spread across the chapter; one photo may cover up to 3 lines in a row about the same thing; never put a photo on a line about something else just to use it, and never imply a photo shows something it does not (a statue is a statue, not the person).
 - Each line at most 30 words, written to be read aloud: no emoji, hashtags or URLs. Keep the channel name exactly as "Công Nghệ 24H".
 - nhan_vat_phu shows who the line is about on stage: when the narrator (or Mèo Mun / Robot Bit) talks about ${o.ten}, set nhan_vat_phu to nhan_vat_chinh so the protagonist acts the scene while it is told; when it is about another person, show the kind of person (for example doanh_nhan for a business partner, ba_lao for a grandmother) as a generic cartoon figure, never a real likeness; when an extra speaks, the same extra; when nhan_vat_chinh speaks, nhan_vat_chinh. dao_cu / bang / minh_hoa illustrate the line as usual. cam_xuc of narrator lines describes the mood of the line.
-${LUAT_HINH}- moc: the hook shown in big letters for the first 2 seconds of the film: chu at most 8 Vietnamese words, truthful; bieu_tuong one emoji. (Only used for chapter 1, but always fill it.)`
+${LUAT_HINH}- moc: the hook shown in big letters for the first 2 seconds of the film: chu at most 8 Vietnamese words, truthful; bieu_tuong one emoji. (Only used for chapter 1, but always fill it.)
+- Visual bible: when a <visual_bible> is given, the film's look must follow it. For each scene pick the boi_canh closest to the bible location where it happens, and write anh_nen from that location's description, era and atmosphere (in English, places only, no people); choose anh_sang from the colour language of the current life phase (warm phases am_ap / tuoi_sang, dark or crisis phases lanh / cang_thang / bi_an), thoi_tiet from the location's weather, dao_cu from its props and the era's design; when the line is about one of the bible's supporting people, pick the nhan_vat_phu that matches their role, age and gender.`
   const keHoach = cc.phan.map((p, i) => `Chapter ${i + 1}${i + 1 === k ? ' (WRITE THIS ONE)' : ''}: ${p.tieu_de}\nEmotional curve: ${p.nhip}\n${p.noi_dung}`).join('\n\n')
+  // Hồ sơ hình ảnh rút gọn (địa điểm, màu theo giai đoạn, nhân vật phụ, thiết kế thời đại) cho chỉ dẫn hình từng câu
+  const hs = o.hoSo
+  const kinhThanh = hs
+    ? `
+
+<visual_bible>
+${JSON.stringify({
+        dia_diem: hs.dia_diem.slice(0, 14).map((x) => ({ ten: x.ten, thanh_pho: x.thanh_pho, thoi_ky: x.thoi_ky, mau_sac: x.mau_sac, anh_sang: x.anh_sang, thoi_tiet: x.thoi_tiet, dao_cu: x.dao_cu, khong_khi: x.khong_khi })),
+        mau_theo_giai_doan: hs.mau_theo_giai_doan,
+        nhan_vat_phu: hs.nhan_vat_phu.slice(0, 12).map((x) => ({ ten: x.ten, vai_tro: x.vai_tro, ngoai_hinh: x.ngoai_hinh })),
+        thiet_ke: { cong_trinh: hs.thiet_ke.cong_trinh, xe_co: hs.thiet_ke.xe_co, cong_nghe: hs.thiet_ke.cong_nghe, do_vat: hs.thiet_ke.do_vat },
+      }).slice(0, 7000)}
+</visual_bible>`
+    : ''
   const noiDung = `Person: ${o.ten}
 Big idea: ${cc.big_idea}
 Structure: ${cc.cau_truc}
@@ -262,7 +278,7 @@ Retention beats: ${cc.nhip_giu_chan.join(' → ')}
 
 <research>
 ${JSON.stringify({ ho_so: o.nghienCuu.ho_so, moc_doi: o.nghienCuu.moc_doi, su_that: o.nghienCuu.su_that })}
-</research>
+</research>${kinhThanh}
 
 <plan>
 ${keHoach}

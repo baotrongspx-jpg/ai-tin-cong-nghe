@@ -289,7 +289,7 @@ export async function vietLoiPhan(id: string, k: number) {
   const phim = d.loai === 'tieu_su' && d.phim?.nghien_cuu && d.phim.cau_chuyen ? d.phim : null
   const viet = (): Promise<{ loi: CauYT[]; moc: { chu: string; bieu_tuong: string } } | null> =>
     phim
-      ? vietPhanPhim({ ten: phim.ten, nghienCuu: phim.nghien_cuu!, cauChuyen: phim.cau_chuyen!, k, soCau: Math.round(giay / 5.5), noiTiep, anh: phim.anh ?? [] })
+      ? vietPhanPhim({ ten: phim.ten, nghienCuu: phim.nghien_cuu!, cauChuyen: phim.cau_chuyen!, k, soCau: Math.round(giay / 5.5), noiTiep, anh: phim.anh ?? [], hoSo: phim.ho_so ?? null })
       : vietPhanYouTube({ nguon: d.nguon_chu, danY: d, k, soCau: Math.round(giay / 4.5), noiTiep })
   // Hội đồng phản biện chấm kịch bản chương; điểm thấp thì sửa đúng những câu bị chê một lần theo góp ý
   const nguCanh = nguCanhPhan(d, k)

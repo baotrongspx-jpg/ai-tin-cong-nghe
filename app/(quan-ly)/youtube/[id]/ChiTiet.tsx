@@ -307,6 +307,8 @@ export default function ChiTiet({ dau, ttDau }: { dau: DuAnYT; ttDau: TrangThaiD
       if (phim && moi.phim?.anh === undefined && !(await lam('Lấy ảnh thật trong bài Wikipedia (Wikimedia Commons)…', () => chayBuocPhimYouTube(moi.id, 'lay_anh')))) return
       if (phim && !moi.phim?.cau_chuyen && !(await lam('Phát triển câu chuyện: khán giả, góc kể, big idea, cấu trúc, hook, chia chương…', () => chayBuocPhimYouTube(moi.id, 'cau_chuyen')))) return
       if (phim && !moi.phim?.tao_hinh?.nhom && !(await lam('Thiết kế nhân vật chính: tuổi từng giai đoạn, tóc, trang phục, đồ vật đặc trưng…', () => chayBuocPhimYouTube(moi.id, 'tao_hinh')))) return
+      // Hồ sơ hình ảnh trước khi viết chương: chỉ dẫn hình từng câu (bối cảnh, ánh sáng, đạo cụ, nhân vật phụ) bám theo hồ sơ
+      if (phim && !moi.phim?.ho_so && !(await lam('Hồ sơ hình ảnh: nhân vật, bối cảnh, thiết kế, màu, nhạc…', () => chayBuocPhimYouTube(moi.id, 'ho_so')))) return
       for (let k = 1; k <= moi.phan.length; k++) {
         if (moi.phan[k - 1].loi) continue
         if (!(await lam(`AI đang viết kịch bản ${ten} ${k}/${moi.phan.length}…`, () => vietPhanYouTube(moi.id, k), k))) return
@@ -320,7 +322,6 @@ export default function ChiTiet({ dau, ttDau }: { dau: DuAnYT; ttDau: TrangThaiD
         }
       }
       if (!phim) return
-      if (!moi.phim?.ho_so && !(await lam('Hồ sơ hình ảnh: nhân vật, bối cảnh, thiết kế, màu, nhạc…', () => chayBuocPhimYouTube(moi.id, 'ho_so')))) return
       for (let k = 1; k <= moi.phan.length; k++) {
         if (moi.phan[k - 1].canh) continue
         if (!(await lam(`Phân cảnh, shot list và prompt video AI chương ${k}/${moi.phan.length}…`, () => chayBuocPhimYouTube(moi.id, 'phan_canh', k), k))) return

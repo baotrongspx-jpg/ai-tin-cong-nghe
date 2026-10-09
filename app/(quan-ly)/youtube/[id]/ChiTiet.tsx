@@ -142,8 +142,14 @@ function PhanBien({ pb, ten }: { pb: PB; ten?: string }) {
       <summary className="cursor-pointer text-sm font-semibold">
         ⚖️ {ten ? `${ten}: ` : 'Hội đồng phản biện: '}
         {pb.diem}/10 · {pb.dat ? 'Đạt ✓' : 'Chưa đạt'}
-        {pb.lan > 1 && ' · đã làm lại theo góp ý'}
+        {pb.lan > 1 && !pb.giu && ' · đã làm lại theo góp ý'}
+        {pb.giu === 'moi' && ` · đã viết lại theo góp ý (bản đầu ${pb.diem_dau}/10)`}
+        {pb.giu === 'cu' && ' · bản viết lại bị chấm thấp hơn nên giữ bản đầu'}
+        {pb.giu === 'moi_chua_cham' && ' · đã viết lại theo góp ý, chưa chấm lại được (hết lượt AI)'}
       </summary>
+      {pb.lan > 1 && !pb.dat && ten === 'Hội đồng chấm kịch bản' && (
+        <p className="mt-2 text-xs">Hệ thống chỉ tự viết lại một lần. Muốn thử thêm, bấm «AI viết lại phần này» bên dưới (tốn lượt AI).</p>
+      )}
       {pb.van_de.length > 0 && (
         <ul className="mt-2 grid gap-1 text-sm">
           {pb.van_de.map((v, i) => (

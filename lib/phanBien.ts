@@ -8,7 +8,9 @@ import { goiJson, gopYPhanBien } from './ai'
 // thể của hội đồng (ai.ts: gopYPhanBien), rồi hội đồng chấm lại. Hội đồng dùng Gemini bản nhẹ trước cho đỡ tốn lượt.
 
 export type KhauPhanBien = 'dan_y' | 'nghien_cuu' | 'cau_chuyen' | 'tao_hinh' | 'kich_ban' | 'ho_so' | 'phan_canh' | 'dong_goi'
-export type KetQuaPhanBien = { diem: number; dat: boolean; van_de: string[]; goi_y: string; lan: number; luc: string }
+// Đã làm lại (lan 2): diem_dau = điểm bản đầu; giu = bản đang dùng: 'moi' (bản làm lại, diem là điểm chấm lại), 'cu' (bản làm lại
+// bị chấm thấp hơn nên giữ bản đầu), 'moi_chua_cham' (dùng bản làm lại nhưng hội đồng không chấm lại được, diem là điểm bản đầu)
+export type KetQuaPhanBien = { diem: number; dat: boolean; van_de: string[]; goi_y: string; lan: number; luc: string; diem_dau?: number; giu?: 'moi' | 'cu' | 'moi_chua_cham' }
 
 export const TEN_KHAU: Record<KhauPhanBien, string> = {
   dan_y: 'Dàn ý video',
@@ -90,6 +92,7 @@ export async function voiPhanBien<T>(
   if (!kq2) return { kq, pb: { ...pb, lan: 1, luc: new Date().toISOString() } }
   const pb2 = await phanBien(khau, nguCanh, tomTat(kq2)).catch(() => null)
   // Bản làm lại chỉ được nhận nếu hội đồng không chấm thấp hơn bản đầu
-  if (pb2 && pb2.diem < pb.diem) return { kq, pb: { ...pb, lan: 2, luc: new Date().toISOString() } }
-  return { kq: kq2, pb: { ...(pb2 ?? pb), lan: 2, luc: new Date().toISOString() } }
+  const luc = new Date().toISOString()
+  if (pb2 && pb2.diem < pb.diem) return { kq, pb: { ...pb, lan: 2, luc, diem_dau: pb.diem, giu: 'cu' } }
+  return { kq: kq2, pb: { ...(pb2 ?? pb), lan: 2, luc, diem_dau: pb.diem, giu: pb2 ? 'moi' : 'moi_chua_cham' } }
 }

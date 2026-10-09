@@ -2,6 +2,7 @@
 # Gemini: vòng biên tập cả kịch bản, và viết thay khi Gemini hết lượt trong ngày. Mọi thứ nằm ở ổ D (ổ C gần đầy):
 # D:\ollama\ollama.exe, mô hình ở D:\ollama\models. Máy chủ Ollama chỉ nghe ở 127.0.0.1 (không mở ra ngoài).
 # Trang web gửi phiếu việc {"loai": "ai", "system", "noi_dung", "schema"} → máy nhà trả hang-doi/xong/<mã>.json {"text"}.
+import base64
 import json
 import os
 import subprocess
@@ -66,6 +67,26 @@ def goi(system, noi_dung, schema=None, mo_hinh=None, nhiet=0.6):
     r = requests.post(f'{DIA_CHI}/api/chat', json=than, timeout=3600)
     r.raise_for_status()
     return r.json()['message']['content']
+
+
+MO_HINH_NHIN = os.environ.get('AI_NHIN_ANH', 'qwen2.5vl:3b')  # mô hình nhỏ nhìn được ảnh (~3 GB ở ổ D)
+
+
+def xem_anh(anh, cau_hoi, schema):
+    # Cho AI nhìn một ảnh (bytes JPG/PNG) và trả lời theo schema JSON → dict. Dùng để lọc ảnh nền Pixabay.
+    dam_bao_chay()
+    dam_bao_mo_hinh(MO_HINH_NHIN)
+    than = {
+        'model': MO_HINH_NHIN,
+        'messages': [{'role': 'user', 'content': cau_hoi, 'images': [base64.b64encode(anh).decode()]}],
+        'stream': False,
+        'format': schema,
+        'options': {'temperature': 0},
+        'keep_alive': '2m',
+    }
+    r = requests.post(f'{DIA_CHI}/api/chat', json=than, timeout=300)
+    r.raise_for_status()
+    return json.loads(r.json()['message']['content'])
 
 
 if __name__ == '__main__':

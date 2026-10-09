@@ -22,6 +22,7 @@ import wave
 from pathlib import Path
 
 import numpy as np
+from PIL import Image
 import requests
 from vieneu import Vieneu
 
@@ -51,6 +52,8 @@ THU_MUC_TAM = Path(os.environ.get('HOAT_HINH_TAM', r'C:\Users\Admin\VieNeu-TTS\h
 THU_MUC_LUU = Path(os.environ.get('HOAT_HINH_LUU', r'C:\Users\Admin\OneDrive\Desktop\Video-Hoat-Hinh'))
 # Video YouTube dài (trang /youtube): dựng từng phần rồi ghép, chỉ lưu trên máy nhà (quá nặng để gửi lên kho)
 THU_MUC_YT = Path(os.environ.get('YOUTUBE_LUU', r'C:\Users\Admin\OneDrive\Desktop\Video-YouTube'))
+# Thư mục tạm khi dựng hình (khung hình HyperFrames): ổ D nếu có, không thì để mặc định (TEMP của Windows)
+TAM_DUNG_HINH = Path(os.environ.get('TAM_DUNG_HINH', r'D:\tam-dung-hinh')) if Path('D:/').exists() else None
 
 
 def gui(duong, du_lieu, kieu):
@@ -190,6 +193,10 @@ def chay_theo_doi(lenh, cwd, gioi_han, khi_co_phan_tram):
     # Chạy lệnh, đọc đầu ra từng đoạn, thấy "NN%" thì báo (thanh tiến độ của HyperFrames ghi đè dòng bằng \r)
     moi_truong = dict(os.environ)
     moi_truong['PATH'] = os.pathsep.join([str(FFMPEG.parent), str(FFPROBE_DIR), moi_truong.get('PATH', '')])
+    # Khung hình tạm của HyperFrames (~1,5 GB mỗi phút video) để ở ổ D: ổ C gần đầy (bộ nhớ ảo Windows phình lên)
+    if TAM_DUNG_HINH:
+        TAM_DUNG_HINH.mkdir(parents=True, exist_ok=True)
+        moi_truong['TEMP'] = moi_truong['TMP'] = str(TAM_DUNG_HINH)
     p = subprocess.Popen(lenh, cwd=cwd, env=moi_truong, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     het_gio = time.time() + gioi_han
     duoi = ''
@@ -247,80 +254,181 @@ def tai_anh_wiki(loi, tai_san):
             l.pop('anh_wiki', None)
 
 
-# Ảnh nền thật cho từng cảnh video YouTube (Pixabay: dùng thương mại được, không bắt buộc ghi nguồn). Từ khoá AI đặt ở
-# câu đầu cảnh (anh_nen); kịch bản cũ chưa có thì lấy theo bối cảnh vẽ. Trường quay để trống: giữ cảnh vẽ của kênh.
+# Ảnh nền hoạt hình cho từng cảnh video YouTube (tranh vẽ Pixabay: dùng thương mại được, không bắt buộc ghi nguồn). Cụm từ
+# khoá AI đặt ở câu đầu cảnh (anh_nen, 4-8 từ tiếng Anh); kịch bản cũ chưa có thì lấy theo bối cảnh vẽ. Trường quay để
+# trống: giữ cảnh vẽ của kênh. AI máy nhà nhìn từng tranh ứng viên, chỉ nhận tranh là PHONG CẢNH hoạt hình phủ kín khung,
+# không có nhân vật lớn (Pixabay "cartoon" hay trả tranh nhân vật / hình dán).
 TU_KHOA_CANH = {
-    'pho_florida': 'city street sunny', 'may_chu': 'data center servers', 'don_canh_sat': 'police station',
-    'phong_khach': 'living room interior', 'van_phong': 'modern office', 'vu_tru': 'earth from space', 'cua_hang': 'electronics store',
-    'thanh_pho_dem': 'city skyline night', 'nong_thon': 'vietnam rice field', 'truong_hoc': 'classroom', 'benh_vien': 'hospital corridor',
-    'nha_may': 'factory assembly line', 'cong_truong': 'construction site crane', 'san_bay': 'airport terminal', 'bai_bien': 'tropical beach',
-    'nui_rung': 'mountain forest waterfall', 'cho': 'asian street market', 'nha_hang': 'restaurant interior', 'san_van_dong': 'football stadium',
-    'phong_hop': 'meeting room', 'phong_thi_nghiem': 'science laboratory', 'hoi_truong': 'conference hall', 'cang_bien': 'container port ship',
-    'nha_ngheo': 'old wooden house', 'san_khau': 'concert stage lights', 'thanh_pho_tuyet': 'snowy city winter', 'thu_vien': 'library bookshelves',
-    'san_chung_khoan': 'stock market trading', 'thao_nguyen': 'mongolia steppe', 'cung_dien': 'forbidden city palace',
-    'chien_truong': 'battlefield smoke', 'thanh_co': 'medieval castle', 'lang_xua': 'vietnam old village', 'sa_mac': 'desert dunes camel',
-    'bien_ca': 'sailing ship ocean', 'den_chua': 'pagoda temple', 'ga_ra': 'garage workshop', 'be_phong': 'rocket launch',
-    'phong_thu': 'recording studio', 'phim_truong': 'film set camera',
+    'pho_florida': 'sunny city street with shops and palm trees', 'may_chu': 'data center server room with glowing racks',
+    'don_canh_sat': 'police station office interior', 'phong_khach': 'cozy living room interior with sofa',
+    'van_phong': 'modern tech company office with computers', 'vu_tru': 'outer space with earth and stars',
+    'cua_hang': 'electronics store interior with phones on shelves', 'thanh_pho_dem': 'big city skyline at night with lights',
+    'nong_thon': 'vietnamese countryside rice field with mountains', 'truong_hoc': 'school classroom with blackboard and desks',
+    'benh_vien': 'hospital ward interior with beds', 'nha_may': 'factory assembly line with robot arms',
+    'cong_truong': 'construction site with cranes and buildings', 'san_bay': 'airport terminal with planes outside window',
+    'bai_bien': 'tropical beach with palm trees and sea', 'nui_rung': 'mountain forest landscape with waterfall',
+    'cho': 'asian street market with stalls and lanterns', 'nha_hang': 'restaurant interior with tables and kitchen',
+    'san_van_dong': 'football stadium with crowd and lights', 'phong_hop': 'business meeting room with big table',
+    'phong_thi_nghiem': 'science laboratory with equipment', 'hoi_truong': 'grand conference hall with stage and podium',
+    'cang_bien': 'seaport with container ships and cranes', 'nha_ngheo': 'old poor wooden house in village',
+    'san_khau': 'concert stage with spotlights', 'thanh_pho_tuyet': 'snowy european city street in winter',
+    'thu_vien': 'old library with tall bookshelves', 'san_chung_khoan': 'stock exchange trading floor with screens',
+    'thao_nguyen': 'mongolian steppe grassland with yurts', 'cung_dien': 'ancient chinese royal palace courtyard',
+    'chien_truong': 'ancient battlefield with smoke and flags', 'thanh_co': 'medieval stone castle with towers',
+    'lang_xua': 'old vietnamese village with banyan tree', 'sa_mac': 'desert dunes landscape at sunset',
+    'bien_ca': 'old sailing ship on the open ocean', 'den_chua': 'asian pagoda temple in the mountains',
+    'ga_ra': 'garage workshop with tools on the wall', 'be_phong': 'rocket launch pad at dawn',
+    'phong_thu': 'music recording studio with microphone', 'phim_truong': 'film studio set with cameras and lights',
 }
-KHO_PIXABAY = THU_MUC_TAM.parent / 'anh-pixabay'  # ảnh đã tải (theo mã ảnh) + kết quả tìm (Pixabay yêu cầu nhớ 24 giờ)
+KHO_PIXABAY = THU_MUC_TAM.parent / 'anh-pixabay'  # tranh đã tải (theo mã) + kết quả tìm (Pixabay yêu cầu nhớ 24 giờ) + điểm AI chấm
+
+
+def doc_nho(ten):
+    try:
+        return json.loads((KHO_PIXABAY / ten).read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return {}
+
+
+def ghi_nho(ten, du_lieu):
+    KHO_PIXABAY.mkdir(parents=True, exist_ok=True)
+    (KHO_PIXABAY / ten).write_text(json.dumps(du_lieu, ensure_ascii=False), encoding='utf-8')
+
+
+_lan_goi_pixabay = [0.0]
+
+
+def goi_pixabay(url, params=None):
+    # Mọi lần gọi pixabay.com (tìm + tải tranh lớn) đều tính vào giới hạn ~100 lượt / phút dùng chung với trang tin:
+    # cách nhau tối thiểu 1 giây (≤ 60 / phút); bị chặn (429) thì đợi 1 phút rồi thử lại, tối đa 3 lần.
+    for lan_thu in range(4):
+        cho = _lan_goi_pixabay[0] + 1.0 - time.time()
+        if cho > 0:
+            time.sleep(cho)
+        _lan_goi_pixabay[0] = time.time()
+        r = requests.get(url, params=params, timeout=60)
+        if r.status_code != 429 or lan_thu == 3:
+            r.raise_for_status()
+            return r
+        time.sleep(60)
 
 
 def tim_pixabay(tu_khoa):
-    # Danh sách [{id, url}] ảnh ngang phổ biến cho từ khoá; nhớ kết quả 24 giờ. Không có khoá / lỗi mạng thì trả rỗng.
+    # Tranh hoạt hình ngang cho cụm từ khoá: [{id, url (lớn), xem (bản nhỏ cho AI nhìn)}], nhớ 24 giờ. Cụm dài ít kết quả
+    # thì bớt dần từ cuối (giữ tối thiểu 2 từ). Không có khoá / lỗi mạng thì trả rỗng.
     if not env.get('PIXABAY_KEY'):
         return []
-    tep = KHO_PIXABAY / 'tim.json'
-    try:
-        nho = json.loads(tep.read_text(encoding='utf-8')) if tep.exists() else {}
-    except ValueError:
-        nho = {}
+    nho = doc_nho('tim-hoat-hinh-2.json')
     o = nho.get(tu_khoa)
     if o and time.time() - o['luc'] < 86400:
         return o['anh']
+    tu = tu_khoa.split()
+    anh = []
     try:
-        r = requests.get('https://pixabay.com/api/', params={'key': env['PIXABAY_KEY'], 'q': tu_khoa[:100], 'image_type': 'photo',
-                                                             'orientation': 'horizontal', 'safesearch': 'true', 'order': 'popular',
-                                                             'min_width': 1280, 'per_page': 20}, timeout=20)
-        r.raise_for_status()
-        anh = [{'id': h['id'], 'url': h['largeImageURL']} for h in r.json().get('hits', [])]
+        while True:
+            r = goi_pixabay('https://pixabay.com/api/', {'key': env['PIXABAY_KEY'], 'q': f'{" ".join(tu)} cartoon'[:100], 'image_type': 'illustration',
+                                                          'orientation': 'horizontal', 'safesearch': 'true', 'order': 'popular',
+                                                          'min_width': 1280, 'per_page': 30})
+            # Ảnh xem trước cho AI chấm lấy ở cdn.pixabay.com (không tính lượt API) — bản 640 suy từ previewURL
+            anh = [{'id': h['id'], 'url': h['largeImageURL'], 'xem': h['previewURL'].replace('_150.', '_640.'), 'xem_nho': h['previewURL']}
+                   for h in r.json().get('hits', [])]
+            if len(anh) >= 6 or len(tu) <= 2:
+                break
+            tu = tu[:-1]
     except Exception:
         traceback.print_exc()
-        return []
+        return anh
     nho[tu_khoa] = {'luc': time.time(), 'anh': anh}
-    KHO_PIXABAY.mkdir(parents=True, exist_ok=True)
-    tep.write_text(json.dumps(nho, ensure_ascii=False), encoding='utf-8')
+    ghi_nho('tim-hoat-hinh-2.json', nho)
     return anh
 
 
+HOI_ANH = '''Look at this image. It may become the background behind two cartoon mascots in an animated video about: "{tu_khoa}".
+Answer in JSON:
+- mo_ta: one English sentence describing everything you see, starting with the main subject (mention every person, character or animal).
+- canh: true only if the image is a PLACE or SCENERY that fills the whole frame (a street, a room, a landscape, a building), false if it is mainly a character, a portrait, an object, an icon, a sticker, a logo or text on a plain background.
+- nguoi: true if a person, animal or character is the main subject or is large in the frame.
+- hoat_hinh: true if it is drawn (cartoon, anime, flat illustration, painting), false if it looks like a real photo or a photorealistic 3D render.
+- khop: 0 to 10, how well the place matches "{tu_khoa}".'''
+# mo_ta đứng đầu để AI tả trước rồi mới phán: mô hình nhỏ hay trả lời sai câu có / không về người, nhưng tả thì đúng
+SCHEMA_ANH = {'type': 'object', 'properties': {'mo_ta': {'type': 'string'}, 'canh': {'type': 'boolean'}, 'nguoi': {'type': 'boolean'},
+                                               'hoat_hinh': {'type': 'boolean'}, 'khop': {'type': 'integer'}},
+              'required': ['mo_ta', 'canh', 'nguoi', 'hoat_hinh', 'khop']}
+# Lời tả có người / nhân vật / chi tiết nhạy cảm thì loại, dù AI phán thế nào
+TU_CO_NGUOI = re.compile(r'\b(wom[ae]n|m[ae]n|girls?|boys?|lady|ladies|person|people|persons|human|child|children|kids?|figures?|characters?|'
+                         r'warriors?|soldiers?|couple|crowd|face|portrait|silhouette|bikini|lingerie|naked|nude|sexy|cleavage|blood|weapon|gun)\b', re.I)
+
+
+def cham_anh(a, tu_khoa, nho):
+    # Điểm 0-10 của một tranh ứng viên làm nền cho cụm từ khoá; -1 = loại. Nhớ theo mã tranh + từ khoá.
+    khoa = f'{a["id"]}|{tu_khoa}'
+    if khoa in nho:
+        return nho[khoa]
+    try:
+        r = requests.get(a['xem'], timeout=30)
+        if not r.ok or not r.headers.get('content-type', '').startswith('image/'):
+            r = requests.get(a['xem_nho'], timeout=30)
+        r.raise_for_status()
+        anh = r.content
+        hinh = Image.open(io.BytesIO(anh))
+        # Hình dán / biểu tượng: nền trong suốt, hoặc một màu chiếm phần lớn khung
+        if hinh.mode in ('RGBA', 'LA', 'P') and min(hinh.convert('RGBA').getchannel('A').getextrema()) < 250:
+            diem = -1
+        elif max(c for c, _ in hinh.convert('RGB').resize((64, 36)).quantize(16).getcolors()) / (64 * 36) > 0.25:
+            diem = -1
+        else:
+            kq = ai_may_nha.xem_anh(anh, HOI_ANH.format(tu_khoa=tu_khoa), SCHEMA_ANH)
+            co_nguoi = kq['nguoi'] or TU_CO_NGUOI.search(kq.get('mo_ta', ''))
+            diem = int(kq['khop']) if kq['canh'] and not co_nguoi and kq['hoat_hinh'] else -1
+    except Exception:
+        traceback.print_exc()
+        return -1  # lỗi (mạng, AI máy nhà chưa bật...): bỏ tranh này, không nhớ để lần sau chấm lại
+    nho[khoa] = diem
+    return diem
+
+
 def tai_anh_nen(loi, tai_san, lech=0):
-    # Mỗi cảnh (các câu liền nhau cùng boi_canh, như tao_video.mjs) một ảnh Pixabay → assets/px-<mã>.jpg, ghi tên tệp vào
-    # anh_nen_tep của câu đầu cảnh. Không lặp ảnh trong một phần; lech (số phần) để các phần chọn ảnh khác nhau.
-    # Không tìm được thì cảnh giữ nền vẽ.
+    # Mỗi cảnh (các câu liền nhau cùng boi_canh, như tao_video.mjs) một tranh nền → assets/px-<mã>.jpg, ghi tên tệp vào
+    # anh_nen_tep của câu đầu cảnh. Không lặp tranh trong một phần; lech (số phần) để các phần chọn tranh khác nhau.
+    # Chấm tối đa 8 ứng viên mỗi cảnh, lấy tranh điểm cao nhất (từ 5 trở lên). Không có tranh đạt thì giữ nền vẽ.
     da_dung, lan = set(), {}
-    for i, l in enumerate(loi):
-        if i and l.get('boi_canh') == loi[i - 1].get('boi_canh'):
-            continue
-        tu_khoa = (l.get('anh_nen') or '').strip().lower() or TU_KHOA_CANH.get(l.get('boi_canh'), '')
-        if not tu_khoa:
-            continue
-        ds = [a for a in tim_pixabay(tu_khoa) if a['id'] not in da_dung]
-        if not ds:
-            continue
-        a = ds[(lech * 3 + lan.get(tu_khoa, 0)) % len(ds)]
-        lan[tu_khoa] = lan.get(tu_khoa, 0) + 1
-        goc = KHO_PIXABAY / f'{a["id"]}.jpg'
-        try:
-            if not goc.exists():
-                r = requests.get(a['url'], timeout=60)
-                r.raise_for_status()
-                KHO_PIXABAY.mkdir(parents=True, exist_ok=True)
-                goc.write_bytes(r.content)
-            shutil.copy(goc, tai_san / f'px-{a["id"]}.jpg')
-        except Exception:
-            traceback.print_exc()
-            continue
-        da_dung.add(a['id'])
-        l['anh_nen_tep'] = f'px-{a["id"]}.jpg'
+    nho = doc_nho('cham.json')
+    try:
+        for i, l in enumerate(loi):
+            if i and l.get('boi_canh') == loi[i - 1].get('boi_canh'):
+                continue
+            tu_khoa = ' '.join((l.get('anh_nen') or '').lower().split()) or TU_KHOA_CANH.get(l.get('boi_canh'), '')
+            if not tu_khoa:
+                continue
+            ds = [a for a in tim_pixabay(tu_khoa) if a['id'] not in da_dung]
+            if not ds:
+                continue
+            bd = (lech * 2 + lan.get(tu_khoa, 0) * 3) % len(ds)
+            lan[tu_khoa] = lan.get(tu_khoa, 0) + 1
+            tot, diem_tot = None, 4
+            for a in (ds[bd:] + ds[:bd])[:8]:
+                d = cham_anh(a, tu_khoa, nho)
+                if d > diem_tot:
+                    tot, diem_tot = a, d
+                if d >= 8:
+                    break
+            if not tot:
+                print(f'Cảnh "{tu_khoa}": không có tranh nền đạt, giữ nền vẽ', flush=True)
+                continue
+            goc = KHO_PIXABAY / f'{tot["id"]}.jpg'
+            try:
+                if not goc.exists():
+                    r = goi_pixabay(tot['url'])
+                    KHO_PIXABAY.mkdir(parents=True, exist_ok=True)
+                    goc.write_bytes(r.content)
+                shutil.copy(goc, tai_san / f'px-{tot["id"]}.jpg')
+            except Exception:
+                traceback.print_exc()
+                continue
+            da_dung.add(tot['id'])
+            l['anh_nen_tep'] = f'px-{tot["id"]}.jpg'
+    finally:
+        ghi_nho('cham.json', nho)
 
 
 def ap_phat_am(chu, bang):

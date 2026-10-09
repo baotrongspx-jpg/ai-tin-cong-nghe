@@ -508,9 +508,9 @@ const nenCanh = doanCanh.map((dc, k) => {
   const svg = NGANG
     ? `<svg class="nen-svg" viewBox="-1080 0 3240 1920" width="3240" height="1920" style="margin-left:-1080px"><g>${bc.svg}</g><g transform="scale(-1 1)">${guong}</g><g transform="translate(2160 0) scale(-1 1)">${guong}</g>${song.svg}</svg>`
     : `<svg class="nen-svg" viewBox="0 0 1080 1920" width="1080" height="1920">${bc.svg}${song.svg}</svg>`
-  // Ảnh nền thật (video YouTube: ảnh Pixabay máy nhà tải theo từ khoá của cảnh, anh_nen_tep ở câu đầu cảnh): phủ phần
-  // phía trên mặt sàn (y < 1180), mờ dần xuống sàn vẽ để nhân vật vẫn đứng trên sàn hoạt hình; hơi nhoè + tối nhẹ như
-  // phông sân khấu, từ từ phóng to suốt cảnh. Không có ảnh thì giữ nguyên cảnh vẽ.
+  // Tranh nền hoạt hình (video YouTube: tranh Pixabay máy nhà chọn theo từ khoá của cảnh, anh_nen_tep ở câu đầu cảnh):
+  // phủ phần phía trên mặt sàn (y < 1180), mờ dần xuống sàn vẽ để nhân vật vẫn đứng trên sàn; hơi tối để nhân vật nổi lên,
+  // từ từ phóng to suốt cảnh. Không có ảnh thì giữ nguyên cảnh vẽ.
   const tepAnh = loi[dc.tu].anh_nen_tep
   let anh = ''
   if (tepAnh && existsSync(join(GOC, 'hyperframes/assets', tepAnh))) {
@@ -1180,7 +1180,7 @@ const trang = `<!doctype html>
       .nv { filter: drop-shadow(0 0 10px #ffffff66) drop-shadow(0 24px 30px #0000008c); }
       .lop-nen { position: absolute; inset: 0; }
       .nen-svg { display: block; }
-      .anh-nen-canh { position: absolute; object-fit: cover; transform-origin: 50% 70%; filter: blur(3.5px) brightness(0.74) saturate(0.92);
+      .anh-nen-canh { position: absolute; object-fit: cover; transform-origin: 50% 70%; filter: blur(1.2px) brightness(0.86);
         -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 92%, transparent 100%); mask-image: linear-gradient(to bottom, #000 0, #000 92%, transparent 100%); }
       .hat { position: absolute; border-radius: 50%; background: radial-gradient(circle, #ffffffcc, #ffffff00 70%); }
       #vien-toi { background: radial-gradient(ellipse 85% 70% at 50% 45%, transparent 55%, #00000099 100%); }

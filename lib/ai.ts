@@ -1,6 +1,7 @@
 import 'server-only'
 import Anthropic from '@anthropic-ai/sdk'
 import { z } from 'zod'
+import { AsyncLocalStorage } from 'node:async_hooks'
 import type { TinRss } from './nguonTin'
 
 // Có GEMINI_API_KEY → dùng Gemini (có gói miễn phí). Không có → dùng Claude (ANTHROPIC_API_KEY).
@@ -21,11 +22,20 @@ type YeuCauJson<T> = {
   schema: Record<string, unknown>
   kiemTra: z.ZodType<T>
   effort: 'low' | 'medium' | 'high'
+  moHinh?: string[] // thứ tự model Gemini riêng cho việc này (vd hội đồng phản biện dùng bản nhẹ trước)
 }
+
+// Góp ý của hội đồng phản biện (lib/phanBien.ts) khi một khâu phải làm lại: mọi lần gọi AI trong khâu đó tự đính kèm
+export const gopYPhanBien = new AsyncLocalStorage<string>()
 
 // Gọi AI, ép trả JSON đúng schema rồi kiểm tra lại bằng zod.
 // Trả null nếu AI từ chối hoặc JSON không hợp lệ.
 export async function goiJson<T>(opts: YeuCauJson<T>): Promise<T | null> {
+  const gy = gopYPhanBien.getStore()
+  if (gy) {
+    const gopY = `<review_board_feedback>\nThe channel review board rejected your previous version of this work. Fix every point below while keeping all the rules above:\n${gy}\n</review_board_feedback>`
+    opts = { ...opts, noiDung: `${opts.noiDung}\n\n${gopY}` }
+  }
   const text = process.env.GEMINI_API_KEY ? await goiGemini(opts) : await goiClaude(opts)
   if (text === null) return null
   try {
@@ -41,7 +51,7 @@ const cho = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 async function goiGemini(opts: YeuCauJson<unknown>): Promise<string | null> {
   let loiCuoi = ''
-  for (const model of MODEL_GEMINI) {
+  for (const model of opts.moHinh ?? MODEL_GEMINI) {
     for (let lan = 0; lan < 2; lan++) {
       const res = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,

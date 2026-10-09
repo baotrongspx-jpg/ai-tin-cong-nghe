@@ -9,8 +9,8 @@ import {
 } from './aiPhim'
 import { anhWiki, nguonWiki, type AnhWiki } from './wiki'
 import { NHAN_VAT } from './hoatHinh'
-import { dsNhac } from './nhacNen'
 import { kiemDinh, locLoiChao, type KetQuaKiemDinh } from './kiemDinh'
+import { voiPhanBien, type KetQuaPhanBien, type KhauPhanBien } from './phanBien'
 import { apBienTap, deBaiBienTap, type DaBienTap, type KetQuaBienTap } from './bienTap'
 
 // Video YouTube dài (trang /youtube): hoạt hình Mèo Mun & Robot Bit, khung ngang 16:9, dài tới ~20 phút.
@@ -19,7 +19,7 @@ import { apBienTap, deBaiBienTap, type DaBienTap, type KetQuaBienTap } from './b
 // video và chỉ lưu trên máy nhà (Desktop\Video-YouTube), vì video dài quá nặng để gửi lên kho.
 // Máy nhà báo kết quả: youtube/<id>/phan-<k>.json ({ xong, ma } hoặc { loi, ma }), tien-do.json, xong.json.
 const KHO = 'video-tiktok'
-const PHIEN_BAN = 15 // tăng khi đổi cách dựng để các phần dựng lại (2: thẻ minh hoạ / đạo cụ khung ngang; 3: giọng Mèo Mun; 4: nhịp chuyển cảnh mượt; 5: thẻ chương, màn kết, B-roll; 6: khung người kể, 7: người kể vẽ riêng, 8: nhân vật chính phim tiểu sử, 9: ảnh Wikipedia, 10: lời giới thiệu + đọc tên chương, ảnh đặt linh động, 11: bố cục chữ không che nhân vật, bỏ ghi nguồn trên ảnh, 12: thanh dòng thời gian, thẻ năm tự thêm, 13: câu móc trước lời chào, màn kết 20 giây, phụ đề .srt, cách đọc tên riêng, 14: biểu cảm, đi vào cảnh, chữ động con số, tiền cảnh, 15: cảnh hành động)
+const PHIEN_BAN = 16 // tăng khi đổi cách dựng để các phần dựng lại (2: thẻ minh hoạ / đạo cụ khung ngang; 3: giọng Mèo Mun; 4: nhịp chuyển cảnh mượt; 5: thẻ chương, màn kết, B-roll; 6: khung người kể, 7: người kể vẽ riêng, 8: nhân vật chính phim tiểu sử, 9: ảnh Wikipedia, 10: lời giới thiệu + đọc tên chương, ảnh đặt linh động, 11: bố cục chữ không che nhân vật, bỏ ghi nguồn trên ảnh, 12: thanh dòng thời gian, thẻ năm tự thêm, 13: câu móc trước lời chào, màn kết 20 giây, phụ đề .srt, cách đọc tên riêng, 14: biểu cảm, đi vào cảnh, chữ động con số, tiền cảnh, 15: cảnh hành động, 16: bỏ nhạc nền, màn kết 8 giây, nhân vật phụ ở lại theo đợt, lớp sự sống cho bối cảnh)
 const kho = () => db().storage.from(KHO)
 const thuMuc = (id: string) => `youtube/${id}`
 const tenViec = (id: string, k: number) => `yt-${id}-${k}.json`
@@ -44,6 +44,8 @@ export type PhanYT = {
   loi: CauYT[] | null
   moc: { chu: string; bieu_tuong: string } | null
   canh?: CanhPhim[] // phim tiểu sử: phân cảnh + shot + prompt video AI của chương này
+  phan_bien?: KetQuaPhanBien // hội đồng phản biện chấm kịch bản chương này (lib/phanBien.ts)
+  phan_bien_canh?: KetQuaPhanBien // … chấm phân cảnh chương này
   kiem_dinh?: KetQuaKiemDinh // biên tập viên kiểm định (lib/kiemDinh.ts): điểm, ghi chú, những gì đã tự sửa
 }
 // Phim tiểu sử: kết quả từng giai đoạn sản xuất
@@ -72,9 +74,8 @@ export type DuAnYT = {
   phan: PhanYT[]
   loai?: 'thuong' | 'tieu_su'
   phim?: PhimTieuSu
-  nhac?: string // nhạc nền: tên bài trong thư viện, 'khong' = không nhạc, trống = tự chọn bài đầu tiên
-  am_luong_nhac?: number // % (mặc định 30)
   bien_tap?: DaBienTap // vòng biên tập cả phim (AI máy nhà) đã áp
+  phan_bien?: Partial<Record<KhauPhanBien, KetQuaPhanBien>> // hội đồng phản biện chấm từng khâu (dàn ý, nghiên cứu, câu chuyện…)
   ai_cho?: { bien_tap?: string } // phiếu việc AI máy nhà đang chờ (mã phiếu)
   shorts?: { luc: string; doan: { so: number; phan: number; tu: number; den: number; tieu_de: string }[] } // Shorts đã gửi dựng
   phat_am?: string // cách đọc tên riêng, mỗi dòng "Tên = cách đọc" (chỉ đổi chữ đưa vào giọng đọc, phụ đề giữ nguyên)
@@ -251,7 +252,7 @@ export async function taoDuAn(o: { baiIds: string[]; yTuong: string; phut: numbe
   if (!bai.length && !yTuong.trim()) throw new Error('Chọn ít nhất một bài hoặc viết ý tưởng cho video')
   const nguon = ghepNguon(bai, yTuong)
   const soPhan = soPhanCho(phut)
-  const dy = await vietDanYYouTube(nguon, phut, soPhan)
+  const { kq: dy, pb } = await voiPhanBien('dan_y', `Video YouTube hoạt hình ${phut} phút, ${soPhan} phần, từ nguồn:\n${nguon.slice(0, 2500)}`, () => vietDanYYouTube(nguon, phut, soPhan), (x) => JSON.stringify(x))
   if (!dy) throw new Error('AI chưa lên được dàn ý, thử lại sau ít phút')
   const d: DuAnYT = {
     id: randomUUID(),
@@ -264,6 +265,7 @@ export async function taoDuAn(o: { baiIds: string[]; yTuong: string; phut: numbe
     the: dy.the.map((t) => t.replace(/^#/, '').trim()).filter(Boolean).slice(0, 20),
     chu_de: dy.chu_de.slice(0, 20) || 'Công nghệ',
     phan: dy.phan.map((p) => ({ tieu_de: p.tieu_de, noi_dung: p.noi_dung, nhip: p.nhip, loi: null, moc: null })),
+    ...(pb ? { phan_bien: { dan_y: pb } } : {}),
   }
   await luuDuAn(d)
   return d
@@ -277,16 +279,32 @@ export async function vietLoiPhan(id: string, k: number) {
   const giay = (d.phut / d.phan.length) * 60
   // Nối mạch: 6 câu cuối chương trước (đã bỏ câu chào / hẹn chương sau) để chương này viết tiếp liền mạch
   const noiTiep = locLoiChao(truoc, false).loi.slice(-6).map((l) => `${l.ai}: ${l.chu}`)
-  const kb =
-    d.loai === 'tieu_su' && d.phim?.nghien_cuu && d.phim.cau_chuyen
-      ? await vietPhanPhim({ ten: d.phim.ten, nghienCuu: d.phim.nghien_cuu, cauChuyen: d.phim.cau_chuyen, k, soCau: Math.round(giay / 5.5), noiTiep, anh: d.phim.anh ?? [] })
-      : await vietPhanYouTube({ nguon: d.nguon_chu, danY: d, k, soCau: Math.round(giay / 4.5), noiTiep })
+  const phim = d.loai === 'tieu_su' && d.phim?.nghien_cuu && d.phim.cau_chuyen ? d.phim : null
+  const viet = (): Promise<{ loi: CauYT[]; moc: { chu: string; bieu_tuong: string } } | null> =>
+    phim
+      ? vietPhanPhim({ ten: phim.ten, nghienCuu: phim.nghien_cuu!, cauChuyen: phim.cau_chuyen!, k, soCau: Math.round(giay / 5.5), noiTiep, anh: phim.anh ?? [] })
+      : vietPhanYouTube({ nguon: d.nguon_chu, danY: d, k, soCau: Math.round(giay / 4.5), noiTiep })
+  // Hội đồng phản biện chấm kịch bản chương; điểm thấp thì viết lại một lần theo góp ý
+  const nguCanh = `${phim ? `Phim tiểu sử hoạt hình về ${phim.ten}` : `Video hoạt hình: ${d.tieu_de}`}, ${d.phut} phút, ${d.phan.length} ${phim ? 'chương' : 'phần'}. Đang chấm ${phim ? 'chương' : 'phần'} ${k}: "${d.phan[k - 1].tieu_de}" — ${d.phan[k - 1].noi_dung}${phim?.cau_chuyen ? `\nBig idea: ${phim.cau_chuyen.big_idea}` : ''}${noiTiep.length ? `\nCuối chương trước:\n${noiTiep.join('\n')}` : ''}`
+  const { kq: kb, pb } = await voiPhanBien(
+    'kich_ban',
+    nguCanh,
+    viet,
+    (x) =>
+      x.loi
+        .map((l) => {
+          const c = l as CauYT & { hanh_dong?: string }
+          return `[${c.ai}|${c.cam_xuc}|${c.boi_canh}|${c.nhan_vat_phu}${c.hanh_dong && c.hanh_dong !== 'khong' ? `|${c.hanh_dong}` : ''}${c.tai_hien ? '|tái hiện' : ''}] ${c.chu}`
+        })
+        .join('\n'),
+    { conGiay: 120 },
+  )
   if (!kb) throw new Error(`AI chưa viết được phần ${k}, thử lại sau ít phút`)
   // Biên tập viên kiểm định: tự sửa nhịp hình ảnh, chấm điểm, ghi chú
   const { loi, ...kd } = kiemDinh(kb.loi as CauYT[], { loai: d.loai, laCuoi: k === d.phan.length, coDai: laCoDai(d) })
   // Đọc lại ngay trước khi lưu: lúc AI viết, phần khác có thể vừa được lưu
   const moi = (await docDuAn(id)) ?? d
-  moi.phan[k - 1] = { ...moi.phan[k - 1], loi, moc: kb.moc, canh: undefined, kiem_dinh: kd } // lời đổi thì phân cảnh cũ không còn đúng
+  moi.phan[k - 1] = { ...moi.phan[k - 1], loi, moc: kb.moc, canh: undefined, kiem_dinh: kd, phan_bien: pb ?? undefined, phan_bien_canh: undefined } // lời đổi thì phân cảnh cũ không còn đúng
   await luuDuAn(moi)
   return moi
 }
@@ -385,56 +403,6 @@ function anhBia(d: DuAnYT) {
   return { chu, chu_de: d.chu_de, kenh: 'Công Nghệ 24H', boi_canh, nguoi_ke: !nhan_vat_chinh && d.phan.some((p) => p.loi?.some((l) => l.ai === 'nguoi_ke')), nhan_vat_chinh, anh_that }
 }
 
-// Bài nhạc nền sẽ dùng: bài đã chọn (nếu còn trong thư viện), không chọn thì bài đầu tiên; 'khong' thì không nhạc
-export async function nhacCuaDuAn(d: DuAnYT) {
-  if (d.nhac === 'khong') return null
-  const ds = await dsNhac().catch(() => [])
-  if (d.nhac === 'cam_xuc') {
-    const theoPhan = nhacTheoCamXuc(d, ds.map((x) => x.ten))
-    return theoPhan.length ? `cam_xuc:${theoPhan.join('|')}` : null
-  }
-  return ds.find((x) => x.ten === d.nhac)?.ten ?? ds[0]?.ten ?? null
-}
-
-// Nhạc theo cảm xúc từng chương (chọn "Theo cảm xúc từng chương"): đặt tên bài nhạc có chữ chỉ cảm xúc — hung-trang /
-// buon / hoi-hop / vui / nhe-nhang — rồi mỗi chương lấy bài hợp với cảm xúc chủ đạo của chương (đếm cam_xuc, cảnh
-// hành động). Không có bài đúng cảm xúc thì lấy bài "nhẹ nhàng", rồi bài bất kỳ. Trả tên bài cho từng chương.
-const TU_CAM_XUC: Record<string, RegExp> = {
-  hung: /hung|hao|epic|anh-hung|chien-thang|vinh-quang/,
-  buon: /buon|sad|bi|tiec|mat-mat/,
-  hoi_hop: /hoi-hop|cang|tension|suspense|kich/,
-  vui: /vui|happy|tuoi|fun/,
-  nhe: /nhe|calm|em|chill|nen/,
-}
-function camXucChuong(loi: CauYT[]): keyof typeof TU_CAM_XUC {
-  const dem = { hung: 0, buon: 0, hoi_hop: 0, vui: 0, nhe: 1 }
-  for (const l of loi) {
-    if (l.cam_xuc === 'buon') dem.buon += 2
-    if (l.cam_xuc === 'lo_lang') dem.hoi_hop += 1
-    if (l.cam_xuc === 'tuc_gian' || l.cam_xuc === 'bat_ngo') dem.hoi_hop += 1.5
-    if (l.cam_xuc === 'vui') dem.vui += 1
-    if (l.cam_xuc === 'khang_dinh') dem.hung += 0.6
-    const hd = (l as CauYT & { hanh_dong?: string }).hanh_dong
-    if (hd === 'xung_tran' || hd === 'ky_binh') dem.hung += 3
-    if (hd === 'phao_hoa' || hd === 'dam_dong') dem.hung += 2
-  }
-  return (Object.entries(dem).sort((a, b) => b[1] - a[1])[0][0]) as keyof typeof TU_CAM_XUC
-}
-function nhacTheoCamXuc(d: DuAnYT, dsTen: string[]): string[] {
-  if (!dsTen.length) return []
-  const boDauTen = (x: string) => x.normalize('NFD').replace(/\p{M}/gu, '').replace(/đ/gi, 'd').toLowerCase().replace(/[^a-z0-9]+/g, '-')
-  return d.phan.map((p) => {
-    const cx = camXucChuong(p.loi ?? [])
-    return dsTen.find((t) => TU_CAM_XUC[cx].test(boDauTen(t))) ?? dsTen.find((t) => TU_CAM_XUC.nhe.test(boDauTen(t))) ?? dsTen[0]
-  })
-}
-
-export async function chonNhacDuAn(id: string, nhac: string, amLuong: number) {
-  const d = await docDuAn(id)
-  if (!d) throw new Error('Không tìm thấy video')
-  await luuDuAn({ ...d, nhac, am_luong_nhac: Math.max(5, Math.min(80, Math.round(amLuong))) })
-}
-
 // "Tên = cách đọc" mỗi dòng → [[tên, cách đọc]]
 export function bangPhatAm(chu?: string): [string, string][] {
   return (chu ?? '')
@@ -488,8 +456,7 @@ export async function trangThaiDuAn(d: DuAnYT, mayNha: string | null): Promise<T
     if (r?.ma === ma[i] && r.loi) return { loai: 'loi', loi: r.loi }
     return { loai: 'chua_dung' }
   })
-  const nhacChon = await nhacCuaDuAn(d)
-  const khop = xong && xong.ma.length === ma.length && xong.ma.every((m, i) => m === ma[i]) && (xong.nhac ?? null) === nhacChon
+  const khop = xong && xong.ma.length === ma.length && xong.ma.every((m, i) => m === ma[i]) && !xong.nhac
   let daGhep: TrangThaiDuAn['xong'] = null
   if (khop) {
     daGhep = { tep: xong.tep, kiem_tra: xong.kiem_tra, moc_chuong: xong.moc_chuong }
@@ -519,13 +486,8 @@ export async function guiDung(d: DuAnYT, chiPhan?: number) {
   if (d.phan.some((p) => !p.loi)) throw new Error('Còn phần chưa có lời thoại, chờ AI viết xong đã')
   const tt = await trangThaiDuAn(d, null)
   const ma = d.phan.map((_, i) => maPhan(d, i + 1))
-  const maNhac = await nhacCuaDuAn(d)
-  // Nhạc theo cảm xúc: "cam_xuc:bài1|bài2|…" → danh sách bài cho từng chương (máy nhà ghép thành một dải nhạc)
-  const nhac = {
-    nhac: maNhac,
-    nhac_phan: maNhac?.startsWith('cam_xuc:') ? maNhac.slice(8).split('|') : null,
-    am_luong_nhac: d.am_luong_nhac ?? 30,
-  }
+  // Video YouTube không ghép nhạc nền (chỉ giọng đọc + âm thanh cảnh)
+  const nhac = { nhac: null }
   const can = d.phan
     .map((_, i) => i + 1)
     .filter((k) => (chiPhan ? k === chiPhan : true) && ['chua_dung', 'loi'].includes(tt.phan[k - 1].loai))
@@ -706,6 +668,10 @@ export async function chayBuocPhim(id: string, buoc: BuocPhim, k?: number) {
   const d = await docDuAn(id)
   if (!d?.phim || d.loai !== 'tieu_su') throw new Error('Không tìm thấy phim')
   const p = d.phim
+  // Hội đồng phản biện: ngữ cảnh chung + nơi ghi kết quả từng khâu
+  const nguCanh = `Phim tiểu sử hoạt hình về ${p.ten}, ${d.phut} phút${p.ghi_chu ? `. Ghi chú của chủ kênh: ${p.ghi_chu.slice(0, 500)}` : ''}${p.cau_chuyen ? `\nTiêu đề: ${d.tieu_de}\nBig idea: ${p.cau_chuyen.big_idea}` : ''}`
+  const pbMoi: Partial<Record<KhauPhanBien, KetQuaPhanBien>> = {}
+  const json = (x: unknown) => JSON.stringify(x)
   if (buoc === 'nghien_cuu') {
     const [wiki, anh] = await Promise.all([nguonWiki(p.ten), anhWiki(p.ten).catch(() => [])])
     p.anh = anh
@@ -713,14 +679,17 @@ export async function chayBuocPhim(id: string, buoc: BuocPhim, k?: number) {
       ...wiki.map((w, i) => ({ ten: `Nguồn ${i + 1} — Wikipedia ${w.ngon_ngu === 'vi' ? 'tiếng Việt' : 'tiếng Anh'}: ${w.tieu_de} (${w.url})`, chu: w.noi_dung })),
       ...(p.tai_lieu ? [{ ten: `Nguồn ${wiki.length + 1} — Tài liệu chủ kênh cung cấp`, chu: p.tai_lieu }] : []),
     ]
-    const kq = await nghienCuuNhanVat(p.ten, p.ghi_chu, ds.map((x) => `<source name="${x.ten}">\n${x.chu}\n</source>`).join('\n\n'))
+    const { kq, pb } = await voiPhanBien('nghien_cuu', nguCanh, () => nghienCuuNhanVat(p.ten, p.ghi_chu, ds.map((x) => `<source name="${x.ten}">\n${x.chu}\n</source>`).join('\n\n')), json)
     if (!kq) throw new Error('AI chưa nghiên cứu được, thử lại sau ít phút')
+    if (pb) pbMoi.nghien_cuu = pb
     p.nghien_cuu = kq
     p.nguon = wiki.map((w) => ({ tieu_de: `Wikipedia (${w.ngon_ngu}): ${w.tieu_de}`, url: w.url }))
   } else if (buoc === 'cau_chuyen') {
     if (!p.nghien_cuu) throw new Error('Chưa có bước nghiên cứu')
-    const kq = await phatTrienCauChuyen({ ten: p.ten, ghiChu: p.ghi_chu, nghienCuu: p.nghien_cuu, phut: d.phut, soPhan: soPhanCho(d.phut) })
+    const nc = p.nghien_cuu
+    const { kq, pb } = await voiPhanBien('cau_chuyen', nguCanh, () => phatTrienCauChuyen({ ten: p.ten, ghiChu: p.ghi_chu, nghienCuu: nc, phut: d.phut, soPhan: soPhanCho(d.phut) }), json)
     if (!kq) throw new Error('AI chưa phát triển được câu chuyện, thử lại sau ít phút')
+    if (pb) pbMoi.cau_chuyen = pb
     p.cau_chuyen = kq
     d.tieu_de = kq.tieu_de.slice(0, 100)
     d.chu_de = kq.chu_de.slice(0, 20) || 'Tiểu sử'
@@ -733,25 +702,38 @@ export async function chayBuocPhim(id: string, buoc: BuocPhim, k?: number) {
   } else if (buoc === 'tao_hinh') {
     if (!p.nghien_cuu || !p.cau_chuyen) throw new Error('Chưa có nghiên cứu và câu chuyện')
     // AI chưa làm được thì dùng hình mặc định để phim vẫn dựng được; bấm "Thiết kế lại" sau
-    p.tao_hinh = (await thietKeNhanVatChinh({ ten: p.ten, nghienCuu: p.nghien_cuu, cauChuyen: p.cau_chuyen })) ?? TAO_HINH_MAC_DINH
+    const nc = p.nghien_cuu
+    const cc = p.cau_chuyen
+    const { kq, pb } = await voiPhanBien('tao_hinh', nguCanh, () => thietKeNhanVatChinh({ ten: p.ten, nghienCuu: nc, cauChuyen: cc }), json)
+    p.tao_hinh = kq ?? TAO_HINH_MAC_DINH
+    if (pb) pbMoi.tao_hinh = pb
   } else if (buoc === 'ho_so') {
     if (!p.nghien_cuu || !p.cau_chuyen) throw new Error('Chưa có nghiên cứu và câu chuyện')
-    const kq = await hoSoHinhAnh({ ten: p.ten, nghienCuu: p.nghien_cuu, cauChuyen: p.cau_chuyen })
+    const nc = p.nghien_cuu
+    const cc = p.cau_chuyen
+    const { kq, pb } = await voiPhanBien('ho_so', nguCanh, () => hoSoHinhAnh({ ten: p.ten, nghienCuu: nc, cauChuyen: cc }), json)
     if (!kq) throw new Error('AI chưa lập được hồ sơ hình ảnh, thử lại sau ít phút')
+    if (pb) pbMoi.ho_so = pb
     p.ho_so = kq
   } else if (buoc === 'phan_canh') {
     const phan = k ? d.phan[k - 1] : undefined
     if (!k || !phan?.loi || !p.cau_chuyen) throw new Error('Chương này chưa có kịch bản')
-    const kq = await phanCanhChuong({ ten: p.ten, hoSo: p.ho_so ?? null, cauChuyen: p.cau_chuyen, k, loi: phan.loi as CauPhim[] })
+    const cc = p.cau_chuyen
+    const loiChuong = phan.loi as CauPhim[]
+    const { kq, pb } = await voiPhanBien('phan_canh', `${nguCanh}\nChương ${k}: ${phan.tieu_de}`, () => phanCanhChuong({ ten: p.ten, hoSo: p.ho_so ?? null, cauChuyen: cc, k, loi: loiChuong }), json)
     if (!kq) throw new Error(`AI chưa phân cảnh được chương ${k}, thử lại sau ít phút`)
     phan.canh = kq
+    phan.phan_bien_canh = pb ?? undefined
   } else {
     if (!p.nghien_cuu || !p.cau_chuyen || d.phan.some((x) => !x.loi)) throw new Error('Chưa đủ kịch bản để đóng gói')
     const kichBan = d.phan
       .map((x, i) => `## Chương ${i + 1}: ${x.tieu_de}\n${(x.loi ?? []).map((l) => `[${l.ai}] ${l.chu}`).join('\n')}`)
       .join('\n\n')
-    const kq = await dongGoiYouTube({ ten: p.ten, nghienCuu: p.nghien_cuu, cauChuyen: p.cau_chuyen, kichBan })
+    const nc = p.nghien_cuu
+    const cc = p.cau_chuyen
+    const { kq, pb } = await voiPhanBien('dong_goi', nguCanh, () => dongGoiYouTube({ ten: p.ten, nghienCuu: nc, cauChuyen: cc, kichBan }), json)
     if (!kq) throw new Error('AI chưa đóng gói được, thử lại sau ít phút')
+    if (pb) pbMoi.dong_goi = pb
     p.dong_goi = kq
     d.tieu_de = (kq.top5[0] ?? d.tieu_de).slice(0, 100)
     d.mo_ta = kq.mo_ta
@@ -759,6 +741,7 @@ export async function chayBuocPhim(id: string, buoc: BuocPhim, k?: number) {
   }
   // Bước "câu chuyện" đặt lại các chương; bước khác đọc lại bản mới nhất rồi chỉ ghi phần của mình
   // (lúc AI chạy, chương khác có thể vừa được viết / phân cảnh)
+  d.phan_bien = { ...d.phan_bien, ...pbMoi }
   let ketQua = d
   if (buoc !== 'cau_chuyen') {
     const moi = (await docDuAn(id)) ?? d
@@ -768,7 +751,8 @@ export async function chayBuocPhim(id: string, buoc: BuocPhim, k?: number) {
       mo_ta: d.mo_ta,
       the: d.the,
       phim: { ...moi.phim!, ...p },
-      phan: moi.phan.map((x, i) => (buoc === 'phan_canh' && i === (k ?? 0) - 1 ? { ...x, canh: d.phan[i].canh } : x)),
+      phan_bien: { ...moi.phan_bien, ...pbMoi },
+      phan: moi.phan.map((x, i) => (buoc === 'phan_canh' && i === (k ?? 0) - 1 ? { ...x, canh: d.phan[i].canh, phan_bien_canh: d.phan[i].phan_bien_canh } : x)),
     }
   }
   await luuDuAn(ketQua)

@@ -7,7 +7,7 @@ import type { DuAnYT, KiemTraVideo, PhanYT, TrangThaiDuAn, TrangThaiPhan, TrangT
 import { thongBao } from '@/app/ThongBao'
 import { locLoiChao } from '@/lib/kiemDinh'
 import { IconChep, IconMo, IconXong, IconYouTube, Xoay } from '@/app/BieuTuong'
-import { bienTapYouTube, chayBuocPhimYouTube, chonNhacYouTube, layShortsYouTube, luuPhatAmYouTube, taoShortsYouTube, dungVideoYouTube, kiemDinhYouTube, layTrangThaiYouTube, luuThongTinYouTube, vietPhanYouTube, xoaVideoYouTube } from '../actions'
+import { bienTapYouTube, chayBuocPhimYouTube, layShortsYouTube, luuPhatAmYouTube, taoShortsYouTube, dungVideoYouTube, kiemDinhYouTube, layTrangThaiYouTube, luuThongTinYouTube, vietPhanYouTube, xoaVideoYouTube } from '../actions'
 import HoSoPhim, { KhoiDuLieu } from './HoSoPhim'
 
 const NGUOI: Record<string, string> = {
@@ -125,6 +125,37 @@ function NutChep({ chu, ten = 'Chép' }: { chu: string; ten?: string }) {
   )
 }
 
+// Hội đồng kiểm duyệt & phản biện (lib/phanBien.ts): điểm, đạt / chưa, vấn đề, góp ý, đã làm lại mấy lần
+const TEN_KHAU: Record<string, string> = {
+  dan_y: 'Dàn ý video',
+  nghien_cuu: 'Nghiên cứu tư liệu',
+  cau_chuyen: 'Phát triển câu chuyện',
+  tao_hinh: 'Thiết kế nhân vật chính',
+  ho_so: 'Hồ sơ hình ảnh',
+  dong_goi: 'Đóng gói YouTube',
+}
+type PB = NonNullable<PhanYT['phan_bien']>
+function PhanBien({ pb, ten }: { pb: PB; ten?: string }) {
+  const mau = pb.dat ? 'bg-emerald-50 text-emerald-800 ring-emerald-200' : pb.diem >= 6 ? 'bg-amber-50 text-amber-800 ring-amber-200' : 'bg-red-50 text-red-700 ring-red-200'
+  return (
+    <details className={`rounded-xl p-3 ring-1 ${mau}`}>
+      <summary className="cursor-pointer text-sm font-semibold">
+        ⚖️ {ten ? `${ten}: ` : 'Hội đồng phản biện: '}
+        {pb.diem}/10 · {pb.dat ? 'Đạt ✓' : 'Chưa đạt'}
+        {pb.lan > 1 && ' · đã làm lại theo góp ý'}
+      </summary>
+      {pb.van_de.length > 0 && (
+        <ul className="mt-2 grid gap-1 text-sm">
+          {pb.van_de.map((v, i) => (
+            <li key={i}>• {v}</li>
+          ))}
+        </ul>
+      )}
+      {pb.goi_y && <p className="mt-2 text-sm">→ {pb.goi_y}</p>}
+    </details>
+  )
+}
+
 // Biên tập viên kiểm định (lib/kiemDinh.ts): điểm + ghi chú nên xem lại + những gì đã tự sửa
 function KiemDinh({ kd }: { kd: NonNullable<PhanYT['kiem_dinh']> }) {
   const mau = kd.diem >= 85 ? 'bg-emerald-50 text-emerald-800 ring-emerald-200' : kd.diem >= 65 ? 'bg-amber-50 text-amber-800 ring-amber-200' : 'bg-red-50 text-red-700 ring-red-200'
@@ -175,7 +206,7 @@ function KiemTra({ kt }: { kt: KiemTraVideo }) {
   )
 }
 
-export default function ChiTiet({ dau, ttDau, dsNhac }: { dau: DuAnYT; ttDau: TrangThaiDuAn; dsNhac: { ten: string; kichThuoc: number }[] }) {
+export default function ChiTiet({ dau, ttDau }: { dau: DuAnYT; ttDau: TrangThaiDuAn }) {
   const router = useRouter()
   const [d, setD] = useState(dau)
   const [tt, setTt] = useState(ttDau)
@@ -554,54 +585,6 @@ export default function ChiTiet({ dau, ttDau, dsNhac }: { dau: DuAnYT; ttDau: Tr
         </section>
       )}
 
-      {/* Nhạc nền: máy nhà trộn dưới cả video, tự nhỏ đi khi có lời */}
-      <section className="the flex flex-wrap items-center gap-x-4 gap-y-2 p-4">
-        <span className="font-bold">🎵 Nhạc nền</span>
-        <select
-          value={d.nhac ?? ''}
-          disabled={dangLam}
-          onChange={(e) => {
-            const nhac = e.target.value
-            setD({ ...d, nhac })
-            startTransition(async () => {
-              const kq = await chonNhacYouTube(d.id, nhac, d.am_luong_nhac ?? 30)
-              if (!kq.ok) return thongBao('loi', kq.loi)
-              await capNhatTt()
-            })
-          }}
-          className="input w-auto"
-        >
-          <option value="">Tự chọn (bài đầu tiên trong thư viện)</option>
-          {dsNhac.map((n, i) => (
-            <option key={n.ten} value={n.ten}>
-              Bài {i + 1} · {(n.kichThuoc / 1e6).toFixed(1)} MB
-            </option>
-          ))}
-          <option value="cam_xuc">🎭 Theo cảm xúc từng chương (tự chọn bài)</option>
-          <option value="khong">Không dùng nhạc nền</option>
-        </select>
-        {d.nhac !== 'khong' && (
-          <label className="flex items-center gap-2 text-sm text-slate-600">
-            Âm lượng
-            <input
-              type="range"
-              min={10}
-              max={60}
-              step={5}
-              value={d.am_luong_nhac ?? 30}
-              disabled={dangLam}
-              onChange={(e) => setD({ ...d, am_luong_nhac: Number(e.target.value) })}
-              onPointerUp={() => startTransition(async () => void (await chonNhacYouTube(d.id, d.nhac ?? '', d.am_luong_nhac ?? 30)))}
-              className="accent-red-600"
-            />
-            {d.am_luong_nhac ?? 30}%
-          </label>
-        )}
-        <p className="w-full text-xs text-slate-400">
-          Theo cảm xúc từng chương: đặt tên bài nhạc có chữ hung-trang, buon, hoi-hop, vui hoặc nhe-nhang (ví dụ &quot;hoi-hop-trong-tran.mp3&quot;), mỗi chương sẽ dùng bài hợp cảm xúc, chuyển bài êm giữa các chương. Nhạc tự nhỏ đi khi có lời nói, to lên ở chỗ chuyển cảnh và màn kết. Đổi nhạc sau khi đã dựng xong thì bấm Dựng video: máy nhà chỉ ghép lại, không dựng lại hình. Thêm bài nhạc ở trang TikTok → Nhạc nền.
-        </p>
-      </section>
-
       {/* Cách đọc tên riêng: chỉ đổi chữ đưa vào giọng đọc */}
       <section className="the grid gap-2 p-4">
         <span className="font-bold">🗣 Cách đọc tên riêng</span>
@@ -735,6 +718,21 @@ export default function ChiTiet({ dau, ttDau, dsNhac }: { dau: DuAnYT; ttDau: Tr
         </section>
       )}
 
+      {d.phan_bien && Object.keys(d.phan_bien).length > 0 && (
+        <section className="the grid gap-2 p-5">
+          <h2 className="font-bold">⚖️ Hội đồng kiểm duyệt & phản biện</h2>
+          <p className="text-xs text-slate-500">
+            Sau mỗi khâu AI làm xong, một hội đồng AI khác chấm theo tiêu chí riêng của khâu đó và theo kỳ vọng khán giả. Dưới 6 điểm thì khâu đó tự làm lại một lần theo góp ý. Điểm từng chương nằm trong phần Kịch bản.
+          </p>
+          <div className="grid gap-2">
+            {Object.entries(TEN_KHAU).map(([k, ten]) => {
+              const pb = d.phan_bien?.[k as keyof typeof d.phan_bien]
+              return pb ? <PhanBien key={k} pb={pb} ten={ten} /> : null
+            })}
+          </div>
+        </section>
+      )}
+
       {d.loai === 'tieu_su' && <HoSoPhim d={d} chay={(buoc) => void chayLaiBuoc(buoc)} dangChay={!!dangChay} />}
 
       {/* Các phần */}
@@ -798,7 +796,9 @@ export default function ChiTiet({ dau, ttDau, dsNhac }: { dau: DuAnYT; ttDau: Tr
               <p className="text-sm text-slate-600">{p.noi_dung}</p>
               {tp.loai === 'dang_lam' && <p className="text-xs text-violet-700">{tp.buoc}</p>}
               {tp.loai === 'loi' && <p className="text-xs text-red-600">Lỗi: {tp.loi}</p>}
+              {p.phan_bien && <PhanBien pb={p.phan_bien} ten="Hội đồng chấm kịch bản" />}
               {p.kiem_dinh && <KiemDinh kd={p.kiem_dinh} />}
+              {p.phan_bien_canh && <PhanBien pb={p.phan_bien_canh} ten="Hội đồng chấm phân cảnh" />}
               {p.loi && (
                 <details className="rounded-xl bg-slate-50 p-3 ring-1 ring-slate-100">
                   <summary className="cursor-pointer text-sm font-semibold text-slate-600">

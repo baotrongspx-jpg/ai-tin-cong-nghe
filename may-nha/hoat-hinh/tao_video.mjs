@@ -9,6 +9,7 @@ import { NHAN_VAT_PHU, nguoiKeSvg, nhanVatChinhSvg } from './nhanVatPhu.mjs'
 import { meoSvg, robotSvg } from './nhanVatChinh.mjs'
 import { DAO_CU } from './daoCu.mjs'
 import { HANH_DONG } from './hanhDong.mjs'
+import { lopSong } from './lopSong.mjs'
 import { CSS_MINH_HOA, MINH_HOA, mocMoDau } from './minhHoa.mjs'
 
 const GOC = resolve(process.argv[2] ?? '.')
@@ -67,8 +68,9 @@ const batDau = []
 // hiện đúng trong câu đó; không có thì như cũ: 2,4 giây đầu phần im lặng là màn tiêu đề. Màn kết 6 giây cuối video.
 const I_CHUONG = the_chuong ? loi.findIndex((l) => l.la_chuong) : -1
 const MO_CHUONG = the_chuong && I_CHUONG < 0 ? 2.4 : 0
-// Màn kết: khung ngang (YouTube) 20 giây — đủ chỗ cho "màn hình kết thúc" của YouTube (2 ô video đề xuất); dọc 6 giây
-const MAN_KET = man_ket ? (NGANG ? 20 : 6) : 0
+// Màn kết: khung ngang (YouTube) 8 giây — vừa đủ cho "màn hình kết thúc" của YouTube (tối thiểu 5 giây, 2 ô video
+// đề xuất); dọc 6 giây
+const MAN_KET = man_ket ? (NGANG ? 8 : 6) : 0
 let t = 0.4 + MO_CHUONG // nhịp mở đầu trước câu đầu tiên
 for (const [i, d] of doDai.entries()) {
   // Khoảng lặng có chủ đích (AI đặt lang) trước câu quan trọng: im 0,9 giây, chỉ còn âm nền
@@ -121,33 +123,68 @@ tw.push(`tl.from("#o-robot", { x: ${NGANG ? 1150 : 700}, duration: 0.6, ease: "b
 // Các câu liền nhau cùng một nhân vật phụ gom thành một lần xuất hiện; phuCuaCau[i] là id phần tử của họ ở câu i.
 // Các câu có nhân vật phụ cách nhau tối đa 2 câu và chỉ gồm tối đa 2 người khác nhau thì chung một "cảnh": cả hai cùng
 // đứng trên sân khấu (lệch trái / phải) cho tới hết cảnh, để họ nói chuyện, phỏng vấn, tranh luận với nhau.
-const cumPhu = []
-loi.forEach((l, i) => {
-  const ten = NHAN_VAT_PHU[l.ai] ? l.ai : NHAN_VAT_PHU[l.nhan_vat_phu] ? l.nhan_vat_phu : null
-  if (!ten) return
-  const c = cumPhu.at(-1)
-  if (c && i - c.het <= 2 && (c.ds.some((x) => x.ten === ten) || c.ds.length < 2)) {
-    c.het = i
-    const x = c.ds.find((y) => y.ten === ten)
-    if (x) x.het = i
-    else c.ds.push({ ten, tu: i, het: i })
-  } else cumPhu.push({ tu: i, het: i, ds: [{ ten, tu: i, het: i }] })
-})
-// Mỗi người trong mỗi cảnh là một phần tử phu<k>: xuất hiện ở câu đầu tiên của họ, nói / được nhắc xong câu cuối
-// của chính họ thì rời sân khấu ngay; lech: độ lệch ngang; hetCum: câu cuối của cả cảnh (Mèo / Bit trở về chỗ cũ)
+// Mỗi người có mặt theo "đợt": các câu họ nói hoặc được nhắc tới (nhan_vat_phu) cách nhau tối đa 4 câu thì họ Ở LẠI sân
+// khấu suốt đợt (không ra rồi vào lại); hết đợt mới rời đi. Sân khấu tối đa 2 người cùng lúc: người thứ ba tới thì người
+// có đợt kết thúc sớm nhất nhường chỗ (đợt của họ được cắt tại câu cuối của chính họ trước đó, phần còn lại thành đợt
+// sau). Đứng một mình thì ở giữa, có người cùng đứng thì lệch trái / phải.
+const GIAN_DOT = 4
+const cuaCau = (l) => (NHAN_VAT_PHU[l.ai] ? l.ai : NHAN_VAT_PHU[l.nhan_vat_phu] ? l.nhan_vat_phu : null)
+const dotPhu = []
+{
+  const theoNguoi = {}
+  loi.forEach((l, i) => {
+    const ten = cuaCau(l)
+    if (ten) (theoNguoi[ten] ??= []).push(i)
+  })
+  for (const [ten, ds] of Object.entries(theoNguoi)) {
+    let dot = null
+    for (const i of ds) {
+      if (dot && i - dot.het <= GIAN_DOT) {
+        dot.het = i
+        dot.cau.push(i)
+      } else dotPhu.push((dot = { ten, tu: i, het: i, cau: [i] }))
+    }
+  }
+  dotPhu.sort((x, y) => x.tu - y.tu)
+  // Tối đa 2 người cùng lúc: đợt mới chen vào thì cắt đợt đang chiếm chỗ (kết thúc sớm nhất) tại câu cuối của nó trước
+  // lúc chen; phần câu còn lại của đợt bị cắt thành đợt mới, xếp lại
+  for (let k = 0; k < dotPhu.length; k++) {
+    const d = dotPhu[k]
+    const dangCo = dotPhu.slice(0, k).filter((x) => x.het >= d.tu && x.tu <= d.tu)
+    if (dangCo.length < 2) continue
+    const nhuong = dangCo.sort((x, y) => x.het - y.het)[0]
+    const truoc = nhuong.cau.filter((i) => i < d.tu)
+    const sau = nhuong.cau.filter((i) => i >= d.tu)
+    nhuong.cau = truoc
+    nhuong.het = truoc.at(-1) ?? nhuong.tu
+    if (sau.length) {
+      dotPhu.push({ ten: nhuong.ten, tu: sau[0], het: sau.at(-1), cau: sau })
+      dotPhu.sort((x, y) => x.tu - y.tu)
+    }
+  }
+}
 const LECH_PHU = 140
-const doanPhu = cumPhu.flatMap((c) =>
-  c.ds.map((x, j) => ({ ten: x.ten, tu: x.tu, het: x.het, hetCum: c.het, lech: c.ds.length === 2 ? (j ? LECH_PHU : -LECH_PHU) : 0, doi: c.ds.length === 2 })),
-)
+const chongNhau = (x, y) => x !== y && x.tu <= y.het && y.tu <= x.het
+const doanPhu = dotPhu.map((d) => ({ ...d, ban: dotPhu.filter((x) => chongNhau(x, d)) }))
+doanPhu.forEach((d, k) => {
+  // Đứng một mình suốt đợt: ở giữa; có người cùng đứng: người tới trước bên trái, người tới sau bên phải
+  d.doi = d.ban.length > 0
+  d.lech = !d.doi ? 0 : d.ban.some((x) => doanPhu.indexOf(x) < k && x.lech <= 0) ? LECH_PHU : -LECH_PHU
+})
+// hetCum: câu cuối của cả khối liên tục có người trên sân khấu (Mèo / Bit trở về chỗ cũ khi người cuối cùng rời đi)
+for (const d of doanPhu) {
+  let het = d.het
+  for (let doi = true; doi; ) {
+    doi = false
+    for (const x of doanPhu) if (x.tu <= het + 1 && x.het > het && x.tu >= d.tu - 50) ((het = x.het), (doi = true))
+  }
+  d.hetCum = het
+}
 const phuCuaCau = {}
 const viTriPhu = {} // id → toạ độ x giữa người đó (để máy quay cận vào)
 doanPhu.forEach((dp, k) => {
   viTriPhu[`phu${k}`] = 540 + dp.lech
-  for (let i = dp.tu; i <= dp.het; i++) {
-    const l = loi[i]
-    const ten = NHAN_VAT_PHU[l.ai] ? l.ai : l.nhan_vat_phu
-    if (ten === dp.ten) phuCuaCau[i] = `phu${k}`
-  }
+  for (const i of dp.cau) phuCuaCau[i] = `phu${k}`
 })
 const laPhu = (ai) => !!NHAN_VAT_PHU[ai]
 // Ảnh thật (phim tiểu sử): các câu liền nhau cùng một ảnh gom một đoạn. Kiểu đặt: đoạn chỉ có người kể (Mèo / Bit đã
@@ -428,6 +465,9 @@ const nenCanh = doanCanh.map((dc, k) => {
   const het = dc.het === loi.length - 1 ? TONG : batDau[dc.het + 1]
   const bc = BOI_CANH[dc.ten](`bc${k}`)
   tw.push(...bc.tw(t0, het - t0))
+  // Lớp sự sống + chiều sâu (người đi đường, chim, nắng xiên, bụi, mù xa, viền tối) — lopSong.mjs
+  const song = lopSong(dc.ten, `bc${k}`, { f, lap, NGANG })
+  tw.push(...song.tw(t0, het - t0))
   if (k) {
     chuyenCanh.push({ i: dc.tu, t: t0, kieu })
     const truoc = `#bc${k - 1}`
@@ -460,8 +500,8 @@ const nenCanh = doanCanh.map((dc, k) => {
   // với bản giữa nên các chuyển động (chọn theo id) chạy đồng thời ở cả ba bản
   const guong = bc.svg.replace(/<text\b[\s\S]*?<\/text>/g, '')
   const svg = NGANG
-    ? `<svg class="nen-svg" viewBox="-1080 0 3240 1920" width="3240" height="1920" style="margin-left:-1080px"><g>${bc.svg}</g><g transform="scale(-1 1)">${guong}</g><g transform="translate(2160 0) scale(-1 1)">${guong}</g></svg>`
-    : `<svg class="nen-svg" viewBox="0 0 1080 1920" width="1080" height="1920">${bc.svg}</svg>`
+    ? `<svg class="nen-svg" viewBox="-1080 0 3240 1920" width="3240" height="1920" style="margin-left:-1080px"><g>${bc.svg}</g><g transform="scale(-1 1)">${guong}</g><g transform="translate(2160 0) scale(-1 1)">${guong}</g>${song.svg}</svg>`
+    : `<svg class="nen-svg" viewBox="0 0 1080 1920" width="1080" height="1920">${bc.svg}${song.svg}</svg>`
   return `<div id="bc${k}" class="lop-nen"${k ? ' style="opacity:0"' : ''}>${svg}</div>`
 })
 
@@ -521,7 +561,7 @@ const nvPhu = doanPhu.map((dp, k) => {
   tw.push(`tl.to("#o-robot", { x: ${dp.doi ? 170 : 80}, duration: 0.5, ease: "power2.inOut" }, ${f(vao)});`)
   // Mèo / Bit về chỗ cũ khi người cuối cùng của cảnh rời đi
   if (dp.het === dp.hetCum) tw.push(`tl.to(["#o-meo", "#o-robot"], { x: 0, duration: 0.5, ease: "power2.inOut" }, ${f(het - 0.1)});`)
-  return `<div id="${id}" class="nv-phu" style="left:${354 + dp.lech}px"><svg viewBox="${NHAN_VAT_PHU[dp.ten].viewBox ?? '0 0 400 600'}" width="372" height="558" class="nv">${NHAN_VAT_PHU[dp.ten].svg(id)}</svg></div>`
+  return `<div id="${id}" class="nv-phu" data-ten="${dp.ten}" style="left:${354 + dp.lech}px"><svg viewBox="${NHAN_VAT_PHU[dp.ten].viewBox ?? '0 0 400 600'}" width="372" height="558" class="nv">${NHAN_VAT_PHU[dp.ten].svg(id)}</svg></div>`
 })
 
 // ── Chỉ dẫn đạo diễn AI chọn cho từng câu (khi có): khung hình + chuyển động máy quay ─

@@ -146,30 +146,36 @@ const dotPhu = []
     }
   }
   dotPhu.sort((x, y) => x.tu - y.tu)
-  // Tối đa 2 người cùng lúc: đợt mới chen vào thì cắt đợt đang chiếm chỗ (kết thúc sớm nhất) tại câu cuối của nó trước
-  // lúc chen; phần câu còn lại của đợt bị cắt thành đợt mới, xếp lại
-  for (let k = 0; k < dotPhu.length; k++) {
-    const d = dotPhu[k]
-    const dangCo = dotPhu.slice(0, k).filter((x) => x.het >= d.tu && x.tu <= d.tu)
-    if (dangCo.length < 2) continue
-    const nhuong = dangCo.sort((x, y) => x.het - y.het)[0]
-    const truoc = nhuong.cau.filter((i) => i < d.tu)
-    const sau = nhuong.cau.filter((i) => i >= d.tu)
-    nhuong.cau = truoc
-    nhuong.het = truoc.at(-1) ?? nhuong.tu
+  // Người mới bước vào: ai đang đứng mà KHÔNG tham gia câu ngay trước / câu này (không phải đang nói chuyện qua lại với
+  // người mới) là đã hết nhiệm vụ → rời đi trước (đợt của họ cắt tại câu cuối của chính họ; nếu lát nữa còn được nhắc thì
+  // vào lại thành đợt sau). Còn lại vẫn quá 2 người thì người hết đợt sớm nhất nhường chỗ.
+  const cat = (x, tu) => {
+    const truoc = x.cau.filter((i) => i < tu)
+    const sau = x.cau.filter((i) => i >= tu)
+    x.cau = truoc
+    x.het = truoc.at(-1) ?? x.tu
     if (sau.length) {
-      dotPhu.push({ ten: nhuong.ten, tu: sau[0], het: sau.at(-1), cau: sau })
-      dotPhu.sort((x, y) => x.tu - y.tu)
+      dotPhu.push({ ten: x.ten, tu: sau[0], het: sau.at(-1), cau: sau })
+      dotPhu.sort((p, q) => p.tu - q.tu)
     }
   }
+  for (let k = 0; k < dotPhu.length; k++) {
+    const d = dotPhu[k]
+    for (const x of dotPhu.slice(0, k).filter((x) => x.het >= d.tu && x.tu < d.tu && x.cau.some((i) => i < d.tu))) {
+      if (!x.cau.includes(d.tu - 1) && !x.cau.includes(d.tu)) cat(x, d.tu)
+    }
+    const dangCo = dotPhu.slice(0, k).filter((x) => x.het >= d.tu && x.tu <= d.tu)
+    if (dangCo.length >= 2) cat(dangCo.sort((x, y) => x.het - y.het)[0], d.tu)
+  }
 }
-const LECH_PHU = 140
+const LECH_PHU = 200
 const chongNhau = (x, y) => x !== y && x.tu <= y.het && y.tu <= x.het
-const doanPhu = dotPhu.map((d) => ({ ...d, ban: dotPhu.filter((x) => chongNhau(x, d)) }))
+const doanPhu = dotPhu.map((d) => ({ ...d }))
 doanPhu.forEach((d, k) => {
-  // Đứng một mình suốt đợt: ở giữa; có người cùng đứng: người tới trước bên trái, người tới sau bên phải
-  d.doi = d.ban.length > 0
-  d.lech = !d.doi ? 0 : d.ban.some((x) => doanPhu.indexOf(x) < k && x.lech <= 0) ? LECH_PHU : -LECH_PHU
+  // Đứng một mình suốt đợt: ở giữa; có người cùng đứng: người tới trước bên trái, người tới sau đứng phía còn trống
+  const ban = doanPhu.filter((x) => chongNhau(x, d))
+  d.doi = ban.length > 0
+  d.lech = !d.doi ? 0 : ban.some((x) => doanPhu.indexOf(x) < k && x.lech === -LECH_PHU) ? LECH_PHU : -LECH_PHU
 })
 // hetCum: câu cuối của cả khối liên tục có người trên sân khấu (Mèo / Bit trở về chỗ cũ khi người cuối cùng rời đi)
 for (const d of doanPhu) {
@@ -542,8 +548,10 @@ const nvPhu = doanPhu.map((dp, k) => {
   // Đi bộ vào từ mép gần chỗ họ đứng (người bên trái vào từ trái), xong bước trước khi câu của họ bắt đầu; không sớm
   // hơn lúc câu trước dứt tiếng. Bước đi: nhún người + đánh hai tay, số bước lẻ để kết thúc đúng tư thế
   const ben = dp.lech < 0 || (dp.lech === 0 && k % 2) ? -1 : 1
-  const vao = Math.max(dp.tu ? batDau[dp.tu - 1] + doDai[dp.tu - 1] - 0.3 : 0, t0 - 0.85)
-  const diVao = Math.max(0.45, Math.min(0.8, t0 - vao))
+  // Người vừa xong việc ở câu trước rời đi từ 0,3 giây cuối câu đó → người mới chỉ bước vào khi họ đã đi hẳn
+  const raTruoc = Math.max(0, ...doanPhu.filter((x) => x !== dp && x.het === dp.tu - 1).map((x) => batDau[x.het] + doDai[x.het] + 0.05))
+  const vao = Math.max(raTruoc, dp.tu ? batDau[dp.tu - 1] + doDai[dp.tu - 1] - 0.3 : 0, t0 - 0.85)
+  const diVao = Math.max(0.4, Math.min(0.8, t0 + 0.3 - vao))
   tw.push(`tl.fromTo("#${id}", { opacity: 0, x: ${ben * 620}, y: 0, scale: 1 }, { opacity: 1, x: 0, duration: ${f(diVao)}, ease: "power1.out" }, ${f(vao)});`)
   tw.push(`tl.fromTo("#${id} svg", { y: 0 }, { y: -14, duration: ${f(diVao / 6)}, yoyo: true, repeat: 5, ease: "sine.inOut" }, ${f(vao)});`)
   tw.push(`tl.fromTo(["#${id}-tay-trai", "#${id}-tay-phai"], { rotation: (i) => (i ? -22 : 22) }, { rotation: (i) => (i ? 22 : -22), duration: ${f(diVao / 3)}, yoyo: true, repeat: 2, ease: "sine.inOut" }, ${f(vao)});`)
@@ -553,12 +561,13 @@ const nvPhu = doanPhu.map((dp, k) => {
   tw.push(`tl.to("#${id}-tay-phai", { rotation: 0, duration: 0.3 }, ${f(t0 + 1.9)});`)
   tw.push(`tl.to("#${id}-dau", { rotation: 6, duration: 0.5, yoyo: true, repeat: ${lap(het - t0 - 2.2, 0.5) | 1}, ease: "sine.inOut" }, ${f(t0 + 2.2)});`)
   // Rời sân khấu: quay lưng đi ra phía mép đã vào
-  tw.push(`tl.to("#${id}", { x: ${ben * 620}, opacity: 0, duration: 0.6, ease: "power1.in" }, ${f(het - 0.1)});`)
-  tw.push(`tl.to("#${id} svg", { y: -12, duration: 0.1, yoyo: true, repeat: 5, ease: "sine.inOut" }, ${f(het - 0.1)});`)
+  // Hết nhiệm vụ: rời nhanh (0,35 giây) ngay cuối câu cuối của mình, nhường chỗ cho người kế tiếp
+  tw.push(`tl.to("#${id}", { x: ${ben * 420}, opacity: 0, duration: 0.35, ease: "power2.in" }, ${f(het - 0.3)});`)
+  tw.push(`tl.to("#${id} svg", { y: -12, duration: 0.1, yoyo: true, repeat: 3, ease: "sine.inOut" }, ${f(het - 0.3)});`)
   // Không ghi tên trên đầu (trang phục tự nói lên họ là ai); hai nhân vật chính dạt sang hai bên chừa chỗ cho nhân vật phụ
   // Hai người cùng đứng thì Mèo / Bit dạt xa hơn
-  tw.push(`tl.to("#o-meo", { x: ${dp.doi ? -170 : -80}, duration: 0.5, ease: "power2.inOut" }, ${f(vao)});`)
-  tw.push(`tl.to("#o-robot", { x: ${dp.doi ? 170 : 80}, duration: 0.5, ease: "power2.inOut" }, ${f(vao)});`)
+  tw.push(`tl.to("#o-meo", { x: ${dp.doi ? -240 : -80}, duration: 0.5, ease: "power2.inOut" }, ${f(vao)});`)
+  tw.push(`tl.to("#o-robot", { x: ${dp.doi ? 240 : 80}, duration: 0.5, ease: "power2.inOut" }, ${f(vao)});`)
   // Mèo / Bit về chỗ cũ khi người cuối cùng của cảnh rời đi
   if (dp.het === dp.hetCum) tw.push(`tl.to(["#o-meo", "#o-robot"], { x: 0, duration: 0.5, ease: "power2.inOut" }, ${f(het - 0.1)});`)
   return `<div id="${id}" class="nv-phu" data-ten="${dp.ten}" style="left:${354 + dp.lech}px"><svg viewBox="${NHAN_VAT_PHU[dp.ten].viewBox ?? '0 0 400 600'}" width="372" height="558" class="nv">${NHAN_VAT_PHU[dp.ten].svg(id)}</svg></div>`

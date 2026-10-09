@@ -76,9 +76,14 @@ function nguoi(id, o) {
     <ellipse cx="152" cy="212" rx="15" ry="9" fill="#fb718566"/><ellipse cx="248" cy="212" rx="15" ry="9" fill="#fb718566"/>
     ${gia ? `<path d="M158 150 Q172 144 186 150 M214 150 Q228 144 242 150 M150 208 Q156 216 152 226 M250 208 Q244 216 248 226" fill="none" stroke="${daToi}" stroke-width="3.5" stroke-linecap="round"/>` : ''}
     ${tocTruoc}
-    <path d="M154 167 Q170 158 186 165" fill="none" stroke="${may}" stroke-width="6" stroke-linecap="round"/><path d="M214 165 Q230 158 246 167" fill="none" stroke="${may}" stroke-width="6" stroke-linecap="round"/>
+    <g id="${id}-may-trai"><path d="M154 167 Q170 158 186 165" fill="none" stroke="${may}" stroke-width="6" stroke-linecap="round"/></g><g id="${id}-may-phai"><path d="M214 165 Q230 158 246 167" fill="none" stroke="${may}" stroke-width="6" stroke-linecap="round"/></g>
     ${mat || matMacDinh(undefined, nu)}
     <path d="M196 200 Q201 211 207 204" fill="none" stroke="${daToi}" stroke-width="4" stroke-linecap="round"/>
+    <!-- Biểu cảm (ẩn sẵn, tao_video.mjs bật theo cảm xúc): má ửng, nước mắt, mồ hôi, gân giận -->
+    <g id="${id}-ma-hong" opacity="0"><ellipse cx="150" cy="212" rx="20" ry="11" fill="#f43f5e" opacity="0.55"/><ellipse cx="250" cy="212" rx="20" ry="11" fill="#f43f5e" opacity="0.55"/></g>
+    <g id="${id}-nuoc-mat" opacity="0"><path d="M164 204 q-7 14 0 20 q7 -6 0 -20 Z M236 204 q-7 14 0 20 q7 -6 0 -20 Z" fill="#60a5fa" stroke="#1d4ed8" stroke-width="2"/></g>
+    <g id="${id}-mo-hoi" opacity="0"><path d="M266 128 q-12 22 0 30 q12 -8 0 -30 Z" fill="#bae6fd" stroke="#0284c7" stroke-width="3"/></g>
+    <g id="${id}-gian" opacity="0"><path d="M232 112 l10 10 m6 -14 l-4 14 m14 0 l-14 2 m-2 6 l-10 10" stroke="#dc2626" stroke-width="5" stroke-linecap="round"/></g>
     <g id="${id}-mieng-dong"><path d="M182 222 Q200 236 218 222" fill="none" stroke="${nu ? '#be185d' : VIEN}" stroke-width="6" stroke-linecap="round"/></g>
     <g id="${id}-mieng-mo" opacity="0"><ellipse cx="200" cy="226" rx="16" ry="14" fill="#7f1d1d" stroke="${nu ? '#be185d' : VIEN}" stroke-width="4"/><ellipse cx="200" cy="233" rx="9" ry="5" fill="#fb7185"/></g>
   </g>`

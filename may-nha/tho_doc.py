@@ -171,6 +171,9 @@ def ten_tep(tieu_de):
 VIEC_HIEN_TAI = {}
 
 
+BUOC_CUOI = {}  # {duong, them, buoc, phan_tram, tu}: bước đang làm (TienDo.bao ghi), bao_song gửi lại mỗi 20 giây
+
+
 def bao_hien_tai(buoc, phan_tram=None):
     if not VIEC_HIEN_TAI:
         return
@@ -195,6 +198,9 @@ class TienDo:
         if not ep and (self.cuoi == (phan_tram, buoc) or time.time() - self.lan < 3):
             return
         self.lan, self.cuoi = time.time(), (phan_tram, buoc)
+        if BUOC_CUOI.get('buoc') != buoc or BUOC_CUOI.get('duong') != self.duong:
+            BUOC_CUOI.update({'tu': time.time()})
+        BUOC_CUOI.update({'duong': self.duong, 'them': self.them, 'buoc': buoc, 'phan_tram': phan_tram})
         try:
             gui(self.duong, json.dumps({**self.them, 'phanTram': phan_tram, 'buoc': buoc, 'luc': int(time.time() * 1000)}, ensure_ascii=False), 'application/json')
             bao_hien_tai(buoc, phan_tram)
@@ -202,6 +208,7 @@ class TienDo:
             traceback.print_exc()
 
     def xong(self):
+        BUOC_CUOI.clear()
         xoa(self.duong)
 
 
@@ -243,7 +250,7 @@ def chay(lenh, cwd, gioi_han):
 UA_WIKI = 'CongNghe24H/1.0 (https://ai-tin-cong-nghe-wpy7.vercel.app; phim tieu su)'
 
 
-def tai_anh_wiki(loi, tai_san):
+def tai_anh_wiki(loi, tai_san, td=None):
     # Phim tiểu sử: câu có "anh_wiki" (ảnh Wikimedia Commons) → tải về assets/anh-<n>.<đuôi>, ghi tên tệp vào "tep".
     # Dùng requests riêng (KHÔNG dùng phiên Supabase để khỏi gửi khoá sang Wikimedia). Ảnh lỗi thì bỏ, câu vẫn dựng.
     da_tai = {}
@@ -252,6 +259,8 @@ def tai_anh_wiki(loi, tai_san):
         if not a:
             continue
         url = a.get('url', '')
+        if url not in da_tai and td:
+            td.bao(2, f'Tải ảnh tư liệu {len(da_tai) + 1}/{len({x["anh_wiki"].get("url") for x in loi if x.get("anh_wiki")})}', ep=True)
         if url not in da_tai:
             da_tai[url] = None
             try:
@@ -537,7 +546,7 @@ def dung_video(may, ds_giong, lt, tm, td, fps=30, gioi_han=1500, anh_nen=None):
     # Hiệu ứng âm thanh + âm nền theo bối cảnh (tao_video.mjs chèn khi AI chọn)
     for tep in (HOAT_HINH / 'am-thanh').glob('*.wav'):
         shutil.copy(tep, tai_san / tep.name)
-    tai_anh_wiki(lt['loi'], tai_san)
+    tai_anh_wiki(lt['loi'], tai_san, td)
     if anh_nen is not None:  # video YouTube: ảnh nền Pixabay theo cảnh (anh_nen = số phần, để các phần chọn ảnh khác nhau)
         tai_anh_nen(lt['loi'], tai_san, anh_nen, td)
     # Gom các câu cùng giọng đọc một lần (nhanh hơn nhiều so với từng câu, nhất là trên card NVIDIA)
@@ -839,8 +848,8 @@ def dung_hoat_hinh(may, ds_giong, yc, td):
 
 
 # Phiên bản máy nhà (gửi kèm tín hiệu sống): trang web biết máy nhà đã khởi động lại sau lần cập nhật chưa
-# (lib/youtube.ts: BAN_MAY_NHA phải bằng số này). 2: báo việc đang làm (hien-tai.json), Pixabay chặn thì nghỉ
-BAN_MAY_NHA = 2
+# (lib/youtube.ts: BAN_MAY_NHA phải bằng số này). 2: báo việc đang làm (hien-tai.json), Pixabay chặn thì nghỉ; 3: báo lại mỗi 20 giây
+BAN_MAY_NHA = 3
 
 
 def bao_song():
@@ -848,6 +857,14 @@ def bao_song():
     while True:
         try:
             gui('hang-doi/song.json', json.dumps({'luc': int(time.time() * 1000), 'ban': BAN_MAY_NHA}), 'application/json')
+            # Đang làm việc dài: gửi lại bước hiện tại (kèm đã làm bao lâu) để trang web biết máy nhà vẫn chạy, chỉ là bước
+            # này lâu — cảnh báo "có thể đang kẹt" chỉ hiện khi máy nhà ngừng hẳn
+            b = dict(BUOC_CUOI)
+            if VIEC_HIEN_TAI and b.get('buoc'):
+                phut = int((time.time() - b['tu']) // 60)
+                buoc = b['buoc'] + (f' (đã {phut} phút)' if phut >= 1 else '')
+                gui(b['duong'], json.dumps({**b['them'], 'phanTram': b['phan_tram'], 'buoc': buoc, 'luc': int(time.time() * 1000)}, ensure_ascii=False), 'application/json')
+                bao_hien_tai(buoc, b['phan_tram'])
         except Exception:
             traceback.print_exc()
         time.sleep(20)

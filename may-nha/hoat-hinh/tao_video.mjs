@@ -70,7 +70,10 @@ const I_CHUONG = the_chuong ? loi.findIndex((l) => l.la_chuong) : -1
 const MO_CHUONG = the_chuong && I_CHUONG < 0 ? 2.4 : 0
 // Màn kết: khung ngang (YouTube) 8 giây — vừa đủ cho "màn hình kết thúc" của YouTube (tối thiểu 5 giây, 2 ô video
 // đề xuất); dọc 6 giây
-const MAN_KET = man_ket ? (NGANG ? 8 : 6) : 0
+// Mèo Mun đọc lời mời đăng ký ở màn kết (máy nhà đọc sẵn assets/ket.wav); lời dài thì màn kết dài theo
+const KET_WAV = join(GOC, 'hyperframes/assets/ket.wav')
+const KET_GIAY = man_ket && existsSync(KET_WAV) ? doTo(KET_WAV).length / 15 : 0
+const MAN_KET = man_ket ? Math.max(NGANG ? 8 : 6, KET_GIAY + 1.8) : 0
 let t = 0.4 + MO_CHUONG // nhịp mở đầu trước câu đầu tiên
 for (const [i, d] of doDai.entries()) {
   // Khoảng lặng có chủ đích (AI đặt lang) trước câu quan trọng: im 0,9 giây, chỉ còn âm nền
@@ -1094,6 +1097,23 @@ if (MAN_KET) {
   const oXem = NGANG ? [0, 1].map((k) => `<div class="mk-o mk-o${k}"><span>▶ Xem tiếp</span></div>`).join('') : ''
   manKetHtml = `${oXem}<div id="man-ket"><div class="mk-cam-on">Cảm ơn bạn đã xem!</div><div class="mk-nut"><span class="mk-chua"><span class="mk-play">▶</span> ĐĂNG KÝ</span><span class="mk-da">✓ ĐÃ ĐĂNG KÝ</span></div><div class="mk-chuong">🔔</div><div class="mk-tro">👆</div><div class="mk-phu">${esc(kenh)} · video mới mỗi tuần</div></div>`
   tw.push(`tl.to(["#o-meo", "#o-robot"], { xPercent: 0, duration: 0.5, ease: "power2.out" }, ${f(t1)});`)
+  if (KET_GIAY) {
+    // Lời mời đăng ký: Mèo Mun đọc, nhép miệng theo độ to giọng (như các câu thoại)
+    const t0 = t1 + 0.5
+    let em = 0, dangMo = false
+    doTo(KET_WAV).forEach((v, k) => {
+      em = Math.max(v, em * 0.62)
+      const mo = dangMo ? em > 0.08 : em > 0.16
+      if (mo !== dangMo) {
+        dangMo = mo
+        tw.push(`tl.set("#meo-mieng-mo", { opacity: ${mo ? 1 : 0} }, ${f(t0 + k / 15)});`)
+        tw.push(`tl.set("#meo-mieng-dong", { opacity: ${mo ? 0 : 1} }, ${f(t0 + k / 15)});`)
+      }
+    })
+    tw.push(`tl.set("#meo-mieng-mo", { opacity: 0 }, ${f(t0 + KET_GIAY)});`)
+    tw.push(`tl.set("#meo-mieng-dong", { opacity: 1 }, ${f(t0 + KET_GIAY)});`)
+    amThanh.push(`<audio id="am-ket" src="assets/ket.wav" data-start="${f(t0)}" data-duration="${f(KET_GIAY)}" data-track-index="2990" data-volume="1"></audio>`)
+  }
   if (NGANG) {
     // Mèo / Bit nhỏ lại, đứng sát nhau ở giữa dưới, nhường hai bên cho ô video đề xuất
     tw.push(`tl.to("#o-meo", { x: 280, scale: 0.6, transformOrigin: "50% 100%", duration: 0.7, ease: "power2.inOut" }, ${f(t1 + 0.2)});`)
@@ -1156,7 +1176,7 @@ const CSS_NGANG = `
       .mk-tro { position: absolute; left: calc(50% + 90px); top: 190px; font-size: 80px; font-family: "Emoji", sans-serif; opacity: 0; }
       .mk-o { position: absolute; top: 380px; width: 520px; height: 293px; border-radius: 18px; border: 5px dashed #ffffffaa; background: #0f172a99; display: flex; align-items: center; justify-content: center; font-size: 40px; font-weight: 700; color: #fff; opacity: 0; }
       .mk-o0 { left: 70px; } .mk-o1 { right: 70px; }
-      .mk-phu { font-size: 32px; font-weight: 500; color: #e2e8f0; text-shadow: 0 0 8px #000; }`
+      .mk-phu { margin-top: 44px; font-size: 32px; font-weight: 500; color: #e2e8f0; text-shadow: 0 0 8px #000; }`
 
 const trang = `<!doctype html>
 <html lang="vi">

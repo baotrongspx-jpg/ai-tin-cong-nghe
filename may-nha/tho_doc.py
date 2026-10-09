@@ -473,6 +473,9 @@ def tao_srt(cac_cau):
     return '\n'.join(khoi)
 
 
+LOI_KET = 'Nếu thấy hay, hãy bấm đăng ký {kenh} và bật chuông để xem video mới mỗi tuần nhé!'
+
+
 def dung_video(may, ds_giong, lt, tm, td, fps=30, gioi_han=1500, anh_nen=None):
     # Đọc từng câu thoại bằng giọng của nhân vật nói câu đó, sinh trang HyperFrames rồi dựng ra tm/video.mp4.
     # Trả độ dài (giây) từng câu. Tiến độ: đọc giọng 10-30%, dựng hình 30-95%.
@@ -506,6 +509,18 @@ def dung_video(may, ds_giong, lt, tm, td, fps=30, gioi_han=1500, anh_nen=None):
             (tai_san / f'loi-{i}.wav').write_bytes(wav)
             do_dai[i] = giay
         xong += len(ds)
+    # Màn kết (phần cuối video): Mèo Mun đọc lời mời đăng ký (tao_video.mjs phát assets/ket.wav, nhép miệng theo)
+    if lt.get('man_ket'):
+        try:
+            nv = lt['nhan_vat'].get('meo') or {}
+            wav, giay = doc_rieng(may, ds_giong, [LOI_KET.replace('{kenh}', lt.get('kenh') or 'Công Nghệ 24H')], nv.get('giong'))[0]
+            if 'meo' in CHINH_GIONG:
+                wav2, giay2 = chinh_giong(wav, CHINH_GIONG['meo'])
+                if giay2:
+                    wav = wav2
+            (tai_san / 'ket.wav').write_bytes(wav)
+        except Exception:
+            traceback.print_exc()
     (tm / 'artifacts' / 'loi_thoai.json').write_text(json.dumps(lt, ensure_ascii=False), encoding='utf-8')
     (tm / 'artifacts' / 'do_dai.json').write_text(json.dumps(do_dai), encoding='utf-8')
     chay(['node', str(HOAT_HINH / 'tao_video.mjs'), str(tm)], tm, 120)

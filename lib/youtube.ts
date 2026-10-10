@@ -24,7 +24,7 @@ const PHIEN_BAN = 23 // tăng khi đổi cách dựng để các phần dựng l
 const kho = () => db().storage.from(KHO)
 const thuMuc = (id: string) => `youtube/${id}`
 // Phiên bản máy nhà mới nhất (may-nha/tho_doc.py: BAN_MAY_NHA)
-const BAN_MAY_NHA = 8
+const BAN_MAY_NHA = 9
 const tenViec = (id: string, k: number) => `yt-${id}-${k}.json`
 
 // Mỗi phần ~3 phút; giọng VieNeu đọc khoảng 4,5 giây một câu thoại (đo trên video thật)
@@ -39,6 +39,7 @@ export type CauYT = Omit<LoiThoai[number], 'ai' | 'nhan_vat_phu'> & {
   tai_hien?: boolean
   the_moc?: string
   anh?: number // phim tiểu sử: số thứ tự ảnh Wikipedia (d.phim.anh) hiện trong câu này, -1 = không
+  anh_canh?: string // ảnh cảnh chủ trang tự làm (tên tệp ở D:\anh-phim\<mã dự án> trên máy nhà): chiếu toàn màn hình câu này
 }
 export type PhanYT = {
   tieu_de: string

@@ -329,6 +329,32 @@ def chay(lenh, cwd, gioi_han):
 UA_WIKI = 'CongNghe24H/1.0 (https://ai-tin-cong-nghe-wpy7.vercel.app; phim tieu su)'
 
 
+# Ảnh cảnh chủ trang tự làm cho phim (vd. ảnh 3D vẽ bằng AI): D:\anh-phim\<mã dự án>\<tên tệp>. Câu kịch bản có "anh_canh"
+# (tên tệp) thì chép ảnh vào assets/canh-<tên>, ghi tên vào "anh_canh_tep" — tao_video.mjs chiếu toàn màn hình như cảnh phim
+ANH_PHIM = Path(os.environ.get('ANH_PHIM', r'D:\anh-phim' if Path('D:/').exists() else r'C:\Users\Admin\VieNeu-TTS\anh-phim'))
+
+
+def tai_anh_canh(loi, tai_san, du_an):
+    if not du_an:
+        return
+    so, thieu = 0, set()
+    for l in loi:
+        ten = Path(str(l.get('anh_canh') or '')).name
+        if not ten:
+            continue
+        goc = ANH_PHIM / du_an / ten
+        if not goc.exists():
+            thieu.add(ten)
+            continue
+        dich = tai_san / f'canh-{ten}'
+        if not dich.exists():
+            shutil.copy(goc, dich)
+            so += 1
+        l['anh_canh_tep'] = dich.name
+    if so or thieu:
+        print(f'Ảnh cảnh tự làm: {so} ảnh' + (f', thiếu {len(thieu)} tệp ở {ANH_PHIM / du_an}: {", ".join(sorted(thieu))[:300]}' if thieu else ''), flush=True)
+
+
 def tai_anh_wiki(loi, tai_san, td=None):
     # Phim tiểu sử: câu có "anh_wiki" (ảnh Wikimedia Commons) → tải về assets/anh-<n>.<đuôi>, ghi tên tệp vào "tep".
     # Dùng requests riêng (KHÔNG dùng phiên Supabase để khỏi gửi khoá sang Wikimedia). Ảnh lỗi thì bỏ, câu vẫn dựng.
@@ -683,6 +709,7 @@ def dung_video(may, ds_giong, lt, tm, td, fps=30, gioi_han=1500, anh_nen=None):
     for tep in (HOAT_HINH / 'am-thanh').glob('*.wav'):
         shutil.copy(tep, tai_san / tep.name)
     tai_anh_wiki(lt['loi'], tai_san, td)
+    tai_anh_canh(lt['loi'], tai_san, lt.get('du_an'))
     doc_ho_so(lt, td)  # phim tiểu sử: chỉnh cảnh theo hồ sơ hình ảnh trước khi chọn tranh nền / dựng
     if anh_nen is not None:  # video YouTube: ảnh nền Pixabay theo cảnh (anh_nen = số phần, để các phần chọn ảnh khác nhau)
         tai_anh_nen(lt['loi'], tai_san, anh_nen, td)
@@ -868,6 +895,7 @@ def dung_youtube(may, ds_giong, yc):
             try:
                 # Phần dài vài phút: 24 khung hình/giây cho nhanh, cho dựng tới ~40 giây mỗi giây video
                 uoc = sum(len(l['chu']) for l in yc['loi_thoai']['loi']) / 14
+                yc['loi_thoai']['du_an'] = du_an  # để tìm ảnh cảnh tự làm (tai_anh_canh)
                 dung_video(may, ds_giong, yc['loi_thoai'], tm, td, fps=24, gioi_han=max(1800, int(uoc * 40)), anh_nen=k)
                 shutil.move(str(tm / 'video.mp4'), str(tep))
                 if (tm / 'artifacts' / 'phu_de.json').exists():
@@ -945,6 +973,7 @@ def dung_short(may, ds_giong, yc):
     td = TienDo(None, duong=f'{goc}/tien-do-short.json', them={'so': so})
     tm = THU_MUC_TAM / f'yts-{du_an}-{so}'
     try:
+        yc['loi_thoai']['du_an'] = du_an
         dung_video(may, ds_giong, yc['loi_thoai'], tm, td, fps=30, gioi_han=1800, anh_nen=so)
         ra = thu_muc / f'Shorts-{so}.mp4'
         shutil.move(str(tm / 'video.mp4'), str(ra))
@@ -1000,8 +1029,8 @@ def dung_hoat_hinh(may, ds_giong, yc, td):
 
 
 # Phiên bản máy nhà (gửi kèm tín hiệu sống): trang web biết máy nhà đã khởi động lại sau lần cập nhật chưa
-# (lib/youtube.ts: BAN_MAY_NHA phải bằng số này). 2: báo việc đang làm (hien-tai.json), Pixabay chặn thì nghỉ; 3: báo lại mỗi 20 giây; 4: tự khởi động lại khi code đổi; 5: đọc hồ sơ phim trước khi dựng; 6: nhân vật phụ có tên vẽ hình riêng theo hồ sơ; 7: video bị xoá thì dừng dựng, dọn sạch; 8: nhả RAM AI máy nhà trước khi dựng hình
-BAN_MAY_NHA = 8
+# (lib/youtube.ts: BAN_MAY_NHA phải bằng số này). 2: báo việc đang làm (hien-tai.json), Pixabay chặn thì nghỉ; 3: báo lại mỗi 20 giây; 4: tự khởi động lại khi code đổi; 5: đọc hồ sơ phim trước khi dựng; 6: nhân vật phụ có tên vẽ hình riêng theo hồ sơ; 7: video bị xoá thì dừng dựng, dọn sạch; 8: nhả RAM AI máy nhà trước khi dựng hình; 9: ảnh cảnh chủ trang tự làm
+BAN_MAY_NHA = 9
 
 
 def bao_song():

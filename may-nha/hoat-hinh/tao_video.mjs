@@ -17,6 +17,20 @@ const { nhan_vat, loi, moc, kenh = 'Công Nghệ 24H', chu_de = 'AI', kho = 'doc
 const doDai = JSON.parse(readFileSync(join(GOC, 'artifacts/do_dai.json'), 'utf8'))
 // Câu có ảnh thật (phim tiểu sử): máy quay lùi ra toàn cảnh để khung ảnh phía trên không đè lên đầu nhân vật
 for (const l of loi) if (l.anh_wiki?.tep) l.khung_hinh = 'toan_canh'
+// Ảnh cảnh chủ trang tự làm (phim tiểu sử: ảnh 3D có sẵn nhân vật, để ở D:\anh-phim\<dự án>, máy nhà chép vào assets/):
+// chiếu toàn màn hình như một cảnh phim, che sân khấu hoạt hình. Câu Mèo Mun / Robot Bit vẫn diễn ở sân khấu. Câu có ảnh
+// cảnh thì bỏ ảnh tư liệu, thẻ minh hoạ, đạo cụ, cảnh hành động (cho khỏi đè lên ảnh)
+for (const l of loi) {
+  if (!l.anh_canh_tep) continue
+  if (l.ai === 'meo' || l.ai === 'robot') {
+    delete l.anh_canh_tep
+    continue
+  }
+  delete l.anh_wiki
+  l.minh_hoa = { ...(l.minh_hoa ?? {}), kieu: 'khong' }
+  l.dao_cu = 'khong'
+  l.hanh_dong = 'khong'
+}
 // Phim tiểu sử: người được kể là một nhân vật trên sân khấu như nhân vật phụ (xuất hiện, nói, nhép miệng, rời đi),
 // vẽ theo bản thiết kế AI của chương này (lib/youtube.ts: loiThoaiGui)
 if (nhan_vat_chinh?.hinh) {
@@ -1000,6 +1014,27 @@ const anhThat = doanAnh.map((c, k) => {
   return `<div id="${id}" class="anh-that ${kieu}"><div class="anh-khung"><img class="anh-nen" src="${src}"/><img id="${id}-anh" class="anh-chinh" src="${src}"/></div></div>`
 })
 
+// ── Ảnh cảnh chủ trang tự làm: các câu liền nhau cùng một ảnh gom một cảnh. Hiện mờ dần vào (cảnh liền trước cũng là ảnh
+// thì chồng mờ chéo), máy quay từ từ đẩy vào / lùi ra (Ken Burns). Luôn phóng ≥1,1 lần quanh điểm lệch trên-trái nên
+// mép phải / dưới bị cắt ~7%: che dấu "Gemini Notebook" ở góc dưới phải ảnh AI.
+const doanAnhCanh = []
+loi.forEach((l, i) => {
+  if (!l.anh_canh_tep) return
+  const c = doanAnhCanh.at(-1)
+  if (c && c.tep === l.anh_canh_tep && c.het === i - 1) c.het = i
+  else doanAnhCanh.push({ tep: l.anh_canh_tep, tu: i, het: i })
+})
+const anhCanh = doanAnhCanh.map((c, k) => {
+  const id = `canh-anh${k}`
+  const vao = c.tu === 0 ? 0 : Math.max(0, batDau[c.tu] - 0.35)
+  const ra = c.het === loi.length - 1 ? TONG : Math.min(TONG, (batDau[c.het + 1] ?? TONG) - 0.05)
+  const [s0, s1] = k % 2 ? [1.22, 1.1] : [1.1, 1.22]
+  tw.push(`tl.fromTo("#${id}", { opacity: 0 }, { opacity: 1, duration: ${c.tu === 0 ? 0.01 : 0.5}, ease: "power1.out", immediateRender: false }, ${f(vao)});`)
+  tw.push(`tl.fromTo("#${id}-anh", { scale: ${s0}, yPercent: ${k % 2 ? -1 : 1} }, { scale: ${s1}, yPercent: 0, duration: ${f(Math.max(0.5, ra - vao + 0.4))}, ease: "none", immediateRender: false }, ${f(vao)});`)
+  if (ra < TONG - 0.01) tw.push(`tl.to("#${id}", { opacity: 0, duration: 0.45, ease: "power1.in" }, ${f(ra - 0.1)});`)
+  return `<div id="${id}" class="canh-anh"><img id="${id}-anh" src="assets/${esc(c.tep)}"/></div>`
+})
+
 // Bảng tin phía sau đổi theo lời thoại
 const bang = bangHien.map((i, j) => {
   const l = loi[i]
@@ -1292,6 +1327,8 @@ const trang = `<!doctype html>
       .tuyet-hat { position: absolute; top: 0; border-radius: 50%; background: #fff; box-shadow: 0 0 8px #fff8; }
       .mua-hat { position: absolute; top: 0; width: 3px; height: 70px; border-radius: 2px; background: linear-gradient(#e0f2fe00, #e0f2fecc); transform: rotate(14deg); }
       .suong-may { position: absolute; border-radius: 50%; background: #f1f5f9; filter: blur(46px); opacity: 0.5; }
+      .canh-anh { position: absolute; inset: 0; overflow: hidden; opacity: 0; background: #000; }
+      .canh-anh img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform-origin: 32% 26%; }
       .anh-that { position: absolute; opacity: 0; display: flex; flex-direction: column; align-items: center; filter: drop-shadow(0 18px 30px #000b); }
       .anh-that.tren { left: ${(RONG - 500) / 2}px; top: ${NGANG ? 118 : 300}px; width: 500px; }
       .anh-that.ben { left: ${RONG - 60 - 720}px; top: 120px; width: 720px; }
@@ -1326,6 +1363,7 @@ const trang = `<!doctype html>
       </div>
 ${NGANG ? bang.join('') : ''}
       <div id="vien-toi" class="clip" data-start="0" data-duration="${f(TONG)}" data-track-index="5"><div id="den"></div><div id="chop"></div></div>
+      <div id="lop-canh-anh" class="clip" data-start="0" data-duration="${f(TONG)}" data-track-index="8">${anhCanh.join('')}</div>
       <div id="lop-minh-hoa" class="clip" data-start="0" data-duration="${f(TONG)}" data-track-index="7">${giatTit.html}${theMoc.join('')}${minhHoaKhung.join('')}${anhThat.join('')}${daoCuKhung.join('')}${soDong.join('')}${hanhDongKhung.join('')}${khungKeHtml}${manKetHtml}${theChuongHtml}</div>${phuDe.join('')}
       ${[...amThanh, ...amPhu].join('\n      ')}
     </div>

@@ -359,10 +359,38 @@ def tai_anh_canh(lt, tai_san, du_an):
             so += 1
         return dich.name
 
+    # Ảnh 2,5D: mỗi ảnh cảnh tách 2 lớp theo chiều sâu (may-nha/chieu_sau.py, lưu sẵn ở D:\anh-phim\<dự án>\lop) → lớp nền +
+    # lớp trước trượt lệch nhau khi máy quay chạy. Không tách được (lỗi / ảnh không có vật nổi hẳn) thì dùng ảnh phẳng
+    lop = {}
     for l in lt.get('loi') or []:
         tep = chep(l.get('anh_canh'), 'canh')
-        if tep:
-            l['anh_canh_tep'] = tep
+        if not tep:
+            continue
+        l['anh_canh_tep'] = tep
+        ten = Path(str(l.get('anh_canh'))).name
+        if ten not in lop:
+            lop[ten] = None
+            try:
+                import chieu_sau
+                kq = chieu_sau.tach_lop(ANH_PHIM / du_an / ten, ANH_PHIM / du_an / 'lop')
+                if kq:
+                    lop[ten] = []
+                    for x in kq:
+                        dich = tai_san / f'lop-{x.name}'
+                        if not dich.exists():
+                            shutil.copy(x, dich)
+                        lop[ten].append(dich.name)
+            except Exception:
+                traceback.print_exc()
+        if lop[ten]:
+            l['anh_canh_lop'] = lop[ten]
+    if lop:
+        try:
+            import chieu_sau
+            chieu_sau.nha_bo_nho()
+        except Exception:
+            pass
+        print(f'Ảnh 2,5D: {sum(1 for v in lop.values() if v)}/{len(lop)} ảnh cảnh tách được lớp chiều sâu', flush=True)
     for nv in [lt.get('nhan_vat_chinh') or {}, *(lt.get('vai_phu') or [])]:
         tep = chep(nv.get('anh'), 'nv')
         if tep:
@@ -1088,8 +1116,8 @@ def dung_hoat_hinh(may, ds_giong, yc, td):
 
 
 # Phiên bản máy nhà (gửi kèm tín hiệu sống): trang web biết máy nhà đã khởi động lại sau lần cập nhật chưa
-# (lib/youtube.ts: BAN_MAY_NHA phải bằng số này). 2: báo việc đang làm (hien-tai.json), Pixabay chặn thì nghỉ; 3: báo lại mỗi 20 giây; 4: tự khởi động lại khi code đổi; 5: đọc hồ sơ phim trước khi dựng; 6: nhân vật phụ có tên vẽ hình riêng theo hồ sơ; 7: video bị xoá thì dừng dựng, dọn sạch; 8: nhả RAM AI máy nhà trước khi dựng hình; 9: ảnh cảnh chủ trang tự làm; 10: ảnh nhân vật 2D tự làm; 11: tách ảnh từ PDF chủ trang nạp
-BAN_MAY_NHA = 11
+# (lib/youtube.ts: BAN_MAY_NHA phải bằng số này). 2: báo việc đang làm (hien-tai.json), Pixabay chặn thì nghỉ; 3: báo lại mỗi 20 giây; 4: tự khởi động lại khi code đổi; 5: đọc hồ sơ phim trước khi dựng; 6: nhân vật phụ có tên vẽ hình riêng theo hồ sơ; 7: video bị xoá thì dừng dựng, dọn sạch; 8: nhả RAM AI máy nhà trước khi dựng hình; 9: ảnh cảnh chủ trang tự làm; 10: ảnh nhân vật 2D tự làm; 11: tách ảnh từ PDF chủ trang nạp; 12: ảnh cảnh 2,5D (tách lớp chiều sâu)
+BAN_MAY_NHA = 12
 
 
 def bao_song():

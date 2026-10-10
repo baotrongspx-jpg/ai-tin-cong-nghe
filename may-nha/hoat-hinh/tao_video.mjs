@@ -275,7 +275,7 @@ if (NGANG) {
   const reSo = /(\d{1,3}(?:[.,]\d{3})+|\d+(?:[.,]\d+)?)\s*(%|phần trăm|năm|tuổi|triệu|tỷ|nghìn|ngàn|vạn|km|kg|người|kỵ binh|binh sĩ|quân|đô la|đô|USD|đồng|lần|ngày|tháng|chiếc|công ty|quốc gia)(?![\p{L}])/iu
   let truoc = -9
   loi.forEach((l, i) => {
-    if (THE_TREN.has(i) || l.anh_wiki?.tep || l.la_chuong || i - truoc < 4) return
+    if (THE_TREN.has(i) || l.anh_wiki?.tep || l.anh_canh_tep || l.la_chuong || i - truoc < 4) return
     const m = String(l.chu).match(reSo)
     if (!m) return
     SO_DONG[i] = { chu: `${m[1]} ${m[2]}`.trim(), vt: m.index / Math.max(1, l.chu.length) }
@@ -981,8 +981,8 @@ const bangCuaCau = []
   let cuoi = -99
   loi.forEach((l, i) => {
     const canhMoi = i === 0 || (BOI_CANH[l.boi_canh] ? l.boi_canh : 'truong_quay') !== (BOI_CANH[loi[i - 1].boi_canh] ? loi[i - 1].boi_canh : 'truong_quay')
-    // Chỉ khi đổi cảnh (màn hình gọn: một điểm nhấn mỗi lúc), giữ ~5 giây rồi mờ đi
-    if (l.bang?.chu && canhMoi) {
+    // Chỉ khi đổi cảnh (màn hình gọn: một điểm nhấn mỗi lúc), giữ ~5 giây rồi mờ đi. Không hiện trên ảnh cảnh điện ảnh
+    if (l.bang?.chu && canhMoi && !l.anh_canh_tep) {
       bangHien.push(i)
       cuoi = i
     }
@@ -1068,8 +1068,11 @@ loi.forEach((l, i) => {
   if (!l.anh_canh_tep) return
   const c = doanAnhCanh.at(-1)
   if (c && c.tep === l.anh_canh_tep && c.het === i - 1) c.het = i
-  else doanAnhCanh.push({ tep: l.anh_canh_tep, tu: i, het: i })
+  else doanAnhCanh.push({ tep: l.anh_canh_tep, lop: l.anh_canh_lop ?? null, tu: i, het: i })
 })
+// Hạt bụi / đốm sáng lơ lửng trôi chậm trên ảnh cảnh (vị trí cố định theo số thứ tự, không ngẫu nhiên): ảnh tĩnh có
+// không khí chuyển động
+const HAT_CANH = Array.from({ length: 14 }, (_, j) => ({ x: (j * 137) % 100, y: 20 + ((j * 61) % 70), r: 3 + (j % 4) * 2, dx: ((j % 3) - 1) * 40, dy: -50 - (j % 5) * 18 }))
 const tenNguoiNoi = (l) => nhan_vat?.[l.ai]?.ten || NHAN_VAT_PHU[l.ai]?.ten || ''
 let soCuMay = 0
 const anhCanh = doanAnhCanh.map((c, k) => {
@@ -1091,6 +1094,19 @@ const anhCanh = doanAnhCanh.map((c, k) => {
     const m = j === 0 ? CU_MAY[0] : CU_MAY[1 + ((soCuMay++ + k) % (CU_MAY.length - 1))]
     tw.push(`tl.set("#${id}-anh", { scale: ${m.s}, xPercent: ${m.x}, yPercent: ${m.y} }, ${f(t0)});`)
     tw.push(`tl.to("#${id}-anh", { scale: ${+(m.s * 1.05).toFixed(3)}, duration: ${f(Math.max(0.3, t1 - t0))}, ease: "none" }, ${f(t0)});`)
+    // Ảnh 2,5D: lớp trước (người / vật gần) trượt và phóng nhiều hơn lớp nền, đổi hướng mỗi cú máy → chiều sâu như camera thật
+    if (c.lop) {
+      const h = (j + k) % 2 ? 1 : -1
+      const dai = f(Math.max(0.3, t1 - t0))
+      tw.push(`tl.fromTo("#${id}-nen", { xPercent: ${0.5 * h}, scale: 1 }, { xPercent: ${-0.5 * h}, scale: 1.01, duration: ${dai}, ease: "sine.inOut", immediateRender: false }, ${f(t0)});`)
+      tw.push(`tl.fromTo("#${id}-truoc", { xPercent: ${1.5 * h}, scale: 1 }, { xPercent: ${-1.5 * h}, scale: 1.028, duration: ${dai}, ease: "sine.inOut", immediateRender: false }, ${f(t0)});`)
+    }
+  })
+  // Bụi / đốm sáng trôi suốt cảnh
+  const hat = HAT_CANH.map((p, j) => {
+    const idh = `${id}-hat${j}`
+    tw.push(`tl.fromTo("#${idh}", { x: 0, y: 0, opacity: 0 }, { x: ${p.dx}, y: ${p.dy}, opacity: ${0.35 + (j % 3) * 0.15}, duration: ${f(Math.max(1, ra - vao))}, ease: "sine.inOut", immediateRender: false }, ${f(vao)});`)
+    return `<i id="${idh}" class="hat-canh" style="left:${p.x}%;top:${p.y}%;width:${p.r * 2}px;height:${p.r * 2}px"></i>`
   })
   // Dòng tên người đang nói + khung tròn Mèo Mun / Robot Bit
   const them = []
@@ -1110,7 +1126,10 @@ const anhCanh = doanAnhCanh.map((c, k) => {
       tw.push(`tl.to("#${idt}", { opacity: 0, duration: 0.3 }, ${f(t1)});`)
     }
   }
-  return `<div id="${id}" class="canh-anh"><img id="${id}-anh" src="assets/${esc(c.tep)}"/>${them.join('')}</div>`
+  const khung = c.lop
+    ? `<img id="${id}-nen" src="assets/${esc(c.lop[0])}"/><img id="${id}-truoc" class="lop-truoc" src="assets/${esc(c.lop[1])}"/>`
+    : `<img src="assets/${esc(c.tep)}"/>`
+  return `<div id="${id}" class="canh-anh"><div id="${id}-anh" class="canh-khung">${khung}</div><div class="hat-lop">${hat.join('')}</div>${them.join('')}</div>`
 })
 
 // Bảng tin phía sau đổi theo lời thoại
@@ -1406,7 +1425,11 @@ const trang = `<!doctype html>
       .mua-hat { position: absolute; top: 0; width: 3px; height: 70px; border-radius: 2px; background: linear-gradient(#e0f2fe00, #e0f2fecc); transform: rotate(14deg); }
       .suong-may { position: absolute; border-radius: 50%; background: #f1f5f9; filter: blur(46px); opacity: 0.5; }
       .canh-anh { position: absolute; inset: 0; overflow: hidden; opacity: 0; background: #000; }
-      .canh-anh > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform-origin: 32% 26%; }
+      .canh-khung { position: absolute; inset: 0; transform-origin: 32% 26%; }
+      .canh-khung > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+      .canh-khung > .lop-truoc { transform-origin: 50% 85%; filter: drop-shadow(0 10px 18px #0006); }
+      .hat-lop { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+      .hat-canh { position: absolute; border-radius: 50%; background: radial-gradient(circle, #fff7e0, #fff7e000 70%); filter: blur(1px); opacity: 0; }
       .ten-noi { position: absolute; left: 70px; bottom: 250px; display: flex; flex-direction: column; gap: 4px; padding: 12px 26px 12px 20px; border-left: 8px solid #fbbf24; background: linear-gradient(90deg, #000000cc, #00000066 80%, transparent); opacity: 0; }
       .ten-noi-ten { font-size: 40px; font-weight: 700; color: #fff; }
       .ten-noi-phu { font-size: 22px; font-weight: 500; color: #fbbf24; letter-spacing: 1px; text-transform: uppercase; }

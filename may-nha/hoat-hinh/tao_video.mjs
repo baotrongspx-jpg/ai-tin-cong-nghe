@@ -518,7 +518,7 @@ const nenCanh = doanCanh.map((dc, k) => {
   let anh = ''
   if (tepAnh && existsSync(join(GOC, 'hyperframes/assets', tepAnh))) {
     const [x, y, w, h] = NGANG ? [-560, 160, 2200, 1040] : [-60, -60, 1200, 1260]
-    anh = `<img id="bc${k}-anh" class="anh-nen-canh" src="assets/${esc(tepAnh)}" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px"/>`
+    anh = `<img id="bc${k}-anh" class="anh-nen-canh${tepAnh.startsWith('nen-') ? ' tu-lam' : ''}" src="assets/${esc(tepAnh)}" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px"/>`
     tw.push(`tl.fromTo("#bc${k}-anh", { scale: 1 }, { scale: 1.06, duration: ${f(Math.max(1, het - t0))}, ease: "none", immediateRender: false }, ${f(t0)});`)
   }
   return `<div id="bc${k}" class="lop-nen"${k ? ' style="opacity:0"' : ''}>${svg}${anh}</div>`
@@ -1235,6 +1235,7 @@ const trang = `<!doctype html>
       .nv { filter: drop-shadow(0 0 10px #ffffff66) drop-shadow(0 24px 30px #0000008c); }
       .lop-nen { position: absolute; inset: 0; }
       .nen-svg { display: block; }
+      .anh-nen-canh.tu-lam { filter: brightness(0.94) !important; }
       .anh-nen-canh { position: absolute; object-fit: cover; transform-origin: 50% 70%; filter: blur(1.2px) brightness(0.86);
         -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 92%, transparent 100%); mask-image: linear-gradient(to bottom, #000 0, #000 92%, transparent 100%); }
       .hat { position: absolute; border-radius: 50%; background: radial-gradient(circle, #ffffffcc, #ffffff00 70%); }

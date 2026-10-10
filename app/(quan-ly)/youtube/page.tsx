@@ -8,6 +8,8 @@ import { TieuDeTrang } from '@/app/DauTrang'
 import { IconYouTube } from '@/app/BieuTuong'
 import TaoVideo from './TaoVideo'
 import NutXoa from './NutXoa'
+import NenTuLam from './NenTuLam'
+import { dsNenTuLam } from '@/lib/nenTuLam'
 
 // AI viết dàn ý trong Server Action, cần thời gian dài
 export const maxDuration = 300
@@ -17,9 +19,10 @@ const phutGiay = (giay: number) => `${Math.floor(Math.round(giay) / 60)}:${Strin
 
 export default async function TrangYouTube() {
   if (!(await daDangNhap())) redirect('/dang-nhap')
-  const [duAn, { data: bai }] = await Promise.all([
+  const [duAn, { data: bai }, nen] = await Promise.all([
     dsDuAn(),
     db().from('bai_viet').select('id, tieu_de_anh, nguon_ten, tao_luc').in('trang_thai', ['nhap', 'da_dang']).order('tao_luc', { ascending: false }).limit(80),
+    dsNenTuLam(),
   ])
 
   return (
@@ -57,6 +60,7 @@ export default async function TrangYouTube() {
           </ul>
         </section>
       </div>
+      <NenTuLam dau={nen} />
     </main>
   )
 }

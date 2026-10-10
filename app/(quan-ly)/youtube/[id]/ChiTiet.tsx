@@ -9,6 +9,7 @@ import { locLoiChao } from '@/lib/kiemDinh'
 import { IconChep, IconMo, IconXong, IconYouTube, Xoay } from '@/app/BieuTuong'
 import { bienTapYouTube, chayBuocPhimYouTube, layShortsYouTube, luuPhatAmYouTube, taoShortsYouTube, dungVideoYouTube, kiemDinhYouTube, layTrangThaiYouTube, luuThongTinYouTube, suaPhanYouTube, vietPhanYouTube, veAnhBiaYouTube, chonAnhBiaYouTube, xoaVideoYouTube } from '../actions'
 import HoSoPhim, { KhoiDuLieu } from './HoSoPhim'
+import AnhPdf from './AnhPdf'
 
 const NGUOI: Record<string, string> = {
   nguoi_ke: '🎙 Người kể',
@@ -714,6 +715,8 @@ export default function ChiTiet({ dau, ttDau }: { dau: DuAnYT; ttDau: TrangThaiD
           )}
         </section>
       )}
+
+      {d.loai === 'tieu_su' && d.phim && <AnhPdf d={d} onDuAn={setD} khoa={!!dangChay || dangLam} />}
 
       {d.loai === 'tieu_su' && d.phim?.anh && (
         <section className="the grid gap-3 p-5">

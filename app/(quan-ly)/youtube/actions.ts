@@ -4,8 +4,8 @@ import { revalidatePath } from 'next/cache'
 import { daDangNhap } from '@/lib/xacThuc'
 import { mayNhaTat } from '@/lib/giongDoc'
 import {
-  bienTapPhim, chayBuocPhim, docDuAn, guiDung, kiemDinhLaiPhan, luuPhatAm, taoShorts, trangThaiShorts, suaThongTin, taoDuAn, taoPhim, trangThaiDuAn, vietLoiPhan, suaLoiPhan, veAnhBia, chonAnhBia, xoaDuAn,
-  type BuocPhim, type DuAnYT, type TrangThaiBienTap, type TrangThaiDuAn, type TrangThaiShort,
+  bienTapPhim, chayBuocPhim, docDuAn, guiDung, kiemDinhLaiPhan, luuPhatAm, taoShorts, trangThaiShorts, suaThongTin, taoDuAn, taoPhim, trangThaiDuAn, vietLoiPhan, suaLoiPhan, veAnhBia, chonAnhBia, xoaDuAn, linkTaiPdf, guiTachPdf, trangThaiPdf, ganAnhPdf,
+  type BuocPhim, type LoaiPdf, type TrangThaiPdf, type DuAnYT, type TrangThaiBienTap, type TrangThaiDuAn, type TrangThaiShort,
 } from '@/lib/youtube'
 
 type Loi = { ok: false; loi: string }
@@ -177,6 +177,45 @@ export async function xoaVideoYouTube(id: string): Promise<{ ok: true } | Loi> {
     await xoaDuAn(id)
     revalidatePath('/youtube')
     return { ok: true }
+  } catch (e) {
+    return baoLoi(e)
+  }
+}
+
+// Ảnh tự làm từ PDF (phim tiểu sử): xin link tải PDF lên kho → gửi máy nhà tách ảnh → xem trạng thái → AI gắn ảnh vào kịch bản
+export async function xinLinkTaiPdfYouTube(id: string, loai: LoaiPdf): Promise<{ ok: true; url: string } | Loi> {
+  try {
+    await chanChuaDangNhap()
+    return { ok: true, url: await linkTaiPdf(id, loai) }
+  } catch (e) {
+    return baoLoi(e)
+  }
+}
+
+export async function tachPdfYouTube(id: string): Promise<{ ok: true } | Loi> {
+  try {
+    await chanChuaDangNhap()
+    if (await mayNhaTat()) throw new Error('Máy nhà đang tắt: bật máy tính ở nhà (cửa sổ đen chay-vieneu-gpu.bat) rồi bấm lại')
+    await guiTachPdf(id)
+    return { ok: true }
+  } catch (e) {
+    return baoLoi(e)
+  }
+}
+
+export async function layAnhPdfYouTube(id: string): Promise<{ ok: true; tt: TrangThaiPdf } | Loi> {
+  try {
+    await chanChuaDangNhap()
+    return { ok: true, tt: await trangThaiPdf(id) }
+  } catch (e) {
+    return baoLoi(e)
+  }
+}
+
+export async function ganAnhPdfYouTube(id: string): Promise<{ ok: true; duAn: DuAnYT } | Loi> {
+  try {
+    await chanChuaDangNhap()
+    return { ok: true, duAn: await ganAnhPdf(id) }
   } catch (e) {
     return baoLoi(e)
   }

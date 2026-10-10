@@ -231,7 +231,8 @@ def don_du_an(du_an):
     # Xoá sạch mọi thứ của một dự án video đã xoá: thư mục video (…-<6 ký tự đầu mã>), thư mục tạm trên máy nhà, và các
     # tệp máy nhà lỡ ghi lên kho sau lúc xoá (tiến độ, kết quả phần), phiếu việc còn sót — để video mới không dính video cũ
     so = 0
-    for tm in [*THU_MUC_YT.glob(f'*-{du_an[:6]}'), *[x for g in {THU_MUC_TAM, THU_MUC_TAM_CU} for x in (*g.glob(f'yt-{du_an}-*'), *g.glob(f'yts-{du_an}-*'))]]:
+    # (kể cả ảnh chủ trang nạp cho phim: D:anh-phim<dự án>)
+    for tm in [*THU_MUC_YT.glob(f'*-{du_an[:6]}'), *[x for g in {THU_MUC_TAM, THU_MUC_TAM_CU} for x in (*g.glob(f'yt-{du_an}-*'), *g.glob(f'yts-{du_an}-*'))], ANH_PHIM / du_an]:
         if tm.is_dir():
             shutil.rmtree(tm, ignore_errors=True)
             # OneDrive / trình duyệt dựng hình đôi khi còn giữ thư mục lúc vừa xoá tệp bên trong: đợi rồi xoá lại
@@ -375,6 +376,42 @@ def tai_anh_canh(lt, tai_san, du_an):
             del chung[ma]
     if so or thieu:
         print(f'Ảnh tự làm: {so} ảnh' + (f', thiếu {len(thieu)} tệp ở {ANH_PHIM / du_an}: {", ".join(sorted(thieu))[:300]}' if thieu else ''), flush=True)
+
+
+def tach_pdf_du_an(du_an):
+    # Trang web: chủ trang nạp PDF nhân vật / PDF cảnh (youtube/<dự án>/pdf-nhan-vat.pdf, pdf-canh.pdf) rồi bấm "Nhà máy
+    # sản xuất" → tách ảnh trong PDF (may-nha/tach_pdf.py) vào D:\anh-phim\<dự án>, gửi ảnh xem trước nhỏ lên kho
+    # (youtube/<dự án>/pdf-anh/) và bảng ảnh youtube/<dự án>/anh-pdf.json {luc, nhan_vat: [{tep, chu, trang}], canh: [...]}
+    # — trang web đọc bảng này, AI gắn ảnh vào kịch bản rồi gửi dựng
+    import tach_pdf  # chỉ cần khi có việc này (pdfplumber cài riêng trong môi trường máy nhà)
+    goc = f'youtube/{du_an}'
+    thu = ANH_PHIM / du_an
+    kq = {'luc': int(time.time() * 1000), 'nhan_vat': [], 'canh': []}
+    try:
+        cu = [f'{goc}/pdf-anh/{n}' for n in liet_ke(f'{goc}/pdf-anh')]
+        if cu:
+            xoa(*cu)
+    except Exception:
+        traceback.print_exc()
+    for loai, ten in (('nhan_vat', 'pdf-nhan-vat.pdf'), ('canh', 'pdf-canh.pdf')):
+        r = s.get(f'{URL}/{KHO}/{goc}/{ten}', timeout=300)
+        if not r.ok:
+            continue
+        THU_MUC_TAM.mkdir(parents=True, exist_ok=True)
+        tam = THU_MUC_TAM / f'pdf-{du_an}-{loai}.pdf'
+        tam.write_bytes(r.content)
+        try:
+            ds = tach_pdf.tach(tam, thu, loai)
+            for x in ds:
+                gui(f'{goc}/pdf-anh/{x["tep"]}.jpg', tach_pdf.anh_nho(thu / x['tep']), 'image/jpeg')
+            kq[loai] = ds
+        except Exception as e:
+            traceback.print_exc()
+            kq['loi'] = f'Không tách được {ten}: {str(e)[:200]}'
+        finally:
+            tam.unlink(missing_ok=True)
+    gui(f'{goc}/anh-pdf.json', json.dumps(kq, ensure_ascii=False).encode('utf-8'), 'application/json')
+    print(f'Tách PDF: {len(kq["nhan_vat"])} ảnh nhân vật, {len(kq["canh"])} ảnh cảnh', flush=True)
 
 
 def tai_anh_wiki(loi, tai_san, td=None):
@@ -1051,8 +1088,8 @@ def dung_hoat_hinh(may, ds_giong, yc, td):
 
 
 # Phiên bản máy nhà (gửi kèm tín hiệu sống): trang web biết máy nhà đã khởi động lại sau lần cập nhật chưa
-# (lib/youtube.ts: BAN_MAY_NHA phải bằng số này). 2: báo việc đang làm (hien-tai.json), Pixabay chặn thì nghỉ; 3: báo lại mỗi 20 giây; 4: tự khởi động lại khi code đổi; 5: đọc hồ sơ phim trước khi dựng; 6: nhân vật phụ có tên vẽ hình riêng theo hồ sơ; 7: video bị xoá thì dừng dựng, dọn sạch; 8: nhả RAM AI máy nhà trước khi dựng hình; 9: ảnh cảnh chủ trang tự làm; 10: ảnh nhân vật 2D tự làm
-BAN_MAY_NHA = 10
+# (lib/youtube.ts: BAN_MAY_NHA phải bằng số này). 2: báo việc đang làm (hien-tai.json), Pixabay chặn thì nghỉ; 3: báo lại mỗi 20 giây; 4: tự khởi động lại khi code đổi; 5: đọc hồ sơ phim trước khi dựng; 6: nhân vật phụ có tên vẽ hình riêng theo hồ sơ; 7: video bị xoá thì dừng dựng, dọn sạch; 8: nhả RAM AI máy nhà trước khi dựng hình; 9: ảnh cảnh chủ trang tự làm; 10: ảnh nhân vật 2D tự làm; 11: tách ảnh từ PDF chủ trang nạp
+BAN_MAY_NHA = 11
 
 
 def bao_song():
@@ -1178,7 +1215,7 @@ def main():
             viec_dai = yc.get('loai') in VIEC_DAI
             # Bảng tin chung cho trang web: việc gì, của video nào, phần nào
             MO_TA_VIEC = {'youtube': 'Dựng video YouTube', 'youtube_short': 'Dựng Shorts', 'yt_anh_bia': 'Vẽ ảnh bìa', 'hoat_hinh': 'Dựng video TikTok',
-                          'ai': 'AI máy nhà biên tập kịch bản', 'xoa_youtube': 'Xoá video'}
+                          'ai': 'AI máy nhà biên tập kịch bản', 'xoa_youtube': 'Xoá video', 'tach_pdf': 'Tách ảnh từ PDF'}
             VIEC_HIEN_TAI.clear()
             VIEC_HIEN_TAI.update({'viec': ma, 'loai': yc.get('loai') or 'doc_giong', 'mo_ta': MO_TA_VIEC.get(yc.get('loai'), 'Đọc giọng'),
                                   'du_an': yc.get('du_an'), 'tieu_de': yc.get('tieu_de') or yc.get('ten'), 'phan': yc.get('phan') or yc.get('so')})
@@ -1212,6 +1249,8 @@ def main():
                     du_an = yc['du_an']
                     so = don_du_an(du_an)
                     print(f'Đã xoá {so} thư mục video của dự án {du_an[:6]}', flush=True)
+                elif yc.get('loai') == 'tach_pdf':
+                    tach_pdf_du_an(yc['du_an'])
                 elif yc.get('loai') == 'yt_anh_bia':
                     # Vẽ (lại) ảnh bìa theo chữ chủ trang đặt, không cần dựng video
                     so = tao_anh_bia(thu_muc_du_an(yc['du_an'], yc.get('tieu_de')), f'youtube/{yc["du_an"]}', yc['anh_bia'])

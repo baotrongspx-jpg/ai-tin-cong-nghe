@@ -20,7 +20,7 @@ import { apBienTap, deBaiBienTap, type DaBienTap, type KetQuaBienTap } from './b
 // video và chỉ lưu trên máy nhà (Desktop\Video-YouTube), vì video dài quá nặng để gửi lên kho.
 // Máy nhà báo kết quả: youtube/<id>/phan-<k>.json ({ xong, ma } hoặc { loi, ma }), tien-do.json, xong.json.
 const KHO = 'video-tiktok'
-const PHIEN_BAN = 25 // tăng khi đổi cách dựng để các phần dựng lại (2: thẻ minh hoạ / đạo cụ khung ngang; 3: giọng Mèo Mun; 4: nhịp chuyển cảnh mượt; 5: thẻ chương, màn kết, B-roll; 6: khung người kể, 7: người kể vẽ riêng, 8: nhân vật chính phim tiểu sử, 9: ảnh Wikipedia, 10: lời giới thiệu + đọc tên chương, ảnh đặt linh động, 11: bố cục chữ không che nhân vật, bỏ ghi nguồn trên ảnh, 12: thanh dòng thời gian, thẻ năm tự thêm, 13: câu móc trước lời chào, màn kết 20 giây, phụ đề .srt, cách đọc tên riêng, 14: biểu cảm, đi vào cảnh, chữ động con số, tiền cảnh, 15: cảnh hành động, 16: bỏ nhạc nền, màn kết 8 giây, nhân vật phụ ở lại theo đợt, lớp sự sống cho bối cảnh, 17: nhân vật hết nhiệm vụ rời đi trước khi người mới vào, 18: ảnh nền Pixabay theo cảnh, 19: tranh nền hoạt hình, Mèo / Bit dạt xa suốt cụm có hai nhân vật phụ (hết đè nhau), 20: Mèo Mun đọc lời mời đăng ký ở màn kết, 21: bỏ ghim cờ trên áo nhân vật, 22: Mèo / Bit dạt theo người đang đứng trên sân khấu, máy quay cận theo chỗ họ đứng, 23: màn hình gọn (bảng tin chỉ khi đổi cảnh, khung người kể một lần, bỏ nhãn chủ đề, phụ đề nhỏ), lời kể nền rõ nét, mở đầu vào thẳng chuyện, 24: ảnh cảnh tự làm nhiều cú máy, dòng tên người nói, Mèo / Bit khung tròn trong đoạn điện ảnh, 25: ảnh cảnh 2,5D (lớp chiều sâu), bụi lơ lửng, bỏ bảng tin trên ảnh)
+const PHIEN_BAN = 26 // tăng khi đổi cách dựng để các phần dựng lại (2: thẻ minh hoạ / đạo cụ khung ngang; 3: giọng Mèo Mun; 4: nhịp chuyển cảnh mượt; 5: thẻ chương, màn kết, B-roll; 6: khung người kể, 7: người kể vẽ riêng, 8: nhân vật chính phim tiểu sử, 9: ảnh Wikipedia, 10: lời giới thiệu + đọc tên chương, ảnh đặt linh động, 11: bố cục chữ không che nhân vật, bỏ ghi nguồn trên ảnh, 12: thanh dòng thời gian, thẻ năm tự thêm, 13: câu móc trước lời chào, màn kết 20 giây, phụ đề .srt, cách đọc tên riêng, 14: biểu cảm, đi vào cảnh, chữ động con số, tiền cảnh, 15: cảnh hành động, 16: bỏ nhạc nền, màn kết 8 giây, nhân vật phụ ở lại theo đợt, lớp sự sống cho bối cảnh, 17: nhân vật hết nhiệm vụ rời đi trước khi người mới vào, 18: ảnh nền Pixabay theo cảnh, 19: tranh nền hoạt hình, Mèo / Bit dạt xa suốt cụm có hai nhân vật phụ (hết đè nhau), 20: Mèo Mun đọc lời mời đăng ký ở màn kết, 21: bỏ ghim cờ trên áo nhân vật, 22: Mèo / Bit dạt theo người đang đứng trên sân khấu, máy quay cận theo chỗ họ đứng, 23: màn hình gọn (bảng tin chỉ khi đổi cảnh, khung người kể một lần, bỏ nhãn chủ đề, phụ đề nhỏ), lời kể nền rõ nét, mở đầu vào thẳng chuyện, 24: ảnh cảnh tự làm nhiều cú máy, dòng tên người nói, Mèo / Bit khung tròn trong đoạn điện ảnh, 25: ảnh cảnh 2,5D (lớp chiều sâu), bụi lơ lửng, bỏ bảng tin trên ảnh, 26: phim tài liệu thuần (bỏ trường quay / Mèo / Bit giữa phim), phụ đề một dòng chữ trắng, dòng tên chỉ người có trong ảnh, tiếng nền theo ảnh)
 const kho = () => db().storage.from(KHO)
 const thuMuc = (id: string) => `youtube/${id}`
 // Phiên bản máy nhà mới nhất (may-nha/tho_doc.py: BAN_MAY_NHA)
@@ -39,6 +39,7 @@ export type CauYT = Omit<LoiThoai[number], 'ai' | 'nhan_vat_phu'> & {
   tai_hien?: boolean
   the_moc?: string
   anh?: number // phim tiểu sử: số thứ tự ảnh Wikipedia (d.phim.anh) hiện trong câu này, -1 = không
+  am_canh?: string // tiếng nền của ảnh cảnh (AI chọn khi gắn ảnh PDF): phong, pho, van_phong, dam_dong, thien_nhien, may_moc, bien, mua, san_khau, im_lang
   anh_canh?: string // ảnh cảnh chủ trang tự làm (tên tệp ở D:\anh-phim\<mã dự án> trên máy nhà): chiếu toàn màn hình câu này
 }
 export type PhanYT = {
@@ -214,6 +215,10 @@ function loiThoaiGui(d: DuAnYT, k: number) {
     minh_hoa: { kieu: 'khong', tu_khoa: '', chu_chinh: '', chu_phu: '', bieu_tuong: '' }, anh_wiki: undefined,
     ...them,
   })
+  // Phim tài liệu điện ảnh (có ảnh cảnh tự làm): Mèo Mun / Robot Bit không chen vào giữa phim (gãy không khí), chỉ còn ở màn kết
+  if (phim && d.phan.some((x) => x.loi?.some((l) => l.anh_canh))) {
+    for (let i = loi.length - 1; i >= 0; i--) if (loi[i].ai === 'meo' || loi[i].ai === 'robot') loi.splice(i, 1)
+  }
   const cham = (x: string) => (/[.!?…]$/.test(x.trim()) ? x.trim() : `${x.trim()}.`)
   // Người kể đọc tên chương / phần (thẻ chương hiện đúng lúc này) — chỉ khi video có nhiều phần
   const docChuong = nhieuPhan ? [mau(loi[0], { chu: cham(`${phim ? 'Chương' : 'Phần'} ${k}. ${tenChuong}`), la_chuong: true })] : []
@@ -962,7 +967,8 @@ export async function trangThaiPdf(id: string): Promise<TrangThaiPdf> {
 const GanNhanVatSchema = z.object({
   anh: z.array(z.object({ so: z.number().int(), la: z.enum(['chinh', 'vai', 'chung', 'bo']), tu_chuong: z.number().int(), ma: z.string() })),
 })
-const GanCanhSchema = z.object({ gan: z.array(z.object({ so: z.number().int(), chuong: z.number().int(), tu_cau: z.number().int(), den_cau: z.number().int() })) })
+const AM_CANH = ['phong', 'pho', 'van_phong', 'dam_dong', 'thien_nhien', 'may_moc', 'bien', 'mua', 'san_khau', 'im_lang'] as const
+const GanCanhSchema = z.object({ gan: z.array(z.object({ so: z.number().int(), chuong: z.number().int(), tu_cau: z.number().int(), den_cau: z.number().int(), am: z.enum(AM_CANH) })) })
 
 export async function ganAnhPdf(id: string) {
   const d = await docDuAn(id)
@@ -1024,17 +1030,20 @@ Use every cast code at most once; if two images fit the same person, keep the cl
     if (d.phan.some((x) => !x.loi)) throw new Error('Kịch bản chưa viết xong các chương, chưa gắn được ảnh cảnh')
     const kichBan = d.phan.map((x, k) => `## Chương ${k + 1}: ${x.tieu_de}\n${(x.loi ?? []).map((l, i) => `${i}. [${l.ai}] ${l.chu.slice(0, 110)}`).join('\n')}`).join('\n\n')
     const kq = await goiJson({
-      system: `You are the film editor. Place the designer's scene images onto the script of an animated biography film (${n} chapters). Each image comes with the text printed next to it in the PDF (chapter, scene number, description). Return ranges: one entry = one image shown over the consecutive lines tu_cau..den_cau (inclusive, 0-based line numbers) of chapter chuong. Rules: follow the chapter and scene order of the PDF; put each image where the narration talks about what it shows; cover most narrator (nguoi_ke) and character lines of the film; a range is usually 2 to 6 lines; ranges must not overlap; an image may be used for more than one range when the story comes back to that moment; lines of meo / robot (the mascots) may sit inside a range but never start or end it; skip images that fit nothing.`,
+      system: `You are the film editor. Place the designer's scene images onto the script of an animated biography film (${n} chapters). Each image comes with the text printed next to it in the PDF (chapter, scene number, description). Return ranges: one entry = one image shown over the consecutive lines tu_cau..den_cau (inclusive, 0-based line numbers) of chapter chuong. Rules: follow the chapter and scene order of the PDF; put each image where the narration talks about what it shows; cover most narrator (nguoi_ke) and character lines of the film; a range is usually 2 to 6 lines; ranges must not overlap; an image may be used for more than one range when the story comes back to that moment; lines of meo / robot (the mascots) may sit inside a range but never start or end it; skip images that fit nothing. am = the background ambience someone standing in that image would hear: phong (quiet room), pho (street traffic), van_phong (busy office), dam_dong (crowd), thien_nhien (wind / birds outdoors), may_moc (workshop machines), bien (sea), mua (rain), san_khau (audience at a stage event), im_lang (silence, e.g. an empty night).`,
       noiDung: `<scene_images>\n${bang.canh.map((x, i) => `${i}. ${x.chu || '(không có chữ)'}`).join('\n')}\n</scene_images>\n\n<script>\n${kichBan}\n</script>`,
       effort: 'medium',
       kiemTra: GanCanhSchema,
       schema: {
         type: 'object', additionalProperties: false, required: ['gan'],
-        properties: { gan: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['so', 'chuong', 'tu_cau', 'den_cau'], properties: { so: { type: 'integer' }, chuong: { type: 'integer' }, tu_cau: { type: 'integer' }, den_cau: { type: 'integer' } } } } },
+        properties: { gan: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['so', 'chuong', 'tu_cau', 'den_cau', 'am'], properties: { so: { type: 'integer' }, chuong: { type: 'integer' }, tu_cau: { type: 'integer' }, den_cau: { type: 'integer' }, am: { type: 'string', enum: [...AM_CANH] } } } } },
       },
     })
     if (!kq) throw new Error('AI chưa gắn được ảnh cảnh, thử lại sau ít phút')
-    for (const x of d.phan) for (const l of x.loi ?? []) delete l.anh_canh
+    for (const x of d.phan) for (const l of x.loi ?? []) {
+      delete l.anh_canh
+      delete l.am_canh
+    }
     const dem: Record<string, string[]> = {}
     for (const g of kq.gan) {
       const x = bang.canh[g.so]
@@ -1042,7 +1051,10 @@ Use every cast code at most once; if two images fit the same person, keep the cl
       if (!x || !loi) continue
       const tu = Math.max(0, g.tu_cau)
       const den = Math.min(loi.length - 1, g.den_cau)
-      for (let i = tu; i <= den; i++) if (loi[i].ai !== 'meo' && loi[i].ai !== 'robot' && !loi[i].anh_canh) loi[i].anh_canh = x.tep
+      for (let i = tu; i <= den; i++) if (loi[i].ai !== 'meo' && loi[i].ai !== 'robot' && !loi[i].anh_canh) {
+        loi[i].anh_canh = x.tep
+        loi[i].am_canh = g.am
+      }
       if (den >= tu) (dem[x.tep] ??= []).push(`chương ${g.chuong} câu ${tu + 1}–${den + 1}`)
     }
     for (const x of bang.canh) nhan[x.tep] = dem[x.tep]?.join(', ') ?? 'Không dùng'

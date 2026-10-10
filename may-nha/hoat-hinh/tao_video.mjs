@@ -32,6 +32,23 @@ loi.forEach((l, i) => {
     l.pip = l.ai
   }
 })
+// Phim tài liệu điện ảnh (có ảnh cảnh tự làm): không cắt về trường quay hoạt hình giữa phim — câu nào chưa có ảnh thì mượn
+// ảnh của câu gần nhất (trước, không có thì sau), kể cả lớp 2,5D và tiếng nền
+const DIEN_ANH = loi.some((l) => l.anh_canh_tep)
+if (DIEN_ANH) {
+  const muon = (i, j) => {
+    const g = loi[j]
+    for (const k of ['anh_canh_tep', 'anh_canh_lop', 'am_canh']) if (g[k] !== undefined) loi[i][k] = g[k]
+  }
+  loi.forEach((l, i) => {
+    if (l.anh_canh_tep || laLinhVat(l)) return
+    for (let j = i - 1; j >= 0; j--) if (loi[j].anh_canh_tep && !loi[j].pip) return muon(i, j)
+    for (let j = i + 1; j < loi.length; j++) if (loi[j].anh_canh_tep && !loi[j].pip) return muon(i, j)
+  })
+}
+// Dòng tên người nói trên ảnh cảnh: chỉ nhân vật chính và nhân vật có tên trong hồ sơ (thường có mặt trong ảnh). Vai chung
+// (giáo viên, hacker, bác sĩ…) chỉ nghe giọng — ảnh không có họ, ghi tên là sai hình
+const coTenDienAnh = (l) => l.ai === 'nhan_vat_chinh' || /^vai_\d+$/.test(l.ai)
 for (const l of loi) {
   if (!l.anh_canh_tep) continue
   if (laLinhVat(l) && !l.pip) {
@@ -430,7 +447,7 @@ loi.forEach((l, i) => {
     if (hien.length && [...hien, w].join(' ').length > MAX_DONG) {
       dong.push(hien)
       hien = [w]
-      if (dong.length === 2) {
+      if (dong.length === (DIEN_ANH ? 1 : 2)) {
         doanPd.push(dong)
         dong = []
       }
@@ -456,7 +473,7 @@ loi.forEach((l, i) => {
               const tw0 = batDauDoan + (w / kyTuDoan) * (ketThuc - batDauDoan) * 0.85
               w += chu.length
               const id = `pd${i}-${k}-${w}`
-              tw.push(`tl.to("#${id}", { color: "${ke ? '#fde68a' : laPhu(ai) ? NHAN_VAT_PHU[ai].mau : ai === 'meo' ? '#fdba74' : '#67e8f9'}", duration: 0.08 }, ${f(tw0)});`)
+              if (!DIEN_ANH) tw.push(`tl.to("#${id}", { color: "${ke ? '#fde68a' : laPhu(ai) ? NHAN_VAT_PHU[ai].mau : ai === 'meo' ? '#fdba74' : '#67e8f9'}", duration: 0.08 }, ${f(tw0)});`)
               return `<span id="${id}" class="pd-tu">${esc(chu)}</span>`
             })
             .join(' ')}</div>`,
@@ -467,7 +484,7 @@ loi.forEach((l, i) => {
     const ten = ''
     phuDe.push(`
     <div id="pd${i}-${k}" class="phu-de clip" data-start="${f(batDauDoan)}" data-duration="${f(ketThuc - batDauDoan)}" data-track-index="3">
-      <div class="pd-khung">${k === 0 && l.tai_hien ? '<div class="pd-tai-hien">Tái hiện</div>' : ''}${ten}${dongHtml}</div>
+      <div class="pd-khung">${k === 0 && l.tai_hien && !(DIEN_ANH && coTenDienAnh(l)) ? '<div class="pd-tai-hien">Tái hiện</div>' : ''}${ten}${dongHtml}</div>
     </div>`)
     tw.push(`tl.from("#pd${i}-${k} .pd-khung", { y: 20, opacity: 0, duration: 0.15, ease: "power2.out" }, ${f(batDauDoan)});`)
   })
@@ -968,7 +985,7 @@ loi.forEach((l, i) => {
 
 // ── Câu giật tít 2 giây đầu + minh hoạ chèn đúng lúc giọng đọc tới chi tiết (con số, địa điểm, lời trích...) ─
 const gtMoc = Math.min(batDau[0] + 2.2, batDau[0] + doDai[0])
-const giatTit = mocMoDau(moc, gtMoc, Math.max(0, batDau[0] - 0.3))
+const giatTit = DIEN_ANH ? { html: '', tw: [] } : mocMoDau(moc, gtMoc, Math.max(0, batDau[0] - 0.3))
 tw.push(...giatTit.tw)
 // Bảng tin câu đầu nhường chỗ cho câu giật tít
 if (giatTit.html) {
@@ -1119,7 +1136,7 @@ const anhCanh = doanAnhCanh.map((c, k) => {
       them.push(`<div id="${idp}" class="pip"><div class="pip-tron">${l.pip === 'meo' ? meoSvg : robotSvg}</div></div>`)
       tw.push(`tl.fromTo("#${idp}", { opacity: 0, scale: 0.6 }, { opacity: 1, scale: 1, duration: 0.35, ease: "back.out(1.8)", immediateRender: false }, ${f(t0 - 0.1)});`)
       tw.push(`tl.to("#${idp}", { opacity: 0, scale: 0.8, duration: 0.3, ease: "power2.in" }, ${f(t1)});`)
-    } else if (l.ai !== 'nguoi_ke' && tenNguoiNoi(l)) {
+    } else if (coTenDienAnh(l) && tenNguoiNoi(l)) {
       const idt = `${id}-ten${i}`
       them.push(`<div id="${idt}" class="ten-noi"><span class="ten-noi-ten">${esc(tenNguoiNoi(l))}</span>${l.tai_hien ? '<span class="ten-noi-phu">Lời thoại tái hiện</span>' : ''}</div>`)
       tw.push(`tl.fromTo("#${idt}", { opacity: 0, x: -40 }, { opacity: 1, x: 0, duration: 0.4, ease: "power2.out", immediateRender: false }, ${f(t0)});`)
@@ -1226,7 +1243,7 @@ loi.forEach((l, i) => {
 })
 // Đổi cảnh: tiếng vút; vào bối cảnh có âm thanh đặc trưng (phố → xe chạy, sân vận động → reo hò…) thì thêm tiếng đó
 for (const cc of chuyenCanh) {
-  if (SFX[loi[cc.i].am_thanh]) continue
+  if (SFX[loi[cc.i].am_thanh] || loi[cc.i].anh_canh_tep) continue
   themAm('sfx-vut', Math.max(0, cc.t - 0.05), 0.28)
   const rieng = SFX[AM_VAO_CANH[BOI_CANH[loi[cc.i].boi_canh] ? loi[cc.i].boi_canh : '']]
   if (rieng) themAm(rieng[0], cc.t + 0.35, rieng[1] * 0.8)
@@ -1238,7 +1255,25 @@ for (const cc of chuyenCanh) {
 }
 // Nhân vật phụ bước ra sân khấu: tiếng bước chân (trừ khi câu đó đã có hiệu ứng)
 for (const dp of doanPhu) if (!SFX[loi[dp.tu].am_thanh]) themAm('sfx-buoc-chan', batDau[dp.tu] + 0.05, 0.22, 1.1)
+// Ảnh cảnh: tiếng nền lặp suốt đoạn ảnh + tiếng đặc trưng lúc vào (sân khấu → vỗ tay, phố → xe chạy)
+const AM_CANH = {
+  phong: ['nen-phong', 0.22], pho: ['nen-pho', 0.12], van_phong: ['nen-van-phong', 0.32], dam_dong: ['nen-dam-dong', 0.3],
+  thien_nhien: ['nen-thien-nhien', 0.25], may_moc: ['nen-may-moc', 0.08], bien: ['nen-bien', 0.12], mua: ['sfx-mua', 0.28],
+  san_khau: ['nen-dam-dong', 0.32],
+}
+const AM_VAO_ANH = { san_khau: ['sfx-vo-tay', 0.3], pho: ['sfx-xe-chay', 0.25], dam_dong: ['sfx-reo-ho', 0.25] }
+const nenAnh = (l) => AM_CANH[l.am_canh] ?? (l.am_canh ? null : AM_NEN[BOI_CANH[l.boi_canh] ? l.boi_canh : ''] ?? null)
+doanAnhCanh.forEach((c, k) => {
+  const l = loi[c.tu]
+  const tu = c.tu === 0 ? 0 : batDau[c.tu] - 0.35
+  const den = c.het === loi.length - 1 ? TONG : batDau[c.het + 1] - 0.35
+  const nen = l.am_canh || l.boi_canh !== 'truong_quay' ? nenAnh(l) : null
+  if (nen && doDaiTep(nen[0])) for (let luc = tu; luc < den - 0.05; luc += doDaiTep(nen[0])) themAm(nen[0], luc, nen[1], den - luc)
+  const vao = AM_VAO_ANH[l.am_canh]
+  if (vao && !SFX[l.am_thanh] && (k === 0 || loi[c.tu - 1]?.am_canh !== l.am_canh)) themAm(vao[0], tu + 0.4, vao[1])
+})
 doanCanh.forEach((dc, k) => {
+  if (loi[dc.tu].anh_canh_tep) return
   const nen = AM_NEN[dc.ten]
   if (!nen) return
   const tu = k ? batDau[dc.tu] - 0.35 : 0

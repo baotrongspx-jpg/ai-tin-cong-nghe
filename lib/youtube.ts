@@ -12,6 +12,7 @@ import { NHAN_VAT } from './hoatHinh'
 import { kiemDinh, locLoiChao, type KetQuaKiemDinh } from './kiemDinh'
 import { chuGopY, phanBien, voiPhanBien, type KetQuaPhanBien, type KhauPhanBien } from './phanBien'
 import { suaKichBan } from './suaKichBan'
+import { bienTapDat, hoiDongDat, khauChuaDat, loiBienTap } from './datChuan'
 import { apBienTap, deBaiBienTap, type DaBienTap, type KetQuaBienTap } from './bienTap'
 
 // Video YouTube dài (trang /youtube): hoạt hình Mèo Mun & Robot Bit, khung ngang 16:9, dài tới ~20 phút.
@@ -297,7 +298,8 @@ export async function vietLoiPhan(id: string, k: number) {
     phim
       ? vietPhanPhim({ ten: phim.ten, nghienCuu: phim.nghien_cuu!, cauChuyen: phim.cau_chuyen!, k, soCau: Math.round(giay / 5.5), noiTiep, anh: phim.anh ?? [] })
       : vietPhanYouTube({ nguon: d.nguon_chu, danY: d, k, soCau: Math.round(giay / 4.5), noiTiep })
-  // Hội đồng phản biện chấm kịch bản chương; điểm thấp thì sửa đúng những câu bị chê một lần theo góp ý
+  // Hội đồng phản biện chấm kịch bản chương; chưa đạt thì bắt buộc sửa đúng những câu bị chê theo góp ý rồi chấm lại
+  const batDau = Date.now()
   const nguCanh = nguCanhPhan(d, k)
   const { kq: kb, pb } = await voiPhanBien('kich_ban', nguCanh, viet, (x) => tomTatLoi(x.loi), {
     conGiay: 120,
@@ -307,8 +309,16 @@ export async function vietLoiPhan(id: string, k: number) {
     },
   })
   if (!kb) throw new Error(`AI chưa viết được phần ${k}, thử lại sau ít phút`)
-  // Biên tập viên kiểm định: tự sửa nhịp hình ảnh, chấm điểm, ghi chú
-  const { loi, ...kd } = kiemDinh(kb.loi as CauYT[], { loai: d.loai, laCuoi: k === d.phan.length, coDai: laCoDai(d) })
+  // Biên tập viên kiểm định: tự sửa nhịp hình ảnh, chấm điểm, ghi chú. Còn lỗi nặng (không tự sửa được) thì bắt buộc AI
+  // sửa theo ghi chú (còn thời gian; hết thì trang tự gọi sửa tiếp — suaLoiPhan)
+  let { loi, ...kd } = kiemDinh(kb.loi as CauYT[], { loai: d.loai, laCuoi: k === d.phan.length, coDai: laCoDai(d) })
+  if (!bienTapDat(kd) && (Date.now() - batDau) / 1000 < 200) {
+    const s = await suaKichBan({ loi, gopY: chuBienTap(kd), nguCanh, phim: !!phim }).catch(() => null)
+    if (s) {
+      const kd2 = kiemDinh(s.loi, { loai: d.loai, laCuoi: k === d.phan.length, coDai: laCoDai(d) })
+      if (loiBienTap(kd2).length < loiBienTap(kd).length) ({ loi, ...kd } = kd2)
+    }
+  }
   // Đọc lại ngay trước khi lưu: lúc AI viết, phần khác có thể vừa được lưu
   const moi = (await docDuAn(id)) ?? d
   moi.phan[k - 1] = { ...moi.phan[k - 1], loi, moc: kb.moc, canh: undefined, kiem_dinh: kd, phan_bien: pb ?? undefined, phan_bien_canh: undefined } // lời đổi thì phân cảnh cũ không còn đúng
@@ -338,24 +348,30 @@ export async function suaLoiPhan(id: string, k: number): Promise<{ duAn: DuAnYT;
   const d = await docDuAn(id)
   const p = d?.phan[k - 1]
   if (!d || !p?.loi) throw new Error('Phần này chưa có lời thoại')
-  if (!p.phan_bien || (!p.phan_bien.van_de.length && !p.phan_bien.goi_y)) throw new Error('Hội đồng chưa có góp ý cho phần này')
+  // Góp ý = hội đồng (có góp ý) + lỗi nặng biên tập viên còn lại
+  const coHoiDong = !!p.phan_bien && (p.phan_bien.van_de.length > 0 || !!p.phan_bien.goi_y)
+  const gopY = [coHoiDong ? chuGopY(p.phan_bien!) : '', bienTapDat(p.kiem_dinh) ? '' : chuBienTap(p.kiem_dinh!)].filter(Boolean).join('\n\n')
+  if (!gopY) throw new Error('Hội đồng và biên tập viên chưa có góp ý cho phần này')
   const nguCanh = nguCanhPhan(d, k)
-  const s = await suaKichBan({ loi: p.loi, gopY: chuGopY(p.phan_bien), nguCanh, phim: d.loai === 'tieu_su' })
+  const s = await suaKichBan({ loi: p.loi, gopY, nguCanh, phim: d.loai === 'tieu_su' })
   if (!s) throw new Error('AI chưa sửa được (có thể hết lượt AI), thử lại sau ít phút')
   const pb2 = await phanBien('kich_ban', nguCanh, tomTatLoi(s.loi)).catch(() => null)
-  const diemCu = p.phan_bien.diem
+  const { loi, ...kd } = kiemDinh(s.loi, { loai: d.loai, laCuoi: k === d.phan.length, coDai: laCoDai(d) })
+  const diemCu = p.phan_bien?.diem ?? 0
+  const lanCu = p.phan_bien?.lan ?? 0
   const luc = new Date().toISOString()
   const moi = (await docDuAn(id)) ?? d
-  if (pb2 && pb2.diem < diemCu) {
-    moi.phan[k - 1] = { ...moi.phan[k - 1], phan_bien: { ...p.phan_bien, lan: p.phan_bien.lan + 1, luc, diem_dau: diemCu, giu: 'cu' } }
+  // Bản sửa bị hội đồng chấm thấp hơn, hoặc biên tập viên thấy nhiều lỗi nặng hơn: giữ bản cũ
+  if ((pb2 && p.phan_bien && pb2.diem < diemCu) || loiBienTap(kd).length > loiBienTap(p.kiem_dinh).length) {
+    if (p.phan_bien) moi.phan[k - 1] = { ...moi.phan[k - 1], phan_bien: { ...p.phan_bien, lan: lanCu + 1, luc, diem_dau: diemCu, giu: 'cu' } }
     await luuDuAn(moi)
-    return { duAn: moi, soCho: s.soCho, diem: pb2.diem, giu: 'cu' }
+    return { duAn: moi, soCho: s.soCho, diem: pb2?.diem ?? null, giu: 'cu' }
   }
-  const { loi, ...kd } = kiemDinh(s.loi, { loai: d.loai, laCuoi: k === d.phan.length, coDai: laCoDai(d) })
-  const pb: KetQuaPhanBien = { ...(pb2 ?? p.phan_bien), lan: p.phan_bien.lan + 1, luc, diem_dau: diemCu, giu: pb2 ? 'moi' : 'moi_chua_cham' }
+  const goc = pb2 ?? p.phan_bien
+  const pb: KetQuaPhanBien | undefined = goc ? { ...goc, dat: hoiDongDat(goc), lan: lanCu + 1, luc, diem_dau: diemCu, giu: pb2 ? 'moi' : 'moi_chua_cham' } : undefined
   moi.phan[k - 1] = { ...moi.phan[k - 1], loi, canh: undefined, kiem_dinh: kd, phan_bien: pb, phan_bien_canh: undefined }
   await luuDuAn(moi)
-  return { duAn: moi, soCho: s.soCho, diem: pb2?.diem ?? null, giu: pb.giu! }
+  return { duAn: moi, soCho: s.soCho, diem: pb2?.diem ?? null, giu: pb?.giu ?? 'moi_chua_cham' }
 }
 
 // Cho biên tập viên kiểm định chạy lại trên lời thoại đang có (phần viết trước khi có bước này): tự sửa + chấm điểm
@@ -579,6 +595,9 @@ export async function trangThaiDuAn(d: DuAnYT, mayNha: string | null): Promise<T
 // mọi phần để biết khi nào đủ mà ghép.
 export async function guiDung(d: DuAnYT, chiPhan?: number) {
   if (d.phan.some((p) => !p.loi)) throw new Error('Còn phần chưa có lời thoại, chờ AI viết xong đã')
+  // Bắt buộc đạt chuẩn hội đồng phản biện + biên tập viên mới được dựng
+  const chuaDat = khauChuaDat(d)
+  if (chuaDat.length) throw new Error(`Chưa dựng được: còn ${chuaDat.length} khâu hội đồng / biên tập viên chấm chưa đạt (${chuaDat.map((x) => x.ten).join('; ')}). Bấm "Làm lại cho đạt" để AI làm lại.`)
   // Có ảnh nền theo địa điểm: gắn các cảnh chưa gắn vào địa điểm trước khi tính mã phần
   if (await ganDiaDiem(d)) await luuDuAn(d)
   const tt = await trangThaiDuAn(d, null)
@@ -770,6 +789,8 @@ export async function chayBuocPhim(id: string, buoc: BuocPhim, k?: number) {
   const nguCanh = `Phim tiểu sử hoạt hình về ${p.ten}, ${d.phut} phút${p.ghi_chu ? `. Ghi chú của chủ kênh: ${p.ghi_chu.slice(0, 500)}` : ''}${p.cau_chuyen ? `\nTiêu đề: ${d.tieu_de}\nBig idea: ${p.cau_chuyen.big_idea}` : ''}`
   const pbMoi: Partial<Record<KhauPhanBien, KetQuaPhanBien>> = {}
   const json = (x: unknown) => JSON.stringify(x)
+  // Chạy lại một khâu đã bị hội đồng chấm chưa đạt: lần làm đầu đã sửa theo góp ý lần trước
+  const truoc = (pb?: KetQuaPhanBien) => ({ gopYTruoc: pb && !hoiDongDat(pb) ? chuGopY(pb) : undefined })
   if (buoc === 'nghien_cuu') {
     const [wiki, anh] = await Promise.all([nguonWiki(p.ten), anhWiki(p.ten).catch(() => [])])
     p.anh = anh
@@ -777,7 +798,7 @@ export async function chayBuocPhim(id: string, buoc: BuocPhim, k?: number) {
       ...wiki.map((w, i) => ({ ten: `Nguồn ${i + 1} — Wikipedia ${w.ngon_ngu === 'vi' ? 'tiếng Việt' : 'tiếng Anh'}: ${w.tieu_de} (${w.url})`, chu: w.noi_dung })),
       ...(p.tai_lieu ? [{ ten: `Nguồn ${wiki.length + 1} — Tài liệu chủ kênh cung cấp`, chu: p.tai_lieu }] : []),
     ]
-    const { kq, pb } = await voiPhanBien('nghien_cuu', nguCanh, () => nghienCuuNhanVat(p.ten, p.ghi_chu, ds.map((x) => `<source name="${x.ten}">\n${x.chu}\n</source>`).join('\n\n')), json)
+    const { kq, pb } = await voiPhanBien('nghien_cuu', nguCanh, () => nghienCuuNhanVat(p.ten, p.ghi_chu, ds.map((x) => `<source name="${x.ten}">\n${x.chu}\n</source>`).join('\n\n')), json, truoc(d.phan_bien?.nghien_cuu))
     if (!kq) throw new Error('AI chưa nghiên cứu được, thử lại sau ít phút')
     if (pb) pbMoi.nghien_cuu = pb
     p.nghien_cuu = kq
@@ -785,7 +806,7 @@ export async function chayBuocPhim(id: string, buoc: BuocPhim, k?: number) {
   } else if (buoc === 'cau_chuyen') {
     if (!p.nghien_cuu) throw new Error('Chưa có bước nghiên cứu')
     const nc = p.nghien_cuu
-    const { kq, pb } = await voiPhanBien('cau_chuyen', nguCanh, () => phatTrienCauChuyen({ ten: p.ten, ghiChu: p.ghi_chu, nghienCuu: nc, phut: d.phut, soPhan: soPhanCho(d.phut) }), json)
+    const { kq, pb } = await voiPhanBien('cau_chuyen', nguCanh, () => phatTrienCauChuyen({ ten: p.ten, ghiChu: p.ghi_chu, nghienCuu: nc, phut: d.phut, soPhan: soPhanCho(d.phut) }), json, truoc(d.phan_bien?.cau_chuyen))
     if (!kq) throw new Error('AI chưa phát triển được câu chuyện, thử lại sau ít phút')
     if (pb) pbMoi.cau_chuyen = pb
     p.cau_chuyen = kq
@@ -802,14 +823,14 @@ export async function chayBuocPhim(id: string, buoc: BuocPhim, k?: number) {
     // AI chưa làm được thì dùng hình mặc định để phim vẫn dựng được; bấm "Thiết kế lại" sau
     const nc = p.nghien_cuu
     const cc = p.cau_chuyen
-    const { kq, pb } = await voiPhanBien('tao_hinh', nguCanh, () => thietKeNhanVatChinh({ ten: p.ten, nghienCuu: nc, cauChuyen: cc }), json)
+    const { kq, pb } = await voiPhanBien('tao_hinh', nguCanh, () => thietKeNhanVatChinh({ ten: p.ten, nghienCuu: nc, cauChuyen: cc }), json, truoc(d.phan_bien?.tao_hinh))
     p.tao_hinh = kq ?? TAO_HINH_MAC_DINH
     if (pb) pbMoi.tao_hinh = pb
   } else if (buoc === 'ho_so') {
     if (!p.nghien_cuu || !p.cau_chuyen) throw new Error('Chưa có nghiên cứu và câu chuyện')
     const nc = p.nghien_cuu
     const cc = p.cau_chuyen
-    const { kq, pb } = await voiPhanBien('ho_so', nguCanh, () => hoSoHinhAnh({ ten: p.ten, nghienCuu: nc, cauChuyen: cc }), json)
+    const { kq, pb } = await voiPhanBien('ho_so', nguCanh, () => hoSoHinhAnh({ ten: p.ten, nghienCuu: nc, cauChuyen: cc }), json, truoc(d.phan_bien?.ho_so))
     if (!kq) throw new Error('AI chưa lập được hồ sơ hình ảnh, thử lại sau ít phút')
     if (pb) pbMoi.ho_so = pb
     p.ho_so = kq
@@ -818,7 +839,7 @@ export async function chayBuocPhim(id: string, buoc: BuocPhim, k?: number) {
     if (!k || !phan?.loi || !p.cau_chuyen) throw new Error('Chương này chưa có kịch bản')
     const cc = p.cau_chuyen
     const loiChuong = phan.loi as CauPhim[]
-    const { kq, pb } = await voiPhanBien('phan_canh', `${nguCanh}\nChương ${k}: ${phan.tieu_de}`, () => phanCanhChuong({ ten: p.ten, hoSo: p.ho_so ?? null, cauChuyen: cc, k, loi: loiChuong }), json)
+    const { kq, pb } = await voiPhanBien('phan_canh', `${nguCanh}\nChương ${k}: ${phan.tieu_de}`, () => phanCanhChuong({ ten: p.ten, hoSo: p.ho_so ?? null, cauChuyen: cc, k, loi: loiChuong }), json, truoc(phan.phan_bien_canh))
     if (!kq) throw new Error(`AI chưa phân cảnh được chương ${k}, thử lại sau ít phút`)
     phan.canh = kq
     phan.phan_bien_canh = pb ?? undefined
@@ -829,7 +850,7 @@ export async function chayBuocPhim(id: string, buoc: BuocPhim, k?: number) {
       .join('\n\n')
     const nc = p.nghien_cuu
     const cc = p.cau_chuyen
-    const { kq, pb } = await voiPhanBien('dong_goi', nguCanh, () => dongGoiYouTube({ ten: p.ten, nghienCuu: nc, cauChuyen: cc, kichBan }), json)
+    const { kq, pb } = await voiPhanBien('dong_goi', nguCanh, () => dongGoiYouTube({ ten: p.ten, nghienCuu: nc, cauChuyen: cc, kichBan }), json, truoc(d.phan_bien?.dong_goi))
     if (!kq) throw new Error('AI chưa đóng gói được, thử lại sau ít phút')
     if (pb) pbMoi.dong_goi = pb
     p.dong_goi = kq
@@ -961,3 +982,6 @@ export const soCanhTheoDiaDiem = (d: DuAnYT) => {
   }
   return dem
 }
+
+// Lỗi nặng biên tập viên còn lại → lời góp ý cho AI sửa kịch bản (cùng cách đưa như góp ý hội đồng)
+const chuBienTap = (kd: Pick<KetQuaKiemDinh, 'ghi_chu'>) => `Biên tập viên kiểm định phát hiện các lỗi bắt buộc phải sửa:\n${loiBienTap(kd).map((x) => `- ${x}`).join('\n')}`

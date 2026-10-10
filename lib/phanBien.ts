@@ -1,11 +1,12 @@
 import 'server-only'
+import { DIEM_DAT_HOI_DONG } from './datChuan'
 import { z } from 'zod'
 import { goiJson, gopYPhanBien } from './ai'
 
 // Hội đồng kiểm duyệt & phản biện (như hội đồng duyệt của đài truyền hình): sau mỗi khâu AI làm xong (dàn ý, nghiên
 // cứu, câu chuyện, tạo hình, kịch bản từng chương, hồ sơ, phân cảnh, đóng gói), một AI khác đóng vai hội đồng chấm
-// theo tiêu chí riêng của khâu đó và theo kỳ vọng của khán giả. Điểm thấp thì khâu đó làm lại MỘT lần, kèm góp ý cụ
-// thể của hội đồng (ai.ts: gopYPhanBien), rồi hội đồng chấm lại. Hội đồng dùng Gemini bản nhẹ trước cho đỡ tốn lượt.
+// theo tiêu chí riêng của khâu đó và theo kỳ vọng của khán giả. Chưa đạt thì khâu đó BẮT BUỘC làm lại kèm góp ý cụ
+// thể của hội đồng (ai.ts: gopYPhanBien) cho tới khi đạt (lib/datChuan.ts), rồi hội đồng chấm lại. Hội đồng dùng Gemini bản nhẹ trước cho đỡ tốn lượt.
 
 export type KhauPhanBien = 'dan_y' | 'nghien_cuu' | 'cau_chuyen' | 'tao_hinh' | 'kich_ban' | 'ho_so' | 'phan_canh' | 'dong_goi'
 // Đã làm lại (lan 2): diem_dau = điểm bản đầu; giu = bản đang dùng: 'moi' (bản làm lại, diem là điểm chấm lại), 'cu' (bản làm lại
@@ -72,30 +73,42 @@ Return: diem = a score from 0 to 10 (7 or more means good enough to publish, bel
 
 export const chuGopY = (pb: { van_de: string[]; goi_y: string }) => [...pb.van_de.map((v) => `- ${v}`), pb.goi_y && `→ ${pb.goi_y}`].filter(Boolean).join('\n')
 
-// Chạy một khâu có hội đồng: làm → chấm → (điểm < 6 và còn thời gian) làm lại kèm góp ý → chấm lại.
-// o.sua: sửa đúng chỗ hội đồng chê trên bản đầu (kịch bản: lib/suaKichBan.ts) thay vì làm lại từ đầu.
+// Chạy một khâu có hội đồng: làm → chấm → chưa đạt (dưới DIEM_DAT_HOI_DONG) thì BẮT BUỘC làm lại kèm góp ý → chấm lại,
+// tối đa 3 lần trong một lượt gọi máy chủ (còn thời gian: máy chủ cho tối đa 300 giây). Giữ bản điểm cao nhất; vẫn chưa đạt
+// thì kết quả ghi dat: false — trang tự gọi làm lại tiếp, và chưa đạt thì không cho dựng (lib/datChuan.ts).
+// o.sua: sửa đúng chỗ hội đồng chê (kịch bản: lib/suaKichBan.ts) thay vì làm lại từ đầu.
+// o.gopYTruoc: góp ý của lần chấm chưa đạt trước (lượt gọi trước) — lần làm đầu tiên đã sửa theo góp ý đó.
 // Hội đồng không trả lời được (hết lượt…) thì giữ kết quả, không chặn quy trình.
 export async function voiPhanBien<T>(
   khau: KhauPhanBien,
   nguCanh: string,
   lam: () => Promise<T | null>,
   tomTat: (kq: T) => string,
-  o: { conGiay?: number; sua?: (kq: T, gopY: string) => Promise<T | null> } = {},
+  o: { conGiay?: number; sua?: (kq: T, gopY: string) => Promise<T | null>; gopYTruoc?: string } = {},
 ): Promise<{ kq: T | null; pb: KetQuaPhanBien | null }> {
   const batDau = Date.now()
-  const kq = await lam()
+  const kq = o.gopYTruoc ? await gopYPhanBien.run(o.gopYTruoc, lam) : await lam()
   if (!kq) return { kq, pb: null }
   const pb = await phanBien(khau, nguCanh, tomTat(kq)).catch(() => null)
   if (!pb) return { kq, pb: null }
-  const daDung = (Date.now() - batDau) / 1000
-  // Chỉ làm lại khi điểm dưới 6 và còn đủ thời gian (máy chủ cho tối đa 300 giây mỗi lượt)
-  if (pb.diem >= 6 || daDung > (o.conGiay ?? 110)) return { kq, pb: { ...pb, lan: 1, luc: new Date().toISOString() } }
-  const gopY = chuGopY(pb)
-  const kq2 = o.sua ? await o.sua(kq, gopY).catch(() => null) : await gopYPhanBien.run(gopY, lam)
-  if (!kq2) return { kq, pb: { ...pb, lan: 1, luc: new Date().toISOString() } }
-  const pb2 = await phanBien(khau, nguCanh, tomTat(kq2)).catch(() => null)
-  // Bản làm lại chỉ được nhận nếu hội đồng không chấm thấp hơn bản đầu
+  let tot = { kq, pb }
+  let lan = 1
+  let chuaCham = false
+  while (tot.pb.diem < DIEM_DAT_HOI_DONG && lan < 3 && (Date.now() - batDau) / 1000 < (o.conGiay ?? 110)) {
+    const gopY = chuGopY(tot.pb)
+    const kq2 = o.sua ? await o.sua(tot.kq, gopY).catch(() => null) : await gopYPhanBien.run(gopY, lam)
+    lan++
+    if (!kq2) break
+    const pb2 = await phanBien(khau, nguCanh, tomTat(kq2)).catch(() => null)
+    if (!pb2) {
+      // Hội đồng không chấm được bản làm lại: nhận bản làm lại (đã sửa theo góp ý), không chấm tiếp
+      tot = { kq: kq2, pb: tot.pb }
+      chuaCham = true
+      break
+    }
+    if (pb2.diem >= tot.pb.diem) tot = { kq: kq2, pb: pb2 }
+  }
   const luc = new Date().toISOString()
-  if (pb2 && pb2.diem < pb.diem) return { kq, pb: { ...pb, lan: 2, luc, diem_dau: pb.diem, giu: 'cu' } }
-  return { kq: kq2, pb: { ...(pb2 ?? pb), lan: 2, luc, diem_dau: pb.diem, giu: pb2 ? 'moi' : 'moi_chua_cham' } }
+  const giu = lan === 1 ? undefined : chuaCham ? 'moi_chua_cham' : tot.kq === kq ? 'cu' : 'moi'
+  return { kq: tot.kq, pb: { ...tot.pb, dat: tot.pb.diem >= DIEM_DAT_HOI_DONG, lan, luc, ...(lan > 1 ? { diem_dau: pb.diem, giu } : {}) } as KetQuaPhanBien }
 }

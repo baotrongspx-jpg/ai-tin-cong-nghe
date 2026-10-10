@@ -9,6 +9,7 @@ import { locLoiChao } from '@/lib/kiemDinh'
 import { IconChep, IconMo, IconXong, IconYouTube, Xoay } from '@/app/BieuTuong'
 import { bienTapYouTube, chayBuocPhimYouTube, layShortsYouTube, luuPhatAmYouTube, taoShortsYouTube, dungVideoYouTube, kiemDinhYouTube, layTrangThaiYouTube, luuThongTinYouTube, suaPhanYouTube, vietPhanYouTube, veAnhBiaYouTube, chonAnhBiaYouTube, xoaVideoYouTube } from '../actions'
 import HoSoPhim, { KhoiDuLieu } from './HoSoPhim'
+import { bienTapDat, hoiDongDat, khauChuaDat, SO_LAN_LAM_LAI } from '@/lib/datChuan'
 import NenPhim from './NenPhim'
 
 const NGUOI: Record<string, string> = {
@@ -297,6 +298,24 @@ export default function ChiTiet({ dau, ttDau }: { dau: DuAnYT; ttDau: TrangThaiD
       setD(moi)
       return true
     }
+    // Làm một khâu rồi, hội đồng / biên tập viên chấm chưa đạt thì BẮT BUỘC làm lại (tối đa SO_LAN_LAM_LAI lượt), vẫn chưa
+    // đạt thì dừng và báo (không đi tiếp khâu sau, không cho dựng)
+    const lamDenDat = async (moTaViec: string, viec: () => Promise<KetQua>, lamLai: () => Promise<KetQua>, chuaDat: (x: DuAnYT) => boolean, k?: number) => {
+      if (!(await lam(moTaViec, viec, k))) return false
+      for (let lan = 1; lan <= SO_LAN_LAM_LAI && chuaDat(moi); lan++) {
+        if (!(await lam(`Chấm chưa đạt — AI bắt buộc làm lại (lần ${lan}/${SO_LAN_LAM_LAI}): ${moTaViec}`, lamLai, k))) return false
+      }
+      if (chuaDat(moi)) {
+        setLoiViet(`Đã làm lại ${SO_LAN_LAM_LAI} lần nhưng hội đồng / biên tập viên vẫn chấm chưa đạt: ${moTaViec.replace(/…$/, '')}. Bấm "Chạy tiếp" để AI làm lại tiếp.`)
+        return false
+      }
+      return true
+    }
+    const buocDat = (buoc: 'nghien_cuu' | 'cau_chuyen' | 'tao_hinh' | 'ho_so' | 'dong_goi') => (x: DuAnYT) => !hoiDongDat(x.phan_bien?.[buoc])
+    const chuongChuaDat = (k: number) => (x: DuAnYT) => !hoiDongDat(x.phan[k - 1]?.phan_bien) || !bienTapDat(x.phan[k - 1]?.kiem_dinh)
+    const canhChuaDat = (k: number) => (x: DuAnYT) => !hoiDongDat(x.phan[k - 1]?.phan_bien_canh)
+    const buocPhim = (moTaViec: string, buoc: 'nghien_cuu' | 'cau_chuyen' | 'tao_hinh' | 'ho_so' | 'dong_goi') =>
+      lamDenDat(moTaViec, () => chayBuocPhimYouTube(moi.id, buoc), () => chayBuocPhimYouTube(moi.id, buoc), buocDat(buoc))
     try {
       const phim = moi.loai === 'tieu_su'
       const ten = phim ? 'chương' : 'phần'
@@ -304,13 +323,21 @@ export default function ChiTiet({ dau, ttDau }: { dau: DuAnYT; ttDau: TrangThaiD
         await lam(`AI đang viết lại ${ten} ${chiPhan}…`, () => vietPhanYouTube(moi.id, chiPhan), chiPhan)
         return
       }
-      if (phim && !moi.phim?.nghien_cuu && !(await lam('Nghiên cứu nhân vật: đọc Wikipedia + tài liệu, kiểm chứng từng sự thật…', () => chayBuocPhimYouTube(moi.id, 'nghien_cuu')))) return
+      if (phim && (!moi.phim?.nghien_cuu || buocDat('nghien_cuu')(moi)) && !(await buocPhim('Nghiên cứu nhân vật: đọc Wikipedia + tài liệu, kiểm chứng từng sự thật…', 'nghien_cuu'))) return
       if (phim && moi.phim?.anh === undefined && !(await lam('Lấy ảnh thật trong bài Wikipedia (Wikimedia Commons)…', () => chayBuocPhimYouTube(moi.id, 'lay_anh')))) return
-      if (phim && !moi.phim?.cau_chuyen && !(await lam('Phát triển câu chuyện: khán giả, góc kể, big idea, cấu trúc, hook, chia chương…', () => chayBuocPhimYouTube(moi.id, 'cau_chuyen')))) return
-      if (phim && !moi.phim?.tao_hinh?.nhom && !(await lam('Thiết kế nhân vật chính: tuổi từng giai đoạn, tóc, trang phục, đồ vật đặc trưng…', () => chayBuocPhimYouTube(moi.id, 'tao_hinh')))) return
+      // Câu chuyện chưa đạt mà đã viết kịch bản: làm lại câu chuyện là chia chương lại, mất hết kịch bản đã viết → hỏi trước
+      if (phim && moi.phim?.cau_chuyen && buocDat('cau_chuyen')(moi) && moi.phan.some((x) => x.loi) && !confirm('Hội đồng chấm "Phát triển câu chuyện" chưa đạt. Làm lại thì AI chia chương lại và viết lại TOÀN BỘ kịch bản. Làm lại ngay?')) {
+        setLoiViet('Phát triển câu chuyện chưa đạt nên chưa dựng được. Bấm "Chạy tiếp" khi muốn AI làm lại.')
+        return
+      }
+      if (phim && (!moi.phim?.cau_chuyen || buocDat('cau_chuyen')(moi)) && !(await buocPhim('Phát triển câu chuyện: khán giả, góc kể, big idea, cấu trúc, hook, chia chương…', 'cau_chuyen'))) return
+      if (phim && (!moi.phim?.tao_hinh?.nhom || buocDat('tao_hinh')(moi)) && !(await buocPhim('Thiết kế nhân vật chính: tuổi từng giai đoạn, tóc, trang phục, đồ vật đặc trưng…', 'tao_hinh'))) return
       for (let k = 1; k <= moi.phan.length; k++) {
-        if (moi.phan[k - 1].loi) continue
-        if (!(await lam(`AI đang viết kịch bản ${ten} ${k}/${moi.phan.length}…`, () => vietPhanYouTube(moi.id, k), k))) return
+        if (moi.phan[k - 1].loi && !chuongChuaDat(k)(moi)) continue
+        // Chưa viết: viết rồi sửa đến khi đạt. Đã viết mà chưa đạt: sửa đúng chỗ hội đồng / biên tập viên chê
+        const sua = () => suaPhanYouTube(moi.id, k)
+        const viet = moi.phan[k - 1].loi ? sua : () => vietPhanYouTube(moi.id, k)
+        if (!(await lamDenDat(moi.phan[k - 1].loi ? `AI sửa kịch bản ${ten} ${k} theo góp ý…` : `AI đang viết kịch bản ${ten} ${k}/${moi.phan.length}…`, viet, sua, chuongChuaDat(k), k))) return
       }
       // Viết đủ các chương mà chưa biên tập cả phim: tự gửi máy nhà biên tập (không tốn lượt Gemini)
       if (moi.phan.every((x) => x.loi) && !moi.bien_tap && !moi.ai_cho?.bien_tap) {
@@ -321,12 +348,13 @@ export default function ChiTiet({ dau, ttDau }: { dau: DuAnYT; ttDau: TrangThaiD
         }
       }
       if (!phim) return
-      if (!moi.phim?.ho_so && !(await lam('Hồ sơ hình ảnh: nhân vật, bối cảnh, thiết kế, màu, nhạc…', () => chayBuocPhimYouTube(moi.id, 'ho_so')))) return
+      if ((!moi.phim?.ho_so || buocDat('ho_so')(moi)) && !(await buocPhim('Hồ sơ hình ảnh: nhân vật, bối cảnh, thiết kế, màu, nhạc…', 'ho_so'))) return
       for (let k = 1; k <= moi.phan.length; k++) {
-        if (moi.phan[k - 1].canh) continue
-        if (!(await lam(`Phân cảnh, shot list và prompt video AI chương ${k}/${moi.phan.length}…`, () => chayBuocPhimYouTube(moi.id, 'phan_canh', k), k))) return
+        if (moi.phan[k - 1].canh && !canhChuaDat(k)(moi)) continue
+        const pc = () => chayBuocPhimYouTube(moi.id, 'phan_canh', k)
+        if (!(await lamDenDat(`Phân cảnh, shot list và prompt video AI chương ${k}/${moi.phan.length}…`, pc, pc, canhChuaDat(k), k))) return
       }
-      if (!moi.phim?.dong_goi && !(await lam('Đóng gói YouTube: 20 tiêu đề, thumbnail, mô tả, Shorts, chấm điểm…', () => chayBuocPhimYouTube(moi.id, 'dong_goi')))) return
+      if ((!moi.phim?.dong_goi || buocDat('dong_goi')(moi)) && !(await buocPhim('Đóng gói YouTube: 20 tiêu đề, thumbnail, mô tả, Shorts, chấm điểm…', 'dong_goi'))) return
     } finally {
       setDangChay(null)
       setDangViet(null)
@@ -453,6 +481,19 @@ export default function ChiTiet({ dau, ttDau }: { dau: DuAnYT; ttDau: TrangThaiD
         <p className="flex items-center gap-2 rounded-xl bg-violet-50 p-3 text-sm text-violet-700 ring-1 ring-violet-200">
           <Xoay /> {dangChay} (giữ trang này mở)
         </p>
+      )}
+      {!dangChay && khauChuaDat(d).length > 0 && (
+        <div className="grid gap-2 rounded-xl bg-amber-50 p-3 text-sm text-amber-900 ring-1 ring-amber-200">
+          <p className="font-semibold">⚠ Còn {khauChuaDat(d).length} khâu hội đồng / biên tập viên chấm chưa đạt — phải làm lại cho đạt mới dựng được video:</p>
+          <ul className="grid gap-0.5">
+            {khauChuaDat(d).map((x) => (
+              <li key={x.ten}>• {x.ten}</li>
+            ))}
+          </ul>
+          <button type="button" onClick={() => chayTiep()} className="btn btn-sm btn-phu justify-self-start">
+            Làm lại cho đạt
+          </button>
+        </div>
       )}
       {loiViet && !dangChay && (
         <p className="flex flex-wrap items-center gap-3 rounded-xl bg-red-50 p-3 text-sm text-red-700 ring-1 ring-red-200">

@@ -47,16 +47,11 @@ s.headers.update({'authorization': f'Bearer {KHOA}', 'apikey': KHOA})
 HOAT_HINH = REPO / 'may-nha' / 'hoat-hinh'
 FFMPEG = REPO / 'node_modules' / 'ffmpeg-static' / 'ffmpeg.exe'
 FFPROBE_DIR = Path(os.environ.get('FFPROBE_DIR', r'C:\Users\Admin\VieNeu-TTS\cong-cu\node_modules\ffprobe-static\bin\win32\x64'))
-# Thư mục dựng tạm (mỗi phần video vài trăm MB tới vài GB): ổ D nếu có — ổ C gần đầy thì trình dựng hình HyperFrames từ
-# chối chạy ("Low disk space", đo 09/10/2026: C còn 0,7 GB). Chỗ cũ trên ổ C giữ cho phiếu việc dang dở + kho tranh Pixabay.
-THU_MUC_TAM_CU = Path(r'C:\Users\Admin\VieNeu-TTS\hoat-hinh-tam')
-THU_MUC_TAM = Path(os.environ.get('HOAT_HINH_TAM', r'D:\hoat-hinh-tam' if Path('D:/').exists() else str(THU_MUC_TAM_CU)))
+THU_MUC_TAM = Path(os.environ.get('HOAT_HINH_TAM', r'C:\Users\Admin\VieNeu-TTS\hoat-hinh-tam'))
 # Mỗi video dựng xong lưu thêm một bản trên máy nhà, tên theo ngày + tiêu đề bài
 THU_MUC_LUU = Path(os.environ.get('HOAT_HINH_LUU', r'C:\Users\Admin\OneDrive\Desktop\Video-Hoat-Hinh'))
-# Video YouTube dài (trang /youtube): dựng từng phần rồi ghép, chỉ lưu trên máy nhà (quá nặng để gửi lên kho). Ổ D nếu có:
-# ổ C gần đầy, ghép phim ~1 GB trên Desktop (ổ C) thì hết chỗ ("No space left on device", 10/10/2026). Desktop có lối tắt
-# Video-YouTube.lnk trỏ tới D:\Video-YouTube
-THU_MUC_YT = Path(os.environ.get('YOUTUBE_LUU', r'D:\Video-YouTube' if Path('D:/').exists() else r'C:\Users\Admin\OneDrive\Desktop\Video-YouTube'))
+# Video YouTube dài (trang /youtube): dựng từng phần rồi ghép, chỉ lưu trên máy nhà (quá nặng để gửi lên kho)
+THU_MUC_YT = Path(os.environ.get('YOUTUBE_LUU', r'C:\Users\Admin\OneDrive\Desktop\Video-YouTube'))
 # Thư mục tạm khi dựng hình (khung hình HyperFrames): ổ D nếu có, không thì để mặc định (TEMP của Windows)
 TAM_DUNG_HINH = Path(os.environ.get('TAM_DUNG_HINH', r'D:\tam-dung-hinh')) if Path('D:/').exists() else None
 
@@ -95,20 +90,6 @@ def don_rac():
                 cu.append(f'{thu_muc}/{f["name"]}')
     if cu:
         xoa(*cu)
-    # Video YouTube đã xoá mà còn sót đồ (trên kho hoặc thư mục tạm trên máy nhà): dọn nốt
-    con = set()
-    for f in liet_ke('youtube', day_du=True):
-        ten = f['name']
-        if f.get('id') or ten == DANG_DUNG.get('du_an'):  # tệp lẻ có id, thư mục thì không
-            continue
-        if 'du-an.json' in liet_ke(f'youtube/{ten}'):
-            con.add(ten)
-        else:
-            don_du_an(ten)
-    for tm in [x for g in {THU_MUC_TAM, THU_MUC_TAM_CU} for x in (*g.glob('yt-*'), *g.glob('yts-*'))]:
-        du_an = re.sub(r'^yts?-|-\d+$', '', tm.name)
-        if tm.is_dir() and du_an != DANG_DUNG.get('du_an') and du_an not in con:
-            shutil.rmtree(tm, ignore_errors=True)
 
 
 def ghi_wav(phan, sr):
@@ -203,57 +184,6 @@ def bao_hien_tai(buoc, phan_tram=None):
         traceback.print_exc()
 
 
-class DaXoa(Exception):
-    # Dự án video đã bị xoá trên trang trong lúc máy nhà đang dựng: bỏ dở ngay, không ghi gì của nó lên kho nữa
-    pass
-
-
-# Dự án của việc dài đang làm (youtube / youtube_short): cứ ~15 giây hỏi kho xem du-an.json còn không
-DANG_DUNG = {'du_an': None, 'lan': 0.0, 'da_xoa': False}
-
-
-def kiem_da_xoa():
-    du_an = DANG_DUNG['du_an']
-    if not du_an:
-        return
-    if not DANG_DUNG['da_xoa'] and time.time() - DANG_DUNG['lan'] > 15:
-        DANG_DUNG['lan'] = time.time()
-        try:
-            # Chỉ coi là đã xoá khi kho trả lời rõ "không có" (mất mạng thì làm tiếp)
-            DANG_DUNG['da_xoa'] = s.head(f'{URL}/{KHO}/youtube/{du_an}/du-an.json', timeout=30).status_code in (400, 404)
-        except Exception:
-            pass
-    if DANG_DUNG['da_xoa']:
-        raise DaXoa(f'Video {du_an[:6]} đã bị xoá trên trang')
-
-
-def don_du_an(du_an):
-    # Xoá sạch mọi thứ của một dự án video đã xoá: thư mục video (…-<6 ký tự đầu mã>), thư mục tạm trên máy nhà, và các
-    # tệp máy nhà lỡ ghi lên kho sau lúc xoá (tiến độ, kết quả phần), phiếu việc còn sót — để video mới không dính video cũ
-    so = 0
-    # (kể cả ảnh chủ trang nạp cho phim: D:anh-phim<dự án>)
-    for tm in [*THU_MUC_YT.glob(f'*-{du_an[:6]}'), *[x for g in {THU_MUC_TAM, THU_MUC_TAM_CU} for x in (*g.glob(f'yt-{du_an}-*'), *g.glob(f'yts-{du_an}-*'))], ANH_PHIM / du_an]:
-        if tm.is_dir():
-            shutil.rmtree(tm, ignore_errors=True)
-            # OneDrive / trình duyệt dựng hình đôi khi còn giữ thư mục lúc vừa xoá tệp bên trong: đợi rồi xoá lại
-            for _ in range(3):
-                if not tm.exists():
-                    break
-                time.sleep(2)
-                shutil.rmtree(tm, ignore_errors=True)
-            so += 1
-    try:
-        con = [f'youtube/{du_an}/{n}' for n in liet_ke(f'youtube/{du_an}')]
-        if con and f'youtube/{du_an}/du-an.json' not in con:
-            xoa(*con)
-        viec = [f'{t}/{n}' for t in ('hang-doi/viec', 'hang-doi/uu-tien') for n in liet_ke(t) if du_an in n]
-        if viec:
-            xoa(*viec)
-    except Exception:
-        traceback.print_exc()
-    return so
-
-
 class TienDo:
     # Ghi tiến độ (phần trăm + bước đang làm) lên kho để trang web vẽ thanh chạy; tối đa 3 giây ghi một lần.
     # `duong`: chỗ ghi khác (video YouTube ghi ở youtube/<dự án>/tien-do.json), `them`: thông tin kèm (phần đang dựng)
@@ -264,7 +194,6 @@ class TienDo:
         self.cuoi = None
 
     def bao(self, phan_tram, buoc, ep=False):
-        kiem_da_xoa()  # video bị xoá giữa chừng thì dừng (DaXoa)
         phan_tram = int(max(0, min(100, phan_tram)))
         if not ep and (self.cuoi == (phan_tram, buoc) or time.time() - self.lan < 3):
             return
@@ -294,30 +223,19 @@ def chay_theo_doi(lenh, cwd, gioi_han, khi_co_phan_tram):
     p = subprocess.Popen(lenh, cwd=cwd, env=moi_truong, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     het_gio = time.time() + gioi_han
     duoi = ''
-    try:
-        while True:
-            khuc = p.stdout.read1(4096)
-            if not khuc:
-                break
-            duoi = (duoi + khuc.decode('utf-8', 'replace'))[-6000:]
-            so = re.findall(r'(\d{1,3})%', duoi[-200:])
-            if so:
-                khi_co_phan_tram(int(so[-1]))
-            if time.time() > het_gio:
-                raise RuntimeError(f'{lenh[0]} chạy quá {gioi_han} giây')
-    except BaseException:
-        p.kill()  # dừng giữa chừng (quá giờ, video bị xoá…): tắt luôn trình dựng hình, không để chạy ngầm
-        raise
+    while True:
+        khuc = p.stdout.read1(4096)
+        if not khuc:
+            break
+        duoi = (duoi + khuc.decode('utf-8', 'replace'))[-3000:]
+        so = re.findall(r'(\d{1,3})%', duoi[-200:])
+        if so:
+            khi_co_phan_tram(int(so[-1]))
+        if time.time() > het_gio:
+            p.kill()
+            raise RuntimeError(f'{lenh[0]} chạy quá {gioi_han} giây')
     if p.wait() != 0:
-        raise RuntimeError(f'{lenh[0]} lỗi: {dong_loi(duoi)}')
-
-
-def dong_loi(ra):
-    # Lấy đúng dòng lỗi trong đầu ra dài (bỏ thanh tiến độ, mã màu, cảnh báo lint) để trang web hiện được lý do thật
-    sach = re.sub(r'\x1b\[[0-9;?]*[A-Za-z]', '', ra).replace('\r', '\n')
-    dong = [d.strip() for d in sach.split('\n') if d.strip() and not d.strip().startswith('@hf-progress') and '%' not in d]
-    loi = [d for d in dong if re.search(r'error|lỗi|failed|exception|cannot|không', d, re.I) and not re.search(r'lint', d, re.I)]
-    return ' | '.join((loi or dong)[-4:])[-400:]
+        raise RuntimeError(f'{lenh[0]} lỗi: {duoi[-500:]}')
 
 
 def chay(lenh, cwd, gioi_han):
@@ -325,121 +243,11 @@ def chay(lenh, cwd, gioi_han):
     moi_truong['PATH'] = os.pathsep.join([str(FFMPEG.parent), str(FFPROBE_DIR), moi_truong.get('PATH', '')])
     kq = subprocess.run(lenh, cwd=cwd, env=moi_truong, capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=gioi_han)
     if kq.returncode != 0:
-        raise RuntimeError(f'{lenh[0]} lỗi: {dong_loi(kq.stderr or kq.stdout or "")}')
+        raise RuntimeError(f'{lenh[0]} lỗi: {(kq.stderr or kq.stdout)[-500:]}')
     return kq.stdout
 
 
 UA_WIKI = 'CongNghe24H/1.0 (https://ai-tin-cong-nghe-wpy7.vercel.app; phim tieu su)'
-
-
-# Ảnh chủ trang tự làm cho phim (vd. ảnh vẽ bằng AI): D:\anh-phim\<mã dự án>\<tên tệp>.
-# - Câu kịch bản có "anh_canh" (ảnh cảnh 3D): chép vào assets/canh-<tên>, ghi "anh_canh_tep" — chiếu toàn màn hình như cảnh phim
-# - Ảnh nhân vật 2D ("anh" của nhan_vat_chinh / từng vai_phu, "anh_chung" theo kiểu nhân vật chung): chép vào assets/nv-<tên>,
-#   ghi "anh_tep" — tao_video.mjs dùng thay hình vẽ sẵn
-ANH_PHIM = Path(os.environ.get('ANH_PHIM', r'D:\anh-phim' if Path('D:/').exists() else r'C:\Users\Admin\VieNeu-TTS\anh-phim'))
-
-
-def tai_anh_canh(lt, tai_san, du_an):
-    if not du_an:
-        return
-    so, thieu = 0, set()
-
-    def chep(ten, dau):
-        nonlocal so
-        ten = Path(str(ten or '')).name
-        if not ten:
-            return None
-        goc = ANH_PHIM / du_an / ten
-        if not goc.exists():
-            thieu.add(ten)
-            return None
-        dich = tai_san / f'{dau}-{ten}'
-        if not dich.exists():
-            shutil.copy(goc, dich)
-            so += 1
-        return dich.name
-
-    # Ảnh 2,5D: mỗi ảnh cảnh tách 2 lớp theo chiều sâu (may-nha/chieu_sau.py, lưu sẵn ở D:\anh-phim\<dự án>\lop) → lớp nền +
-    # lớp trước trượt lệch nhau khi máy quay chạy. Không tách được (lỗi / ảnh không có vật nổi hẳn) thì dùng ảnh phẳng
-    lop = {}
-    for l in lt.get('loi') or []:
-        tep = chep(l.get('anh_canh'), 'canh')
-        if not tep:
-            continue
-        l['anh_canh_tep'] = tep
-        ten = Path(str(l.get('anh_canh'))).name
-        if ten not in lop:
-            lop[ten] = None
-            try:
-                import chieu_sau
-                kq = chieu_sau.tach_lop(ANH_PHIM / du_an / ten, ANH_PHIM / du_an / 'lop')
-                if kq:
-                    lop[ten] = []
-                    for x in kq:
-                        dich = tai_san / f'lop-{x.name}'
-                        if not dich.exists():
-                            shutil.copy(x, dich)
-                        lop[ten].append(dich.name)
-            except Exception:
-                traceback.print_exc()
-        if lop[ten]:
-            l['anh_canh_lop'] = lop[ten]
-    if lop:
-        try:
-            import chieu_sau
-            chieu_sau.nha_bo_nho()
-        except Exception:
-            pass
-        print(f'Ảnh 2,5D: {sum(1 for v in lop.values() if v)}/{len(lop)} ảnh cảnh tách được lớp chiều sâu', flush=True)
-    for nv in [lt.get('nhan_vat_chinh') or {}, *(lt.get('vai_phu') or [])]:
-        tep = chep(nv.get('anh'), 'nv')
-        if tep:
-            nv['anh_tep'] = tep
-    chung = lt.get('anh_chung') or {}
-    for ma in list(chung):
-        tep = chep(chung[ma], 'nv')
-        if tep:
-            chung[ma] = tep
-        else:
-            del chung[ma]
-    if so or thieu:
-        print(f'Ảnh tự làm: {so} ảnh' + (f', thiếu {len(thieu)} tệp ở {ANH_PHIM / du_an}: {", ".join(sorted(thieu))[:300]}' if thieu else ''), flush=True)
-
-
-def tach_pdf_du_an(du_an):
-    # Trang web: chủ trang nạp PDF nhân vật / PDF cảnh (youtube/<dự án>/pdf-nhan-vat.pdf, pdf-canh.pdf) rồi bấm "Nhà máy
-    # sản xuất" → tách ảnh trong PDF (may-nha/tach_pdf.py) vào D:\anh-phim\<dự án>, gửi ảnh xem trước nhỏ lên kho
-    # (youtube/<dự án>/pdf-anh/) và bảng ảnh youtube/<dự án>/anh-pdf.json {luc, nhan_vat: [{tep, chu, trang}], canh: [...]}
-    # — trang web đọc bảng này, AI gắn ảnh vào kịch bản rồi gửi dựng
-    import tach_pdf  # chỉ cần khi có việc này (pdfplumber cài riêng trong môi trường máy nhà)
-    goc = f'youtube/{du_an}'
-    thu = ANH_PHIM / du_an
-    kq = {'luc': int(time.time() * 1000), 'nhan_vat': [], 'canh': []}
-    try:
-        cu = [f'{goc}/pdf-anh/{n}' for n in liet_ke(f'{goc}/pdf-anh')]
-        if cu:
-            xoa(*cu)
-    except Exception:
-        traceback.print_exc()
-    for loai, ten in (('nhan_vat', 'pdf-nhan-vat.pdf'), ('canh', 'pdf-canh.pdf')):
-        r = s.get(f'{URL}/{KHO}/{goc}/{ten}', timeout=300)
-        if not r.ok:
-            continue
-        THU_MUC_TAM.mkdir(parents=True, exist_ok=True)
-        tam = THU_MUC_TAM / f'pdf-{du_an}-{loai}.pdf'
-        tam.write_bytes(r.content)
-        try:
-            ds = tach_pdf.tach(tam, thu, loai)
-            for x in ds:
-                gui(f'{goc}/pdf-anh/{x["tep"]}.jpg', tach_pdf.anh_nho(thu / x['tep']), 'image/jpeg')
-            kq[loai] = ds
-        except Exception as e:
-            traceback.print_exc()
-            kq['loi'] = f'Không tách được {ten}: {str(e)[:200]}'
-        finally:
-            tam.unlink(missing_ok=True)
-    gui(f'{goc}/anh-pdf.json', json.dumps(kq, ensure_ascii=False).encode('utf-8'), 'application/json')
-    print(f'Tách PDF: {len(kq["nhan_vat"])} ảnh nhân vật, {len(kq["canh"])} ảnh cảnh', flush=True)
 
 
 def tai_anh_wiki(loi, tai_san, td=None):
@@ -497,7 +305,7 @@ TU_KHOA_CANH = {
     'ga_ra': 'garage workshop with tools on the wall', 'be_phong': 'rocket launch pad at dawn',
     'phong_thu': 'music recording studio with microphone', 'phim_truong': 'film studio set with cameras and lights',
 }
-KHO_PIXABAY = THU_MUC_TAM_CU.parent / 'anh-pixabay'  # tranh đã tải (theo mã) + kết quả tìm (Pixabay yêu cầu nhớ 24 giờ) + điểm AI chấm
+KHO_PIXABAY = THU_MUC_TAM.parent / 'anh-pixabay'  # tranh đã tải (theo mã) + kết quả tìm (Pixabay yêu cầu nhớ 24 giờ) + điểm AI chấm
 
 
 def doc_nho(ten):
@@ -620,63 +428,6 @@ def cham_anh(a, tu_khoa, nho):
     return diem
 
 
-ANH_SANG_HS = ['binh_thuong', 'am_ap', 'lanh', 'cang_thang', 'tuoi_sang', 'mo_mong', 'bi_an', 'canh_bao']
-THOI_TIET_HS = ['khong', 'tuyet', 'mua', 'suong']
-
-
-def doc_ho_so(lt, td=None):
-    # Phim tiểu sử: trước khi dựng, AI máy nhà (Ollama, không tốn lượt Gemini) đọc hồ sơ hình ảnh (lt['ho_so']: địa điểm,
-    # màu theo giai đoạn đời) cùng lời thoại phần này, rồi cho TỪNG CẢNH (các câu liền nhau cùng bối cảnh): bối cảnh vẽ khớp
-    # địa điểm nhất, từ khoá tranh nền theo mô tả địa điểm + thời đại, ánh sáng theo màu giai đoạn, thời tiết. Ánh sáng chỉ
-    # thay ở câu đang để bình thường (giữ câu AI đã chọn cảm xúc mạnh). Lỗi / AI máy nhà không chạy thì dựng như cũ.
-    hs, loi = lt.get('ho_so'), lt.get('loi') or []
-    if not hs or not loi:
-        return
-    if td:
-        td.bao(2, 'Đọc hồ sơ phim, chỉnh cảnh theo hồ sơ (AI máy nhà)', ep=True)
-    doan = []
-    for i, l in enumerate(loi):
-        if doan and l.get('boi_canh') == loi[doan[-1][0]].get('boi_canh'):
-            doan[-1][1] = i
-        else:
-            doan.append([i, i])
-    boi_canh_ds = ['truong_quay'] + list(TU_KHOA_CANH)
-    canh = [{'so': k, 'boi_canh': loi[tu].get('boi_canh'), 'loi': ' '.join(x.get('chu', '') for x in loi[tu:het + 1])[:500]} for k, (tu, het) in enumerate(doan)]
-    schema = {'type': 'object', 'properties': {'canh': {'type': 'array', 'items': {'type': 'object', 'properties': {
-        'so': {'type': 'integer'}, 'boi_canh': {'type': 'string', 'enum': boi_canh_ds}, 'anh_nen': {'type': 'string'},
-        'anh_sang': {'type': 'string', 'enum': ANH_SANG_HS}, 'thoi_tiet': {'type': 'string', 'enum': THOI_TIET_HS}},
-        'required': ['so', 'boi_canh', 'anh_nen', 'anh_sang', 'thoi_tiet']}}}, 'required': ['canh']}
-    system = ('You are the art director of an animated documentary. Follow the visual bible of the film exactly. For every scene of this '
-              'chapter: boi_canh = the drawn backdrop (from the list) closest to the bible location where the scene happens; anh_nen = 4 to 8 '
-              'English words describing that bible location for a cartoon background picture (place, era, time of day, atmosphere; no people, '
-              'no names); anh_sang = the colour mood of the current life phase from the bible (warm/happy phases am_ap or tuoi_sang, cold or '
-              'crisis phases lanh, cang_thang or bi_an, dreams mo_mong, danger canh_bao, otherwise binh_thuong); thoi_tiet = weather of '
-              'that location in the bible (khong if none). Keep the scene count and numbers.')
-    try:
-        tra = ai_may_nha.goi(system, json.dumps({'ho_so': hs, 'canh': canh}, ensure_ascii=False), schema, nhiet=0.3)
-        kq = {c['so']: c for c in json.loads(tra).get('canh', [])}
-    except Exception:
-        traceback.print_exc()
-        return
-    doi = 0
-    for k, (tu, het) in enumerate(doan):
-        c = kq.get(k)
-        if not c:
-            continue
-        for i in range(tu, het + 1):
-            l = loi[i]
-            if c['boi_canh'] in boi_canh_ds and c['boi_canh'] != l.get('boi_canh'):
-                l['boi_canh'] = c['boi_canh']
-                doi += 1
-            if c['anh_sang'] in ANH_SANG_HS and l.get('anh_sang', 'binh_thuong') == 'binh_thuong':
-                l['anh_sang'] = c['anh_sang']
-            if c['thoi_tiet'] in THOI_TIET_HS and (l.get('thoi_tiet') or 'khong') == 'khong':
-                l['thoi_tiet'] = c['thoi_tiet']
-        if (c.get('anh_nen') or '').strip():
-            loi[tu]['anh_nen'] = c['anh_nen'].strip()[:120]
-    print(f'Đọc hồ sơ phim: chỉnh {len(kq)}/{len(doan)} cảnh theo hồ sơ ({doi} câu đổi bối cảnh)', flush=True)
-
-
 def tai_anh_nen(loi, tai_san, lech=0, td=None):
     # Mỗi cảnh (các câu liền nhau cùng boi_canh, như tao_video.mjs) một tranh nền → assets/px-<mã>.jpg, ghi tên tệp vào
     # anh_nen_tep của câu đầu cảnh. Không lặp tranh trong một phần; lech (số phần) để các phần chọn tranh khác nhau.
@@ -786,9 +537,9 @@ def dung_video(may, ds_giong, lt, tm, td, fps=30, gioi_han=1500, anh_nen=None):
     # Trả độ dài (giây) từng câu. Tiến độ: đọc giọng 10-30%, dựng hình 30-95%.
     shutil.rmtree(tm, ignore_errors=True)
     td.bao(2, 'Chuẩn bị (phông chữ, âm thanh, ảnh tư liệu)', ep=True)
-    (tm / 'artifacts').mkdir(parents=True, exist_ok=True)
+    (tm / 'artifacts').mkdir(parents=True)
     tai_san = tm / 'hyperframes' / 'assets'
-    tai_san.mkdir(parents=True, exist_ok=True)
+    tai_san.mkdir(parents=True)
     for tep in ('BeVietnamPro-Bold.ttf', 'BeVietnamPro-Medium.ttf'):
         shutil.copy(REPO / 'assets' / 'fonts' / tep, tai_san / tep)
     shutil.copy(HOAT_HINH / 'gsap.min.js', tai_san / 'gsap.min.js')
@@ -796,8 +547,6 @@ def dung_video(may, ds_giong, lt, tm, td, fps=30, gioi_han=1500, anh_nen=None):
     for tep in (HOAT_HINH / 'am-thanh').glob('*.wav'):
         shutil.copy(tep, tai_san / tep.name)
     tai_anh_wiki(lt['loi'], tai_san, td)
-    tai_anh_canh(lt, tai_san, lt.get('du_an'))
-    doc_ho_so(lt, td)  # phim tiểu sử: chỉnh cảnh theo hồ sơ hình ảnh trước khi chọn tranh nền / dựng
     if anh_nen is not None:  # video YouTube: ảnh nền Pixabay theo cảnh (anh_nen = số phần, để các phần chọn ảnh khác nhau)
         tai_anh_nen(lt['loi'], tai_san, anh_nen, td)
     # Gom các câu cùng giọng đọc một lần (nhanh hơn nhiều so với từng câu, nhất là trên card NVIDIA)
@@ -832,22 +581,9 @@ def dung_video(may, ds_giong, lt, tm, td, fps=30, gioi_han=1500, anh_nen=None):
     (tm / 'artifacts' / 'loi_thoai.json').write_text(json.dumps(lt, ensure_ascii=False), encoding='utf-8')
     (tm / 'artifacts' / 'do_dai.json').write_text(json.dumps(do_dai), encoding='utf-8')
     chay(['node', str(HOAT_HINH / 'tao_video.mjs'), str(tm)], tm, 120)
-    # Nhả AI máy nhà khỏi RAM trước khi dựng hình (đọc hồ sơ / chấm tranh nền vừa dùng ~8 GB) — không thì máy 16 GB hết RAM
-    td.bao(30, 'Nhả bộ nhớ AI máy nhà trước khi dựng hình', ep=True)
-    ai_may_nha.nha_bo_nho()
     td.bao(30, 'Dựng hình 0%', ep=True)
-    lenh = ['npx.cmd', '--yes', 'hyperframes', 'render', '--quality', 'standard', '--fps', str(fps), '-o', str(tm / 'video.mp4')]
-    try:
-        chay_theo_doi(lenh, tm / 'hyperframes', gioi_han, lambda pt: td.bao(30 + 0.65 * pt, f'Dựng hình {pt}%'))
-    except RuntimeError as e:
-        # Vẫn thiếu RAM (mỗi luồng dựng là một trình duyệt): dựng lại một lần với 2 luồng, chậm hơn nhưng nhẹ hơn nhiều
-        if not re.search(r'out of memory|INSUFFICIENT_RESOURCES|Allocation failed', str(e), re.I):
-            raise
-        print(f'Dựng hình thiếu bộ nhớ, thử lại với 2 luồng: {e}', flush=True)
-        ai_may_nha.nha_bo_nho()
-        td.bao(30, 'Thiếu bộ nhớ: dựng lại nhẹ hơn (2 luồng) 0%', ep=True)
-        chay_theo_doi(lenh + ['--workers', '2'], tm / 'hyperframes', gioi_han * 2,
-                      lambda pt: td.bao(30 + 0.65 * pt, f'Dựng hình (2 luồng) {pt}%'))
+    chay_theo_doi(['npx.cmd', '--yes', 'hyperframes', 'render', '--quality', 'standard', '--fps', str(fps), '-o', str(tm / 'video.mp4')],
+                  tm / 'hyperframes', gioi_han, lambda pt: td.bao(30 + 0.65 * pt, f'Dựng hình {pt}%'))
     return do_dai
 
 
@@ -982,7 +718,6 @@ def dung_youtube(may, ds_giong, yc):
             try:
                 # Phần dài vài phút: 24 khung hình/giây cho nhanh, cho dựng tới ~40 giây mỗi giây video
                 uoc = sum(len(l['chu']) for l in yc['loi_thoai']['loi']) / 14
-                yc['loi_thoai']['du_an'] = du_an  # để tìm ảnh cảnh tự làm (tai_anh_canh)
                 dung_video(may, ds_giong, yc['loi_thoai'], tm, td, fps=24, gioi_han=max(1800, int(uoc * 40)), anh_nen=k)
                 shutil.move(str(tm / 'video.mp4'), str(tep))
                 if (tm / 'artifacts' / 'phu_de.json').exists():
@@ -1060,7 +795,6 @@ def dung_short(may, ds_giong, yc):
     td = TienDo(None, duong=f'{goc}/tien-do-short.json', them={'so': so})
     tm = THU_MUC_TAM / f'yts-{du_an}-{so}'
     try:
-        yc['loi_thoai']['du_an'] = du_an
         dung_video(may, ds_giong, yc['loi_thoai'], tm, td, fps=30, gioi_han=1800, anh_nen=so)
         ra = thu_muc / f'Shorts-{so}.mp4'
         shutil.move(str(tm / 'video.mp4'), str(ra))
@@ -1069,10 +803,8 @@ def dung_short(may, ds_giong, yc):
         except Exception:
             traceback.print_exc()
         gui(f'{goc}/short-{so}.json', json.dumps({'tep': str(ra), 'luc': int(time.time() * 1000)}, ensure_ascii=False), 'application/json')
-    except DaXoa:
-        raise
     except Exception as e:
-        gui(f'{goc}/short-{so}.json', json.dumps({'loi': str(e)[:400]}, ensure_ascii=False), 'application/json')
+        gui(f'{goc}/short-{so}.json', json.dumps({'loi': str(e)[:300]}, ensure_ascii=False), 'application/json')
         raise
     finally:
         shutil.rmtree(tm, ignore_errors=True)
@@ -1116,8 +848,8 @@ def dung_hoat_hinh(may, ds_giong, yc, td):
 
 
 # Phiên bản máy nhà (gửi kèm tín hiệu sống): trang web biết máy nhà đã khởi động lại sau lần cập nhật chưa
-# (lib/youtube.ts: BAN_MAY_NHA phải bằng số này). 2: báo việc đang làm (hien-tai.json), Pixabay chặn thì nghỉ; 3: báo lại mỗi 20 giây; 4: tự khởi động lại khi code đổi; 5: đọc hồ sơ phim trước khi dựng; 6: nhân vật phụ có tên vẽ hình riêng theo hồ sơ; 7: video bị xoá thì dừng dựng, dọn sạch; 8: nhả RAM AI máy nhà trước khi dựng hình; 9: ảnh cảnh chủ trang tự làm; 10: ảnh nhân vật 2D tự làm; 11: tách ảnh từ PDF chủ trang nạp; 12: ảnh cảnh 2,5D (tách lớp chiều sâu)
-BAN_MAY_NHA = 12
+# (lib/youtube.ts: BAN_MAY_NHA phải bằng số này). 2: báo việc đang làm (hien-tai.json), Pixabay chặn thì nghỉ; 3: báo lại mỗi 20 giây; 4: tự khởi động lại khi code đổi
+BAN_MAY_NHA = 4
 
 
 def bao_song():
@@ -1128,7 +860,7 @@ def bao_song():
             # Đang làm việc dài: gửi lại bước hiện tại (kèm đã làm bao lâu) để trang web biết máy nhà vẫn chạy, chỉ là bước
             # này lâu — cảnh báo "có thể đang kẹt" chỉ hiện khi máy nhà ngừng hẳn
             b = dict(BUOC_CUOI)
-            if VIEC_HIEN_TAI and b.get('buoc') and not DANG_DUNG['da_xoa']:
+            if VIEC_HIEN_TAI and b.get('buoc'):
                 phut = int((time.time() - b['tu']) // 60)
                 buoc = b['buoc'] + (f' (đã {phut} phút)' if phut >= 1 else '')
                 gui(b['duong'], json.dumps({**b['them'], 'phanTram': b['phan_tram'], 'buoc': buoc, 'luc': int(time.time() * 1000)}, ensure_ascii=False), 'application/json')
@@ -1139,7 +871,7 @@ def bao_song():
 
 
 VIEC_DAI = ('youtube', 'youtube_short', 'hoat_hinh')
-VIEC_DO = THU_MUC_TAM_CU / 'viec-dang-lam.json'  # phiếu việc dài đang làm (xoá khi xong, kể cả lỗi)
+VIEC_DO = THU_MUC_TAM / 'viec-dang-lam.json'  # phiếu việc dài đang làm (xoá khi xong, kể cả lỗi)
 
 
 def khong_ngu(bat):
@@ -1243,21 +975,10 @@ def main():
             viec_dai = yc.get('loai') in VIEC_DAI
             # Bảng tin chung cho trang web: việc gì, của video nào, phần nào
             MO_TA_VIEC = {'youtube': 'Dựng video YouTube', 'youtube_short': 'Dựng Shorts', 'yt_anh_bia': 'Vẽ ảnh bìa', 'hoat_hinh': 'Dựng video TikTok',
-                          'ai': 'AI máy nhà biên tập kịch bản', 'xoa_youtube': 'Xoá video', 'tach_pdf': 'Tách ảnh từ PDF'}
+                          'ai': 'AI máy nhà biên tập kịch bản', 'xoa_youtube': 'Xoá video'}
             VIEC_HIEN_TAI.clear()
             VIEC_HIEN_TAI.update({'viec': ma, 'loai': yc.get('loai') or 'doc_giong', 'mo_ta': MO_TA_VIEC.get(yc.get('loai'), 'Đọc giọng'),
                                   'du_an': yc.get('du_an'), 'tieu_de': yc.get('tieu_de') or yc.get('ten'), 'phan': yc.get('phan') or yc.get('so')})
-            # Việc của video YouTube: theo dõi video còn trên trang không (bị xoá thì dừng ngay, xem kiem_da_xoa)
-            DANG_DUNG.update({'du_an': yc.get('du_an') if yc.get('loai') in ('youtube', 'youtube_short', 'yt_anh_bia') else None, 'lan': 0.0, 'da_xoa': False})
-            try:
-                kiem_da_xoa()
-            except DaXoa:
-                print(f'Bỏ việc {ten}: video đã bị xoá trên trang', flush=True)
-                don_du_an(yc['du_an'])
-                DANG_DUNG['du_an'] = None
-                VIEC_HIEN_TAI.clear()
-                xoa('hang-doi/hien-tai.json')
-                continue
             bao_hien_tai('Bắt đầu', 0)
             if viec_dai:
                 VIEC_DO.write_text(json.dumps({'ten': ten, 'yc': yc}, ensure_ascii=False), encoding='utf-8')
@@ -1273,12 +994,20 @@ def main():
                         td.xong()
                     print(f'Xong video hoạt hình {giay:.0f}s trong {time.time() - bat_dau:.0f}s', flush=True)
                 elif yc.get('loai') == 'xoa_youtube':
-                    # Trang web đã xoá dự án: xoá sạch thư mục video, thư mục tạm và đồ còn sót trên kho
+                    # Trang web đã xoá dự án: xoá thư mục video (…-<6 ký tự đầu mã>) và thư mục tạm của nó trên máy nhà
                     du_an = yc['du_an']
-                    so = don_du_an(du_an)
+                    so = 0
+                    for tm in [*THU_MUC_YT.glob(f'*-{du_an[:6]}'), *THU_MUC_TAM.glob(f'yt-{du_an}-*'), *THU_MUC_TAM.glob(f'yts-{du_an}-*')]:
+                        if tm.is_dir():
+                            shutil.rmtree(tm, ignore_errors=True)
+                            # OneDrive đôi khi còn giữ thư mục lúc vừa xoá tệp bên trong: đợi rồi xoá lại thư mục rỗng
+                            for _ in range(3):
+                                if not tm.exists():
+                                    break
+                                time.sleep(2)
+                                shutil.rmtree(tm, ignore_errors=True)
+                            so += 1
                     print(f'Đã xoá {so} thư mục video của dự án {du_an[:6]}', flush=True)
-                elif yc.get('loai') == 'tach_pdf':
-                    tach_pdf_du_an(yc['du_an'])
                 elif yc.get('loai') == 'yt_anh_bia':
                     # Vẽ (lại) ảnh bìa theo chữ chủ trang đặt, không cần dựng video
                     so = tao_anh_bia(thu_muc_du_an(yc['du_an'], yc.get('tieu_de')), f'youtube/{yc["du_an"]}', yc['anh_bia'])
@@ -1305,13 +1034,9 @@ def main():
                     gui(f'hang-doi/xong/{ma}.wav', wav, 'audio/wav')
                     gui(f'hang-doi/xong/{ma}.json', json.dumps({'doDai': do_dai}), 'application/json')
                     print(f'Đọc xong {len(do_dai)} câu ({sum(do_dai):.0f}s âm thanh) trong {time.time() - bat_dau:.0f}s', flush=True)
-            except DaXoa as e:
-                # Video bị xoá trong lúc dựng: dừng, dọn sạch, không báo lỗi gì lên trang (để video mới không dính video cũ)
-                print(f'{e}: dừng dựng, dọn sạch', flush=True)
-                don_du_an(yc['du_an'])
             except Exception as e:
                 if yc.get('loai') == 'youtube':
-                    loi = {'loi': str(e)[:400], 'ma': yc['ma_phan'][yc['phan'] - 1], 'luc': int(time.time() * 1000)}
+                    loi = {'loi': str(e)[:300], 'ma': yc['ma_phan'][yc['phan'] - 1], 'luc': int(time.time() * 1000)}
                     gui(f'youtube/{yc["du_an"]}/phan-{yc["phan"]}.json', json.dumps(loi, ensure_ascii=False), 'application/json')
                 else:
                     gui(f'hang-doi/xong/{ma}.json', json.dumps({'loi': str(e)[:300]}, ensure_ascii=False), 'application/json')
@@ -1323,7 +1048,6 @@ def main():
                     VIEC_DO.unlink(missing_ok=True)
                     khong_ngu(False)
                 VIEC_HIEN_TAI.clear()
-                DANG_DUNG.update({'du_an': None, 'da_xoa': False})
                 xoa('hang-doi/hien-tai.json')
         except Exception:
             traceback.print_exc()  # mất mạng... thì chờ rồi thử lại

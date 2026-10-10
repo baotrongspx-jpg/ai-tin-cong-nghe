@@ -13,77 +13,16 @@ import { lopSong } from './lopSong.mjs'
 import { CSS_MINH_HOA, MINH_HOA, mocMoDau } from './minhHoa.mjs'
 
 const GOC = resolve(process.argv[2] ?? '.')
-const { nhan_vat, loi, moc, kenh = 'Công Nghệ 24H', chu_de = 'AI', kho = 'doc', the_chuong = null, man_ket = false, nhan_vat_chinh = null, vai_phu = [], anh_chung = {}, dong_thoi_gian = null } = JSON.parse(readFileSync(join(GOC, 'artifacts/loi_thoai.json'), 'utf8'))
+const { nhan_vat, loi, moc, kenh = 'Công Nghệ 24H', chu_de = 'AI', kho = 'doc', the_chuong = null, man_ket = false, nhan_vat_chinh = null, dong_thoi_gian = null } = JSON.parse(readFileSync(join(GOC, 'artifacts/loi_thoai.json'), 'utf8'))
 const doDai = JSON.parse(readFileSync(join(GOC, 'artifacts/do_dai.json'), 'utf8'))
 // Câu có ảnh thật (phim tiểu sử): máy quay lùi ra toàn cảnh để khung ảnh phía trên không đè lên đầu nhân vật
 for (const l of loi) if (l.anh_wiki?.tep) l.khung_hinh = 'toan_canh'
-// Ảnh cảnh chủ trang tự làm (phim tiểu sử: ảnh 3D có sẵn nhân vật, để ở D:\anh-phim\<dự án>, máy nhà chép vào assets/):
-// chiếu toàn màn hình như một cảnh phim, che sân khấu hoạt hình. Câu có ảnh cảnh thì bỏ ảnh tư liệu, thẻ minh hoạ, đạo cụ,
-// cảnh hành động (cho khỏi đè lên ảnh).
-// Mèo Mun / Robot Bit: chen MỘT câu lẻ giữa đoạn điện ảnh thì không cắt về trường quay (gãy không khí phim) mà hiện trong
-// khung tròn nhỏ góc phải, ảnh cảnh vẫn chạy tiếp ("pip"). Từ 2 câu liền nhau trở lên (một lượt bình luận) thì về trường
-// quay như cũ — ở đó các nhân vật 2D đứng cùng hai bạn.
-const laLinhVat = (l) => l?.ai === 'meo' || l?.ai === 'robot'
-loi.forEach((l, i) => {
-  if (!laLinhVat(l) || laLinhVat(loi[i - 1]) || laLinhVat(loi[i + 1])) return
-  const truoc = loi[i - 1]?.anh_canh_tep
-  if (truoc) {
-    l.anh_canh_tep = truoc
-    l.pip = l.ai
-  }
-})
-// Phim tài liệu điện ảnh (có ảnh cảnh tự làm): không cắt về trường quay hoạt hình giữa phim — câu nào chưa có ảnh thì mượn
-// ảnh của câu gần nhất (trước, không có thì sau), kể cả lớp 2,5D và tiếng nền
-const DIEN_ANH = loi.some((l) => l.anh_canh_tep)
-if (DIEN_ANH) {
-  const muon = (i, j) => {
-    const g = loi[j]
-    for (const k of ['anh_canh_tep', 'anh_canh_lop', 'am_canh']) if (g[k] !== undefined) loi[i][k] = g[k]
-  }
-  loi.forEach((l, i) => {
-    if (l.anh_canh_tep || laLinhVat(l)) return
-    for (let j = i - 1; j >= 0; j--) if (loi[j].anh_canh_tep && !loi[j].pip) return muon(i, j)
-    for (let j = i + 1; j < loi.length; j++) if (loi[j].anh_canh_tep && !loi[j].pip) return muon(i, j)
-  })
-}
-// Dòng tên người nói trên ảnh cảnh: chỉ nhân vật chính và nhân vật có tên trong hồ sơ (thường có mặt trong ảnh). Vai chung
-// (giáo viên, hacker, bác sĩ…) chỉ nghe giọng — ảnh không có họ, ghi tên là sai hình
-const coTenDienAnh = (l) => l.ai === 'nhan_vat_chinh' || /^vai_\d+$/.test(l.ai)
-for (const l of loi) {
-  if (!l.anh_canh_tep) continue
-  if (laLinhVat(l) && !l.pip) {
-    delete l.anh_canh_tep
-    continue
-  }
-  delete l.anh_wiki
-  l.minh_hoa = { ...(l.minh_hoa ?? {}), kieu: 'khong' }
-  l.dao_cu = 'khong'
-  l.hanh_dong = 'khong'
-}
 // Phim tiểu sử: người được kể là một nhân vật trên sân khấu như nhân vật phụ (xuất hiện, nói, nhép miệng, rời đi),
 // vẽ theo bản thiết kế AI của chương này (lib/youtube.ts: loiThoaiGui)
 if (nhan_vat_chinh?.hinh) {
   const v = nhanVatChinhSvg(nhan_vat_chinh.hinh)
   NHAN_VAT_PHU.nhan_vat_chinh = { mau: '#fde68a', bieu_tuong: '⭐', ten: nhan_vat_chinh.ten ?? 'Nhân vật chính', svg: v.svg, viewBox: v.viewBox }
 }
-// Phim tiểu sử: nhân vật phụ có tên trong hồ sơ phim (vai_1..): mỗi người một hình riêng theo bản thiết kế AI, cùng khung
-// người với nhân vật chính nhưng không có vầng sáng dưới chân; xuất hiện / nói như các nhân vật phụ khác
-const MAU_VAI = ['#a78bfa', '#34d399', '#fb923c', '#f472b6', '#38bdf8', '#facc15', '#f87171', '#4ade80']
-for (const [i, v] of (vai_phu ?? []).entries()) {
-  if (!v?.ma || !v.hinh) continue
-  const h = nhanVatChinhSvg({ ...v.hinh, phu: true })
-  NHAN_VAT_PHU[v.ma] = { mau: MAU_VAI[i % MAU_VAI.length], bieu_tuong: '👤', ten: v.ten ?? 'Nhân vật phụ', svg: h.svg, viewBox: h.viewBox }
-}
-// Ảnh nhân vật 2D chủ trang tự vẽ (máy nhà đã chép vào assets/, trường anh_tep): thay hình vẽ sẵn. Một ảnh tĩnh nền trong
-// suốt, chân chạm đáy khung 400x600; đi vào / ra như cũ, đứng đung đưa nhẹ, nhún theo nhịp khi nói (xem đoạn nhân vật phụ)
-const hinhAnh = (tep) => ({
-  anh: true,
-  viewBox: '0 0 400 600',
-  svg: (id) => `<g id="${id}-than-tat"><image id="${id}-anh" href="assets/${esc(tep)}" x="0" y="0" width="400" height="600" preserveAspectRatio="xMidYMax meet"/></g>`,
-})
-if (nhan_vat_chinh?.anh_tep && NHAN_VAT_PHU.nhan_vat_chinh) Object.assign(NHAN_VAT_PHU.nhan_vat_chinh, hinhAnh(nhan_vat_chinh.anh_tep))
-for (const v of vai_phu ?? []) if (v?.anh_tep && NHAN_VAT_PHU[v.ma]) Object.assign(NHAN_VAT_PHU[v.ma], hinhAnh(v.anh_tep))
-for (const [ma, tep] of Object.entries(anh_chung ?? {})) if (tep && NHAN_VAT_PHU[ma]) NHAN_VAT_PHU[ma] = { ...NHAN_VAT_PHU[ma], ...hinhAnh(tep) }
 // kho "ngang" (YouTube 1920x1080): "thế giới" (nền, nhân vật, đạo cụ) vẫn vẽ theo toạ độ dọc 1080x1920, chỉ đặt lệch
 // để khung hình thấy vùng x -420..1500, y 300..1380; nền nối dài hai bên bằng bản soi gương; hai nhân vật đứng giãn ra.
 // Các lớp phủ (tên kênh, bảng tin, phụ đề, câu giật tít) đặt theo toạ độ khung hình.
@@ -292,7 +231,7 @@ if (NGANG) {
   const reSo = /(\d{1,3}(?:[.,]\d{3})+|\d+(?:[.,]\d+)?)\s*(%|phần trăm|năm|tuổi|triệu|tỷ|nghìn|ngàn|vạn|km|kg|người|kỵ binh|binh sĩ|quân|đô la|đô|USD|đồng|lần|ngày|tháng|chiếc|công ty|quốc gia)(?![\p{L}])/iu
   let truoc = -9
   loi.forEach((l, i) => {
-    if (THE_TREN.has(i) || l.anh_wiki?.tep || l.anh_canh_tep || l.la_chuong || i - truoc < 4) return
+    if (THE_TREN.has(i) || l.anh_wiki?.tep || l.la_chuong || i - truoc < 4) return
     const m = String(l.chu).match(reSo)
     if (!m) return
     SO_DONG[i] = { chu: `${m[1]} ${m[2]}`.trim(), vt: m.index / Math.max(1, l.chu.length) }
@@ -447,7 +386,7 @@ loi.forEach((l, i) => {
     if (hien.length && [...hien, w].join(' ').length > MAX_DONG) {
       dong.push(hien)
       hien = [w]
-      if (dong.length === (DIEN_ANH ? 1 : 2)) {
+      if (dong.length === 2) {
         doanPd.push(dong)
         dong = []
       }
@@ -473,7 +412,7 @@ loi.forEach((l, i) => {
               const tw0 = batDauDoan + (w / kyTuDoan) * (ketThuc - batDauDoan) * 0.85
               w += chu.length
               const id = `pd${i}-${k}-${w}`
-              if (!DIEN_ANH) tw.push(`tl.to("#${id}", { color: "${ke ? '#fde68a' : laPhu(ai) ? NHAN_VAT_PHU[ai].mau : ai === 'meo' ? '#fdba74' : '#67e8f9'}", duration: 0.08 }, ${f(tw0)});`)
+              tw.push(`tl.to("#${id}", { color: "${ke ? '#fde68a' : laPhu(ai) ? NHAN_VAT_PHU[ai].mau : ai === 'meo' ? '#fdba74' : '#67e8f9'}", duration: 0.08 }, ${f(tw0)});`)
               return `<span id="${id}" class="pd-tu">${esc(chu)}</span>`
             })
             .join(' ')}</div>`,
@@ -484,7 +423,7 @@ loi.forEach((l, i) => {
     const ten = ''
     phuDe.push(`
     <div id="pd${i}-${k}" class="phu-de clip" data-start="${f(batDauDoan)}" data-duration="${f(ketThuc - batDauDoan)}" data-track-index="3">
-      <div class="pd-khung">${k === 0 && l.tai_hien && !(DIEN_ANH && coTenDienAnh(l)) ? '<div class="pd-tai-hien">Tái hiện</div>' : ''}${ten}${dongHtml}</div>
+      <div class="pd-khung">${k === 0 && l.tai_hien ? '<div class="pd-tai-hien">Tái hiện</div>' : ''}${ten}${dongHtml}</div>
     </div>`)
     tw.push(`tl.from("#pd${i}-${k} .pd-khung", { y: 20, opacity: 0, duration: 0.15, ease: "power2.out" }, ${f(batDauDoan)});`)
   })
@@ -639,16 +578,6 @@ const nvPhu = doanPhu.map((dp, k) => {
   tw.push(`tl.fromTo("#${id} svg", { y: 0 }, { y: -14, duration: ${f(diVao / 6)}, yoyo: true, repeat: 5, ease: "sine.inOut" }, ${f(vao)});`)
   tw.push(`tl.fromTo(["#${id}-tay-trai", "#${id}-tay-phai"], { rotation: (i) => (i ? -22 : 22) }, { rotation: (i) => (i ? 22 : -22), duration: ${f(diVao / 3)}, yoyo: true, repeat: 2, ease: "sine.inOut" }, ${f(vao)});`)
   tw.push(`tl.to(["#${id}-tay-trai", "#${id}-tay-phai"], { rotation: 0, duration: 0.2 }, ${f(vao + diVao)});`)
-  // Nhân vật là ảnh 2D tĩnh (không có đầu / tay / miệng rời): đung đưa nhẹ quanh bàn chân suốt lúc đứng, nhún theo nhịp
-  // lúc chính họ nói
-  if (NHAN_VAT_PHU[dp.ten].anh) {
-    tw.push(`gsap.set("#${id}-anh", { svgOrigin: "200 600" });`)
-    tw.push(`tl.fromTo("#${id}-anh", { rotation: -1.2 }, { rotation: 1.2, duration: 1.4, yoyo: true, repeat: ${lap(het - vao, 1.4) | 1}, ease: "sine.inOut", immediateRender: false }, ${f(vao)});`)
-    for (const i of dp.cau) {
-      if (loi[i].ai !== dp.ten) continue
-      tw.push(`tl.to("#${id}-anh", { scaleY: 1.035, scaleX: 0.985, duration: 0.16, yoyo: true, repeat: ${lap(doDai[i] - 0.3, 0.16) | 1}, ease: "sine.inOut" }, ${f(batDau[i] + 0.05)});`)
-    }
-  }
   tw.push(`tl.to("#${id}-tay-phai", { rotation: -140, duration: 0.3, ease: "back.out(2)" }, ${f(t0 + 0.5)});`)
   tw.push(`tl.to("#${id}-tay-phai", { rotation: -115, duration: 0.18, yoyo: true, repeat: 5, ease: "sine.inOut" }, ${f(t0 + 0.8)});`)
   tw.push(`tl.to("#${id}-tay-phai", { rotation: 0, duration: 0.3 }, ${f(t0 + 1.9)});`)
@@ -932,8 +861,7 @@ let khungKeHtml = ''
 {
   const dot = []
   loi.forEach((l, i) => {
-    // Câu chiếu ảnh cảnh điện ảnh: không hiện khung người kể hoạt hình (đè lên ảnh, phá không khí phim)
-    if (l.ai !== 'nguoi_ke' || l.anh_canh_tep) return
+    if (l.ai !== 'nguoi_ke') return
     const c = dot.at(-1)
     // Chỉ gộp các câu người kể liền nhau: câu của người khác thì Mèo Mun đã về đứng bên trái, khung sẽ che mặt Mun
     if (c && i - c.het <= 1) c.het = i
@@ -985,7 +913,7 @@ loi.forEach((l, i) => {
 
 // ── Câu giật tít 2 giây đầu + minh hoạ chèn đúng lúc giọng đọc tới chi tiết (con số, địa điểm, lời trích...) ─
 const gtMoc = Math.min(batDau[0] + 2.2, batDau[0] + doDai[0])
-const giatTit = DIEN_ANH ? { html: '', tw: [] } : mocMoDau(moc, gtMoc, Math.max(0, batDau[0] - 0.3))
+const giatTit = mocMoDau(moc, gtMoc, Math.max(0, batDau[0] - 0.3))
 tw.push(...giatTit.tw)
 // Bảng tin câu đầu nhường chỗ cho câu giật tít
 if (giatTit.html) {
@@ -998,8 +926,8 @@ const bangCuaCau = []
   let cuoi = -99
   loi.forEach((l, i) => {
     const canhMoi = i === 0 || (BOI_CANH[l.boi_canh] ? l.boi_canh : 'truong_quay') !== (BOI_CANH[loi[i - 1].boi_canh] ? loi[i - 1].boi_canh : 'truong_quay')
-    // Chỉ khi đổi cảnh (màn hình gọn: một điểm nhấn mỗi lúc), giữ ~5 giây rồi mờ đi. Không hiện trên ảnh cảnh điện ảnh
-    if (l.bang?.chu && canhMoi && !l.anh_canh_tep) {
+    // Chỉ khi đổi cảnh (màn hình gọn: một điểm nhấn mỗi lúc), giữ ~5 giây rồi mờ đi
+    if (l.bang?.chu && canhMoi) {
       bangHien.push(i)
       cuoi = i
     }
@@ -1062,91 +990,6 @@ const anhThat = doanAnh.map((c, k) => {
   const kieu = c.kieu
   const src = `assets/${esc(c.a.tep)}`
   return `<div id="${id}" class="anh-that ${kieu}"><div class="anh-khung"><img class="anh-nen" src="${src}"/><img id="${id}-anh" class="anh-chinh" src="${src}"/></div></div>`
-})
-
-// ── Ảnh cảnh chủ trang tự làm (ảnh 3D có sẵn nhân vật): các câu liền nhau cùng một ảnh gom một cảnh, hiện mờ dần vào
-// (cảnh liền trước cũng là ảnh thì chồng mờ chéo).
-// - Nhiều cú máy trên một ảnh: cứ ≥5 giây (ở đầu câu mới, hoặc giữa câu dài) cắt sang cú máy khác — toàn cảnh → trung cảnh
-//   trên giữa (mặt người) → nửa phải → nửa trái → cận giữa — mỗi cú từ từ đẩy vào 5%. Phim tài liệu đổi khung 4–8 giây.
-//   Mọi cú máy phóng ≥1,12 lần quanh điểm lệch trên-trái (32% 26%) và độ lệch được giới hạn để mép phải / dưới luôn bị
-//   cắt ≥7%: che dấu "Gemini Notebook" ở góc dưới phải ảnh AI.
-// - Không đặt nhân vật 2D / hoạt hình lên ảnh 3D (lệch phong cách, có khi thành hai Steve Jobs): câu một nhân vật tự nói
-//   thì hiện dòng tên góc dưới trái (kiểu phim tài liệu), ảnh vẫn rõ.
-// - Câu lẻ của Mèo Mun / Robot Bit (pip): hiện trong khung tròn nhỏ góc phải, nhép miệng như trên sân khấu.
-const CU_MAY = [
-  { s: 1.12, x: 0, y: 0 }, // toàn cảnh
-  { s: 1.45, x: -5, y: 6 }, // trung cảnh trên giữa
-  { s: 1.5, x: -12, y: 4 }, // nửa phải
-  { s: 1.5, x: 12, y: 5 }, // nửa trái
-  { s: 1.75, x: 0, y: 10 }, // cận giữa
-]
-const doanAnhCanh = []
-loi.forEach((l, i) => {
-  if (!l.anh_canh_tep) return
-  const c = doanAnhCanh.at(-1)
-  if (c && c.tep === l.anh_canh_tep && c.het === i - 1) c.het = i
-  else doanAnhCanh.push({ tep: l.anh_canh_tep, lop: l.anh_canh_lop ?? null, tu: i, het: i })
-})
-// Hạt bụi / đốm sáng lơ lửng trôi chậm trên ảnh cảnh (vị trí cố định theo số thứ tự, không ngẫu nhiên): ảnh tĩnh có
-// không khí chuyển động
-const HAT_CANH = Array.from({ length: 14 }, (_, j) => ({ x: (j * 137) % 100, y: 20 + ((j * 61) % 70), r: 3 + (j % 4) * 2, dx: ((j % 3) - 1) * 40, dy: -50 - (j % 5) * 18 }))
-const tenNguoiNoi = (l) => nhan_vat?.[l.ai]?.ten || NHAN_VAT_PHU[l.ai]?.ten || ''
-let soCuMay = 0
-const anhCanh = doanAnhCanh.map((c, k) => {
-  const id = `canh-anh${k}`
-  const vao = c.tu === 0 ? 0 : Math.max(0, batDau[c.tu] - 0.35)
-  const ra = c.het === loi.length - 1 ? TONG : Math.min(TONG, (batDau[c.het + 1] ?? TONG) - 0.05)
-  tw.push(`tl.fromTo("#${id}", { opacity: 0 }, { opacity: 1, duration: ${c.tu === 0 ? 0.01 : 0.5}, ease: "power1.out", immediateRender: false }, ${f(vao)});`)
-  if (ra < TONG - 0.01) tw.push(`tl.to("#${id}", { opacity: 0, duration: 0.45, ease: "power1.in" }, ${f(ra - 0.1)});`)
-  // Điểm cắt cú máy: đầu câu mới nếu đã ≥5 giây từ lần cắt trước; khoảng dài >9 giây không có đầu câu thì cắt ở giữa
-  const cat = [vao]
-  for (let i = c.tu + 1; i <= c.het + 1; i++) {
-    const moc = i <= c.het ? batDau[i] - 0.05 : ra
-    while (moc - cat.at(-1) > 9) cat.push(cat.at(-1) + 6.5)
-    if (i <= c.het && moc - cat.at(-1) >= 5 && ra - moc >= 2.5) cat.push(moc)
-  }
-  cat.forEach((t0, j) => {
-    const t1 = cat[j + 1] ?? ra + 0.4
-    // Cú đầu của mỗi ảnh là toàn cảnh (người xem nhìn thấy cả cảnh trước), sau đó lần lượt các cú khác
-    const m = j === 0 ? CU_MAY[0] : CU_MAY[1 + ((soCuMay++ + k) % (CU_MAY.length - 1))]
-    tw.push(`tl.set("#${id}-anh", { scale: ${m.s}, xPercent: ${m.x}, yPercent: ${m.y} }, ${f(t0)});`)
-    tw.push(`tl.to("#${id}-anh", { scale: ${+(m.s * 1.05).toFixed(3)}, duration: ${f(Math.max(0.3, t1 - t0))}, ease: "none" }, ${f(t0)});`)
-    // Ảnh 2,5D: lớp trước (người / vật gần) trượt và phóng nhiều hơn lớp nền, đổi hướng mỗi cú máy → chiều sâu như camera thật
-    if (c.lop) {
-      const h = (j + k) % 2 ? 1 : -1
-      const dai = f(Math.max(0.3, t1 - t0))
-      tw.push(`tl.fromTo("#${id}-nen", { xPercent: ${0.5 * h}, scale: 1 }, { xPercent: ${-0.5 * h}, scale: 1.01, duration: ${dai}, ease: "sine.inOut", immediateRender: false }, ${f(t0)});`)
-      tw.push(`tl.fromTo("#${id}-truoc", { xPercent: ${1.5 * h}, scale: 1 }, { xPercent: ${-1.5 * h}, scale: 1.028, duration: ${dai}, ease: "sine.inOut", immediateRender: false }, ${f(t0)});`)
-    }
-  })
-  // Bụi / đốm sáng trôi suốt cảnh
-  const hat = HAT_CANH.map((p, j) => {
-    const idh = `${id}-hat${j}`
-    tw.push(`tl.fromTo("#${idh}", { x: 0, y: 0, opacity: 0 }, { x: ${p.dx}, y: ${p.dy}, opacity: ${0.35 + (j % 3) * 0.15}, duration: ${f(Math.max(1, ra - vao))}, ease: "sine.inOut", immediateRender: false }, ${f(vao)});`)
-    return `<i id="${idh}" class="hat-canh" style="left:${p.x}%;top:${p.y}%;width:${p.r * 2}px;height:${p.r * 2}px"></i>`
-  })
-  // Dòng tên người đang nói + khung tròn Mèo Mun / Robot Bit
-  const them = []
-  for (let i = c.tu; i <= c.het; i++) {
-    const l = loi[i]
-    const t0 = batDau[i] + 0.1
-    const t1 = batDau[i] + doDai[i] - 0.15
-    if (l.pip) {
-      const idp = `${id}-pip${i}`
-      them.push(`<div id="${idp}" class="pip"><div class="pip-tron">${l.pip === 'meo' ? meoSvg : robotSvg}</div></div>`)
-      tw.push(`tl.fromTo("#${idp}", { opacity: 0, scale: 0.6 }, { opacity: 1, scale: 1, duration: 0.35, ease: "back.out(1.8)", immediateRender: false }, ${f(t0 - 0.1)});`)
-      tw.push(`tl.to("#${idp}", { opacity: 0, scale: 0.8, duration: 0.3, ease: "power2.in" }, ${f(t1)});`)
-    } else if (coTenDienAnh(l) && tenNguoiNoi(l)) {
-      const idt = `${id}-ten${i}`
-      them.push(`<div id="${idt}" class="ten-noi"><span class="ten-noi-ten">${esc(tenNguoiNoi(l))}</span>${l.tai_hien ? '<span class="ten-noi-phu">Lời thoại tái hiện</span>' : ''}</div>`)
-      tw.push(`tl.fromTo("#${idt}", { opacity: 0, x: -40 }, { opacity: 1, x: 0, duration: 0.4, ease: "power2.out", immediateRender: false }, ${f(t0)});`)
-      tw.push(`tl.to("#${idt}", { opacity: 0, duration: 0.3 }, ${f(t1)});`)
-    }
-  }
-  const khung = c.lop
-    ? `<img id="${id}-nen" src="assets/${esc(c.lop[0])}"/><img id="${id}-truoc" class="lop-truoc" src="assets/${esc(c.lop[1])}"/>`
-    : `<img src="assets/${esc(c.tep)}"/>`
-  return `<div id="${id}" class="canh-anh"><div id="${id}-anh" class="canh-khung">${khung}</div><div class="hat-lop">${hat.join('')}</div>${them.join('')}</div>`
 })
 
 // Bảng tin phía sau đổi theo lời thoại
@@ -1243,7 +1086,7 @@ loi.forEach((l, i) => {
 })
 // Đổi cảnh: tiếng vút; vào bối cảnh có âm thanh đặc trưng (phố → xe chạy, sân vận động → reo hò…) thì thêm tiếng đó
 for (const cc of chuyenCanh) {
-  if (SFX[loi[cc.i].am_thanh] || loi[cc.i].anh_canh_tep) continue
+  if (SFX[loi[cc.i].am_thanh]) continue
   themAm('sfx-vut', Math.max(0, cc.t - 0.05), 0.28)
   const rieng = SFX[AM_VAO_CANH[BOI_CANH[loi[cc.i].boi_canh] ? loi[cc.i].boi_canh : '']]
   if (rieng) themAm(rieng[0], cc.t + 0.35, rieng[1] * 0.8)
@@ -1255,25 +1098,7 @@ for (const cc of chuyenCanh) {
 }
 // Nhân vật phụ bước ra sân khấu: tiếng bước chân (trừ khi câu đó đã có hiệu ứng)
 for (const dp of doanPhu) if (!SFX[loi[dp.tu].am_thanh]) themAm('sfx-buoc-chan', batDau[dp.tu] + 0.05, 0.22, 1.1)
-// Ảnh cảnh: tiếng nền lặp suốt đoạn ảnh + tiếng đặc trưng lúc vào (sân khấu → vỗ tay, phố → xe chạy)
-const AM_CANH = {
-  phong: ['nen-phong', 0.22], pho: ['nen-pho', 0.12], van_phong: ['nen-van-phong', 0.32], dam_dong: ['nen-dam-dong', 0.3],
-  thien_nhien: ['nen-thien-nhien', 0.25], may_moc: ['nen-may-moc', 0.08], bien: ['nen-bien', 0.12], mua: ['sfx-mua', 0.28],
-  san_khau: ['nen-dam-dong', 0.32],
-}
-const AM_VAO_ANH = { san_khau: ['sfx-vo-tay', 0.3], pho: ['sfx-xe-chay', 0.25], dam_dong: ['sfx-reo-ho', 0.25] }
-const nenAnh = (l) => AM_CANH[l.am_canh] ?? (l.am_canh ? null : AM_NEN[BOI_CANH[l.boi_canh] ? l.boi_canh : ''] ?? null)
-doanAnhCanh.forEach((c, k) => {
-  const l = loi[c.tu]
-  const tu = c.tu === 0 ? 0 : batDau[c.tu] - 0.35
-  const den = c.het === loi.length - 1 ? TONG : batDau[c.het + 1] - 0.35
-  const nen = l.am_canh || l.boi_canh !== 'truong_quay' ? nenAnh(l) : null
-  if (nen && doDaiTep(nen[0])) for (let luc = tu; luc < den - 0.05; luc += doDaiTep(nen[0])) themAm(nen[0], luc, nen[1], den - luc)
-  const vao = AM_VAO_ANH[l.am_canh]
-  if (vao && !SFX[l.am_thanh] && (k === 0 || loi[c.tu - 1]?.am_canh !== l.am_canh)) themAm(vao[0], tu + 0.4, vao[1])
-})
 doanCanh.forEach((dc, k) => {
-  if (loi[dc.tu].anh_canh_tep) return
   const nen = AM_NEN[dc.ten]
   if (!nen) return
   const tu = k ? batDau[dc.tu] - 0.35 : 0
@@ -1459,17 +1284,6 @@ const trang = `<!doctype html>
       .tuyet-hat { position: absolute; top: 0; border-radius: 50%; background: #fff; box-shadow: 0 0 8px #fff8; }
       .mua-hat { position: absolute; top: 0; width: 3px; height: 70px; border-radius: 2px; background: linear-gradient(#e0f2fe00, #e0f2fecc); transform: rotate(14deg); }
       .suong-may { position: absolute; border-radius: 50%; background: #f1f5f9; filter: blur(46px); opacity: 0.5; }
-      .canh-anh { position: absolute; inset: 0; overflow: hidden; opacity: 0; background: #000; }
-      .canh-khung { position: absolute; inset: 0; transform-origin: 32% 26%; }
-      .canh-khung > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-      .canh-khung > .lop-truoc { transform-origin: 50% 85%; filter: drop-shadow(0 10px 18px #0006); }
-      .hat-lop { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
-      .hat-canh { position: absolute; border-radius: 50%; background: radial-gradient(circle, #fff7e0, #fff7e000 70%); filter: blur(1px); opacity: 0; }
-      .ten-noi { position: absolute; left: 70px; bottom: 250px; display: flex; flex-direction: column; gap: 4px; padding: 12px 26px 12px 20px; border-left: 8px solid #fbbf24; background: linear-gradient(90deg, #000000cc, #00000066 80%, transparent); opacity: 0; }
-      .ten-noi-ten { font-size: 40px; font-weight: 700; color: #fff; }
-      .ten-noi-phu { font-size: 22px; font-weight: 500; color: #fbbf24; letter-spacing: 1px; text-transform: uppercase; }
-      .pip { position: absolute; right: 60px; bottom: 230px; width: 300px; height: 300px; border-radius: 50%; overflow: hidden; border: 8px solid #fde68a; background: radial-gradient(circle at 50% 30%, #3b5b8c, #0f172a 75%); box-shadow: 0 18px 40px #000b; opacity: 0; }
-      .pip-tron svg { position: absolute; left: -22px; top: 6px; width: 344px; height: auto; }
       .anh-that { position: absolute; opacity: 0; display: flex; flex-direction: column; align-items: center; filter: drop-shadow(0 18px 30px #000b); }
       .anh-that.tren { left: ${(RONG - 500) / 2}px; top: ${NGANG ? 118 : 300}px; width: 500px; }
       .anh-that.ben { left: ${RONG - 60 - 720}px; top: 120px; width: 720px; }
@@ -1504,7 +1318,6 @@ const trang = `<!doctype html>
       </div>
 ${NGANG ? bang.join('') : ''}
       <div id="vien-toi" class="clip" data-start="0" data-duration="${f(TONG)}" data-track-index="5"><div id="den"></div><div id="chop"></div></div>
-      <div id="lop-canh-anh" class="clip" data-start="0" data-duration="${f(TONG)}" data-track-index="8">${anhCanh.join('')}</div>
       <div id="lop-minh-hoa" class="clip" data-start="0" data-duration="${f(TONG)}" data-track-index="7">${giatTit.html}${theMoc.join('')}${minhHoaKhung.join('')}${anhThat.join('')}${daoCuKhung.join('')}${soDong.join('')}${hanhDongKhung.join('')}${khungKeHtml}${manKetHtml}${theChuongHtml}</div>${phuDe.join('')}
       ${[...amThanh, ...amPhu].join('\n      ')}
     </div>

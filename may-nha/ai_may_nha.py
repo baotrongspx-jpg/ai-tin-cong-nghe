@@ -69,23 +69,6 @@ def goi(system, noi_dung, schema=None, mo_hinh=None, nhiet=0.6):
     return r.json()['message']['content']
 
 
-def nha_bo_nho():
-    # Nhả mọi mô hình đang nạp (qwen3:8b chiếm ~8 GB RAM) TRƯỚC khi dựng hình: máy 16 GB vừa giữ AI, vừa giữ giọng đọc
-    # (~5 GB) vừa chạy trình dựng hình thì hết RAM ("process out of memory", đo 09/10/2026). Đợi câu đang trả lời xong.
-    if not dang_chay():
-        return
-    try:
-        for _ in range(60):
-            dang_nap = [m['name'] for m in requests.get(f'{DIA_CHI}/api/ps', timeout=5).json().get('models', [])]
-            if not dang_nap:
-                return
-            for ten in dang_nap:
-                requests.post(f'{DIA_CHI}/api/generate', json={'model': ten, 'keep_alive': 0}, timeout=600)
-            time.sleep(2)
-    except Exception:
-        pass
-
-
 MO_HINH_NHIN = os.environ.get('AI_NHIN_ANH', 'qwen2.5vl:3b')  # mô hình nhỏ nhìn được ảnh (~3 GB ở ổ D)
 
 

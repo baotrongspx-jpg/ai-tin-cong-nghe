@@ -24,7 +24,7 @@ const PHIEN_BAN = 23 // tăng khi đổi cách dựng để các phần dựng l
 const kho = () => db().storage.from(KHO)
 const thuMuc = (id: string) => `youtube/${id}`
 // Phiên bản máy nhà mới nhất (may-nha/tho_doc.py: BAN_MAY_NHA)
-const BAN_MAY_NHA = 9
+const BAN_MAY_NHA = 10
 const tenViec = (id: string, k: number) => `yt-${id}-${k}.json`
 
 // Mỗi phần ~3 phút; giọng VieNeu đọc khoảng 4,5 giây một câu thoại (đo trên video thật)
@@ -62,6 +62,9 @@ export type PhimTieuSu = {
   cau_chuyen?: CauChuyen
   ho_so?: HoSoHinhAnh
   tao_hinh?: TaoHinh // hình hoạt hình của người được kể (bước "Thiết kế nhân vật chính")
+  // Ảnh nhân vật 2D chủ trang tự vẽ (tên tệp ở D:anh-phim<mã dự án> trên máy nhà), thay hình vẽ sẵn: nhân vật chính theo
+  // chương (dùng ảnh có tu_chuong lớn nhất ≤ chương), từng vai_phu, và kiểu nhân vật chung (vd. ong_lao)
+  anh_nhan_vat?: { chinh?: { tu_chuong: number; anh: string }[]; vai?: Record<string, string>; chung?: Record<string, string> }
   anh?: AnhWiki[] // ảnh thật từ Wikimedia Commons (giấy phép tự do), ghép vào câu kể hợp nội dung
   dong_goi?: DongGoi
 }
@@ -124,6 +127,9 @@ function hinhChuong(d: DuAnYT, k: number) {
   const gd = [...th.giai_doan].sort((a, b) => a.tu_chuong - b.tu_chuong).filter((g, i) => i === 0 || g.tu_chuong <= k).at(-1)!
   return { nhom: th.nhom ?? 'khac', gioi: th.gioi, da: th.da, ...gd }
 }
+// Ảnh nhân vật chính chủ trang tự vẽ dùng ở chương k (ảnh có tu_chuong lớn nhất mà <= k)
+const anhChinhChuong = (p: PhimTieuSu, k: number) =>
+  [...(p.anh_nhan_vat?.chinh ?? [])].sort((a, b) => a.tu_chuong - b.tu_chuong).filter((x, i) => i === 0 || x.tu_chuong <= k).at(-1)?.anh
 // Phim tiểu sử: mốc năm đầu / cuối đời nhân vật (từ các mốc đời đã nghiên cứu) — cho thanh dòng thời gian
 function namDoi(d: DuAnYT): { tu: number; den: number } | null {
   const nam = (d.phim?.nghien_cuu?.moc_doi ?? []).flatMap((m) => [...`${m.nam} ${m.giai_doan}`.matchAll(/\b(\d{3,4})\b/g)].map((x) => Number(x[1]))).filter((n) => n > 500 && n < 2100)
@@ -253,9 +259,10 @@ function loiThoaiGui(d: DuAnYT, k: number) {
   return {
     ...goc,
     nhan_vat: { ...NHAN_VAT, nhan_vat_chinh: { ten: phim.ten, giong: GIONG_CHINH[hinh.gioi] }, ...Object.fromEntries(vai.map((v) => [v.ma, { ten: v.ten, giong: v.giong }])) },
-    nhan_vat_chinh: { ten: phim.ten, hinh },
+    nhan_vat_chinh: { ten: phim.ten, hinh, anh: anhChinhChuong(phim, k) },
     // Nhân vật phụ có tên: máy nhà vẽ mỗi người một hình riêng (tao_video.mjs), không dùng hình chung
-    vai_phu: vai.map((v) => ({ ma: v.ma, ten: v.ten, hinh: v.hinh })),
+    vai_phu: vai.map((v) => ({ ma: v.ma, ten: v.ten, hinh: v.hinh, anh: phim.anh_nhan_vat?.vai?.[v.ma] })),
+    ...(phim.anh_nhan_vat?.chung ? { anh_chung: phim.anh_nhan_vat.chung } : {}),
     dong_thoi_gian: doi,
     loi,
   }

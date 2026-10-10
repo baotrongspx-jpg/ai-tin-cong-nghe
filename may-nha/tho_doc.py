@@ -329,30 +329,50 @@ def chay(lenh, cwd, gioi_han):
 UA_WIKI = 'CongNghe24H/1.0 (https://ai-tin-cong-nghe-wpy7.vercel.app; phim tieu su)'
 
 
-# Ảnh cảnh chủ trang tự làm cho phim (vd. ảnh 3D vẽ bằng AI): D:\anh-phim\<mã dự án>\<tên tệp>. Câu kịch bản có "anh_canh"
-# (tên tệp) thì chép ảnh vào assets/canh-<tên>, ghi tên vào "anh_canh_tep" — tao_video.mjs chiếu toàn màn hình như cảnh phim
+# Ảnh chủ trang tự làm cho phim (vd. ảnh vẽ bằng AI): D:\anh-phim\<mã dự án>\<tên tệp>.
+# - Câu kịch bản có "anh_canh" (ảnh cảnh 3D): chép vào assets/canh-<tên>, ghi "anh_canh_tep" — chiếu toàn màn hình như cảnh phim
+# - Ảnh nhân vật 2D ("anh" của nhan_vat_chinh / từng vai_phu, "anh_chung" theo kiểu nhân vật chung): chép vào assets/nv-<tên>,
+#   ghi "anh_tep" — tao_video.mjs dùng thay hình vẽ sẵn
 ANH_PHIM = Path(os.environ.get('ANH_PHIM', r'D:\anh-phim' if Path('D:/').exists() else r'C:\Users\Admin\VieNeu-TTS\anh-phim'))
 
 
-def tai_anh_canh(loi, tai_san, du_an):
+def tai_anh_canh(lt, tai_san, du_an):
     if not du_an:
         return
     so, thieu = 0, set()
-    for l in loi:
-        ten = Path(str(l.get('anh_canh') or '')).name
+
+    def chep(ten, dau):
+        nonlocal so
+        ten = Path(str(ten or '')).name
         if not ten:
-            continue
+            return None
         goc = ANH_PHIM / du_an / ten
         if not goc.exists():
             thieu.add(ten)
-            continue
-        dich = tai_san / f'canh-{ten}'
+            return None
+        dich = tai_san / f'{dau}-{ten}'
         if not dich.exists():
             shutil.copy(goc, dich)
             so += 1
-        l['anh_canh_tep'] = dich.name
+        return dich.name
+
+    for l in lt.get('loi') or []:
+        tep = chep(l.get('anh_canh'), 'canh')
+        if tep:
+            l['anh_canh_tep'] = tep
+    for nv in [lt.get('nhan_vat_chinh') or {}, *(lt.get('vai_phu') or [])]:
+        tep = chep(nv.get('anh'), 'nv')
+        if tep:
+            nv['anh_tep'] = tep
+    chung = lt.get('anh_chung') or {}
+    for ma in list(chung):
+        tep = chep(chung[ma], 'nv')
+        if tep:
+            chung[ma] = tep
+        else:
+            del chung[ma]
     if so or thieu:
-        print(f'Ảnh cảnh tự làm: {so} ảnh' + (f', thiếu {len(thieu)} tệp ở {ANH_PHIM / du_an}: {", ".join(sorted(thieu))[:300]}' if thieu else ''), flush=True)
+        print(f'Ảnh tự làm: {so} ảnh' + (f', thiếu {len(thieu)} tệp ở {ANH_PHIM / du_an}: {", ".join(sorted(thieu))[:300]}' if thieu else ''), flush=True)
 
 
 def tai_anh_wiki(loi, tai_san, td=None):
@@ -709,7 +729,7 @@ def dung_video(may, ds_giong, lt, tm, td, fps=30, gioi_han=1500, anh_nen=None):
     for tep in (HOAT_HINH / 'am-thanh').glob('*.wav'):
         shutil.copy(tep, tai_san / tep.name)
     tai_anh_wiki(lt['loi'], tai_san, td)
-    tai_anh_canh(lt['loi'], tai_san, lt.get('du_an'))
+    tai_anh_canh(lt, tai_san, lt.get('du_an'))
     doc_ho_so(lt, td)  # phim tiểu sử: chỉnh cảnh theo hồ sơ hình ảnh trước khi chọn tranh nền / dựng
     if anh_nen is not None:  # video YouTube: ảnh nền Pixabay theo cảnh (anh_nen = số phần, để các phần chọn ảnh khác nhau)
         tai_anh_nen(lt['loi'], tai_san, anh_nen, td)
@@ -1029,8 +1049,8 @@ def dung_hoat_hinh(may, ds_giong, yc, td):
 
 
 # Phiên bản máy nhà (gửi kèm tín hiệu sống): trang web biết máy nhà đã khởi động lại sau lần cập nhật chưa
-# (lib/youtube.ts: BAN_MAY_NHA phải bằng số này). 2: báo việc đang làm (hien-tai.json), Pixabay chặn thì nghỉ; 3: báo lại mỗi 20 giây; 4: tự khởi động lại khi code đổi; 5: đọc hồ sơ phim trước khi dựng; 6: nhân vật phụ có tên vẽ hình riêng theo hồ sơ; 7: video bị xoá thì dừng dựng, dọn sạch; 8: nhả RAM AI máy nhà trước khi dựng hình; 9: ảnh cảnh chủ trang tự làm
-BAN_MAY_NHA = 9
+# (lib/youtube.ts: BAN_MAY_NHA phải bằng số này). 2: báo việc đang làm (hien-tai.json), Pixabay chặn thì nghỉ; 3: báo lại mỗi 20 giây; 4: tự khởi động lại khi code đổi; 5: đọc hồ sơ phim trước khi dựng; 6: nhân vật phụ có tên vẽ hình riêng theo hồ sơ; 7: video bị xoá thì dừng dựng, dọn sạch; 8: nhả RAM AI máy nhà trước khi dựng hình; 9: ảnh cảnh chủ trang tự làm; 10: ảnh nhân vật 2D tự làm
+BAN_MAY_NHA = 10
 
 
 def bao_song():

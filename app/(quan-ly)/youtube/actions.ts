@@ -194,7 +194,7 @@ export async function layNenPhimYouTube(id: string): Promise<{ ok: true; xem: Re
   }
 }
 
-export async function xinLinkTaiNenPhimYouTube(id: string, ma: string, tenTep: string): Promise<{ ok: true; url: string; tep: string } | Loi> {
+export async function xinLinkTaiNenPhimYouTube(id: string, ma: string, tenTep: string): Promise<{ ok: true; url: string; urlNho: string | null; tep: string } | Loi> {
   try {
     await chanChuaDangNhap()
     return { ok: true, ...(await linkTaiNenPhim(id, ma, tenTep)) }
@@ -203,10 +203,10 @@ export async function xinLinkTaiNenPhimYouTube(id: string, ma: string, tenTep: s
   }
 }
 
-export async function xongTaiNenPhimYouTube(id: string, ma: string, tep: string): Promise<{ ok: true; duAn: DuAnYT } | Loi> {
+export async function xongTaiNenPhimYouTube(id: string, ma: string, tep: string, nho = false): Promise<{ ok: true; duAn: DuAnYT } | Loi> {
   try {
     await chanChuaDangNhap()
-    return { ok: true, duAn: await xongTaiNenPhim(id, ma, tep) }
+    return { ok: true, duAn: await xongTaiNenPhim(id, ma, tep, nho) }
   } catch (e) {
     return baoLoi(e)
   }

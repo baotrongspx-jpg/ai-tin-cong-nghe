@@ -65,7 +65,7 @@ export type PhimTieuSu = {
   tao_hinh?: TaoHinh // hình hoạt hình của người được kể (bước "Thiết kế nhân vật chính")
   anh?: AnhWiki[] // ảnh thật từ Wikimedia Commons (giấy phép tự do), ghép vào câu kể hợp nội dung
   dong_goi?: DongGoi
-  nen?: Record<string, { tep: string; luc: number }> // ảnh nền chủ trang tải lên theo địa điểm hồ sơ (mã LOC → tệp ở youtube/<id>/nen/)
+  nen?: Record<string, { tep: string; luc: number; nho?: boolean }> // nho: có ảnh xem trước nhỏ <mã>-nho.jpg — ảnh nền chủ trang tải lên theo địa điểm hồ sơ (mã LOC → tệp ở youtube/<id>/nen/)
 }
 export type DuAnYT = {
   id: string
@@ -896,16 +896,20 @@ export async function linkTaiNenPhim(id: string, ma: string, tenGoc: string) {
   if (!duoi) throw new Error('Chỉ nhận ảnh .jpg, .png, .webp')
   const cu = d.phim?.nen?.[ma]
   if (cu && !cu.tep.endsWith(duoi)) await kho().remove([duongNen(id, cu.tep)])
-  const { data, error } = await kho().createSignedUploadUrl(duongNen(id, `${ma}${duoi}`), { upsert: true })
-  if (error || !data) throw new Error(`Không tạo được link tải lên: ${error?.message ?? 'lỗi'}`)
-  return { url: data.signedUrl, tep: `${ma}${duoi}` }
+  // Kèm link tải ảnh xem trước nhỏ (trình duyệt tự thu nhỏ): ảnh gốc thường ~9 MB, hiện trên trang rất chậm
+  const [goc, nho] = await Promise.all([
+    kho().createSignedUploadUrl(duongNen(id, `${ma}${duoi}`), { upsert: true }),
+    kho().createSignedUploadUrl(duongNen(id, `${ma}-nho.jpg`), { upsert: true }),
+  ])
+  if (goc.error || !goc.data) throw new Error(`Không tạo được link tải lên: ${goc.error?.message ?? 'lỗi'}`)
+  return { url: goc.data.signedUrl, urlNho: nho.data?.signedUrl ?? null, tep: `${ma}${duoi}` }
 }
 
 // Trình duyệt tải ảnh lên xong thì ghi vào dự án (lúc tải = mã phiên bản, thay ảnh thì các chương dùng địa điểm này dựng lại)
-export async function xongTaiNenPhim(id: string, ma: string, tep: string) {
+export async function xongTaiNenPhim(id: string, ma: string, tep: string, nho = false) {
   const d = kiemDiaDiem(await docDuAn(id), ma)
   if (!DUOI_NEN.test(tep) || !tep.startsWith(ma)) throw new Error('Tên tệp không hợp lệ')
-  d.phim!.nen = { ...(d.phim!.nen ?? {}), [ma]: { tep, luc: Date.now() } }
+  d.phim!.nen = { ...(d.phim!.nen ?? {}), [ma]: { tep, luc: Date.now(), ...(nho ? { nho: true } : {}) } }
   await luuDuAn(d)
   return d
 }
@@ -913,7 +917,7 @@ export async function xongTaiNenPhim(id: string, ma: string, tep: string) {
 export async function xoaNenPhim(id: string, ma: string) {
   const d = kiemDiaDiem(await docDuAn(id), ma)
   const cu = d.phim?.nen?.[ma]
-  if (cu) await kho().remove([duongNen(id, cu.tep)])
+  if (cu) await kho().remove([duongNen(id, cu.tep), duongNen(id, `${ma}-nho.jpg`)])
   if (d.phim?.nen) delete d.phim.nen[ma]
   await luuDuAn(d)
   return d
@@ -922,7 +926,7 @@ export async function xoaNenPhim(id: string, ma: string) {
 export async function linkXemNenPhim(d: DuAnYT): Promise<Record<string, string>> {
   const ds = Object.entries(d.phim?.nen ?? {})
   if (!ds.length) return {}
-  const { data } = await kho().createSignedUrls(ds.map(([, v]) => duongNen(d.id, v.tep)), 3600)
+  const { data } = await kho().createSignedUrls(ds.map(([ma, v]) => duongNen(d.id, v.nho ? `${ma}-nho.jpg` : v.tep)), 3600)
   return Object.fromEntries(ds.map(([ma], i) => [ma, data?.[i]?.signedUrl ?? '']))
 }
 

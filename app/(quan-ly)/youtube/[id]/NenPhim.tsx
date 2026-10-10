@@ -31,6 +31,21 @@ const loiNhan = (x: DiaDiem) =>
     'Góc nhìn ngang tầm mắt, mặt sàn chiếm khoảng 1/4 phía dưới, giữa ảnh để trống cho nhân vật đứng.',
   ].join('\n')
 
+// Ảnh xem trước nhỏ (rộng 640, JPEG) thu nhỏ ngay trên trình duyệt; lỗi thì trả null (trang hiện ảnh gốc)
+async function thuNho(f: File): Promise<Blob | null> {
+  try {
+    const anh = await createImageBitmap(f)
+    const rong = Math.min(640, anh.width)
+    const c = document.createElement('canvas')
+    c.width = rong
+    c.height = Math.round((anh.height * rong) / anh.width)
+    c.getContext('2d')!.drawImage(anh, 0, 0, c.width, c.height)
+    return await new Promise((r) => c.toBlob((b) => r(b), 'image/jpeg', 0.82))
+  } catch {
+    return null
+  }
+}
+
 // Phim tiểu sử có hồ sơ: mỗi địa điểm trong hồ sơ một ô ảnh nền. Lúc dựng, AI gắn từng cảnh vào địa điểm rồi máy nhà dùng
 // ảnh của bạn làm nền cảnh đó (thay tranh Pixabay / cảnh vẽ)
 export default function NenPhim({ d, onDuAn }: { d: DuAnYT; onDuAn: (d: DuAnYT) => void }) {
@@ -69,7 +84,9 @@ export default function NenPhim({ d, onDuAn }: { d: DuAnYT; onDuAn: (d: DuAnYT) 
       if (!kq.ok) throw new Error(kq.loi)
       const res = await fetch(kq.url, { method: 'PUT', body: f, headers: { 'content-type': f.type || 'image/jpeg', 'x-upsert': 'true' } })
       if (!res.ok) throw new Error(`Tải lên lỗi ${res.status}`)
-      const xong = await xongTaiNenPhimYouTube(d.id, ma, kq.tep)
+      const nho = kq.urlNho ? await thuNho(f) : null
+      const coNho = !!nho && (await fetch(kq.urlNho!, { method: 'PUT', body: nho, headers: { 'content-type': 'image/jpeg', 'x-upsert': 'true' } }).then((r) => r.ok, () => false))
+      const xong = await xongTaiNenPhimYouTube(d.id, ma, kq.tep, coNho)
       if (!xong.ok) throw new Error(xong.loi)
       onDuAn(xong.duAn)
       thongBao('ok', `Đã tải ảnh nền: ${dsDiaDiem.find((x) => x.ma === ma)?.ten ?? ma}`)

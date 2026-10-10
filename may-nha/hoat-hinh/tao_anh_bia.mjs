@@ -23,10 +23,10 @@ const GOC = dirname(fileURLToPath(import.meta.url))
 const FONT = pathToFileURL(join(GOC, '..', '..', 'assets', 'fonts', 'BeVietnamPro-Bold.ttf')).href
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
-// Chữ: tối đa 5 từ, chia 1-3 dòng sao cho cỡ chữ lớn nhất (vừa bề ngang vùng chữ và chiều cao 560); dòng cuối tô vàng
-function chuTo(rong, toiDaDong = 3) {
+// Chữ: tối đa 5 từ, chia 1-3 dòng sao cho cỡ chữ lớn nhất (vừa bề ngang vùng chữ và chiều cao `cao`); dòng cuối tô vàng
+function chuTo(rong, toiDaDong = 3, cao = 560) {
   const tu = chu.trim().split(/\s+/).filter(Boolean).slice(0, 5)
-  const coChu = (dong) => Math.min(168, rong / (Math.max(3, ...dong.map((d) => d.join(' ').length)) * 0.66), 560 / dong.length / 1.18)
+  const coChu = (dong) => Math.min(168, rong / (Math.max(3, ...dong.map((d) => d.join(' ').length)) * 0.66), cao / dong.length / 1.18)
   let tot = [tu]
   const thu = (dong) => {
     if (dong.every((d) => d.length) && coChu(dong) > coChu(tot)) tot = dong
@@ -73,7 +73,11 @@ function than() {
   const c = chuTo(540)
   const chuTrai = `<div class="chu" style="left:40px;right:700px;font-size:${c.co}px">${c.html}</div>`
   if (coAnh) {
-    return `${nen}<img class="anh" src="${pathToFileURL(anh_that).href}"/><div class="anh-mo"></div><div class="nv-lo phai">${linhVat(meoSvg, 'meo', true)}</div>${chuTrai}${bt.replace('class="bt"', 'class="bt" style="left:500px;top:470px"')}`
+    // Ba vùng không chồng nhau: chữ nửa trên bên trái (cao tối đa ~420), Mèo Mun góc dưới trái nhìn sang ảnh, biểu tượng
+    // cạnh Mun (không đè mặt Mun), ảnh thật bên phải
+    const c5 = chuTo(540, 3, 400)
+    const bt5 = bieu_tuong ? `<div class="bt" style="left:330px;top:525px;font-size:135px">${esc(bieu_tuong)}</div>` : ''
+    return `${nen}<img class="anh" src="${pathToFileURL(anh_that).href}"/><div class="anh-mo"></div><div class="chu" style="left:40px;right:700px;top:36px;transform:rotate(-2deg);font-size:${c5.co}px">${c5.html}</div><div class="nv-lo" style="left:-10px;bottom:-110px;width:310px;height:340px;transform:rotate(6deg)">${linhVat(meoSvg, 'meo')}</div>${bt5}`
   }
   const robot = KIEU === 2
   return `${nen}<div class="lua"></div><div class="nv-to phai">${robot ? linhVat(robotSvg, 'robot', true) : linhVat(meoSvg, 'meo', true)}</div>${chuTrai}${bt}`

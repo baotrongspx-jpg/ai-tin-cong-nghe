@@ -20,7 +20,7 @@ import { apBienTap, deBaiBienTap, type DaBienTap, type KetQuaBienTap } from './b
 // video và chỉ lưu trên máy nhà (Desktop\Video-YouTube), vì video dài quá nặng để gửi lên kho.
 // Máy nhà báo kết quả: youtube/<id>/phan-<k>.json ({ xong, ma } hoặc { loi, ma }), tien-do.json, xong.json.
 const KHO = 'video-tiktok'
-const PHIEN_BAN = 23 // tăng khi đổi cách dựng để các phần dựng lại (2: thẻ minh hoạ / đạo cụ khung ngang; 3: giọng Mèo Mun; 4: nhịp chuyển cảnh mượt; 5: thẻ chương, màn kết, B-roll; 6: khung người kể, 7: người kể vẽ riêng, 8: nhân vật chính phim tiểu sử, 9: ảnh Wikipedia, 10: lời giới thiệu + đọc tên chương, ảnh đặt linh động, 11: bố cục chữ không che nhân vật, bỏ ghi nguồn trên ảnh, 12: thanh dòng thời gian, thẻ năm tự thêm, 13: câu móc trước lời chào, màn kết 20 giây, phụ đề .srt, cách đọc tên riêng, 14: biểu cảm, đi vào cảnh, chữ động con số, tiền cảnh, 15: cảnh hành động, 16: bỏ nhạc nền, màn kết 8 giây, nhân vật phụ ở lại theo đợt, lớp sự sống cho bối cảnh, 17: nhân vật hết nhiệm vụ rời đi trước khi người mới vào, 18: ảnh nền Pixabay theo cảnh, 19: tranh nền hoạt hình, Mèo / Bit dạt xa suốt cụm có hai nhân vật phụ (hết đè nhau), 20: Mèo Mun đọc lời mời đăng ký ở màn kết, 21: bỏ ghim cờ trên áo nhân vật, 22: Mèo / Bit dạt theo người đang đứng trên sân khấu, máy quay cận theo chỗ họ đứng, 23: màn hình gọn (bảng tin chỉ khi đổi cảnh, khung người kể một lần, bỏ nhãn chủ đề, phụ đề nhỏ), lời kể nền rõ nét, mở đầu vào thẳng chuyện)
+const PHIEN_BAN = 24 // tăng khi đổi cách dựng để các phần dựng lại (2: thẻ minh hoạ / đạo cụ khung ngang; 3: giọng Mèo Mun; 4: nhịp chuyển cảnh mượt; 5: thẻ chương, màn kết, B-roll; 6: khung người kể, 7: người kể vẽ riêng, 8: nhân vật chính phim tiểu sử, 9: ảnh Wikipedia, 10: lời giới thiệu + đọc tên chương, ảnh đặt linh động, 11: bố cục chữ không che nhân vật, bỏ ghi nguồn trên ảnh, 12: thanh dòng thời gian, thẻ năm tự thêm, 13: câu móc trước lời chào, màn kết 20 giây, phụ đề .srt, cách đọc tên riêng, 14: biểu cảm, đi vào cảnh, chữ động con số, tiền cảnh, 15: cảnh hành động, 16: bỏ nhạc nền, màn kết 8 giây, nhân vật phụ ở lại theo đợt, lớp sự sống cho bối cảnh, 17: nhân vật hết nhiệm vụ rời đi trước khi người mới vào, 18: ảnh nền Pixabay theo cảnh, 19: tranh nền hoạt hình, Mèo / Bit dạt xa suốt cụm có hai nhân vật phụ (hết đè nhau), 20: Mèo Mun đọc lời mời đăng ký ở màn kết, 21: bỏ ghim cờ trên áo nhân vật, 22: Mèo / Bit dạt theo người đang đứng trên sân khấu, máy quay cận theo chỗ họ đứng, 23: màn hình gọn (bảng tin chỉ khi đổi cảnh, khung người kể một lần, bỏ nhãn chủ đề, phụ đề nhỏ), lời kể nền rõ nét, mở đầu vào thẳng chuyện, 24: ảnh cảnh tự làm nhiều cú máy, dòng tên người nói, Mèo / Bit khung tròn trong đoạn điện ảnh)
 const kho = () => db().storage.from(KHO)
 const thuMuc = (id: string) => `youtube/${id}`
 // Phiên bản máy nhà mới nhất (may-nha/tho_doc.py: BAN_MAY_NHA)
@@ -64,6 +64,7 @@ export type PhimTieuSu = {
   tao_hinh?: TaoHinh // hình hoạt hình của người được kể (bước "Thiết kế nhân vật chính")
   // Ảnh nhân vật 2D chủ trang tự vẽ (tên tệp ở D:anh-phim<mã dự án> trên máy nhà), thay hình vẽ sẵn: nhân vật chính theo
   // chương (dùng ảnh có tu_chuong lớn nhất ≤ chương), từng vai_phu, và kiểu nhân vật chung (vd. ong_lao)
+  anh_gioi_thieu?: string // ảnh cảnh tự làm cho lời giới thiệu kênh ở đầu phim (mặc định: ảnh của câu đầu tiên)
   anh_nhan_vat?: { chinh?: { tu_chuong: number; anh: string }[]; vai?: Record<string, string>; chung?: Record<string, string> }
   anh?: AnhWiki[] // ảnh thật từ Wikimedia Commons (giấy phép tự do), ghép vào câu kể hợp nội dung
   dong_goi?: DongGoi
@@ -227,6 +228,7 @@ function loiThoaiGui(d: DuAnYT, k: number) {
       may_quay: 'day_vao',
       khung_hinh: 'trung_canh',
       gioi_thieu: true,
+      ...(phim?.anh_gioi_thieu ? { anh_canh: phim.anh_gioi_thieu } : {}),
       ...(phim ? { nhan_vat_phu: 'nhan_vat_chinh' } : {}),
       ...(chanDung ? veAnh(chanDung) : {}),
     })

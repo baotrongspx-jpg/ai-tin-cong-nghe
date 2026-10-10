@@ -18,11 +18,23 @@ const doDai = JSON.parse(readFileSync(join(GOC, 'artifacts/do_dai.json'), 'utf8'
 // Câu có ảnh thật (phim tiểu sử): máy quay lùi ra toàn cảnh để khung ảnh phía trên không đè lên đầu nhân vật
 for (const l of loi) if (l.anh_wiki?.tep) l.khung_hinh = 'toan_canh'
 // Ảnh cảnh chủ trang tự làm (phim tiểu sử: ảnh 3D có sẵn nhân vật, để ở D:\anh-phim\<dự án>, máy nhà chép vào assets/):
-// chiếu toàn màn hình như một cảnh phim, che sân khấu hoạt hình. Câu Mèo Mun / Robot Bit vẫn diễn ở sân khấu. Câu có ảnh
-// cảnh thì bỏ ảnh tư liệu, thẻ minh hoạ, đạo cụ, cảnh hành động (cho khỏi đè lên ảnh)
+// chiếu toàn màn hình như một cảnh phim, che sân khấu hoạt hình. Câu có ảnh cảnh thì bỏ ảnh tư liệu, thẻ minh hoạ, đạo cụ,
+// cảnh hành động (cho khỏi đè lên ảnh).
+// Mèo Mun / Robot Bit: chen MỘT câu lẻ giữa đoạn điện ảnh thì không cắt về trường quay (gãy không khí phim) mà hiện trong
+// khung tròn nhỏ góc phải, ảnh cảnh vẫn chạy tiếp ("pip"). Từ 2 câu liền nhau trở lên (một lượt bình luận) thì về trường
+// quay như cũ — ở đó các nhân vật 2D đứng cùng hai bạn.
+const laLinhVat = (l) => l?.ai === 'meo' || l?.ai === 'robot'
+loi.forEach((l, i) => {
+  if (!laLinhVat(l) || laLinhVat(loi[i - 1]) || laLinhVat(loi[i + 1])) return
+  const truoc = loi[i - 1]?.anh_canh_tep
+  if (truoc) {
+    l.anh_canh_tep = truoc
+    l.pip = l.ai
+  }
+})
 for (const l of loi) {
   if (!l.anh_canh_tep) continue
-  if (l.ai === 'meo' || l.ai === 'robot') {
+  if (laLinhVat(l) && !l.pip) {
     delete l.anh_canh_tep
     continue
   }
@@ -903,7 +915,8 @@ let khungKeHtml = ''
 {
   const dot = []
   loi.forEach((l, i) => {
-    if (l.ai !== 'nguoi_ke') return
+    // Câu chiếu ảnh cảnh điện ảnh: không hiện khung người kể hoạt hình (đè lên ảnh, phá không khí phim)
+    if (l.ai !== 'nguoi_ke' || l.anh_canh_tep) return
     const c = dot.at(-1)
     // Chỉ gộp các câu người kể liền nhau: câu của người khác thì Mèo Mun đã về đứng bên trái, khung sẽ che mặt Mun
     if (c && i - c.het <= 1) c.het = i
@@ -1034,40 +1047,70 @@ const anhThat = doanAnh.map((c, k) => {
   return `<div id="${id}" class="anh-that ${kieu}"><div class="anh-khung"><img class="anh-nen" src="${src}"/><img id="${id}-anh" class="anh-chinh" src="${src}"/></div></div>`
 })
 
-// ── Ảnh cảnh chủ trang tự làm: các câu liền nhau cùng một ảnh gom một cảnh. Hiện mờ dần vào (cảnh liền trước cũng là ảnh
-// thì chồng mờ chéo), máy quay từ từ đẩy vào / lùi ra (Ken Burns). Luôn phóng ≥1,1 lần quanh điểm lệch trên-trái nên
-// mép phải / dưới bị cắt ~7%: che dấu "Gemini Notebook" ở góc dưới phải ảnh AI.
-// Câu do một nhân vật tự nói (Jobs, Wozniak, phóng viên…): ảnh cảnh mờ, tối đi làm phông, nhân vật (ảnh 2D chủ trang vẽ
-// hoặc hình vẽ sẵn) đứng to phía trước, nhún theo nhịp nói — "cảnh 3D, nhân vật 2D". Câu người kể: ảnh cảnh rõ toàn màn hình
-const noiCua = (l) => (l.ai !== 'nguoi_ke' && NHAN_VAT_PHU[l.ai] ? l.ai : null)
+// ── Ảnh cảnh chủ trang tự làm (ảnh 3D có sẵn nhân vật): các câu liền nhau cùng một ảnh gom một cảnh, hiện mờ dần vào
+// (cảnh liền trước cũng là ảnh thì chồng mờ chéo).
+// - Nhiều cú máy trên một ảnh: cứ ≥5 giây (ở đầu câu mới, hoặc giữa câu dài) cắt sang cú máy khác — toàn cảnh → trung cảnh
+//   trên giữa (mặt người) → nửa phải → nửa trái → cận giữa — mỗi cú từ từ đẩy vào 5%. Phim tài liệu đổi khung 4–8 giây.
+//   Mọi cú máy phóng ≥1,12 lần quanh điểm lệch trên-trái (32% 26%) và độ lệch được giới hạn để mép phải / dưới luôn bị
+//   cắt ≥7%: che dấu "Gemini Notebook" ở góc dưới phải ảnh AI.
+// - Không đặt nhân vật 2D / hoạt hình lên ảnh 3D (lệch phong cách, có khi thành hai Steve Jobs): câu một nhân vật tự nói
+//   thì hiện dòng tên góc dưới trái (kiểu phim tài liệu), ảnh vẫn rõ.
+// - Câu lẻ của Mèo Mun / Robot Bit (pip): hiện trong khung tròn nhỏ góc phải, nhép miệng như trên sân khấu.
+const CU_MAY = [
+  { s: 1.12, x: 0, y: 0 }, // toàn cảnh
+  { s: 1.45, x: -5, y: 6 }, // trung cảnh trên giữa
+  { s: 1.5, x: -12, y: 4 }, // nửa phải
+  { s: 1.5, x: 12, y: 5 }, // nửa trái
+  { s: 1.75, x: 0, y: 10 }, // cận giữa
+]
 const doanAnhCanh = []
 loi.forEach((l, i) => {
   if (!l.anh_canh_tep) return
-  const nv = noiCua(l)
   const c = doanAnhCanh.at(-1)
-  if (c && c.tep === l.anh_canh_tep && c.nv === nv && c.het === i - 1) c.het = i
-  else doanAnhCanh.push({ tep: l.anh_canh_tep, nv, tu: i, het: i })
+  if (c && c.tep === l.anh_canh_tep && c.het === i - 1) c.het = i
+  else doanAnhCanh.push({ tep: l.anh_canh_tep, tu: i, het: i })
 })
+const tenNguoiNoi = (l) => nhan_vat?.[l.ai]?.ten || NHAN_VAT_PHU[l.ai]?.ten || ''
+let soCuMay = 0
 const anhCanh = doanAnhCanh.map((c, k) => {
   const id = `canh-anh${k}`
   const vao = c.tu === 0 ? 0 : Math.max(0, batDau[c.tu] - 0.35)
   const ra = c.het === loi.length - 1 ? TONG : Math.min(TONG, (batDau[c.het + 1] ?? TONG) - 0.05)
-  const [s0, s1] = k % 2 ? [1.22, 1.1] : [1.1, 1.22]
   tw.push(`tl.fromTo("#${id}", { opacity: 0 }, { opacity: 1, duration: ${c.tu === 0 ? 0.01 : 0.5}, ease: "power1.out", immediateRender: false }, ${f(vao)});`)
-  tw.push(`tl.fromTo("#${id}-anh", { scale: ${s0}, yPercent: ${k % 2 ? -1 : 1} }, { scale: ${s1}, yPercent: 0, duration: ${f(Math.max(0.5, ra - vao + 0.4))}, ease: "none", immediateRender: false }, ${f(vao)});`)
   if (ra < TONG - 0.01) tw.push(`tl.to("#${id}", { opacity: 0, duration: 0.45, ease: "power1.in" }, ${f(ra - 0.1)});`)
-  let nvHtml = ''
-  if (c.nv) {
-    const p = NHAN_VAT_PHU[c.nv]
-    const idNv = `${id}-nv`
-    tw.push(`tl.fromTo("#${idNv}", { opacity: 0, y: 60 }, { opacity: 1, y: 0, duration: 0.45, ease: "back.out(1.4)", immediateRender: false }, ${f(vao + 0.15)});`)
-    tw.push(`tl.fromTo("#${idNv}-trong", { rotation: -1.2 }, { rotation: 1.2, duration: 1.4, yoyo: true, repeat: ${lap(ra - vao, 1.4) | 1}, ease: "sine.inOut", immediateRender: false }, ${f(vao)});`)
-    for (let i = c.tu; i <= c.het; i++) {
-      tw.push(`tl.to("#${idNv}-trong", { scaleY: 1.035, scaleX: 0.985, duration: 0.16, yoyo: true, repeat: ${lap(doDai[i] - 0.3, 0.16) | 1}, ease: "sine.inOut" }, ${f(batDau[i] + 0.05)});`)
-    }
-    nvHtml = `<div id="${idNv}" class="canh-nv"><div id="${idNv}-trong" class="canh-nv-trong"><svg viewBox="${p.viewBox ?? '0 0 400 600'}" width="560" height="840" class="nv">${p.svg(idNv)}</svg></div></div>`
+  // Điểm cắt cú máy: đầu câu mới nếu đã ≥5 giây từ lần cắt trước; khoảng dài >9 giây không có đầu câu thì cắt ở giữa
+  const cat = [vao]
+  for (let i = c.tu + 1; i <= c.het + 1; i++) {
+    const moc = i <= c.het ? batDau[i] - 0.05 : ra
+    while (moc - cat.at(-1) > 9) cat.push(cat.at(-1) + 6.5)
+    if (i <= c.het && moc - cat.at(-1) >= 5 && ra - moc >= 2.5) cat.push(moc)
   }
-  return `<div id="${id}" class="canh-anh${c.nv ? ' mo' : ''}"><img id="${id}-anh" src="assets/${esc(c.tep)}"/>${nvHtml}</div>`
+  cat.forEach((t0, j) => {
+    const t1 = cat[j + 1] ?? ra + 0.4
+    // Cú đầu của mỗi ảnh là toàn cảnh (người xem nhìn thấy cả cảnh trước), sau đó lần lượt các cú khác
+    const m = j === 0 ? CU_MAY[0] : CU_MAY[1 + ((soCuMay++ + k) % (CU_MAY.length - 1))]
+    tw.push(`tl.set("#${id}-anh", { scale: ${m.s}, xPercent: ${m.x}, yPercent: ${m.y} }, ${f(t0)});`)
+    tw.push(`tl.to("#${id}-anh", { scale: ${+(m.s * 1.05).toFixed(3)}, duration: ${f(Math.max(0.3, t1 - t0))}, ease: "none" }, ${f(t0)});`)
+  })
+  // Dòng tên người đang nói + khung tròn Mèo Mun / Robot Bit
+  const them = []
+  for (let i = c.tu; i <= c.het; i++) {
+    const l = loi[i]
+    const t0 = batDau[i] + 0.1
+    const t1 = batDau[i] + doDai[i] - 0.15
+    if (l.pip) {
+      const idp = `${id}-pip${i}`
+      them.push(`<div id="${idp}" class="pip"><div class="pip-tron">${l.pip === 'meo' ? meoSvg : robotSvg}</div></div>`)
+      tw.push(`tl.fromTo("#${idp}", { opacity: 0, scale: 0.6 }, { opacity: 1, scale: 1, duration: 0.35, ease: "back.out(1.8)", immediateRender: false }, ${f(t0 - 0.1)});`)
+      tw.push(`tl.to("#${idp}", { opacity: 0, scale: 0.8, duration: 0.3, ease: "power2.in" }, ${f(t1)});`)
+    } else if (l.ai !== 'nguoi_ke' && tenNguoiNoi(l)) {
+      const idt = `${id}-ten${i}`
+      them.push(`<div id="${idt}" class="ten-noi"><span class="ten-noi-ten">${esc(tenNguoiNoi(l))}</span>${l.tai_hien ? '<span class="ten-noi-phu">Lời thoại tái hiện</span>' : ''}</div>`)
+      tw.push(`tl.fromTo("#${idt}", { opacity: 0, x: -40 }, { opacity: 1, x: 0, duration: 0.4, ease: "power2.out", immediateRender: false }, ${f(t0)});`)
+      tw.push(`tl.to("#${idt}", { opacity: 0, duration: 0.3 }, ${f(t1)});`)
+    }
+  }
+  return `<div id="${id}" class="canh-anh"><img id="${id}-anh" src="assets/${esc(c.tep)}"/>${them.join('')}</div>`
 })
 
 // Bảng tin phía sau đổi theo lời thoại
@@ -1364,9 +1407,11 @@ const trang = `<!doctype html>
       .suong-may { position: absolute; border-radius: 50%; background: #f1f5f9; filter: blur(46px); opacity: 0.5; }
       .canh-anh { position: absolute; inset: 0; overflow: hidden; opacity: 0; background: #000; }
       .canh-anh > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform-origin: 32% 26%; }
-      .canh-anh.mo > img { filter: blur(4px) brightness(0.62) saturate(0.9); }
-      .canh-nv { position: absolute; left: ${Math.round(RONG * 0.36 - 280)}px; bottom: -40px; width: 560px; height: 840px; opacity: 0; }
-      .canh-nv-trong { width: 100%; height: 100%; transform-origin: 50% 100%; }
+      .ten-noi { position: absolute; left: 70px; bottom: 250px; display: flex; flex-direction: column; gap: 4px; padding: 12px 26px 12px 20px; border-left: 8px solid #fbbf24; background: linear-gradient(90deg, #000000cc, #00000066 80%, transparent); opacity: 0; }
+      .ten-noi-ten { font-size: 40px; font-weight: 700; color: #fff; }
+      .ten-noi-phu { font-size: 22px; font-weight: 500; color: #fbbf24; letter-spacing: 1px; text-transform: uppercase; }
+      .pip { position: absolute; right: 60px; bottom: 230px; width: 300px; height: 300px; border-radius: 50%; overflow: hidden; border: 8px solid #fde68a; background: radial-gradient(circle at 50% 30%, #3b5b8c, #0f172a 75%); box-shadow: 0 18px 40px #000b; opacity: 0; }
+      .pip-tron svg { position: absolute; left: -22px; top: 6px; width: 344px; height: auto; }
       .anh-that { position: absolute; opacity: 0; display: flex; flex-direction: column; align-items: center; filter: drop-shadow(0 18px 30px #000b); }
       .anh-that.tren { left: ${(RONG - 500) / 2}px; top: ${NGANG ? 118 : 300}px; width: 500px; }
       .anh-that.ben { left: ${RONG - 60 - 720}px; top: 120px; width: 720px; }

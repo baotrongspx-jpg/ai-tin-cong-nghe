@@ -53,8 +53,10 @@ THU_MUC_TAM_CU = Path(r'C:\Users\Admin\VieNeu-TTS\hoat-hinh-tam')
 THU_MUC_TAM = Path(os.environ.get('HOAT_HINH_TAM', r'D:\hoat-hinh-tam' if Path('D:/').exists() else str(THU_MUC_TAM_CU)))
 # Mỗi video dựng xong lưu thêm một bản trên máy nhà, tên theo ngày + tiêu đề bài
 THU_MUC_LUU = Path(os.environ.get('HOAT_HINH_LUU', r'C:\Users\Admin\OneDrive\Desktop\Video-Hoat-Hinh'))
-# Video YouTube dài (trang /youtube): dựng từng phần rồi ghép, chỉ lưu trên máy nhà (quá nặng để gửi lên kho)
-THU_MUC_YT = Path(os.environ.get('YOUTUBE_LUU', r'C:\Users\Admin\OneDrive\Desktop\Video-YouTube'))
+# Video YouTube dài (trang /youtube): dựng từng phần rồi ghép, chỉ lưu trên máy nhà (quá nặng để gửi lên kho). Ổ D nếu có:
+# ổ C gần đầy, ghép phim ~1 GB trên Desktop (ổ C) thì hết chỗ ("No space left on device", 10/10/2026). Desktop có lối tắt
+# Video-YouTube.lnk trỏ tới D:\Video-YouTube
+THU_MUC_YT = Path(os.environ.get('YOUTUBE_LUU', r'D:\Video-YouTube' if Path('D:/').exists() else r'C:\Users\Admin\OneDrive\Desktop\Video-YouTube'))
 # Thư mục tạm khi dựng hình (khung hình HyperFrames): ổ D nếu có, không thì để mặc định (TEMP của Windows)
 TAM_DUNG_HINH = Path(os.environ.get('TAM_DUNG_HINH', r'D:\tam-dung-hinh')) if Path('D:/').exists() else None
 

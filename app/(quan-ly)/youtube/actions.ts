@@ -3,9 +3,8 @@
 import { revalidatePath } from 'next/cache'
 import { daDangNhap } from '@/lib/xacThuc'
 import { mayNhaTat } from '@/lib/giongDoc'
-import { dsNenTuLam, linkTaiNen, xoaNen, type NenTuLam } from '@/lib/nenTuLam'
 import {
-  bienTapPhim, chayBuocPhim, docDuAn, guiDung, kiemDinhLaiPhan, luuPhatAm, taoShorts, trangThaiShorts, suaThongTin, taoDuAn, taoPhim, trangThaiDuAn, vietLoiPhan, suaLoiPhan, veAnhBia, chonAnhBia, xoaDuAn,
+  bienTapPhim, chayBuocPhim, docDuAn, guiDung, kiemDinhLaiPhan, luuPhatAm, taoShorts, trangThaiShorts, suaThongTin, taoDuAn, taoPhim, trangThaiDuAn, vietLoiPhan, suaLoiPhan, veAnhBia, chonAnhBia, xoaDuAn, linkTaiNenPhim, xongTaiNenPhim, xoaNenPhim, linkXemNenPhim, soCanhTheoDiaDiem,
   type BuocPhim, type DuAnYT, type TrangThaiBienTap, type TrangThaiDuAn, type TrangThaiShort,
 } from '@/lib/youtube'
 
@@ -183,30 +182,40 @@ export async function xoaVideoYouTube(id: string): Promise<{ ok: true } | Loi> {
   }
 }
 
-// Ảnh nền tự làm: mỗi bối cảnh một ảnh, trình duyệt tải thẳng lên kho bằng link ký sẵn (ảnh thường nặng hơn 4,5 MB của Vercel)
-export async function layNenTuLam(): Promise<{ ok: true; ds: NenTuLam[] } | Loi> {
+// Ảnh nền theo địa điểm hồ sơ phim: xin link tải → trình duyệt tải thẳng lên kho → ghi vào dự án; xem / xoá
+export async function layNenPhimYouTube(id: string): Promise<{ ok: true; xem: Record<string, string>; dem: Record<string, number> } | Loi> {
   try {
     await chanChuaDangNhap()
-    return { ok: true, ds: await dsNenTuLam() }
+    const d = await docDuAn(id)
+    if (!d) throw new Error('Không tìm thấy video')
+    return { ok: true, xem: await linkXemNenPhim(d), dem: soCanhTheoDiaDiem(d) }
   } catch (e) {
     return baoLoi(e)
   }
 }
 
-export async function xinLinkTaiNen(boiCanh: string, tenTep: string): Promise<{ ok: true; url: string } | Loi> {
+export async function xinLinkTaiNenPhimYouTube(id: string, ma: string, tenTep: string): Promise<{ ok: true; url: string; tep: string } | Loi> {
   try {
     await chanChuaDangNhap()
-    return { ok: true, url: await linkTaiNen(boiCanh, tenTep) }
+    return { ok: true, ...(await linkTaiNenPhim(id, ma, tenTep)) }
   } catch (e) {
     return baoLoi(e)
   }
 }
 
-export async function xoaNenTuLam(boiCanh: string): Promise<{ ok: true } | Loi> {
+export async function xongTaiNenPhimYouTube(id: string, ma: string, tep: string): Promise<{ ok: true; duAn: DuAnYT } | Loi> {
   try {
     await chanChuaDangNhap()
-    await xoaNen(boiCanh)
-    return { ok: true }
+    return { ok: true, duAn: await xongTaiNenPhim(id, ma, tep) }
+  } catch (e) {
+    return baoLoi(e)
+  }
+}
+
+export async function xoaNenPhimYouTube(id: string, ma: string): Promise<{ ok: true; duAn: DuAnYT } | Loi> {
+  try {
+    await chanChuaDangNhap()
+    return { ok: true, duAn: await xoaNenPhim(id, ma) }
   } catch (e) {
     return baoLoi(e)
   }

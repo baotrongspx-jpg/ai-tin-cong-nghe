@@ -38,6 +38,7 @@ export type CauYT = Omit<LoiThoai[number], 'ai' | 'nhan_vat_phu'> & {
   nhan_vat_phu: CauPhim['nhan_vat_phu']
   tai_hien?: boolean
   the_moc?: string
+  dia_diem?: string // phim tiểu sử: mã địa điểm trong hồ sơ (LOC_xx) của cảnh chứa câu này, "" = không thuộc địa điểm nào (ganDiaDiem)
   anh?: number // phim tiểu sử: số thứ tự ảnh Wikipedia (d.phim.anh) hiện trong câu này, -1 = không
 }
 export type PhanYT = {
@@ -63,6 +64,7 @@ export type PhimTieuSu = {
   tao_hinh?: TaoHinh // hình hoạt hình của người được kể (bước "Thiết kế nhân vật chính")
   anh?: AnhWiki[] // ảnh thật từ Wikimedia Commons (giấy phép tự do), ghép vào câu kể hợp nội dung
   dong_goi?: DongGoi
+  nen?: Record<string, { tep: string; luc: number }> // ảnh nền chủ trang tải lên theo địa điểm hồ sơ (mã LOC → tệp ở youtube/<id>/nen/)
 }
 export type DuAnYT = {
   id: string
@@ -141,7 +143,11 @@ function loiThoaiGui(d: DuAnYT, k: number) {
   const nhieuPhan = d.phan.length > 1
   // Tên chương AI đặt hay có sẵn "Phần 1: …" — bỏ đi để người kể không đọc "Chương 1. Phần 1"
   const tenChuong = p.tieu_de.replace(/^\s*(phần|chương|tập)\s*\d+\s*[:.\-–—]\s*/i, '').trim() || p.tieu_de
+  // Ảnh nền theo địa điểm: chỉ các địa điểm chương này dùng (đổi ảnh địa điểm khác không làm chương này dựng lại)
+  const dungDiaDiem = new Set((p.loi ?? []).map((l) => l.dia_diem).filter(Boolean))
+  const nenPhim = Object.fromEntries(Object.entries(phim?.nen ?? {}).filter(([ma]) => dungDiaDiem.has(ma)).map(([ma, v]) => [ma, { duong: `${thuMuc(d.id)}/nen/${v.tep}`, luc: v.luc }]))
   const goc = {
+    ...(Object.keys(nenPhim).length ? { nen_phim: nenPhim } : {}),
     kho: 'ngang', kenh: 'Công Nghệ 24H', chu_de: d.chu_de, moc: k === 1 ? p.moc : null, phat_am: bangPhatAm(d.phat_am),
     the_chuong: k === 1 ? null : { so: k, ten: tenChuong, nhan: phim ? 'CHƯƠNG' : 'PHẦN' }, man_ket: k === d.phan.length,
   }
@@ -573,6 +579,8 @@ export async function trangThaiDuAn(d: DuAnYT, mayNha: string | null): Promise<T
 // mọi phần để biết khi nào đủ mà ghép.
 export async function guiDung(d: DuAnYT, chiPhan?: number) {
   if (d.phan.some((p) => !p.loi)) throw new Error('Còn phần chưa có lời thoại, chờ AI viết xong đã')
+  // Có ảnh nền theo địa điểm: gắn các cảnh chưa gắn vào địa điểm trước khi tính mã phần
+  if (await ganDiaDiem(d)) await luuDuAn(d)
   const tt = await trangThaiDuAn(d, null)
   const ma = d.phan.map((_, i) => maPhan(d, i + 1))
   // Video YouTube không ghép nhạc nền (chỉ giọng đọc + âm thanh cảnh)
@@ -714,9 +722,10 @@ export async function trangThaiShorts(d: DuAnYT): Promise<TrangThaiShort[]> {
 export async function xoaDuAn(id: string) {
   const d = await docDuAn(id)
   if (!d) return
-  const { data } = await kho().list(thuMuc(id), { limit: 100 })
+  const [{ data }, { data: nen }] = await Promise.all([kho().list(thuMuc(id), { limit: 100 }), kho().list(`${thuMuc(id)}/nen`, { limit: 100 })])
   await kho().remove([
     ...(data ?? []).map((f) => `${thuMuc(id)}/${f.name}`),
+    ...(nen ?? []).map((f) => `${thuMuc(id)}/nen/${f.name}`),
     ...d.phan.map((_, i) => `hang-doi/viec/${tenViec(id, i + 1)}`),
     ...[1, 2, 3].map((so) => `hang-doi/viec/yts-${id}-${so}.json`),
   ])
@@ -846,4 +855,109 @@ export async function chayBuocPhim(id: string, buoc: BuocPhim, k?: number) {
   }
   await luuDuAn(ketQua)
   return ketQua
+}
+
+
+// ---------- Ảnh nền theo địa điểm của phim tiểu sử ----------
+// Hồ sơ phim có danh sách địa điểm (ho_so.dia_diem, mã LOC_xx). Chủ trang tải mỗi địa điểm một ảnh nền (kho
+// youtube/<id>/nen/<mã>.<đuôi>, ghi vào phim.nen). Lúc gửi dựng, AI gắn từng cảnh của kịch bản (các câu liền nhau cùng
+// bối cảnh) vào một địa điểm (câu.dia_diem); máy nhà dùng ảnh của địa điểm đó làm nền cảnh thay tranh Pixabay / cảnh vẽ.
+const DUOI_NEN = /\.(jpe?g|png|webp)$/i
+const duongNen = (id: string, tep: string) => `${thuMuc(id)}/nen/${tep}`
+const kiemDiaDiem = (d: DuAnYT | null, ma: string) => {
+  if (!d?.phim?.ho_so?.dia_diem?.some((x) => x.ma === ma)) throw new Error('Không có địa điểm này trong hồ sơ phim')
+  return d
+}
+
+export async function linkTaiNenPhim(id: string, ma: string, tenGoc: string) {
+  const d = kiemDiaDiem(await docDuAn(id), ma)
+  const duoi = tenGoc.match(DUOI_NEN)?.[0].toLowerCase().replace('.jpeg', '.jpg')
+  if (!duoi) throw new Error('Chỉ nhận ảnh .jpg, .png, .webp')
+  const cu = d.phim?.nen?.[ma]
+  if (cu && !cu.tep.endsWith(duoi)) await kho().remove([duongNen(id, cu.tep)])
+  const { data, error } = await kho().createSignedUploadUrl(duongNen(id, `${ma}${duoi}`), { upsert: true })
+  if (error || !data) throw new Error(`Không tạo được link tải lên: ${error?.message ?? 'lỗi'}`)
+  return { url: data.signedUrl, tep: `${ma}${duoi}` }
+}
+
+// Trình duyệt tải ảnh lên xong thì ghi vào dự án (lúc tải = mã phiên bản, thay ảnh thì các chương dùng địa điểm này dựng lại)
+export async function xongTaiNenPhim(id: string, ma: string, tep: string) {
+  const d = kiemDiaDiem(await docDuAn(id), ma)
+  if (!DUOI_NEN.test(tep) || !tep.startsWith(ma)) throw new Error('Tên tệp không hợp lệ')
+  d.phim!.nen = { ...(d.phim!.nen ?? {}), [ma]: { tep, luc: Date.now() } }
+  await luuDuAn(d)
+  return d
+}
+
+export async function xoaNenPhim(id: string, ma: string) {
+  const d = kiemDiaDiem(await docDuAn(id), ma)
+  const cu = d.phim?.nen?.[ma]
+  if (cu) await kho().remove([duongNen(id, cu.tep)])
+  if (d.phim?.nen) delete d.phim.nen[ma]
+  await luuDuAn(d)
+  return d
+}
+
+export async function linkXemNenPhim(d: DuAnYT): Promise<Record<string, string>> {
+  const ds = Object.entries(d.phim?.nen ?? {})
+  if (!ds.length) return {}
+  const { data } = await kho().createSignedUrls(ds.map(([, v]) => duongNen(d.id, v.tep)), 3600)
+  return Object.fromEntries(ds.map(([ma], i) => [ma, data?.[i]?.signedUrl ?? '']))
+}
+
+// Cảnh = các câu liền nhau cùng bối cảnh trong một chương (cùng cách chia với máy nhà)
+const cacCanh = (d: DuAnYT) =>
+  d.phan.flatMap((p, k) => {
+    const loi = p.loi ?? []
+    const ds: { k: number; tu: number; het: number }[] = []
+    loi.forEach((l, i) => {
+      if (i && l.boi_canh === loi[i - 1].boi_canh) ds[ds.length - 1].het = i
+      else ds.push({ k, tu: i, het: i })
+    })
+    return ds
+  })
+
+const GanDiaDiemSchema = z.object({ gan: z.array(z.object({ canh: z.string(), ma: z.string() })) })
+
+// Gắn cảnh → địa điểm (một lượt AI), chỉ khi có ảnh nền và còn cảnh chưa gắn (kịch bản mới / vừa sửa). Trả true nếu đã gắn
+export async function ganDiaDiem(d: DuAnYT) {
+  const dd = d.phim?.ho_so?.dia_diem ?? []
+  if (!dd.length || !Object.keys(d.phim?.nen ?? {}).length || d.phan.some((p) => !p.loi)) return false
+  const canh = cacCanh(d)
+  if (!canh.some((c) => d.phan[c.k].loi![c.tu].dia_diem === undefined)) return false
+  const kq = await goiJson({
+    system: `You are the production designer of an animated biography film. For every scene of the script, pick the location from the film bible where it takes place (ma), or "" when it fits none of them (for example the TV studio where the two mascot hosts talk, or a place not in the list). Use the chapter, the year, the scene setting (boi_canh) and what the lines describe.`,
+    noiDung: JSON.stringify({
+      dia_diem: dd.map((x) => ({ ma: x.ma, ten: x.ten, thanh_pho: x.thanh_pho, thoi_ky: x.thoi_ky })),
+      canh: canh.map((c) => ({
+        canh: `${c.k + 1}-${c.tu}`,
+        chuong: d.phan[c.k].tieu_de,
+        boi_canh: d.phan[c.k].loi![c.tu].boi_canh,
+        loi: d.phan[c.k].loi!.slice(c.tu, c.het + 1).map((l) => l.chu.slice(0, 90)).join(' / ').slice(0, 400),
+      })),
+    }),
+    effort: 'low',
+    kiemTra: GanDiaDiemSchema,
+    schema: {
+      type: 'object', additionalProperties: false, required: ['gan'],
+      properties: { gan: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['canh', 'ma'], properties: { canh: { type: 'string' }, ma: { type: 'string' } } } } },
+    },
+  })
+  if (!kq) throw new Error('AI chưa gắn được cảnh vào địa điểm (để dùng ảnh nền), thử lại sau ít phút')
+  const theo = new Map(kq.gan.map((g) => [g.canh, dd.some((x) => x.ma === g.ma) ? g.ma : '']))
+  for (const c of canh) {
+    const ma = theo.get(`${c.k + 1}-${c.tu}`) ?? ''
+    for (let i = c.tu; i <= c.het; i++) d.phan[c.k].loi![i].dia_diem = ma
+  }
+  return true
+}
+
+// Địa điểm → số cảnh đang dùng (hiện trên trang sau khi đã gắn)
+export const soCanhTheoDiaDiem = (d: DuAnYT) => {
+  const dem: Record<string, number> = {}
+  for (const c of cacCanh(d)) {
+    const ma = d.phan[c.k].loi?.[c.tu]?.dia_diem
+    if (ma) dem[ma] = (dem[ma] ?? 0) + 1
+  }
+  return dem
 }

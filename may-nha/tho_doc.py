@@ -428,24 +428,13 @@ def cham_anh(a, tu_khoa, nho):
     return diem
 
 
-NEN_TU_LAM = 'nen-tu-lam'  # ảnh nền chủ trang tải lên trang YouTube: mỗi bối cảnh một tệp <boi_canh>.<đuôi>
-
-
-def ds_nen_tu_lam():
-    try:
-        return {Path(f['name']).stem: f for f in liet_ke(NEN_TU_LAM, True) if f.get('id')}
-    except Exception:
-        traceback.print_exc()
-        return {}
-
-
-def tai_nen_tu_lam(f, tai_san):
-    # Lưu đệm theo tên + lúc sửa: thay ảnh trên web thì tải bản mới
-    ma = re.sub(r'\D', '', str(f.get('updated_at') or ''))[:14]
-    ten = f"nen-{Path(f['name']).stem}-{ma}{Path(f['name']).suffix.lower()}"
-    dem = KHO_PIXABAY.parent / 'nen-tu-lam' / ten
+def tai_nen_phim(v, tai_san):
+    # Ảnh nền chủ trang tải lên cho một địa điểm của phim tiểu sử ({duong, luc}); lưu đệm theo đường dẫn + lúc tải
+    ten = 'nen-' + re.sub(r'[^\w.-]+', '-', v['duong'].removeprefix('youtube/')).replace('.', f"-{v.get('luc', 0)}.", 1)
+    ten = ten if Path(ten).suffix else ten + '.jpg'
+    dem = KHO_PIXABAY.parent / 'nen-phim' / ten
     if not dem.exists():
-        r = s.get(f"{URL}/{KHO}/{NEN_TU_LAM}/{f['name']}", timeout=120)
+        r = s.get(f"{URL}/{KHO}/{v['duong']}", timeout=120)
         r.raise_for_status()
         dem.parent.mkdir(parents=True, exist_ok=True)
         dem.write_bytes(r.content)
@@ -453,22 +442,21 @@ def tai_nen_tu_lam(f, tai_san):
     return ten
 
 
-def tai_anh_nen(loi, tai_san, lech=0, td=None):
+def tai_anh_nen(loi, tai_san, lech=0, td=None, nen_phim=None):
     # Mỗi cảnh (các câu liền nhau cùng boi_canh, như tao_video.mjs) một tranh nền → assets/px-<mã>.jpg, ghi tên tệp vào
     # anh_nen_tep của câu đầu cảnh. Không lặp tranh trong một phần; lech (số phần) để các phần chọn tranh khác nhau.
     # Chấm tối đa 8 ứng viên mỗi cảnh, lấy tranh điểm cao nhất (từ 5 trở lên). Không có tranh đạt thì giữ nền vẽ.
-    # Bối cảnh có ảnh nền chủ trang tải lên (trang YouTube, mục Ảnh nền tự làm): dùng ảnh đó, không tìm tranh Pixabay
     da_dung, lan = set(), {}
     nho = doc_nho('cham.json')
-    nen_rieng = ds_nen_tu_lam()
     try:
         for i, l in enumerate(loi):
             if i and l.get('boi_canh') == loi[i - 1].get('boi_canh'):
                 continue
-            rieng = nen_rieng.get(l.get('boi_canh') or 'truong_quay')
+            # Phim tiểu sử: cảnh đã gắn địa điểm hồ sơ có ảnh nền chủ trang tải lên → dùng ảnh đó, không tìm Pixabay
+            rieng = (nen_phim or {}).get(l.get('dia_diem') or '')
             if rieng:
                 try:
-                    l['anh_nen_tep'] = tai_nen_tu_lam(rieng, tai_san)
+                    l['anh_nen_tep'] = tai_nen_phim(rieng, tai_san)
                     l['nen_tu_lam'] = True
                     continue
                 except Exception:
@@ -584,7 +572,7 @@ def dung_video(may, ds_giong, lt, tm, td, fps=30, gioi_han=1500, anh_nen=None):
         shutil.copy(tep, tai_san / tep.name)
     tai_anh_wiki(lt['loi'], tai_san, td)
     if anh_nen is not None:  # video YouTube: ảnh nền Pixabay theo cảnh (anh_nen = số phần, để các phần chọn ảnh khác nhau)
-        tai_anh_nen(lt['loi'], tai_san, anh_nen, td)
+        tai_anh_nen(lt['loi'], tai_san, anh_nen, td, lt.get('nen_phim'))
     # Gom các câu cùng giọng đọc một lần (nhanh hơn nhiều so với từng câu, nhất là trên card NVIDIA)
     theo_giong = {}
     for i, l in enumerate(lt['loi']):

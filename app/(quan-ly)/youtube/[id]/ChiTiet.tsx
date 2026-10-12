@@ -96,6 +96,9 @@ const NHAN: Record<TrangThaiPhan['loai'], [string, string]> = {
 const ghiNguonAnh = (ds: { tac_gia: string; giay_phep: string; nguon: string; ten_tep: string }[]) =>
   ['Nguồn ảnh (Wikimedia Commons):', ...ds.map((a) => `- ${a.ten_tep.replace(/\.[a-z]+$/i, '').replace(/_/g, ' ')}: ${a.tac_gia}, ${a.giay_phep} — ${a.nguon}`)].join('\n')
 
+// Bình luận ghim dưới mỗi Shorts: dẫn người xem mới về video dài (chủ trang dán link video dài vào chỗ trong ngoặc)
+const binhLuanGhimShort = (d: DuAnYT) => `👉 Xem trọn câu chuyện "${d.tieu_de}" tại đây: [dán link video dài]`
+
 // Mốc chương YouTube: "0:00 Tên chương 1", "m:ss Tên chương k" (bỏ tiền tố "Phần 1:" AI hay đặt)
 const mocChuong = (d: DuAnYT, moc: number[]) =>
   d.phan
@@ -605,8 +608,18 @@ export default function ChiTiet({ dau, ttDau }: { dau: DuAnYT; ttDau: TrangThaiD
             </button>
           </div>
           <p className="text-xs text-slate-500">
-            Máy tự chọn 3 đoạn gay cấn nhất (25–55 giây: cảm xúc mạnh, cảnh hành động, con số, lời nhân vật chính), dựng lại khung dọc có chữ móc câu ở đầu và lời mời xem bản đầy đủ ở cuối. Shorts là cách kéo người xem mới mạnh nhất. Mỗi Shorts mất khoảng 10–15 phút dựng.
+            Máy tự chọn 3 đoạn gay cấn nhất (khoảng 45–60 giây: cảm xúc mạnh, cảnh hành động, con số, lời nhân vật chính), dựng lại khung dọc có chữ móc câu ở đầu và lời mời xem bản đầy đủ ở cuối. Shorts là &quot;trailer&quot; kéo người xem mới về video dài. Mỗi Shorts mất khoảng 10–15 phút dựng.
           </p>
+          {d.shorts && (
+            <div className="flex flex-wrap items-center gap-2 rounded-lg bg-slate-50 p-2 text-xs text-slate-600">
+              <span className="min-w-0 flex-1">
+                📌 Đăng Shorts xong, <b>ghim bình luận</b> dẫn về video dài (thay chữ trong ngoặc bằng link video dài trên YouTube):
+                <br />
+                <i>{binhLuanGhimShort(d)}</i>
+              </span>
+              <NutChep chu={binhLuanGhimShort(d)} ten="Chép bình luận ghim" />
+            </div>
+          )}
           {d.shorts && (
             <ul className="grid gap-1.5 text-sm">
               {d.shorts.doan.map((x) => {

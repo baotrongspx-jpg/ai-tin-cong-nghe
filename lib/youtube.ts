@@ -86,7 +86,7 @@ export type DuAnYT = {
   ai_cho?: { bien_tap?: string } // phiếu việc AI máy nhà đang chờ (mã phiếu)
   shorts?: { luc: string; doan: { so: number; phan: number; tu: number; den: number; tieu_de: string }[] } // Shorts đã gửi dựng
   phat_am?: string // cách đọc tên riêng, mỗi dòng "Tên = cách đọc" (chỉ đổi chữ đưa vào giọng đọc, phụ đề giữ nguyên)
-  anh_bia_goi_y?: AnhBiaGoiY[] // 3 ý ảnh bìa AI đề xuất ở bước dàn ý (chữ 2-5 từ, emoji, nhân vật lớn)
+  anh_bia_goi_y?: AnhBiaGoiY[] // 3 ý ảnh bìa AI đề xuất ở bước dàn ý (chữ 2-4 từ, emoji, nhân vật lớn)
   anh_bia_chu?: string // chữ trên ảnh bìa chủ trang tự đặt (ưu tiên hơn gợi ý)
   anh_bia_chon?: number // kiểu ảnh bìa chủ trang chọn làm ảnh chính (0 = kiểu 1)
 }
@@ -453,14 +453,14 @@ export async function kiemDinhLaiPhan(id: string, k: number) {
   return d
 }
 
-// Ảnh bìa (hoat-hinh/tao_anh_bia.mjs): MỘT tình huống, MỘT nhân vật to, chữ 2-5 từ. Chữ: chủ trang tự đặt → ý AI đề xuất
+// Ảnh bìa (hoat-hinh/tao_anh_bia.mjs): MỘT tình huống, MỘT nhân vật to, chữ 2-4 từ. Chữ: chủ trang tự đặt → ý AI đề xuất
 // (dàn ý / đóng gói phim tiểu sử) → vế đầu tiêu đề. Nhân vật lớn: nhân vật chính phim tiểu sử, hoặc nhân vật phụ AI chọn /
 // xuất hiện nhiều nhất. Emoji: của ý ảnh bìa, không có thì của câu móc phần 1. Nền: bối cảnh hay gặp nhất ở phần 1.
 export function anhBia(d: DuAnYT) {
   const vat = (x: string) => x.replace(/[#\p{Extended_Pictographic}️]/gu, '').replace(/\s+/g, ' ').trim()
   const tuTieuDe = vat(d.tieu_de.replace(/^Phim tiểu sử:\s*/i, '')).split(/\s*[:|–—?]\s*|\s+-\s+/)[0]
   const goiY = d.anh_bia_goi_y?.[0]
-  const chu = vat(d.anh_bia_chu ?? '') || vat(goiY?.chu ?? '') || vat(d.phim?.dong_goi?.thumbnail[0]?.chu ?? '') || tuTieuDe.split(' ').slice(0, 5).join(' ')
+  const chu = vat(d.anh_bia_chu ?? '') || vat(goiY?.chu ?? '') || vat(d.phim?.dong_goi?.thumbnail[0]?.chu ?? '') || tuTieuDe.split(' ').slice(0, 4).join(' ')
   const dem: Record<string, number> = {}
   for (const l of d.phan[0]?.loi ?? []) dem[l.boi_canh] = (dem[l.boi_canh] ?? 0) + 1
   const boi_canh = Object.entries(dem).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'truong_quay'
@@ -712,7 +712,8 @@ export async function guiDung(d: DuAnYT, chiPhan?: number) {
 
 // Xoá dự án khỏi trang (video đã dựng trên máy nhà vẫn giữ)
 // Xoá dự án khỏi trang + bỏ các phần đang chờ dựng; gửi lệnh cho máy nhà xoá luôn thư mục video trên máy
-// ── Shorts: 3 đoạn gay cấn nhất (25-55 giây) dựng lại ở khung dọc 9:16 ──
+// ── Shorts: 3 đoạn gay cấn nhất (40-55 giây + ~5 giây lời mời xem bản đầy đủ ≈ 45-60 giây; thiếu đoạn đủ dài thì
+// lấy đoạn từ 25 giây) dựng lại ở khung dọc 9:16 ──
 // Chấm điểm từng câu: cảm xúc mạnh, khoảng lặng, cảnh hành động, con số, nhân vật chính nói, tái hiện; bỏ câu chào /
 // giới thiệu / đọc tên chương. Cửa sổ câu liền nhau trong một chương có tổng điểm cao nhất, không chồng nhau.
 type CauGui = Record<string, unknown> & { ai?: string; chu?: string }
@@ -730,7 +731,7 @@ function diemCau(l: CauGui) {
   return d
 }
 export function chonDoanShorts(d: DuAnYT) {
-  const ung: { phan: number; tu: number; den: number; diem: number }[] = []
+  const ung: { phan: number; tu: number; den: number; diem: number; giay: number }[] = []
   d.phan.forEach((_, i) => {
     const loi = loiThoaiGui(d, i + 1).loi as CauGui[]
     for (let tu = 0; tu < loi.length; tu++) {
@@ -742,12 +743,13 @@ export function chonDoanShorts(d: DuAnYT) {
         giay += String(loi[den].chu ?? '').length / 19 + 0.25
         diem += dc
         if (giay > 55) break
-        if (giay >= 25) ung.push({ phan: i + 1, tu, den, diem: diem / Math.sqrt(den - tu + 1) })
+        if (giay >= 25) ung.push({ phan: i + 1, tu, den, diem: diem / Math.sqrt(den - tu + 1), giay })
       }
     }
   })
   const chon: typeof ung = []
-  for (const u of ung.sort((a, b) => b.diem - a.diem)) {
+  // Đoạn đủ dài (từ 40 giây) xếp trước, rồi mới tới đoạn ngắn hơn
+  for (const u of ung.sort((a, b) => Number(b.giay >= 40) - Number(a.giay >= 40) || b.diem - a.diem)) {
     if (chon.length === 3) break
     if (chon.some((c) => c.phan === u.phan && !(u.den < c.tu || u.tu > c.den))) continue
     chon.push(u)

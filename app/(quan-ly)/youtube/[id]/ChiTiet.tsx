@@ -695,6 +695,14 @@ export default function ChiTiet({ dau, ttDau }: { dau: DuAnYT; ttDau: TrangThaiD
           </span>
           <textarea value={moTa} rows={4} maxLength={5000} onChange={(e) => setMoTa(e.target.value)} className="input" />
         </label>
+        {tt?.ghiNguonNhac && (
+          <label className="grid">
+            <span className="label">
+              Ghi nguồn nhạc nền (bắt buộc theo giấy phép, dán vào cuối mô tả YouTube) <NutChep chu={tt.ghiNguonNhac} />
+            </span>
+            <textarea readOnly rows={4} value={tt.ghiNguonNhac} className="input text-xs" />
+          </label>
+        )}
         <label className="grid">
           <span className="label">
             Thẻ (cách nhau dấu phẩy) <NutChep chu={the} />

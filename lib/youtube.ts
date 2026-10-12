@@ -533,6 +533,7 @@ export type TrangThaiDuAn = {
   // Máy nhà đang làm gì (hang-doi/hien-tai.json, may-nha/tho_doc.py: bao_hien_tai): việc của video này hay việc khác
   mayNhaCu?: boolean // máy nhà đang chạy bản cũ (chưa khởi động lại sau lần cập nhật)
   mayNhaLam?: { mo_ta: string; buoc: string; phanTram: number | null; luc: number; phan: number | null; cuaVideo: boolean; tieu_de: string | null } | null
+  ghiNguonNhac?: string // ghi nguồn nhạc nền (giấy phép CC BY bắt buộc), dán vào mô tả YouTube
 }
 
 // Trạng thái từng phần + video đã ghép (chỉ tính khi khớp mã lời thoại hiện tại)
@@ -590,7 +591,7 @@ export async function trangThaiDuAn(d: DuAnYT, mayNha: string | null): Promise<T
   const xongCuoi = Math.max(0, ...kq.map((r) => r?.luc ?? 0))
   const ketGhep = !daGhep && phan.length > 0 && phan.every((p) => p.loai === 'xong') && !dangCho.size && Date.now() - xongCuoi > 5 * 60_000
   const mayNhaLam = moiDay && hienTai ? { mo_ta: hienTai.mo_ta, buoc: hienTai.buoc, phanTram: hienTai.phanTram, luc: hienTai.luc, phan: hienTai.phan, cuaVideo: hienTai.du_an === d.id, tieu_de: hienTai.tieu_de } : null
-  return { phan, xong: daGhep, mayNha, ketGhep, anh_bia, ve_bia: !!viecBia?.length, mayNhaLam, mayNhaCu: !mayNha && (song?.ban ?? 0) < BAN_MAY_NHA }
+  return { phan, xong: daGhep, mayNha, ketGhep, anh_bia, ve_bia: !!viecBia?.length, mayNhaLam, mayNhaCu: !mayNha && (song?.ban ?? 0) < BAN_MAY_NHA, ghiNguonNhac: ghiNguonNhac(nhacChon) }
 }
 
 // ── Nhạc nền theo cấu trúc câu chuyện ──
@@ -600,6 +601,18 @@ export async function trangThaiDuAn(d: DuAnYT, mayNha: string | null): Promise<T
 // chương cuối lắng đọng; tránh hai chương liền nhau cùng một bài khi thư viện có bài khác. Thiếu bài đúng cảm xúc thì lấy
 // bài gần nghĩa, rồi bài bất kỳ. Trả 'cam_xuc:bài1|bài2|…' (một bài mỗi chương) hoặc null khi không có nhạc.
 const AM_LUONG_NHAC_YT = 30
+// Nhạc Kevin MacLeod (incompetech.com, CC BY 4.0, dùng được cho video bật kiếm tiền) lưu tên "<cảm xúc>_<Tên-Bài>.mp3"
+// (tải lên 12/10/2026): giấy phép bắt buộc ghi tên bài + tác giả + giấy phép trong mô tả YouTube
+function ghiNguonNhac(maNhac: string | null) {
+  const bai = [...new Set((maNhac?.replace(/^cam_xuc:/, '').split('|') ?? []).filter((t) => t.includes('_')))]
+  if (!bai.length) return ''
+  return [
+    'Nhạc nền:',
+    ...bai.map((t) => `- "${t.slice(t.indexOf('_') + 1).replace(/\.[a-z0-9]+$/i, '').replace(/-/g, ' ')}" Kevin MacLeod (incompetech.com)`),
+    'Licensed under Creative Commons: By Attribution 4.0',
+    'https://creativecommons.org/licenses/by/4.0/',
+  ].join('\n')
+}
 const TU_CAM_XUC = {
   to_mo: /to-mo|bi-an|mystery|curious|tom-mo/,
   hoi_hop: /hoi-hop|cang|tension|suspense|kich|don-dap/,

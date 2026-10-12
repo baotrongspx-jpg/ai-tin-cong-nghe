@@ -14,7 +14,7 @@ export function docCongTy() {
   }
 }
 
-// Mã vị trí của bản CV đang xem (?vt=quan-ly-kho), để báo Telegram
+// Mã vị trí của bản CV đang xem (?vt=thu-kho-phu-tung), để báo Telegram
 export function docViTri() {
   try {
     return new URLSearchParams(location.search).get('vt')?.slice(0, 40) ?? ''

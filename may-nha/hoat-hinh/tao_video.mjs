@@ -76,8 +76,9 @@ const KET_GIAY = man_ket && existsSync(KET_WAV) ? doTo(KET_WAV).length / 15 : 0
 const MAN_KET = man_ket ? Math.max(NGANG ? 8 : 6, KET_GIAY + 1.8) : 0
 let t = 0.4 + MO_CHUONG // nhịp mở đầu trước câu đầu tiên
 for (const [i, d] of doDai.entries()) {
-  // Khoảng lặng có chủ đích (AI đặt lang) trước câu quan trọng: im 0,9 giây, chỉ còn âm nền
-  if (i && loi[i]?.lang) t += 0.9
+  // Khoảng lặng có chủ đích (AI đặt lang): sau câu sốc / câu nặng cảm xúc, im 1,5 giây cho hình "thở", người xem kịp thấm
+  // (góp ý dựng phim 12/10/2026: khoảng lặng 1–2 giây), chỉ còn âm nền
+  if (i && loi[i]?.lang) t += 1.5
   // Sau câu đọc tên chương: nghỉ thêm một nhịp cho thẻ chương mờ đi rồi mới vào chuyện
   if (i && loi[i - 1]?.la_chuong) t += 0.5
   // Đổi bối cảnh: nghỉ thêm 0,55 giây để chuyển cảnh chạy xong đúng lúc câu mới bắt đầu

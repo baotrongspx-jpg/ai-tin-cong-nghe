@@ -115,7 +115,23 @@ export default function NenPhim({ d, onDuAn }: { d: DuAnYT; onDuAn: (d: DuAnYT) 
     }
   }
 
-  if (!dsDiaDiem.length) return null
+  // Chưa có hồ sơ (hoặc hồ sơ không có địa điểm): vẫn hiện khung để chủ trang biết ô tải ảnh sẽ có ở đâu, khi nào
+  if (!dsDiaDiem.length)
+    return (
+      <section className="the grid gap-1 p-5">
+        <h2 className="font-bold">🖼 Ảnh nền phim này cần</h2>
+        <p className="text-sm text-slate-600">
+          {d.phim?.ho_so ? (
+            <>Hồ sơ phim chưa có địa điểm nào. Bấm <b>AI làm lại bước này</b> ở mục <b>Hồ sơ hình ảnh</b> để AI lập lại danh sách địa điểm.</>
+          ) : (
+            <>
+              Danh sách địa điểm cần ảnh nền sẽ hiện ở đây sau bước <b>Hồ sơ hình ảnh</b>, bước này chạy sau khi viết xong kịch bản mọi chương. Bấm{' '}
+              <b>Chạy tiếp</b> (hoặc mở lại trang này) để AI làm tiếp, xong là có ô tải ảnh cho từng địa điểm.
+            </>
+          )}
+        </p>
+      </section>
+    )
   return (
     <section className="the grid gap-4 p-5">
       <div>

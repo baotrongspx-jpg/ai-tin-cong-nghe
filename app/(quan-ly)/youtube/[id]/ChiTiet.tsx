@@ -788,7 +788,7 @@ export default function ChiTiet({ dau, ttDau }: { dau: DuAnYT; ttDau: TrangThaiD
       )}
 
       {d.loai === 'tieu_su' && <HoSoPhim d={d} chay={(buoc) => void chayLaiBuoc(buoc)} dangChay={!!dangChay} />}
-      {d.loai === 'tieu_su' && d.phim?.ho_so && <NenPhim d={d} onDuAn={setD} />}
+      {d.loai === 'tieu_su' && <NenPhim d={d} onDuAn={setD} />}
 
       {/* Các phần */}
       <section className="grid gap-3">

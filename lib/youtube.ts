@@ -654,9 +654,11 @@ function amLuongNhacPhan(d: DuAnYT) {
 }
 export async function nhacCuaDuAn(d: DuAnYT) {
   if (!batNhacNen() || !d.phan.length) return null
-  const dsTen = (await dsNhac().catch(() => [])).map((x) => x.ten)
-  if (!dsTen.length) return null
   const boDau = (x: string) => x.normalize('NFD').replace(/\p{M}/gu, '').replace(/đ/gi, 'd').toLowerCase().replace(/[^a-z0-9]+/g, '-')
+  // Chỉ bài đặt tên theo cảm xúc (nhạc nền không lời chủ trang tải cho YouTube). Bài khác trong thư viện (nhạc TikTok,
+  // có thể có lời hát) không bao giờ dùng: không có bài nào đúng tên thì video không nhạc (chủ trang yêu cầu 12/10/2026)
+  const dsTen = (await dsNhac().catch(() => [])).map((x) => x.ten).filter((t) => Object.values(TU_CAM_XUC).some((r) => r.test(boDau(t))))
+  if (!dsTen.length) return null
   const n = d.phan.length
   const manh = d.phan.map((p) => doManh(p.loi ?? []))
   // Cao trào: chương mạnh nhất trong các chương giữa (phim 3 chương trở lên)

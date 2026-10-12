@@ -14,6 +14,7 @@ import { chuGopY, phanBien, voiPhanBien, type KetQuaPhanBien, type KhauPhanBien 
 import { suaKichBan } from './suaKichBan'
 import { bienTapDat, hoiDongDat, khauChuaDat, loiBienTap } from './datChuan'
 import { apBienTap, deBaiBienTap, type DaBienTap, type KetQuaBienTap } from './bienTap'
+import { batNhacNen, dsNhac } from './nhacNen'
 
 // Video YouTube dài (trang /youtube): hoạt hình Mèo Mun & Robot Bit, khung ngang 16:9, dài tới ~20 phút.
 // Mỗi dự án là một tệp youtube/<id>/du-an.json trong kho (không cần thêm bảng). AI viết dàn ý chia phần (~3 phút
@@ -563,7 +564,8 @@ export async function trangThaiDuAn(d: DuAnYT, mayNha: string | null): Promise<T
     if (r?.ma === ma[i] && r.loi) return { loai: 'loi', loi: r.loi }
     return { loai: 'chua_dung' }
   })
-  const khop = xong && xong.ma.length === ma.length && xong.ma.every((m, i) => m === ma[i]) && !xong.nhac
+  const nhacChon = await nhacCuaDuAn(d)
+  const khop = xong && xong.ma.length === ma.length && xong.ma.every((m, i) => m === ma[i]) && (xong.nhac ?? null) === nhacChon
   let daGhep: TrangThaiDuAn['xong'] = null
   if (khop) {
     daGhep = { tep: xong.tep, kiem_tra: xong.kiem_tra, moc_chuong: xong.moc_chuong }
@@ -591,6 +593,75 @@ export async function trangThaiDuAn(d: DuAnYT, mayNha: string | null): Promise<T
   return { phan, xong: daGhep, mayNha, ketGhep, anh_bia, ve_bia: !!viecBia?.length, mayNhaLam, mayNhaCu: !mayNha && (song?.ban ?? 0) < BAN_MAY_NHA }
 }
 
+// ── Nhạc nền theo cấu trúc câu chuyện ──
+// Mỗi chương một bài, chọn theo TÊN bài trong thư viện nhạc (kho video, thư mục nhac/, tải lên từ trang TikTok): tên có
+// chữ chỉ cảm xúc — to-mo / hoi-hop / hung-trang / lang-dong / buon / vui. Đi theo đường cong 3 hồi (góp ý dựng phim
+// 12/10/2026): chương đầu tò mò, các chương giữa dồn dập theo cảm xúc chương, chương có nhiều cảm xúc mạnh nhất là cao trào,
+// chương cuối lắng đọng; tránh hai chương liền nhau cùng một bài khi thư viện có bài khác. Thiếu bài đúng cảm xúc thì lấy
+// bài gần nghĩa, rồi bài bất kỳ. Trả 'cam_xuc:bài1|bài2|…' (một bài mỗi chương) hoặc null khi không có nhạc.
+const AM_LUONG_NHAC_YT = 30
+const TU_CAM_XUC = {
+  to_mo: /to-mo|bi-an|mystery|curious|tom-mo/,
+  hoi_hop: /hoi-hop|cang|tension|suspense|kich|don-dap/,
+  hung: /hung|hao|epic|anh-hung|chien-thang|vinh-quang|cao-trao/,
+  lang: /lang|nhe|calm|em-dem|chill|piano|ket/,
+  buon: /buon|sad|tiec|mat-mat/,
+  vui: /vui|happy|tuoi|fun/,
+} as const
+type CamXucNhac = keyof typeof TU_CAM_XUC
+// Cảm xúc dự phòng khi thư viện không có bài đúng cảm xúc
+const GAN_NGHIA: Record<CamXucNhac, CamXucNhac[]> = {
+  to_mo: ['hoi_hop', 'lang'],
+  hoi_hop: ['hung', 'to_mo'],
+  hung: ['hoi_hop', 'vui'],
+  lang: ['buon', 'to_mo'],
+  buon: ['lang', 'to_mo'],
+  vui: ['hung', 'lang'],
+}
+// Độ "mạnh" của chương: cảm xúc mạnh, cảnh hành động lớn, khoảng lặng có chủ đích
+function doManh(loi: CauYT[]) {
+  let d = 0
+  for (const l of loi) {
+    if (['bat_ngo', 'tuc_gian', 'lo_lang', 'buon'].includes(l.cam_xuc)) d += 1
+    const hd = (l as CauYT & { hanh_dong?: string }).hanh_dong
+    if (hd && hd !== 'khong') d += 2
+    if (l.lang) d += 1
+  }
+  return d / Math.max(1, loi.length)
+}
+function camXucChuong(loi: CauYT[]): CamXucNhac {
+  const dem = { hung: 0, buon: 0, hoi_hop: 0, vui: 0 }
+  for (const l of loi) {
+    if (l.cam_xuc === 'buon') dem.buon += 2
+    if (l.cam_xuc === 'lo_lang') dem.hoi_hop += 1
+    if (l.cam_xuc === 'tuc_gian' || l.cam_xuc === 'bat_ngo') dem.hoi_hop += 1.5
+    if (l.cam_xuc === 'vui') dem.vui += 1
+    if (l.cam_xuc === 'khang_dinh') dem.hung += 0.6
+    const hd = (l as CauYT & { hanh_dong?: string }).hanh_dong
+    if (hd === 'xung_tran' || hd === 'ky_binh') dem.hung += 3
+    if (hd === 'phao_hoa' || hd === 'dam_dong') dem.hung += 2
+  }
+  return Object.entries(dem).sort((a, b) => b[1] - a[1])[0][0] as CamXucNhac
+}
+export async function nhacCuaDuAn(d: DuAnYT) {
+  if (!batNhacNen() || !d.phan.length) return null
+  const dsTen = (await dsNhac().catch(() => [])).map((x) => x.ten)
+  if (!dsTen.length) return null
+  const boDau = (x: string) => x.normalize('NFD').replace(/\p{M}/gu, '').replace(/đ/gi, 'd').toLowerCase().replace(/[^a-z0-9]+/g, '-')
+  const n = d.phan.length
+  const manh = d.phan.map((p) => doManh(p.loi ?? []))
+  // Cao trào: chương mạnh nhất trong các chương giữa (phim 3 chương trở lên)
+  const caoTrao = n >= 3 ? manh.slice(1, -1).reduce((m, x, i) => (x > manh[m] ? i + 1 : m), 1) : -1
+  const ra: string[] = []
+  d.phan.forEach((p, k) => {
+    const cx: CamXucNhac = n === 1 ? camXucChuong(p.loi ?? []) : k === 0 ? 'to_mo' : k === n - 1 ? (camXucChuong(p.loi ?? []) === 'vui' ? 'vui' : 'lang') : k === caoTrao ? 'hung' : camXucChuong(p.loi ?? []) === 'buon' ? 'buon' : 'hoi_hop'
+    const hop = [cx, ...GAN_NGHIA[cx]].flatMap((c) => dsTen.filter((t) => TU_CAM_XUC[c].test(boDau(t))))
+    const truoc = ra[k - 1]
+    ra.push(hop.find((t) => t !== truoc) ?? hop[0] ?? dsTen.find((t) => t !== truoc) ?? dsTen[0])
+  })
+  return `cam_xuc:${ra.join('|')}`
+}
+
 // Gửi máy nhà dựng các phần chưa xong (hoặc chỉ phần `chiPhan`). Mọi phần phải có lời thoại: máy nhà cần mã của
 // mọi phần để biết khi nào đủ mà ghép.
 export async function guiDung(d: DuAnYT, chiPhan?: number) {
@@ -602,8 +673,9 @@ export async function guiDung(d: DuAnYT, chiPhan?: number) {
   if (await ganDiaDiem(d)) await luuDuAn(d)
   const tt = await trangThaiDuAn(d, null)
   const ma = d.phan.map((_, i) => maPhan(d, i + 1))
-  // Video YouTube không ghép nhạc nền (chỉ giọng đọc + âm thanh cảnh)
-  const nhac = { nhac: null }
+  // Nhạc nền theo từng chương (nhacCuaDuAn): máy nhà ghép dải nhạc theo độ dài từng phần, nhỏ đi khi có giọng đọc
+  const maNhac = await nhacCuaDuAn(d)
+  const nhac = { nhac: maNhac, nhac_phan: maNhac ? maNhac.slice(8).split('|') : null, am_luong_nhac: AM_LUONG_NHAC_YT }
   const can = d.phan
     .map((_, i) => i + 1)
     .filter((k) => (chiPhan ? k === chiPhan : true) && ['chua_dung', 'loi'].includes(tt.phan[k - 1].loai))

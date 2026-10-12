@@ -11,7 +11,7 @@ import { IconChep, IconTai } from '@/app/BieuTuong'
 const NHAN: Record<string, string> = {
   ho_so: 'Hồ sơ', ten: 'Tên', linh_vuc: 'Lĩnh vực', quoc_gia: 'Quốc gia', thoi_dai: 'Thời đại', con_song: 'Còn sống?', ngay_sinh: 'Ngày sinh',
   noi_sinh: 'Nơi sinh', gia_dinh: 'Gia đình', hoc_van: 'Học vấn', nghe_nghiep: 'Nghề nghiệp', quoc_tich: 'Quốc tịch', moc_doi: 'Mốc đời',
-  giai_doan: 'Giai đoạn', nam: 'Năm', su_kien: 'Sự kiện', nhan: 'Mức xác thực', su_that: 'Kiểm chứng sự thật', noi_dung: 'Nội dung', nguon: 'Nguồn',
+  giai_doan: 'Giai đoạn', nam: 'Năm', su_kien: 'Sự kiện', nhan: 'Mức xác thực', su_that: 'Kiểm chứng sự thật', tai_lieu_goc: 'Tài liệu gốc (trích nguyên văn)', nguoi: 'Người nói / viết', thoi_gian: 'Thời gian', loai: 'Loại', noi_dung: 'Nội dung', nguon: 'Nguồn',
   chu_y: 'Lưu ý cho đội sản xuất', khan_gia: 'Khán giả', chinh: 'Chính', phu: 'Phụ', to_mo: 'Tò mò', ly_do_click: 'Lý do bấm xem',
   dieu_giu_chan: 'Điều giữ chân', dieu_chia_se: 'Điều khiến chia sẻ', con_nguoi: 'Câu chuyện con người', uoc_mo: 'Ước mơ', noi_so: 'Nỗi sợ',
   that_bai: 'Thất bại', xung_dot: 'Xung đột', hy_sinh: 'Hy sinh', co_hoi: 'Cơ hội', bien_doi: 'Biến đổi', cai_gia: 'Cái giá', di_san: 'Di sản',

@@ -618,9 +618,11 @@ def do_dai_video(tep):
     return int(m.group(1)) * 3600 + int(m.group(2)) * 60 + float(m.group(3)) if m else None
 
 
-def dai_nhac_theo_phan(thu_muc, cac_bai, do_dai_phan):
+def dai_nhac_theo_phan(thu_muc, cac_bai, do_dai_phan, am_luong_phan=None):
     # Ghép dải nhạc nền: chương j dùng bài cac_bai[j] (lặp cho đủ), cắt đúng độ dài chương, chuyển bài êm (mờ dần 1,5 giây
-    # ở hai đầu mỗi đoạn). Trả tệp .m4a hoặc None
+    # ở hai đầu mỗi đoạn), to / nhỏ theo hệ số am_luong_phan[j] (chương cao trào to hơn, chương đúc kết nhỏ lại). Trả tệp .m4a hoặc None
+    if not am_luong_phan or len(am_luong_phan) != len(cac_bai):
+        am_luong_phan = [1] * len(cac_bai)
     tep = {}
     for ten in dict.fromkeys(cac_bai):
         r = s.get(f'{URL}/{KHO}/nhac/{ten}', timeout=120)
@@ -633,7 +635,7 @@ def dai_nhac_theo_phan(thu_muc, cac_bai, do_dai_phan):
     for j, (ten, dai) in enumerate(zip(cac_bai, do_dai_phan)):
         vao += ['-stream_loop', '-1', '-i', tep[ten].name]
         loc.append(f'[{j}:a]atrim=0:{dai:.2f},asetpts=PTS-STARTPTS,aformat=sample_rates=44100:channel_layouts=stereo,'
-                   f'afade=t=in:d=1.5,afade=t=out:st={max(0, dai - 1.5):.2f}:d=1.5[n{j}]')
+                   f'volume={float(am_luong_phan[j]):.2f},afade=t=in:d=1.5,afade=t=out:st={max(0, dai - 1.5):.2f}:d=1.5[n{j}]')
     loc.append(''.join(f'[n{j}]' for j in range(len(cac_bai))) + f'concat=n={len(cac_bai)}:v=0:a=1[ra]')
     ra = thu_muc / 'nhac-dai.m4a'
     chay([str(FFMPEG), '-hide_banner', '-y', *vao, '-filter_complex', ';'.join(loc), '-map', '[ra]', '-c:a', 'aac', '-b:a', '192k', ra.name], thu_muc, 1800)
@@ -765,7 +767,7 @@ def dung_youtube(may, ds_giong, yc):
             dai_nhac = None
             if nhac and yc.get('nhac_phan') and len(yc['nhac_phan']) == len(cac_phan):
                 try:
-                    dai_nhac = dai_nhac_theo_phan(thu_muc, yc['nhac_phan'], [do_dai_video(p) or 0 for p in cac_phan])
+                    dai_nhac = dai_nhac_theo_phan(thu_muc, yc['nhac_phan'], [do_dai_video(p) or 0 for p in cac_phan], yc.get('am_luong_phan'))
                 except Exception:
                     traceback.print_exc()
             if nhac and (dai_nhac or not yc.get('nhac_phan')) and tron_nhac_nen(thu_muc, ghep, ra, nhac, yc.get('am_luong_nhac', 30), td, dai_nhac):
@@ -872,8 +874,8 @@ def dung_hoat_hinh(may, ds_giong, yc, td):
 
 
 # Phiên bản máy nhà (gửi kèm tín hiệu sống): trang web biết máy nhà đã khởi động lại sau lần cập nhật chưa
-# (lib/youtube.ts: BAN_MAY_NHA phải bằng số này). 2: báo việc đang làm (hien-tai.json), Pixabay chặn thì nghỉ; 3: báo lại mỗi 20 giây; 4: tự khởi động lại khi code đổi
-BAN_MAY_NHA = 5
+# (lib/youtube.ts: BAN_MAY_NHA phải bằng số này). 2: báo việc đang làm (hien-tai.json), Pixabay chặn thì nghỉ; 3: báo lại mỗi 20 giây; 4: tự khởi động lại khi code đổi; 6: âm lượng nhạc nền riêng từng chương (am_luong_phan)
+BAN_MAY_NHA = 6
 
 
 def bao_song():

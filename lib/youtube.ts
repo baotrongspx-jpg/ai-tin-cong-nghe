@@ -26,7 +26,7 @@ const PHIEN_BAN = 23 // tăng khi đổi cách dựng để các phần dựng l
 const kho = () => db().storage.from(KHO)
 const thuMuc = (id: string) => `youtube/${id}`
 // Phiên bản máy nhà mới nhất (may-nha/tho_doc.py: BAN_MAY_NHA)
-const BAN_MAY_NHA = 5
+const BAN_MAY_NHA = 6
 const tenViec = (id: string, k: number) => `yt-${id}-${k}.json`
 
 // Mỗi phần ~3 phút; giọng VieNeu đọc khoảng 4,5 giây một câu thoại (đo trên video thật)
@@ -643,6 +643,15 @@ function camXucChuong(loi: CauYT[]): CamXucNhac {
   }
   return Object.entries(dem).sort((a, b) => b[1] - a[1])[0][0] as CamXucNhac
 }
+// Nhạc không bật đều một mức từ đầu đến cuối: hệ số âm lượng từng chương (nhân với AM_LUONG_NHAC_YT) — mở đầu vừa phải,
+// chương giữa to hơn, chương cao trào to nhất, chương cuối (đúc kết bài học) nhỏ lại cho lời đúc kết rõ. Máy nhà bản 6+.
+function amLuongNhacPhan(d: DuAnYT) {
+  const n = d.phan.length
+  if (n === 1) return [1]
+  const manh = d.phan.map((p) => doManh(p.loi ?? []))
+  const caoTrao = n >= 3 ? manh.slice(1, -1).reduce((m, x, i) => (x > manh[m] ? i + 1 : m), 1) : -1
+  return d.phan.map((_, k) => (k === 0 ? 0.9 : k === n - 1 ? 0.75 : k === caoTrao ? 1.35 : 1.15))
+}
 export async function nhacCuaDuAn(d: DuAnYT) {
   if (!batNhacNen() || !d.phan.length) return null
   const dsTen = (await dsNhac().catch(() => [])).map((x) => x.ten)
@@ -675,7 +684,7 @@ export async function guiDung(d: DuAnYT, chiPhan?: number) {
   const ma = d.phan.map((_, i) => maPhan(d, i + 1))
   // Nhạc nền theo từng chương (nhacCuaDuAn): máy nhà ghép dải nhạc theo độ dài từng phần, nhỏ đi khi có giọng đọc
   const maNhac = await nhacCuaDuAn(d)
-  const nhac = { nhac: maNhac, nhac_phan: maNhac ? maNhac.slice(8).split('|') : null, am_luong_nhac: AM_LUONG_NHAC_YT }
+  const nhac = { nhac: maNhac, nhac_phan: maNhac ? maNhac.slice(8).split('|') : null, am_luong_phan: maNhac ? amLuongNhacPhan(d) : null, am_luong_nhac: AM_LUONG_NHAC_YT }
   const can = d.phan
     .map((_, i) => i + 1)
     .filter((k) => (chiPhan ? k === chiPhan : true) && ['chua_dung', 'loi'].includes(tt.phan[k - 1].loai))

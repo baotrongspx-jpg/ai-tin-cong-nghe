@@ -881,7 +881,10 @@ loi.forEach((l, i) => {
   const pu = nguoiPhanUng(i)[0]
   if (pu && !canCanh && !chuaDau && !lui && d > 3.2 && PHAN_UNG_MANH.has(l.cam_xuc)) {
     const vt = pu.startsWith('phu') ? { x: viTriPhu[pu] ?? 540, y: 720 - HA_PHU } : tamLuc(pu, t0 + d - 1)
-    lia(t0 + d - 1.0, 1.45, vt.x, vt.y - 30, 0.22, 'power2.out')
+    // Cắt thẳng (1 khung hình) như cắt cảnh thật, không lia nhanh: lia 0,22 giây ở 24 hình/giây trông như hình giật
+    // (video 14/10/2026). Sau đó giữ khung, đẩy rất chậm tới hết câu (lệnh này chạy tới cuối nên đè lệnh máy quay của câu)
+    lia(t0 + d - 1.0, 1.45, vt.x, vt.y - 30, 0.04, 'none')
+    lia(t0 + d - 0.95, 1.48, vt.x, vt.y - 34, 0.95, 'sine.inOut')
   }
 })
 

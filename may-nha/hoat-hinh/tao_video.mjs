@@ -230,6 +230,27 @@ doanPhu.forEach((dp, k) => {
   for (const i of dp.cau) phuCuaCau[i] = `phu${k}`
 })
 const laPhu = (ai) => !!NHAN_VAT_PHU[ai]
+// ── Diễn qua lại: mỗi câu người nói có người phản ứng (người nghe không đứng đờ). Người phản ứng chính: người nói là Mèo →
+// Bit, là Bit → Mèo, là nhân vật phụ / nhân vật chính → Mèo; thêm nhân vật phụ khác đang đứng trên sân khấu. Câu người kể
+// (giọng dẫn) thì nhân vật trên sân khấu diễn theo lời kể (xem vòng câu thoại), không có người phản ứng riêng.
+const coMatCau = (i) => doanPhu.map((dp, k) => [dp, `phu${k}`]).filter(([dp]) => dp.tu <= i && i <= dp.het).map(([, q]) => q)
+const nguoiNoiCau = (i) => {
+  const ai = laPhu(loi[i].ai) || loi[i].ai === 'meo' ? loi[i].ai : 'robot'
+  return laPhu(ai) ? phuCuaCau[i] : ai
+}
+const nguoiPhanUng = (i) => {
+  if (loi[i].ai === 'nguoi_ke') return []
+  const p = nguoiNoiCau(i)
+  return [p === 'meo' ? 'robot' : 'meo', ...coMatCau(i).filter((q) => q !== p)]
+}
+// Phản ứng theo lời người nói (tạo tương phản: người nổi giận → người nghe chột dạ; người kể khổ → người nghe buồn theo;
+// giải thích → người nghe ngẫm nghĩ; tò mò hỏi → người nghe suy nghĩ tìm câu trả lời)
+const PHAN_UNG = {
+  tuc_gian: 'lo_lang', bat_ngo: 'bat_ngo', buon: 'buon', vui: 'vui', lo_lang: 'lo_lang', to_mo: 'suy_nghi',
+  giai_thich: 'suy_nghi', khang_dinh: 'khang_dinh', suy_nghi: 'to_mo',
+}
+// Lời mạnh: máy quay cắt qua mặt người phản ứng cuối câu (shot / reverse shot)
+const PHAN_UNG_MANH = new Set(['tuc_gian', 'bat_ngo', 'buon', 'lo_lang'])
 // Ảnh thật (phim tiểu sử): các câu liền nhau cùng một ảnh gom một đoạn. Kiểu đặt: đoạn chỉ có người kể (khung ngang)
 // → ảnh tư liệu phủ kín khung hình, nhân vật nhường chỗ cho tư liệu như phim tài liệu
 // (góp ý 14/10/2026: nhân vật "gánh" quá nhiều thời lượng, ảnh nhỏ góc phải như slide); còn lại → ảnh nhỏ trên cao
@@ -388,8 +409,22 @@ loi.forEach((l, i) => {
   // thay vì đứng yên: câu hỏi / nghịch lý → nghiêng đầu chống cằm; bước ngoặt → nhướn mày, ngạc nhiên; buồn, giận, vui,
   // lo theo đúng cảm xúc; câu kể bình thường → giữ dáng nghỉ (thở, chớp mắt)
   else if (phuCuaCau[i]) {
-    const dien = { to_mo: 'suy_nghi', suy_nghi: 'suy_nghi', bat_ngo: 'bat_ngo', buon: 'buon', tuc_gian: 'tuc_gian', vui: 'vui', lo_lang: 'lo_lang' }[l.cam_xuc]
+    const dien = { to_mo: 'suy_nghi', suy_nghi: 'suy_nghi', bat_ngo: 'bat_ngo', buon: 'buon', tuc_gian: 'tuc_gian', vui: 'vui', lo_lang: 'lo_lang', giai_thich: 'giai_thich', khang_dinh: 'khang_dinh' }[l.cam_xuc]
     if (dien) tw.push(...CU_CHI[dien](phuCuaCau[i], t0))
+  }
+  // Người nghe phản ứng theo lời người nói, trễ nửa giây như phản xạ thật; người thứ hai (nếu có) phản ứng dịu hơn, trễ hơn.
+  // Nhân vật phụ phản ứng xong thì về dáng nghỉ trước câu sau (Mèo / Bit đã có NGHI)
+  if (!ke && d > 1.6 && PHAN_UNG[l.cam_xuc]) {
+    nguoiPhanUng(i).slice(0, 2).forEach((q, j) => {
+      const cx = j && ['lo_lang', 'bat_ngo'].includes(PHAN_UNG[l.cam_xuc]) ? 'suy_nghi' : PHAN_UNG[l.cam_xuc]
+      tw.push(...CU_CHI[cx](q, t0 + 0.5 + j * 0.3))
+      if (q.startsWith('phu') && q !== phuCuaCau[i + 1]) {
+        const v = t0 + d - 0.2
+        tw.push(`tl.to(["#${q}-dau", "#${q}-tay-trai", "#${q}-tay-phai"], { rotation: 0, duration: 0.3, ease: "sine.inOut" }, ${f(v)});`)
+        tw.push(`tl.to(["#${q}-may-trai", "#${q}-may-phai"], { y: 0, rotation: 0, duration: 0.3 }, ${f(v)});`)
+        tw.push(`tl.to(["#${q}-ma-hong", "#${q}-nuoc-mat", "#${q}-mo-hoi", "#${q}-gian"], { opacity: 0, duration: 0.3 }, ${f(v)});`)
+      }
+    })
   }
   // Ánh mắt có mục tiêu (Character Acting Engine): ai đang có mặt cũng nhìn về phía người nói. Sân khấu: Mèo bên trái,
   // Bit bên phải, nhân vật phụ ở giữa (viTriPhu). Người kể là giọng dẫn không đứng trên sân khấu → mọi người nhìn thẳng.
@@ -840,8 +875,14 @@ loi.forEach((l, i) => {
     tw.push(`tl.to("#o-${nghe === 'robot' ? 'meo' : 'robot'}", { xPercent: 0, duration: 0.55, ease: "power2.inOut" }, ${f(Math.max(0, t0 - 0.3))});`)
   }
   if (canCanh && lui) tw.push(`tl.to("#o-${nghe}", { xPercent: 0, duration: ${f(lui)}, ease: "power2.inOut" }, ${f(t0 + d - lui)});`)
-  // Nhịp giữa câu dài: người nghe gật đầu, đạo cụ / biểu cảm đã lo phần đầu câu
-  if (d > 4.5) tw.push(`tl.to("#${nghe}-dau", { rotation: 6, duration: 0.2, yoyo: true, repeat: 3, ease: "sine.inOut" }, ${f(t0 + d / 2)});`)
+  // Shot / reverse shot: lời mạnh (giận, bất ngờ, buồn, lo) trong câu đủ dài → cuối câu máy cắt qua mặt người phản ứng
+  // chính, giữ tới hết câu (câu sau máy quay tự về người nói mới). Không cắt khi đang cận một người (người nghe đã lùi ra
+  // ngoài khung), khi có thẻ trên cao, hay khi sắp đổi cảnh (đã lùi về cảnh rộng)
+  const pu = nguoiPhanUng(i)[0]
+  if (pu && !canCanh && !chuaDau && !lui && d > 3.2 && PHAN_UNG_MANH.has(l.cam_xuc)) {
+    const vt = pu.startsWith('phu') ? { x: viTriPhu[pu] ?? 540, y: 720 - HA_PHU } : tamLuc(pu, t0 + d - 1)
+    lia(t0 + d - 1.0, 1.45, vt.x, vt.y - 30, 0.22, 'power2.out')
+  }
 })
 
 // ── Đạo cụ: hiện bên cạnh người nói theo nội dung câu (AI chọn), bay nhẹ rồi biến mất ─

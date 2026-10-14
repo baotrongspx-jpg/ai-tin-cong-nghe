@@ -127,6 +127,25 @@ function hinhChuong(d: DuAnYT, k: number) {
   const gd = [...th.giai_doan].sort((a, b) => a.tu_chuong - b.tu_chuong).filter((g, i) => i === 0 || g.tu_chuong <= k).at(-1)!
   return { nhom: th.nhom ?? 'khac', gioi: th.gioi, da: th.da, ...gd }
 }
+// Giới tính nhân vật chính (hình vẽ + giọng), kiểm lúc thiết kế nhân vật (bước tao_hinh; phim đã dựng giữ nguyên). AI
+// thiết kế đôi khi chọn nhầm, còn hình mặc định (AI lỗi) luôn là nam → đối chiếu với cách lời kể / tư liệu gọi người này: "bà / cô ấy / nữ / mẹ / vợ" hay "ông / anh ấy / cha / chồng". Chứng cứ rõ
+// (ít nhất 3 lần và gấp đôi phía kia) thì theo chứng cứ, không thì giữ lựa chọn của AI.
+function gioiPhim(d: DuAnYT, th: TaoHinh): 'nam' | 'nu' {
+  const nc = d.phim?.nghien_cuu
+  const chu = [
+    nc?.ho_so.gia_dinh, nc?.ho_so.nghe_nghiep,
+    ...(nc?.moc_doi ?? []).map((m) => m.su_kien),
+    ...(nc?.su_that ?? []).map((s) => s.noi_dung),
+    ...d.phan.flatMap((p) => (p.loi ?? []).filter((l) => l.ai === 'nguoi_ke').map((l) => l.chu)),
+  ].filter(Boolean).join(' . ').toLowerCase()
+  const dem = (re: RegExp) => chu.match(re)?.length ?? 0
+  const sau = '(?= (ấy|ta|đã|là|vẫn|không|cũng|bắt đầu|được|bị|quyết|từng|luôn|sinh|mất|qua đời|lại|chỉ|đang|sẽ|có|nói|kể|viết|trở thành|rời|đến|tới))'
+  const nu = dem(new RegExp(`(^|[^\\p{L}])(bà|cô)${sau}`, 'gu')) + dem(/nữ (hoàng|tướng|khoa học gia|nhà|ca sĩ|diễn viên|doanh nhân|vận động viên)|người phụ nữ|con gái (duy nhất|út|cả)/gu)
+  const nam = dem(new RegExp(`(^|[^\\p{L}])(ông|anh)${sau}`, 'gu')) + dem(/người đàn ông|cậu bé|con trai (duy nhất|út|cả)/gu)
+  if (nu >= 3 && nu >= nam * 2) return 'nu'
+  if (nam >= 3 && nam >= nu * 2) return 'nam'
+  return th.gioi
+}
 // Phim tiểu sử: mốc năm đầu / cuối đời nhân vật (từ các mốc đời đã nghiên cứu) — cho thanh dòng thời gian
 function namDoi(d: DuAnYT): { tu: number; den: number } | null {
   const nam = (d.phim?.nghien_cuu?.moc_doi ?? []).flatMap((m) => [...`${m.nam} ${m.giai_doan}`.matchAll(/\b(\d{3,4})\b/g)].map((x) => Number(x[1]))).filter((n) => n > 500 && n < 2100)
@@ -924,7 +943,8 @@ export async function chayBuocPhim(id: string, buoc: BuocPhim, k?: number) {
     const nc = p.nghien_cuu
     const cc = p.cau_chuyen
     const { kq, pb } = await voiPhanBien('tao_hinh', nguCanh, () => thietKeNhanVatChinh({ ten: p.ten, nghienCuu: nc, cauChuyen: cc }), json, truoc(d.phan_bien?.tao_hinh))
-    p.tao_hinh = kq ?? TAO_HINH_MAC_DINH
+    const th = kq ?? TAO_HINH_MAC_DINH
+    p.tao_hinh = { ...th, gioi: gioiPhim(d, th) }
     if (pb) pbMoi.tao_hinh = pb
   } else if (buoc === 'ho_so') {
     if (!p.nghien_cuu || !p.cau_chuyen) throw new Error('Chưa có nghiên cứu và câu chuyện')

@@ -52,8 +52,9 @@ def chuan_hoa_tieng(tep):
     loi = _chay([str(FFMPEG), '-hide_banner', '-nostats', '-i', str(tep), '-vn',
                  '-af', f'loudnorm=I={CHUAN_LUFS}:TP=-1.5:LRA=11:print_format=json', '-f', 'null', '-'])
     so = _json.loads(loi[loi.rfind('{'):loi.rfind('}') + 1])
-    loc = (f'loudnorm=I={CHUAN_LUFS}:TP=-1.5:LRA=11:measured_I={so["input_i"]}:measured_TP={so["input_tp"]}'
-           f':measured_LRA={so["input_lra"]}:measured_thresh={so["input_thresh"]}:offset={so["target_offset"]}:linear=true')
+    loc = (f'loudnorm=I={CHUAN_LUFS}:TP=-2:LRA=11:measured_I={so["input_i"]}:measured_TP={so["input_tp"]}'
+           f':measured_LRA={so["input_lra"]}:measured_thresh={so["input_thresh"]}:offset={so["target_offset"]}:linear=true'
+           ',alimiter=limit=0.75:level=false')  # chừa ~2,5 dB cho khâu nén AAC (nén xong đỉnh nhô lên lại)
     tam = tep.with_name(tep.stem + '-chinh-am' + tep.suffix)
     try:
         _chay([str(FFMPEG), '-hide_banner', '-y', '-i', str(tep), '-map', '0:v', '-map', '0:a', '-c:v', 'copy',

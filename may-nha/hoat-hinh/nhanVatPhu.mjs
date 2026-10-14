@@ -1,7 +1,7 @@
 // Nhân vật phụ xuất hiện khi lời thoại nhắc tới (người phụ nữ, cảnh sát, hacker, doanh nhân, bác sĩ, nông dân…).
 // Không ghi tên trên đầu: trang phục + đồ nghề phải tự nói lên họ là ai. Cùng phong cách nét viền đậm với Mèo Mun /
 // Robot Bit. viewBox 0 0 400 600, chân chạm y≈585.
-// Bộ phận có id để diễn: <id>-dau (xoay quanh cổ 200 250), <id>-tay-phai / <id>-tay-trai (xoay quanh vai 270 300 / 130 300;
+// Bộ phận có id để diễn: <id>-mat (hai mắt, chớp / liếc quanh 200 188), <id>-dau (xoay quanh cổ 200 250), <id>-tay-phai / <id>-tay-trai (xoay quanh vai 270 300 / 130 300;
 // đồ cầm tay vẽ trong nhóm tay nên cử động theo tay), <id>-mieng-dong / <id>-mieng-mo (nhép miệng khi nói).
 // `mau`: màu nhãn + phụ đề khi nói, `ten`: tên hiện ở phụ đề. Tên khoá phải khớp lib/ai.ts (NHAN_VAT_PHU).
 import { DAO_CU } from './daoCu.mjs'
@@ -78,7 +78,7 @@ function nguoi(id, o) {
     ${gia ? `<path d="M158 150 Q172 144 186 150 M214 150 Q228 144 242 150 M150 208 Q156 216 152 226 M250 208 Q244 216 248 226" fill="none" stroke="${daToi}" stroke-width="3.5" stroke-linecap="round"/>` : ''}
     ${tocTruoc}
     <g id="${id}-may-trai"><path d="M154 167 Q170 158 186 165" fill="none" stroke="${may}" stroke-width="6" stroke-linecap="round"/></g><g id="${id}-may-phai"><path d="M214 165 Q230 158 246 167" fill="none" stroke="${may}" stroke-width="6" stroke-linecap="round"/></g>
-    ${mat || matMacDinh(undefined, nu)}
+    <g id="${id}-mat">${mat || matMacDinh(undefined, nu)}</g>
     <path d="M196 200 Q201 211 207 204" fill="none" stroke="${daToi}" stroke-width="4" stroke-linecap="round"/>
     <!-- Biểu cảm (ẩn sẵn, tao_video.mjs bật theo cảm xúc): má ửng, nước mắt, mồ hôi, gân giận -->
     <g id="${id}-ma-hong" opacity="0"><ellipse cx="150" cy="212" rx="20" ry="11" fill="#f43f5e" opacity="0.55"/><ellipse cx="250" cy="212" rx="20" ry="11" fill="#f43f5e" opacity="0.55"/></g>

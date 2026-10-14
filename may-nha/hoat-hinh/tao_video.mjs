@@ -384,9 +384,18 @@ loi.forEach((l, i) => {
     tw.push(`tl.to(["#${q}-may-trai", "#${q}-may-phai"], { y: 0, rotation: 0, duration: 0.3 }, ${f(t0 - 0.3)});`)
   }
   if (!ke) tw.push(...(CU_CHI[l.cam_xuc] ?? CU_CHI[ai === 'meo' ? 'to_mo' : 'giai_thich'])(p, t0))
-  // Người nghe nhìn sang người nói
-  if (ai === 'robot') tw.push(`tl.to(["#meo-con-ngoi-trai", "#meo-con-ngoi-phai"], { x: 14, duration: 0.35, ease: "sine.inOut" }, ${f(t0)});`)
-  else tw.push(`tl.to(["#meo-con-ngoi-trai", "#meo-con-ngoi-phai"], { x: 0, duration: 0.35, ease: "sine.inOut" }, ${f(t0)});`)
+  // Ánh mắt có mục tiêu (Character Acting Engine): ai đang có mặt cũng nhìn về phía người nói. Sân khấu: Mèo bên trái,
+  // Bit bên phải, nhân vật phụ ở giữa (viTriPhu). Người kể là giọng dẫn không đứng trên sân khấu → mọi người nhìn thẳng.
+  const coMat = doanPhu.map((dp, k) => [dp, `phu${k}`]).filter(([dp]) => dp.tu <= i && i <= dp.het)
+  const huong = (ben, q) => {
+    if (ke || ben === p) return 0
+    if (ben === 'meo') return 1
+    if (ben === 'robot') return -1
+    return p === 'meo' ? -1 : p === 'robot' ? 1 : Math.sign((viTriPhu[p] ?? 540) - (viTriPhu[q] ?? 540))
+  }
+  tw.push(`tl.to(["#meo-con-ngoi-trai", "#meo-con-ngoi-phai"], { x: ${14 * huong('meo')}, duration: 0.35, ease: "sine.inOut" }, ${f(t0)});`)
+  tw.push(`tl.to(["#robot-mat-trai", "#robot-mat-phai"], { x: ${8 * huong('robot')}, duration: 0.35, ease: "sine.inOut" }, ${f(t0)});`)
+  for (const [, q] of coMat) tw.push(`tl.to("#${q}-mat", { x: ${4 * huong(q, q)}, duration: 0.3, ease: "sine.inOut" }, ${f(t0)});`)
   if (laPhu(ai) || ke) tw.push(`tl.to(["#o-meo", "#o-robot"], { scale: 0.96, duration: 0.45, ease: "sine.inOut" }, ${f(t0)});`)
   else {
     tw.push(`tl.to("#o-${nghe}", { scale: 0.96, duration: 0.45, ease: "sine.inOut" }, ${f(t0)});`)
@@ -408,6 +417,26 @@ loi.forEach((l, i) => {
       truoc = nay
     }
     if (truoc !== `#${p}-mieng-dong`) tw.push(`tl.set("${truoc}", { opacity: 0 }, ${f(t0 + d)});`)
+  }
+  // Phản ứng qua lại (cấp 4 – interaction): câu dài thì người nghe gật một nhịp giữa câu (nhân vật phụ đang có mặt gật
+  // sớm hơn một chút cho khỏi đồng loạt)
+  // Gật / nhấn đầu dùng y của nhóm đầu (giá trị tuyệt đối, về 0): xoay đầu đã do cử chỉ cảm xúc đảm nhận, hai lệnh cùng
+  // ghi một thuộc tính sẽ giật hình khi dựng song song
+  const gat = (sel, sau, luc, dur = 0.22) =>
+    tw.push(`tl.fromTo("${sel}", { y: 0 }, { y: ${sau}, duration: ${dur}, yoyo: true, repeat: 1, ease: "sine.inOut", immediateRender: false }, ${f(luc)});`)
+  if (!ke && d > 2.6) {
+    gat(`#${laPhu(ai) ? 'meo' : nghe}-dau`, 9, t0 + d * 0.55)
+    for (const [, q] of coMat) if (q !== p) gat(`#${q}-dau`, 7, t0 + d * 0.4)
+  }
+  // Người nói nhấn nhịp theo lời (cấp 2 – gesture): ở các âm mở to (Rhubarb C / D / E), cách nhau ít nhất 1,5 giây, đầu
+  // hất nhẹ lên theo nhịp nói, có chủ đích, không vung ngẫu nhiên
+  if (!ke && mocMieng?.length) {
+    let cuoi = 0.4
+    for (const [bd, v] of mocMieng) {
+      if (bd < cuoi + 1.5 || bd > d - 0.7 || !'CDE'.includes(v)) continue
+      cuoi = bd
+      gat(`#${p}-dau`, -6, t0 + bd, 0.16)
+    }
   }
   const am = mocMieng?.length ? [] : doTo(join(GOC, `hyperframes/assets/loi-${i}.wav`))
   let em = 0, dangMo = false
@@ -630,7 +659,15 @@ const nvPhu = doanPhu.map((dp, k) => {
   tw.push(`tl.to("#${id}-tay-phai", { rotation: -140, duration: 0.3, ease: "back.out(2)" }, ${f(t0 + 0.5)});`)
   tw.push(`tl.to("#${id}-tay-phai", { rotation: -115, duration: 0.18, yoyo: true, repeat: 5, ease: "sine.inOut" }, ${f(t0 + 0.8)});`)
   tw.push(`tl.to("#${id}-tay-phai", { rotation: 0, duration: 0.3 }, ${f(t0 + 1.9)});`)
-  tw.push(`tl.to("#${id}-dau", { rotation: 6, duration: 0.5, yoyo: true, repeat: ${lap(het - t0 - 2.2, 0.5) | 1}, ease: "sine.inOut" }, ${f(t0 + 2.2)});`)
+  // Đứng trên sân khấu (Character Acting Engine, cấp 1 – idle): thở (thân phồng nhẹ), dồn trọng tâm trái – phải rất chậm,
+  // chớp mắt ở mốc cố định. Không gật đầu liên tục cho có: gật / nhìn người nói làm theo từng câu (xem phần câu thoại)
+  const dung = vao + diVao, roi = het - 0.3
+  if (roi - dung > 1) {
+    tw.push(`gsap.set("#${id} svg", { transformOrigin: "50% 100%" }); gsap.set("#${id}-mat", { svgOrigin: "200 188" });`)
+    tw.push(`tl.fromTo("#${id} svg", { scaleY: 1 }, { scaleY: 1.014, duration: 1.6, yoyo: true, repeat: ${lap(roi - dung, 1.6) | 1}, ease: "sine.inOut", immediateRender: false }, ${f(dung)});`)
+    tw.push(`tl.fromTo("#${id} svg", { rotation: ${k % 2 ? 0.9 : -0.9} }, { rotation: ${k % 2 ? -0.9 : 0.9}, duration: 2.6, yoyo: true, repeat: ${lap(roi - dung, 2.6) | 1}, ease: "sine.inOut", immediateRender: false }, ${f(dung)});`)
+    for (let c = dung + 1.1 + (k % 3) * 0.6; c < roi - 0.3; c += 3.4) tw.push(`tl.to("#${id}-mat", { scaleY: 0.1, duration: 0.07, yoyo: true, repeat: 1 }, ${f(c)});`)
+  }
   // Rời sân khấu: quay lưng đi ra phía mép đã vào
   // Hết nhiệm vụ: rời nhanh (0,35 giây) ngay cuối câu cuối của mình, nhường chỗ cho người kế tiếp
   tw.push(`tl.to("#${id}", { x: ${ben * 420}, opacity: 0, duration: 0.35, ease: "power2.in" }, ${f(het - 0.3)});`)

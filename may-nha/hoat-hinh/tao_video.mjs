@@ -76,6 +76,44 @@ const docMieng = (i) =>
 const MIENG = []
 for (let i = 0; i < loi.length; i += 6) MIENG.push(...(await Promise.all(loi.slice(i, i + 6).map((_, k) => docMieng(i + k)))))
 
+// ── Đồng bộ theo bản thu thật: thời điểm giọng đọc tới một chữ trong câu. Đếm số tiếng (âm tiết tiếng Việt, cách nhau
+// bởi khoảng trắng) đứng trước chữ đó, rồi trải tỉ lệ ấy lên các đoạn ĐANG CÓ TIẾNG trong bản thu (mốc Rhubarb khác X;
+// không có Rhubarb thì theo độ to giọng), bỏ qua chỗ ngắt hơi / dấu phẩy — không ước theo số ký tự của câu.
+const DOAN_NOI = {}
+function doanNoi(i) {
+  if (DOAN_NOI[i]) return DOAN_NOI[i]
+  const d = doDai[i]
+  const ds = []
+  const moc = MIENG[i]
+  if (moc?.length) {
+    moc.forEach(([bd, v], k) => {
+      const kt = Math.min(moc[k + 1]?.[0] ?? d, d)
+      if (v !== 'X' && kt > bd) ds.push([bd, kt])
+    })
+  } else {
+    const tep = join(GOC, `hyperframes/assets/loi-${i}.wav`)
+    if (existsSync(tep))
+      doTo(tep).forEach((v, k) => {
+        if (v > 0.05) ds.push([k / 15, Math.min(d, (k + 1) / 15)])
+      })
+  }
+  return (DOAN_NOI[i] = ds.length ? ds : [[0, Math.max(0.1, d - 0.25)]])
+}
+// vt: vị trí ký tự của chữ trong l.chu → giây tuyệt đối trên dòng thời gian
+function lucTu(i, vt) {
+  const chu = String(loi[i].chu ?? '').trim()
+  const tieng = chu.split(/\s+/).filter(Boolean).length || 1
+  const truoc = chu.slice(0, Math.max(0, vt)).trim()
+  const k = truoc ? truoc.split(/\s+/).length : 0
+  const ds = doanNoi(i)
+  let can = (k / tieng) * ds.reduce((a, [x, y]) => a + y - x, 0)
+  for (const [x, y] of ds) {
+    if (can <= y - x) return batDau[i] + x + can
+    can -= y - x
+  }
+  return batDau[i] + ds.at(-1)[1]
+}
+
 function doTo(file) {
   const b = readFileSync(file)
   let i = 12, du = null, kenhAm = 1, tanSo = 48000
@@ -122,6 +160,7 @@ for (const [i, d] of doDai.entries()) {
 }
 const HET_NOI = t + DUOI // lúc lời cuối cùng dứt
 const TONG = HET_NOI + MAN_KET
+const DONG_BO = [] // artifacts/dong_bo.json: mỗi câu thoại truy ra cảnh của nó (kiểm định sau khi dựng)
 writeFileSync(join(GOC, 'artifacts/phu_de.json'), JSON.stringify(loi.map((l, i) => ({ bd: +batDau[i].toFixed(2), kt: +(batDau[i] + doDai[i]).toFixed(2), chu: l.chu }))))
 const tw = []
 
@@ -289,7 +328,7 @@ if (NGANG) {
     if (THE_TREN.has(i) || l.anh_wiki?.tep || l.la_chuong || i - truoc < 4) return
     const m = String(l.chu).match(reSo)
     if (!m) return
-    SO_DONG[i] = { chu: `${m[1]} ${m[2]}`.trim(), vt: m.index / Math.max(1, l.chu.length) }
+    SO_DONG[i] = { chu: `${m[1]} ${m[2]}`.trim(), vt: m.index / Math.max(1, l.chu.length), kyTu: m.index }
     THE_TREN.add(i)
     truoc = i
   })
@@ -491,10 +530,15 @@ loi.forEach((l, i) => {
   const boTayDau = (ds, q) => (q && q === nguoiLam ? ds.filter((t) => !t.includes(`#${q}-tay-`) && !t.includes(`#${q}-dau"`)) : ds)
   if (!ke) tw.push(...boTayDau((CU_CHI[l.cam_xuc] ?? CU_CHI[ai === 'meo' ? 'to_mo' : 'giai_thich'])(p, t0), p))
   if (nguoiLam) {
-    tw.push(...DONG_TAC[dongTac](nguoiLam, t0 + 0.3))
-    const tiengDT = { dap_tay: ['sfx-bum', 0.8, 0.22], vo_tay: ['sfx-vo-tay', 0.35, 0.25], viet: ['sfx-but-viet', 0.35, 0.3] }[dongTac]
-    if (tiengDT) amDongTac.push([tiengDT[0], t0 + tiengDT[1], tiengDT[2], i])
+    // Lời có nói tới hành động ("… đập bàn …") → động tác bắt đầu ngay trước lúc giọng đọc tới chữ đó; không thì đầu câu
+    const khop = TU_DONG_TAC.find(([ten]) => ten === dongTac)?.[1].exec(String(l.chu ?? '').toLowerCase())
+    const batDauDT = Math.min(Math.max(t0 + 0.15, khop ? lucTu(i, khop.index) - 0.25 : t0 + 0.3), Math.max(t0 + 0.15, t0 + d - 0.9))
+    tw.push(...DONG_TAC[dongTac](nguoiLam, batDauDT))
+    // Tiếng đi kèm tính từ lúc bắt đầu động tác (đập: lúc tay chạm xuống)
+    const tiengDT = { dap_tay: ['sfx-bum', 0.5, 0.22], vo_tay: ['sfx-vo-tay', 0.05, 0.25], viet: ['sfx-but-viet', 0.05, 0.3] }[dongTac]
+    if (tiengDT) amDongTac.push([tiengDT[0], batDauDT + tiengDT[1], tiengDT[2], i])
     // Nhân vật phụ làm động tác mà câu sau không còn là lượt của họ: về dáng nghỉ cuối câu
+    DONG_BO.push({ cau: i, bd: +t0.toFixed(2), kt: +(t0 + d).toFixed(2), chu: l.chu, nguoi_lam: nguoiLam, dong_tac: dongTac, luc: +batDauDT.toFixed(2), tu_loi: !!khop })
     if (nguoiLam.startsWith('phu') && nguoiLam !== phuCuaCau[i + 1]) tw.push(`tl.to(["#${nguoiLam}-dau", "#${nguoiLam}-tay-trai", "#${nguoiLam}-tay-phai"], { rotation: 0, duration: 0.3, ease: "sine.inOut" }, ${f(t0 + d - 0.2)});`)
   }
   // Người kể đang dẫn chuyện: nhân vật đứng trên sân khấu (nhân vật chính / người được nhắc tới) diễn theo sắc thái câu kể
@@ -640,6 +684,13 @@ loi.forEach((l, i) => {
     tw.push(`tl.from("#pd${i}-${k} .pd-khung", { y: 20, opacity: 0, duration: 0.15, ease: "power2.out" }, ${f(batDauDoan)});`)
   })
 })
+
+// Kiểm định đồng bộ: câu có động tác (AI chọn hoặc lời nói tới) mà không có ai trên sân khấu để diễn → ghi cảnh báo
+loi.forEach((l, i) => {
+  const dt = dongTacCau(l)
+  if (dt && !DONG_BO.some((x) => x.cau === i)) DONG_BO.push({ cau: i, bd: +batDau[i].toFixed(2), kt: +(batDau[i] + doDai[i]).toFixed(2), chu: l.chu, dong_tac: dt, canh_bao: 'không có nhân vật trên sân khấu để diễn' })
+})
+writeFileSync(join(GOC, 'artifacts/dong_bo.json'), JSON.stringify(DONG_BO.sort((a, b) => a.cau - b.cau), null, 1))
 
 // ── Bối cảnh: các câu liền nhau cùng bối cảnh dùng chung một cảnh; đổi cảnh bằng mờ dần / trượt ngang / phóng to ─
 // Mọi lớp nền nằm sẵn trong một khung chung (#camera-nen) để máy quay đẩy được cả nền.
@@ -985,7 +1036,7 @@ loi.forEach((l, i) => {
 const tiengSoDong = [] // tiếng "ting" lúc con số bật ra (phát sau khi có themAm)
 const soDong = Object.entries(SO_DONG).map(([k, s]) => {
   const i = Number(k)
-  const t = batDau[i] + Math.max(0.1, s.vt * (doDai[i] - 0.25) - 0.15)
+  const t = Math.max(batDau[i] + 0.1, lucTu(i, s.kyTu) - 0.15)
   const het = Math.min(t + 1.8, batDau[i] + doDai[i] + 0.2)
   tw.push(`tl.fromTo("#sd${i}", { opacity: 0, scale: 0.3, rotation: -6 }, { opacity: 1, scale: 1, rotation: -2, duration: 0.45, ease: "back.out(2.4)", immediateRender: false }, ${f(t)});`)
   tw.push(`tl.to("#sd${i}", { opacity: 0, scale: 1.25, duration: 0.3, ease: "power2.in" }, ${f(Math.max(t + 0.6, het - 0.3))});`)
@@ -1188,9 +1239,9 @@ loi.forEach((l, i) => {
   if (!ve || l.anh_wiki?.tep || l.hanh_dong === 'lich_lat') return
   const t0 = batDau[i]
   const d = doDai[i]
-  // Vị trí từ khoá trong câu → thời điểm giọng đọc tới (chia theo số ký tự)
+  // Từ khoá trong câu → đúng lúc giọng đọc tới từ đó trong bản thu (lucTu)
   const vt = m.tu_khoa ? l.chu.toLowerCase().indexOf(String(m.tu_khoa).toLowerCase()) : -1
-  let bd = t0 + (vt >= 0 ? (vt / l.chu.length) * (d - 0.25) : d * 0.3) - 0.1
+  let bd = (vt >= 0 ? lucTu(i, vt) : t0 + d * 0.3) - 0.1
   bd = Math.max(bd, t0 + 0.2, i === 0 && moc?.chu ? gtMoc + 0.1 : 0)
   const kt = Math.min(bd + 2.3, t0 + d + 0.35)
   if (kt - bd < 1.3) return

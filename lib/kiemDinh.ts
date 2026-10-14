@@ -18,6 +18,8 @@ type Cau = {
   am_thanh?: string
   lang?: boolean
   the_moc?: string
+  dong_tac?: string
+  nhan_vat_phu?: string
 }
 export type GhiChuKiemDinh = { muc: 'loi' | 'nhac'; chu: string }
 export type KetQuaKiemDinh = { diem: number; ghi_chu: GhiChuKiemDinh[]; da_sua: string[] }
@@ -26,6 +28,22 @@ const CO_DAU = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽê�
 const CHINH = new Set(['meo', 'robot', 'nguoi_ke'])
 const DAI_TOI_DA = 180 // ký tự (~9-10 giây đọc): dài hơn thì tách đôi
 const DOI_KHUNG = ['trung_canh', 'can_canh', 'toan_canh', 'goc_thap']
+// Lời nói tới hành động → động tác (giống TU_DONG_TAC trong may-nha/hoat-hinh/tao_video.mjs; sửa một chỗ thì sửa cả hai)
+const TU_DONG_TAC: [string, RegExp][] = [
+  ['dap_tay', /đập (bàn|tay|mạnh)|đấm|nện xuống|đập vỡ/],
+  ['vo_tay', /vỗ tay|hoan hô/],
+  ['chi_tay', /chỉ tay|chỉ thẳng|chỉ vào|buộc tội|chất vấn|tố cáo/],
+  ['khoanh_tay', /khoanh tay/],
+  ['om_dau', /ôm đầu|tuyệt vọng|suy sụp|hoảng loạn|phá sản/],
+  ['cui_dau', /cúi đầu|gục đầu|cúi gằm|thất vọng|xin lỗi|bẽ bàng/],
+  ['tay_len_nguc', /thề|tay lên ngực|tận đáy lòng|thật lòng|xúc động/],
+  ['nhun_vai', /nhún vai|đành chịu|bất lực|không biết phải/],
+  ['vay_tay', /vẫy tay|tạm biệt|xin chào|chào mọi người/],
+  ['gio_tay', /giơ tay|giơ cao|giương cao|chiến thắng|vô địch/],
+  ['viet', /viết|ghi chép|ký (tên|hợp đồng)|phác thảo|vẽ /],
+  ['cam_vat', /cầm (lên|trên tay|chiếc|cuốn|bức|tờ)|nâng niu|đọc (thư|bức thư|lá thư)|xem (bản vẽ|bức)/],
+  ['chong_cam', /suy nghĩ|trăn trở|tự hỏi|ngẫm nghĩ|băn khoăn/],
+]
 
 // Tách câu dài ở chỗ hết câu (". ", "! ", "? ", "… ") gần giữa nhất, để hai vế đều đứng được một mình;
 // không có chỗ hết câu ở khoảng giữa thì giữ nguyên
@@ -108,6 +126,14 @@ export function kiemDinh<T extends Cau>(goc: T[], o: { loai?: 'thuong' | 'tieu_s
         dem('Bớt loé sáng dày quá (tối đa 1 lần mỗi 8 câu)')
       } else loeGanNhat = i
     }
+    // Lời nói rõ một hành động mà AI chưa cho nhân vật diễn → điền động tác đúng lời (nói gì làm nấy)
+    if (!l.dong_tac || l.dong_tac === 'khong') {
+      const dt = TU_DONG_TAC.find(([, re]) => re.test(l.chu.toLowerCase()))?.[0]
+      if (dt) {
+        l.dong_tac = dt
+        dem('Thêm động tác đúng với hành động lời thoại nói tới')
+      }
+    }
     if (l.lang) {
       if (i === 0 || i - langGanNhat < 5) {
         l.lang = false
@@ -118,6 +144,9 @@ export function kiemDinh<T extends Cau>(goc: T[], o: { loai?: 'thuong' | 'tieu_s
 
   // ── 3. Chấm điểm + ghi chú ──
   const ghiChu: GhiChuKiemDinh[] = []
+  // Câu người kể có hành động nhưng không ai đứng trên sân khấu để diễn (hình sẽ không theo lời)
+  const khongAiDien = loi.filter((l) => l.ai === 'nguoi_ke' && l.dong_tac && l.dong_tac !== 'khong' && (!l.nhan_vat_phu || l.nhan_vat_phu === 'khong')).length
+  if (khongAiDien) ghiChu.push({ muc: 'nhac', chu: `${khongAiDien} câu kể có hành động nhưng không có nhân vật trên sân khấu để diễn (thiếu nhân vật phụ cho câu đó)` })
   const n = loi.length || 1
   const chu = loi.map((l) => l.chu).join(' ')
   if ((chu.match(CO_DAU)?.length ?? 0) / Math.max(1, chu.replace(/\s/g, '').length) <= 0.08)

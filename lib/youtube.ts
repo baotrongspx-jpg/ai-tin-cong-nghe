@@ -85,6 +85,7 @@ export type DuAnYT = {
   phan_bien?: Partial<Record<KhauPhanBien, KetQuaPhanBien>> // hội đồng phản biện chấm từng khâu (dàn ý, nghiên cứu, câu chuyện…)
   ai_cho?: { bien_tap?: string } // phiếu việc AI máy nhà đang chờ (mã phiếu)
   shorts?: { luc: string; doan: { so: number; phan: number; tu: number; den: number; tieu_de: string }[] } // Shorts đã gửi dựng
+  duyet?: { luc: string; ma: string } // chủ trang duyệt kịch bản (ma = maKichBan lúc duyệt; kịch bản đổi thì phải duyệt lại)
   phat_am?: string // cách đọc tên riêng, mỗi dòng "Tên = cách đọc" (chỉ đổi chữ đưa vào giọng đọc, phụ đề giữ nguyên)
   anh_bia_goi_y?: AnhBiaGoiY[] // 3 ý ảnh bìa AI đề xuất ở bước dàn ý (chữ 2-4 từ, emoji, nhân vật lớn)
   anh_bia_chu?: string // chữ trên ảnh bìa chủ trang tự đặt (ưu tiên hơn gợi ý)
@@ -509,6 +510,21 @@ function kiemDinhDu(d: DuAnYT, k: number, loiVao: CauYT[]) {
   return { ...kq, ghi_chu, diem }
 }
 
+// ── Chủ trang duyệt kịch bản trước khi dựng (đạo diễn / người xem chuyên nghiệp 14/10/2026: lỗi kiến thức, câu bịa, tên
+// sai lọt tới video cuối vì không có mắt người nào đọc trước). Dự án tạo từ 14/10/2026 mới bắt buộc (dự án cũ giữ như cũ).
+// Mã kịch bản: tên phim + toàn bộ lời; sửa một chữ là phải duyệt lại.
+const maKichBan = (d: DuAnYT) => bam([d.tieu_de, d.phan.map((p) => (p.loi ?? []).map((l) => `${l.ai}:${l.chu}:${l.tai_hien ? 1 : 0}`))])
+const canDuyet = (d: DuAnYT) => d.tao_luc >= '2026-10-14T12:00'
+const daDuyet = (d: DuAnYT) => !canDuyet(d) || d.duyet?.ma === maKichBan(d)
+export async function duyetKichBan(id: string) {
+  const d = await docDuAn(id)
+  if (!d) throw new Error('Không tìm thấy video')
+  if (d.phan.some((p) => !p.loi)) throw new Error('Còn chương chưa có kịch bản')
+  d.duyet = { luc: new Date().toISOString(), ma: maKichBan(d) }
+  await luuDuAn(d)
+  return d
+}
+
 export async function kiemDinhLaiPhan(id: string, k: number) {
   const d = await docDuAn(id)
   const p = d?.phan[k - 1]
@@ -601,6 +617,7 @@ export type TrangThaiDuAn = {
   mayNhaCu?: boolean // máy nhà đang chạy bản cũ (chưa khởi động lại sau lần cập nhật)
   mayNhaLam?: { mo_ta: string; buoc: string; phanTram: number | null; luc: number; phan: number | null; cuaVideo: boolean; tieu_de: string | null } | null
   ghiNguonNhac?: string // ghi nguồn nhạc nền (giấy phép CC BY bắt buộc), dán vào mô tả YouTube
+  duyet?: { can: boolean; da: boolean; doi: boolean } // can: dự án phải duyệt; da: đã duyệt bản hiện tại; doi: từng duyệt nhưng kịch bản đã đổi
 }
 
 // Trạng thái từng phần + video đã ghép (chỉ tính khi khớp mã lời thoại hiện tại)
@@ -660,7 +677,10 @@ export async function trangThaiDuAn(d: DuAnYT, mayNha: string | null): Promise<T
   const xongCuoi = Math.max(0, ...kq.map((r) => r?.luc ?? 0))
   const ketGhep = !daGhep && phan.length > 0 && phan.every((p) => p.loai === 'xong') && !dangCho.size && Date.now() - xongCuoi > 5 * 60_000
   const mayNhaLam = moiDay && hienTai ? { mo_ta: hienTai.mo_ta, buoc: hienTai.buoc, phanTram: hienTai.phanTram, luc: hienTai.luc, phan: hienTai.phan, cuaVideo: hienTai.du_an === d.id, tieu_de: hienTai.tieu_de } : null
-  return { phan, xong: daGhep, mayNha, ketGhep, anh_bia, ve_bia: !!viecBia?.length, mayNhaLam, mayNhaCu: !mayNha && (song?.ban ?? 0) < BAN_MAY_NHA, ghiNguonNhac: ghiNguonNhac(nhacChon) }
+  return {
+    phan, xong: daGhep, mayNha, ketGhep, anh_bia, ve_bia: !!viecBia?.length, mayNhaLam, mayNhaCu: !mayNha && (song?.ban ?? 0) < BAN_MAY_NHA, ghiNguonNhac: ghiNguonNhac(nhacChon),
+    duyet: { can: canDuyet(d), da: daDuyet(d), doi: !!d.duyet && !daDuyet(d) },
+  }
 }
 
 // ── Nhạc nền theo cấu trúc câu chuyện ──
@@ -762,6 +782,7 @@ export async function guiDung(d: DuAnYT, chiPhan?: number) {
   // Bắt buộc đạt chuẩn hội đồng phản biện + biên tập viên mới được dựng
   const chuaDat = khauChuaDat(d)
   if (chuaDat.length) throw new Error(`Chưa dựng được: còn ${chuaDat.length} khâu hội đồng / biên tập viên chấm chưa đạt (${chuaDat.map((x) => x.ten).join('; ')}). Bấm "Làm lại cho đạt" để AI làm lại.`)
+  if (!daDuyet(d)) throw new Error(d.duyet ? 'Kịch bản đã đổi sau lần duyệt trước: đọc lại rồi bấm "Duyệt kịch bản" trước khi dựng' : 'Chưa duyệt kịch bản: đọc lướt kịch bản rồi bấm "Duyệt kịch bản" trước khi dựng')
   // Có ảnh nền theo địa điểm: gắn các cảnh chưa gắn vào địa điểm trước khi tính mã phần
   if (await ganDiaDiem(d)) await luuDuAn(d)
   const tt = await trangThaiDuAn(d, null)

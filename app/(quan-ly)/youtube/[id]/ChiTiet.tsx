@@ -7,7 +7,7 @@ import type { DuAnYT, KiemTraVideo, PhanYT, TrangThaiDuAn, TrangThaiPhan, TrangT
 import { thongBao } from '@/app/ThongBao'
 import { locLoiChao } from '@/lib/kiemDinh'
 import { IconChep, IconMo, IconXong, IconYouTube, Xoay } from '@/app/BieuTuong'
-import { bienTapYouTube, chayBuocPhimYouTube, layShortsYouTube, luuPhatAmYouTube, taoShortsYouTube, dungVideoYouTube, kiemDinhYouTube, layTrangThaiYouTube, luuThongTinYouTube, suaPhanYouTube, vietPhanYouTube, veAnhBiaYouTube, chonAnhBiaYouTube, xoaVideoYouTube } from '../actions'
+import { duyetKichBanYouTube, bienTapYouTube, chayBuocPhimYouTube, layShortsYouTube, luuPhatAmYouTube, taoShortsYouTube, dungVideoYouTube, kiemDinhYouTube, layTrangThaiYouTube, luuThongTinYouTube, suaPhanYouTube, vietPhanYouTube, veAnhBiaYouTube, chonAnhBiaYouTube, xoaVideoYouTube } from '../actions'
 import HoSoPhim, { KhoiDuLieu } from './HoSoPhim'
 import { bienTapDat, hoiDongDat, khauChuaDat, SO_LAN_LAM_LAI } from '@/lib/datChuan'
 import NenPhim from './NenPhim'
@@ -95,6 +95,38 @@ const NHAN: Record<TrangThaiPhan['loai'], [string, string]> = {
 // Ghi nguồn ảnh Wikimedia Commons cho mô tả YouTube (giấy phép CC BY / CC BY-SA bắt buộc ghi tác giả + giấy phép)
 const ghiNguonAnh = (ds: { tac_gia: string; giay_phep: string; nguon: string; ten_tep: string }[]) =>
   ['Nguồn ảnh (Wikimedia Commons):', ...ds.map((a) => `- ${a.ten_tep.replace(/\.[a-z]+$/i, '').replace(/_/g, ' ')}: ${a.tac_gia}, ${a.giay_phep} — ${a.nguon}`)].join('\n')
+
+// Khung duyệt kịch bản: những điều cần đọc kỹ trước khi dựng (tên phim, lỗi / ghi chú biên tập viên, câu tái hiện, thông tin
+// chưa xác minh trong tư liệu), rồi nút duyệt
+function DuyetKichBan({ d, doi, khoa, duyet }: { d: DuAnYT; doi: boolean; khoa: boolean; duyet: () => void }) {
+  const ghiChu = d.phan.flatMap((p, i) => (p.kiem_dinh?.ghi_chu ?? []).map((g) => ({ ...g, chuong: i + 1 })))
+  const taiHien = d.phan.reduce((t, p) => t + (p.loi ?? []).filter((l) => l.tai_hien).length, 0)
+  const chuaXacMinh = (d.phim?.nghien_cuu?.su_that ?? []).filter((s) => s.nhan !== 'xac_minh')
+  return (
+    <div className="grid gap-2 rounded-xl bg-amber-50 p-4 ring-1 ring-amber-300">
+      <p className="font-bold text-amber-900">{doi ? '✋ Kịch bản đã đổi sau lần duyệt trước — duyệt lại trước khi dựng' : '✋ Duyệt kịch bản trước khi dựng'}</p>
+      <p className="text-sm text-amber-950">Đọc lướt kịch bản các {d.loai === 'tieu_su' ? 'chương' : 'phần'} bên dưới (khoảng 5 phút). Soát kỹ: tên riêng, con số, năm tháng, câu trích dẫn, giải thích kỹ thuật. Sai chỗ nào thì bấm sửa ở chương đó trước, đúng rồi mới duyệt.</p>
+      <ul className="grid gap-1 text-sm text-amber-950">
+        <li>• <b>Tên phim:</b> “{d.tieu_de}” — xem kỹ dấu tiếng Việt (giọng đọc và YouTube dùng đúng tên này)</li>
+        <li>• <b>Biên tập viên:</b> {ghiChu.filter((g) => g.muc === 'loi').length} lỗi, {ghiChu.filter((g) => g.muc === 'nhac').length} ghi chú{ghiChu.length ? ' (xem ở từng chương)' : ''}</li>
+        {d.loai === 'tieu_su' && <li>• <b>Câu tái hiện</b> (lời dựng lại, không phải trích dẫn thật): {taiHien} câu — có nhãn “Tái hiện” trên hình</li>}
+        {chuaXacMinh.length > 0 && (
+          <li>
+            • <b>Thông tin chưa xác minh trong tư liệu:</b> {chuaXacMinh.length} điều (được đưa tin / tranh cãi / chưa rõ) — kịch bản phải nói thận trọng:
+            <ul className="ml-4 mt-1 grid gap-0.5 text-xs text-amber-900">
+              {chuaXacMinh.slice(0, 6).map((s, k) => (
+                <li key={k}>– {s.noi_dung}</li>
+              ))}
+            </ul>
+          </li>
+        )}
+      </ul>
+      <button type="button" onClick={duyet} disabled={khoa} className="btn btn-sm justify-self-start bg-emerald-600 text-white hover:bg-emerald-700">
+        ✓ Tôi đã đọc — Duyệt kịch bản
+      </button>
+    </div>
+  )
+}
 
 // Bình luận ghim dưới mỗi Shorts: dẫn người xem mới về video dài (chủ trang dán link video dài vào chỗ trong ngoặc)
 const binhLuanGhimShort = (d: DuAnYT) => `👉 Xem trọn câu chuyện "${d.tieu_de}" tại đây: [dán link video dài]`
@@ -434,6 +466,16 @@ export default function ChiTiet({ dau, ttDau }: { dau: DuAnYT; ttDau: TrangThaiD
   // Mọi phần đã dựng mà chưa có video ghép (vd lần ghép trước lỗi): bấm Dựng để máy nhà ghép lại
   const choGhep = !tt.xong && tt.phan.length > 0 && tt.phan.every((p) => p.loai === 'xong')
 
+  // Duyệt kịch bản (dự án mới bắt buộc trước khi dựng)
+  const canDuyetNay = daVietDu && !!tt.duyet?.can && !tt.duyet.da
+  const duyet = () =>
+    startTransition(async () => {
+      const kq = await duyetKichBanYouTube(d.id)
+      if (!kq.ok) return thongBao('loi', kq.loi)
+      setD(kq.duAn)
+      thongBao('ok', 'Đã duyệt kịch bản — bấm Dựng video')
+      await capNhatTt()
+    })
   const dung = (chiPhan?: number) =>
     startTransition(async () => {
       const kq = await dungVideoYouTube(d.id, chiPhan)
@@ -547,11 +589,12 @@ export default function ChiTiet({ dau, ttDau }: { dau: DuAnYT; ttDau: TrangThaiD
                   {!daVietDu ? 'Chờ AI viết xong lời thoại các phần' : soXong ? `Đã dựng ${soXong}/${d.phan.length} phần` : 'Máy nhà đọc giọng và dựng hình lần lượt từng phần, rồi ghép thành một video'}
                 </p>
               </div>
-              <button type="button" onClick={() => dung()} disabled={dangLam || !daVietDu || !!dangChay || !(coViecDung || choGhep)} className="btn bg-red-600 px-5 py-2.5 text-white hover:bg-red-700">
+              <button type="button" onClick={() => dung()} disabled={dangLam || !daVietDu || !!dangChay || !(coViecDung || choGhep) || canDuyetNay} className="btn bg-red-600 px-5 py-2.5 text-white hover:bg-red-700">
                 {dangLam ? <Xoay /> : <IconYouTube className="h-4 w-4" />}
                 {!coViecDung && !choGhep && tt.phan.some((p) => p.loai === 'cho' || p.loai === 'dang_lam') ? 'Đang dựng…' : soXong || tt.phan.some((p) => p.loai === 'cho' || p.loai === 'dang_lam') ? 'Dựng các phần còn lại' : 'Dựng video'}
               </button>
             </div>
+            {canDuyetNay && <DuyetKichBan d={d} doi={!!tt.duyet?.doi} khoa={dangLam || !!dangChay} duyet={duyet} />}
             <div className="h-2.5 overflow-hidden rounded-full bg-slate-200">
               <div
                 className="h-full rounded-full bg-gradient-to-r from-red-500 to-rose-500 transition-all duration-700"

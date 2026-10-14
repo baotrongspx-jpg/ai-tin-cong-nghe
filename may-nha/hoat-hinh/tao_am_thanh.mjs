@@ -19,6 +19,12 @@ function tao(ten, giay, nguon, loc = '') {
 
 // Lật trang giấy: tiếng sột soạt ồn trắng lọc cao, quét nhanh rồi tắt (ảnh tư liệu hiện ra)
 tao('lat-trang', 0.55, `anoisesrc=color=white:d=0.55:a=0.8`, "highpass=f=1800,lowpass=f=7000,volume='1.6*pow(sin(PI*min(t/0.42\\,1)),1.5)*(0.6+0.4*sin(2*PI*22*t))':eval=frame")
+// Bút viết trên giấy: tiếng sột soạt theo từng nét (tiếng đạo cụ bút / sổ tay)
+tao('but-viet', 0.9, `anoisesrc=color=white:d=0.9:a=0.8`, "highpass=f=2500,lowpass=f=8000,volume='1.4*pow(0.5+0.5*sin(2*PI*6.5*t)\\,2)*min(1\\,t*12)':eval=frame")
+// Kim loại chạm nhau: vài tần số không hoà âm tắt dần + tiếng gõ (búa, cờ lê, chìa khoá, xích)
+tao('kim-loai', 0.8, "'0.4*sin(2*PI*1870*t)*exp(-6*t)+0.3*sin(2*PI*2630*t)*exp(-8*t)+0.25*sin(2*PI*3920*t)*exp(-10*t)+0.3*(random(0)*2-1)*exp(-60*t)'", 'highpass=f=300')
+// Lửa / nến cháy: nền ồn nhỏ + tiếng nổ lách tách thưa
+tao('lua', 1.6, "'0.1*(random(0)*2-1)+0.7*(random(1)*2-1)*gt(random(2)\\,0.9975)'", "lowpass=f=3200,volume='min(1\\,t*4)':eval=frame")
 // Gió thổi: tiếng ồn hồng lọc dải, to dần rồi nhỏ dần, rít nhẹ
 tao('gio', 2.6, `anoisesrc=color=pink:d=2.6:a=0.9`, "bandpass=f=550:width_type=o:w=1.4,volume='1.8*pow(sin(PI*t/2.6),2)*(0.8+0.2*sin(2*PI*1.3*t))':eval=frame")
 // Bước chân: 4 bước, tiếng thịch trầm + tiếng sột soạt đế giày

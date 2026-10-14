@@ -852,6 +852,7 @@ const soDong = Object.entries(SO_DONG).map(([k, s]) => {
 
 const daoCu = []
 const daoCuKhung = [] // khung ngang: đạo cụ ở góc trên bên phải của khung hình
+const amDaoCu = [] // [tên đạo cụ, câu, lúc hiện] → tiếng đạo cụ (FOLEY_DAO_CU)
 loi.forEach((l, i) => {
   const bt = DAO_CU[l.dao_cu]
   // Câu đang phủ ảnh tư liệu toàn khung thì bỏ đạo cụ
@@ -863,6 +864,7 @@ loi.forEach((l, i) => {
   if (NGANG) daoCuKhung.push(`<div id="${id}" class="dao-cu-khung">${bt}</div>`)
   else daoCu.push(`<div id="${id}" class="dao-cu ${laPhu(l.ai) ? 'nguoi_ke' : l.ai}">${bt}</div>`)
   tw.push(`tl.fromTo("#${id}", { opacity: 0, scale: 0, rotation: -30 }, { opacity: 1, scale: 1, rotation: 0, duration: 0.5, ease: "back.out(2.2)" }, ${f(t0 + 0.25)});`)
+  amDaoCu.push([l.dao_cu, i, t0 + 0.25])
   tw.push(`tl.to("#${id}", { y: -24, rotation: 6, duration: 0.6, yoyo: true, repeat: ${lap(d - 1.2, 0.6) | 1}, ease: "sine.inOut" }, ${f(t0 + 0.75)});`)
   tw.push(`tl.to("#${id}", { opacity: 0, scale: 0.3, duration: 0.3, ease: "power2.in" }, ${f(t0 + d - 0.2)});`)
 })
@@ -1170,6 +1172,22 @@ const themAm = (ten, luc, amLuong, toiDa = Infinity) => {
   amPhu.push(`<audio id="ap-${amPhu.length}" src="assets/${ten}.wav" data-start="${f(luc)}" data-duration="${f(dai)}" data-track-index="${3000 + amPhu.length}" data-volume="${amLuong}"></audio>`)
 }
 for (const t of tiengSoDong) themAm('sfx-ting', t, 0.3)
+// Tiếng đạo cụ (prop foley): đạo cụ hiện ra kèm đúng tiếng của nó (bút sột soạt, giấy lật, kim loại, lửa…), xác nhận
+// điều khán giả đang thấy. Chỉ những đạo cụ có tiếng đặc trưng; câu AI đã chọn hiệu ứng riêng thì thôi (không chồng tiếng)
+const FOLEY_DAO_CU = {
+  but_chi: ['sfx-but-viet', 0.35], but_bi: ['sfx-but-viet', 0.35], so_tay: ['sfx-but-viet', 0.3], ke_hoach: ['sfx-but-viet', 0.3],
+  sach: ['sfx-lat-trang', 0.4], tai_lieu: ['sfx-lat-trang', 0.4], thu: ['sfx-lat-trang', 0.35], ban_do: ['sfx-lat-trang', 0.4],
+  lich: ['sfx-lat-trang', 0.35], tin_nong: ['sfx-lat-trang', 0.4],
+  bua: ['sfx-kim-loai', 0.3], co_le: ['sfx-kim-loai', 0.3], tua_vit: ['sfx-kim-loai', 0.28], banh_rang: ['sfx-kim-loai', 0.3],
+  hop_do_nghe: ['sfx-kim-loai', 0.3], chia_khoa: ['sfx-kim-loai', 0.25], o_khoa: ['sfx-kim-loai', 0.25], xich: ['sfx-kim-loai', 0.35],
+  cai_keo: ['sfx-kim-loai', 0.22], den_cay: ['sfx-lua', 0.7], ngon_lua: ['sfx-lua', 0.75],
+  tien: ['sfx-tien', 0.3], dong_xu: ['sfx-tien', 0.3], tien_giay: ['sfx-tien', 0.28], dong_ho: ['sfx-tich-tac', 0.35], dong_ho_cat: ['sfx-tich-tac', 0.3],
+  may_anh: ['sfx-chup-anh', 0.4], chuong: ['sfx-ting', 0.3], cup: ['sfx-ting', 0.25], huy_chuong: ['sfx-ting', 0.25],
+}
+for (const [ten, i, t] of amDaoCu) {
+  const fo = FOLEY_DAO_CU[ten]
+  if (fo && !SFX[loi[i].am_thanh]) themAm(fo[0], t, fo[1], 1.6)
+}
 // Ảnh tư liệu hiện ra: tiếng lật trang giấy nhẹ (âm thanh đi kèm hình, bù cho phần nhân vật đứng yên)
 for (const t of amAnh) themAm('sfx-lat-trang', Math.max(0, t - 0.05), 0.4)
 for (const [ten, t, a] of amHanhDong) themAm(ten, t, a)
@@ -1195,6 +1213,12 @@ for (const cc of chuyenCanh) {
 }
 // Nhân vật phụ bước ra sân khấu: tiếng bước chân (trừ khi câu đó đã có hiệu ứng)
 for (const dp of doanPhu) if (!SFX[loi[dp.tu].am_thanh]) themAm('sfx-buoc-chan', batDau[dp.tu] + 0.05, 0.22, 1.1)
+// Âm nền phục vụ cảm xúc: khoảnh khắc phát hiện / khoảng lặng có chủ đích (lang, loé sáng) và lúc buồn → không gian
+// lắng xuống (âm nền còn 35%), để lời, hơi thở và nhạc nổi lên; hết khoảnh khắc thì âm nền về như cũ
+const LANG_NEN = []
+loi.forEach((l, i) => {
+  if (l.lang || l.anh_sang === 'loe_sang' || l.cam_xuc === 'buon') LANG_NEN.push([batDau[i] - (l.lang ? 1.7 : 0.2), batDau[i] + doDai[i]])
+})
 doanCanh.forEach((dc, k) => {
   const nen = AM_NEN[dc.ten]
   if (!nen) return
@@ -1202,7 +1226,14 @@ doanCanh.forEach((dc, k) => {
   const den = dc.het === loi.length - 1 ? TONG : batDau[dc.het + 1] - 0.35
   const doan = doDaiTep(nen[0])
   if (!doan) return
-  for (let luc = tu; luc < den - 0.05; luc += doan) themAm(nen[0], luc, nen[1], den - luc)
+  // Cắt đoạn bối cảnh ở mép các khoảnh khắc lắng, mỗi khúc một mức âm lượng
+  const moc = [...new Set([tu, den, ...LANG_NEN.flat().filter((x) => x > tu && x < den)])].sort((a, b) => a - b)
+  for (let j = 0; j < moc.length - 1; j++) {
+    const a = moc[j], b = moc[j + 1]
+    if (b - a < 0.05) continue
+    const lang = LANG_NEN.some(([x, y]) => x <= a + 0.01 && b <= y + 0.01)
+    for (let luc = a; luc < b - 0.05; luc += doan) themAm(nen[0], luc, f(nen[1] * (lang ? 0.35 : 1)), b - luc)
+  }
 })
 
 // ── Thẻ chương đầu phần: tên kênh, "CHƯƠNG n", tên chương, vạch sáng chạy; mờ dần lúc câu đầu bắt đầu ─

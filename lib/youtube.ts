@@ -618,6 +618,7 @@ export type TrangThaiDuAn = {
   mayNhaLam?: { mo_ta: string; buoc: string; phanTram: number | null; luc: number; phan: number | null; cuaVideo: boolean; tieu_de: string | null } | null
   ghiNguonNhac?: string // ghi nguồn nhạc nền (giấy phép CC BY bắt buộc), dán vào mô tả YouTube
   duyet?: { can: boolean; da: boolean; doi: boolean } // can: dự án phải duyệt; da: đã duyệt bản hiện tại; doi: từng duyệt nhưng kịch bản đã đổi
+  xemTruoc?: Record<number, string[]> // phần → link ảnh xem trước từng câu (máy nhà chụp trước khi dựng hình), đúng mã phần hiện tại
 }
 
 // Trạng thái từng phần + video đã ghép (chỉ tính khi khớp mã lời thoại hiện tại)
@@ -677,7 +678,18 @@ export async function trangThaiDuAn(d: DuAnYT, mayNha: string | null): Promise<T
   const xongCuoi = Math.max(0, ...kq.map((r) => r?.luc ?? 0))
   const ketGhep = !daGhep && phan.length > 0 && phan.every((p) => p.loai === 'xong') && !dangCho.size && Date.now() - xongCuoi > 5 * 60_000
   const mayNhaLam = moiDay && hienTai ? { mo_ta: hienTai.mo_ta, buoc: hienTai.buoc, phanTram: hienTai.phanTram, luc: hienTai.luc, phan: hienTai.phan, cuaVideo: hienTai.du_an === d.id, tieu_de: hienTai.tieu_de } : null
+  // Ảnh xem trước từng câu của các phần (máy nhà chụp trước khi dựng hình): chỉ lấy bản đúng mã phần hiện tại
+  const xemTruoc: Record<number, string[]> = {}
+  await Promise.all(
+    d.phan.map(async (_, i) => {
+      const x = await docJson<{ ma: string; anh: string[] }>(`${goc}/xem-truoc-${i + 1}.json`)
+      if (!x || x.ma !== ma[i] || !x.anh?.length) return
+      const ds = await Promise.all(x.anh.map((t) => kho().createSignedUrl(`${goc}/${t}`, 3600)))
+      xemTruoc[i + 1] = ds.map((r) => r.data?.signedUrl).filter((u): u is string => !!u)
+    }),
+  )
   return {
+    xemTruoc,
     phan, xong: daGhep, mayNha, ketGhep, anh_bia, ve_bia: !!viecBia?.length, mayNhaLam, mayNhaCu: !mayNha && (song?.ban ?? 0) < BAN_MAY_NHA, ghiNguonNhac: ghiNguonNhac(nhacChon),
     duyet: { can: canDuyet(d), da: daDuyet(d), doi: !!d.duyet && !daDuyet(d) },
   }

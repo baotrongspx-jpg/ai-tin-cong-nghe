@@ -942,6 +942,20 @@ export default function ChiTiet({ dau, ttDau }: { dau: DuAnYT; ttDau: TrangThaiD
                   </ol>
                 </details>
               )}
+              {!!tt.xemTruoc?.[k]?.length && (
+                <details className="rounded-xl bg-sky-50 p-3 ring-1 ring-sky-200">
+                  <summary className="cursor-pointer text-sm font-semibold text-sky-800">👁 Xem nhanh từng câu (máy nhà chụp trước khi dựng hình)</summary>
+                  <p className="mt-1 text-xs text-sky-900">Mỗi ô là khung giữa một câu, theo thứ tự. Thấy chữ đè chữ, cảnh sai, nhân vật sai thì sửa lời / bấm AI làm lại phần này rồi dựng lại — không cần chờ dựng xong cả phim.</p>
+                  <div className="mt-2 grid gap-2">
+                    {tt.xemTruoc[k].map((u) => (
+                      <a key={u} href={u} target="_blank" rel="noreferrer">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={u} alt={`Xem trước phần ${k}`} loading="lazy" className="w-full rounded-lg ring-1 ring-sky-200" />
+                      </a>
+                    ))}
+                  </div>
+                </details>
+              )}
               {p.canh && (
                 <details className="rounded-xl bg-violet-50/60 p-3 ring-1 ring-violet-100">
                   <summary className="cursor-pointer text-sm font-semibold text-violet-800">Phân cảnh, shot list và prompt video AI ({p.canh.length} cảnh)</summary>

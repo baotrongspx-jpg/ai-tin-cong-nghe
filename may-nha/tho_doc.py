@@ -556,7 +556,28 @@ def tao_srt(cac_cau):
 LOI_KET = 'Nếu thấy hay, hãy bấm đăng ký {kenh} và bật chuông để xem video mới mỗi tuần nhé!'
 
 
-def dung_video(may, ds_giong, lt, tm, td, fps=30, gioi_han=1500, anh_nen=None):
+def xem_nhanh(tm, goc, k, ma, td):
+    # Xem trước (trước bước dựng hình dài): chụp 1 khung ở giữa mỗi câu (tối đa 24) bằng hyperframes snapshot, gửi ảnh tổng
+    # lên kho youtube/<dự án>/xem-truoc-<k>-<n>.jpg + xem-truoc-<k>.json {ma, anh}. Trang hiện ngay để chủ trang soát (chữ đè
+    # chữ, cảnh sai, nhân vật sai) trong lúc máy nhà vẫn dựng tiếp. Lỗi thì bỏ qua, không chặn việc dựng.
+    td.bao(29, 'Chụp xem trước từng câu', ep=True)
+    pd = json.loads((tm / 'artifacts' / 'phu_de.json').read_text(encoding='utf-8'))
+    giua = [round((c['bd'] + c['kt']) / 2 + 0.3, 2) for c in pd]
+    if len(giua) > 24:
+        giua = [giua[round(i * (len(giua) - 1) / 23)] for i in range(24)]
+    ra = tm / 'xem-truoc'
+    chay(['npx.cmd', '--yes', 'hyperframes', 'snapshot', '--at', ','.join(str(x) for x in giua), '--no-end', '--describe', 'false', '-o', str(ra), '.'],
+         tm / 'hyperframes', 300)
+    ten = []
+    for n, a in enumerate(sorted(ra.glob('contact-sheet*.jpg')), 1):
+        t = f'xem-truoc-{k}-{n}.jpg'
+        gui(f'{goc}/{t}', a.read_bytes(), 'image/jpeg')
+        ten.append(t)
+    if ten:
+        gui(f'{goc}/xem-truoc-{k}.json', json.dumps({'ma': ma, 'anh': ten, 'luc': int(time.time() * 1000)}), 'application/json')
+
+
+def dung_video(may, ds_giong, lt, tm, td, fps=30, gioi_han=1500, anh_nen=None, xem_truoc=None):
     # Đọc từng câu thoại bằng giọng của nhân vật nói câu đó, sinh trang HyperFrames rồi dựng ra tm/video.mp4.
     # Trả độ dài (giây) từng câu. Tiến độ: đọc giọng 10-30%, dựng hình 30-95%.
     shutil.rmtree(tm, ignore_errors=True)
@@ -605,6 +626,11 @@ def dung_video(may, ds_giong, lt, tm, td, fps=30, gioi_han=1500, anh_nen=None):
     (tm / 'artifacts' / 'loi_thoai.json').write_text(json.dumps(lt, ensure_ascii=False), encoding='utf-8')
     (tm / 'artifacts' / 'do_dai.json').write_text(json.dumps(do_dai), encoding='utf-8')
     chay(['node', str(HOAT_HINH / 'tao_video.mjs'), str(tm)], tm, 120)
+    if xem_truoc:
+        try:
+            xem_nhanh(tm, *xem_truoc, td)
+        except Exception:
+            traceback.print_exc()
     td.bao(30, 'Dựng hình 0%', ep=True)
     chay_theo_doi(['npx.cmd', '--yes', 'hyperframes', 'render', '--quality', 'standard', '--fps', str(fps), '-o', str(tm / 'video.mp4')],
                   tm / 'hyperframes', gioi_han, lambda pt: td.bao(30 + 0.65 * pt, f'Dựng hình {pt}%'))
@@ -747,7 +773,7 @@ def dung_youtube(may, ds_giong, yc):
             try:
                 # Phần dài vài phút: 24 khung hình/giây cho nhanh, cho dựng tới ~40 giây mỗi giây video
                 uoc = sum(len(l['chu']) for l in yc['loi_thoai']['loi']) / 14
-                dung_video(may, ds_giong, yc['loi_thoai'], tm, td, fps=24, gioi_han=max(1800, int(uoc * 40)), anh_nen=k)
+                dung_video(may, ds_giong, yc['loi_thoai'], tm, td, fps=24, gioi_han=max(1800, int(uoc * 40)), anh_nen=k, xem_truoc=(goc, k, ds_ma[k - 1]))
                 shutil.move(str(tm / 'video.mp4'), str(tep))
                 if (tm / 'artifacts' / 'phu_de.json').exists():
                     shutil.copy(tm / 'artifacts' / 'phu_de.json', tep.with_suffix('.phu-de.json'))

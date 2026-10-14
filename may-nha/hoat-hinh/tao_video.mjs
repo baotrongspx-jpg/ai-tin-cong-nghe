@@ -384,6 +384,13 @@ loi.forEach((l, i) => {
     tw.push(`tl.to(["#${q}-may-trai", "#${q}-may-phai"], { y: 0, rotation: 0, duration: 0.3 }, ${f(t0 - 0.3)});`)
   }
   if (!ke) tw.push(...(CU_CHI[l.cam_xuc] ?? CU_CHI[ai === 'meo' ? 'to_mo' : 'giai_thich'])(p, t0))
+  // Người kể đang dẫn chuyện: nhân vật đứng trên sân khấu (nhân vật chính / người được nhắc tới) diễn theo sắc thái câu kể
+  // thay vì đứng yên: câu hỏi / nghịch lý → nghiêng đầu chống cằm; bước ngoặt → nhướn mày, ngạc nhiên; buồn, giận, vui,
+  // lo theo đúng cảm xúc; câu kể bình thường → giữ dáng nghỉ (thở, chớp mắt)
+  else if (phuCuaCau[i]) {
+    const dien = { to_mo: 'suy_nghi', suy_nghi: 'suy_nghi', bat_ngo: 'bat_ngo', buon: 'buon', tuc_gian: 'tuc_gian', vui: 'vui', lo_lang: 'lo_lang' }[l.cam_xuc]
+    if (dien) tw.push(...CU_CHI[dien](phuCuaCau[i], t0))
+  }
   // Ánh mắt có mục tiêu (Character Acting Engine): ai đang có mặt cũng nhìn về phía người nói. Sân khấu: Mèo bên trái,
   // Bit bên phải, nhân vật phụ ở giữa (viTriPhu). Người kể là giọng dẫn không đứng trên sân khấu → mọi người nhìn thẳng.
   const coMat = doanPhu.map((dp, k) => [dp, `phu${k}`]).filter(([dp]) => dp.tu <= i && i <= dp.het)
@@ -429,8 +436,8 @@ loi.forEach((l, i) => {
     for (const [, q] of coMat) if (q !== p) gat(`#${q}-dau`, 7, t0 + d * 0.4)
   }
   // Người nói nhấn nhịp theo lời (cấp 2 – gesture): ở các âm mở to (Rhubarb C / D / E), cách nhau ít nhất 1,5 giây, đầu
-  // hất nhẹ lên theo nhịp nói, có chủ đích, không vung ngẫu nhiên
-  if (!ke && mocMieng?.length) {
+  // hất nhẹ lên theo nhịp nói, có chủ đích, không vung ngẫu nhiên (cả người kể trong khung tròn)
+  if (mocMieng?.length) {
     let cuoi = 0.4
     for (const [bd, v] of mocMieng) {
       if (bd < cuoi + 1.5 || bd > d - 0.7 || !'CDE'.includes(v)) continue
@@ -963,7 +970,19 @@ let khungKeHtml = ''
       const vao = Math.max(0, batDau[c.tu] - 0.4)
       const ra = batDau[c.het] + doDai[c.het] - 0.1
       tw.push(`tl.fromTo("#khung-ke", { x: -400, opacity: 0 }, { x: 0, opacity: 1, duration: 0.5, ease: "back.out(1.4)", immediateRender: false }, ${f(vao)});`)
-      tw.push(`tl.to("#nguoi_ke-dau", { rotation: 3, duration: 1.4, yoyo: true, repeat: ${lap(ra - vao, 1.4) | 1}, ease: "sine.inOut" }, ${f(vao)});`)
+      // Không lắc đầu đều đều: người kể đổi biểu cảm theo từng câu (nghiêng đầu khi hỏi / nghịch lý, nhướn mày ở bước
+      // ngoặt) và hất đầu theo nhịp lời — làm ở vòng câu thoại
+      for (let i = c.tu; i <= c.het; i++) {
+        const t0 = batDau[i], het = t0 + doDai[i] - 0.3
+        if (['to_mo', 'suy_nghi'].includes(loi[i].cam_xuc)) {
+          tw.push(`tl.fromTo("#nguoi_ke-dau", { rotation: 0 }, { rotation: -7, duration: 0.4, ease: "power2.out", immediateRender: false }, ${f(t0)});`)
+          tw.push(`tl.to("#nguoi_ke-dau", { rotation: 0, duration: 0.35, ease: "sine.inOut" }, ${f(het)});`)
+        }
+        if (['bat_ngo', 'lo_lang'].includes(loi[i].cam_xuc) || loi[i].lang) {
+          tw.push(`tl.fromTo("#nguoi_ke-may", { y: 0 }, { y: -12, duration: 0.25, ease: "back.out(2)", immediateRender: false }, ${f(t0)});`)
+          tw.push(`tl.to("#nguoi_ke-may", { y: 0, duration: 0.3, ease: "sine.inOut" }, ${f(het)});`)
+        }
+      }
       tw.push(`tl.to("#khung-ke", { x: -400, opacity: 0, duration: 0.4, ease: "power2.in" }, ${f(ra)});`)
       tw.push(`tl.fromTo("#nguoi_ke-may", { y: 0 }, { y: -10, duration: 0.25, yoyo: true, repeat: 1, ease: "sine.inOut", immediateRender: false }, ${f(vao + 0.45)});`)
       tw.push(`tl.to(".ke-vong", { rotation: "+=" + ${Math.round((ra - vao) * 40)}, duration: ${f(ra - vao + 0.4)}, ease: "none" }, ${f(vao)});`)

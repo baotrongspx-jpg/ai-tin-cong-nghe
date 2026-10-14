@@ -380,6 +380,86 @@ const CU_CHI = {
     ...(ai === 'meo' ? [`tl.to(["#meo-con-ngoi-trai", "#meo-con-ngoi-phai"], { y: -12, duration: 0.3 }, ${f(t0)});`] : []),
   ],
 }
+// ── Động tác theo lời thoại (AI chọn dong_tac cho từng câu): người nói làm, câu người kể thì người đang được kể làm.
+// Chỉ dùng đầu và hai tay (xoay quanh vai): tay trái quay dương / tay phải quay âm là giơ ra ngoài – lên trên, ngược lại
+// là khép vào trước ngực. Có động tác thì cử chỉ cảm xúc chỉ giữ nét mặt (không tranh tay / đầu với động tác).
+const DONG_TAC = {
+  chi_tay: (p, t0) => [
+    `tl.to("#${p}-tay-phai", { rotation: -100, duration: 0.3, ease: "back.out(1.6)" }, ${f(t0)});`,
+    `tl.to("#${p}-tay-phai", { rotation: -88, duration: 0.14, yoyo: true, repeat: 3, ease: "sine.inOut" }, ${f(t0 + 0.4)});`,
+    `tl.to("#${p}-dau", { rotation: -5, duration: 0.3 }, ${f(t0)});`,
+  ],
+  khoanh_tay: (p, t0) => [
+    `tl.to("#${p}-tay-trai", { rotation: -55, duration: 0.4, ease: "power2.out" }, ${f(t0)});`,
+    `tl.to("#${p}-tay-phai", { rotation: 55, duration: 0.4, ease: "power2.out" }, ${f(t0 + 0.05)});`,
+    `tl.to("#${p}-dau", { rotation: -6, duration: 0.4 }, ${f(t0 + 0.1)});`,
+  ],
+  cui_dau: (p, t0) => [
+    `tl.to("#${p}-dau", { rotation: 13, duration: 0.6, ease: "sine.inOut" }, ${f(t0)});`,
+    `tl.to(["#${p}-tay-trai", "#${p}-tay-phai"], { rotation: (i) => (i ? 10 : -10), duration: 0.6, ease: "sine.inOut" }, ${f(t0)});`,
+  ],
+  dap_tay: (p, t0) => [
+    `tl.to("#${p}-tay-phai", { rotation: -150, duration: 0.28, ease: "power2.out" }, ${f(t0)});`,
+    `tl.to("#${p}-tay-phai", { rotation: -25, duration: 0.12, ease: "power4.in" }, ${f(t0 + 0.5)});`,
+    `tl.to("#${p}-dau", { rotation: 6, duration: 0.12, ease: "power4.in" }, ${f(t0 + 0.5)});`,
+  ],
+  vo_tay: (p, t0) => [
+    `tl.to(["#${p}-tay-trai", "#${p}-tay-phai"], { rotation: (i) => (i ? -55 : 55), duration: 0.25, ease: "power2.out" }, ${f(t0)});`,
+    `tl.to(["#${p}-tay-trai", "#${p}-tay-phai"], { rotation: (i) => (i ? -25 : 25), duration: 0.12, yoyo: true, repeat: 7, ease: "sine.inOut" }, ${f(t0 + 0.3)});`,
+  ],
+  tay_len_nguc: (p, t0) => [
+    `tl.to("#${p}-tay-phai", { rotation: 48, duration: 0.45, ease: "power2.out" }, ${f(t0)});`,
+    `tl.to("#${p}-dau", { rotation: -5, duration: 0.45 }, ${f(t0)});`,
+  ],
+  nhun_vai: (p, t0) => [
+    `tl.to(["#${p}-tay-trai", "#${p}-tay-phai"], { rotation: (i) => (i ? -50 : 50), duration: 0.3, ease: "back.out(1.6)" }, ${f(t0)});`,
+    `tl.to("#${p}-dau", { rotation: 9, duration: 0.3 }, ${f(t0)});`,
+  ],
+  gio_tay: (p, t0) => [`tl.to("#${p}-tay-phai", { rotation: -165, duration: 0.35, ease: "back.out(1.6)" }, ${f(t0)});`],
+  vay_tay: (p, t0) => [
+    `tl.to("#${p}-tay-phai", { rotation: -140, duration: 0.3, ease: "back.out(2)" }, ${f(t0)});`,
+    `tl.to("#${p}-tay-phai", { rotation: -112, duration: 0.18, yoyo: true, repeat: 5, ease: "sine.inOut" }, ${f(t0 + 0.32)});`,
+  ],
+  cam_vat: (p, t0) => [
+    `tl.to(["#${p}-tay-trai", "#${p}-tay-phai"], { rotation: (i) => (i ? -78 : 78), duration: 0.45, ease: "power2.out" }, ${f(t0)});`,
+    `tl.to("#${p}-dau", { rotation: 9, duration: 0.45 }, ${f(t0 + 0.1)});`,
+  ],
+  viet: (p, t0) => [
+    `tl.to("#${p}-tay-phai", { rotation: -55, duration: 0.3 }, ${f(t0)});`,
+    `tl.to("#${p}-tay-phai", { rotation: -44, duration: 0.12, yoyo: true, repeat: 9, ease: "sine.inOut" }, ${f(t0 + 0.32)});`,
+    `tl.to("#${p}-dau", { rotation: 10, duration: 0.35 }, ${f(t0)});`,
+  ],
+  om_dau: (p, t0) => [
+    `tl.to(["#${p}-tay-trai", "#${p}-tay-phai"], { rotation: (i) => (i ? -168 : 168), duration: 0.35, ease: "power2.out" }, ${f(t0)});`,
+    `tl.to("#${p}-dau", { rotation: 6, duration: 0.22, yoyo: true, repeat: 3, ease: "sine.inOut" }, ${f(t0 + 0.35)});`,
+  ],
+  chong_cam: (p, t0) => [
+    `tl.to("#${p}-tay-phai", { rotation: -130, duration: 0.45, ease: "back.out(1.1)" }, ${f(t0)});`,
+    `tl.to("#${p}-dau", { rotation: 9, duration: 0.45, ease: "power2.out" }, ${f(t0)});`,
+  ],
+  xoe_tay: (p, t0) => [
+    `tl.to(["#${p}-tay-trai", "#${p}-tay-phai"], { rotation: (i) => (i ? -70 : 70), duration: 0.4, ease: "back.out(1.4)" }, ${f(t0)});`,
+    `tl.to("#${p}-dau", { rotation: -4, duration: 0.4 }, ${f(t0)});`,
+  ],
+}
+// Kịch bản cũ chưa có dong_tac (hoặc AI để "khong"): đoán từ chính lời thoại, để nói gì làm nấy
+const TU_DONG_TAC = [
+  ['dap_tay', /đập (bàn|tay|mạnh)|đấm|nện xuống|đập vỡ/],
+  ['vo_tay', /vỗ tay|hoan hô/],
+  ['chi_tay', /chỉ tay|chỉ thẳng|chỉ vào|buộc tội|chất vấn|tố cáo/],
+  ['khoanh_tay', /khoanh tay/],
+  ['om_dau', /ôm đầu|tuyệt vọng|suy sụp|hoảng loạn|phá sản/],
+  ['cui_dau', /cúi đầu|gục đầu|cúi gằm|thất vọng|xin lỗi|bẽ bàng/],
+  ['tay_len_nguc', /thề|tay lên ngực|tận đáy lòng|thật lòng|xúc động/],
+  ['nhun_vai', /nhún vai|đành chịu|bất lực|không biết phải/],
+  ['vay_tay', /vẫy tay|tạm biệt|xin chào|chào mọi người/],
+  ['gio_tay', /giơ tay|giơ cao|giương cao|chiến thắng|vô địch/],
+  ['viet', /viết|ghi chép|ký (tên|hợp đồng)|phác thảo|vẽ /],
+  ['cam_vat', /cầm (lên|trên tay|chiếc|cuốn|bức|tờ)|nâng niu|đọc (thư|bức thư|lá thư)|xem (bản vẽ|bức)/],
+  ['chong_cam', /suy nghĩ|trăn trở|tự hỏi|ngẫm nghĩ|băn khoăn/],
+]
+const dongTacCau = (l) => (DONG_TAC[l.dong_tac] ? l.dong_tac : TU_DONG_TAC.find(([, re]) => re.test(String(l.chu ?? '').toLowerCase()))?.[0] ?? null)
+const amDongTac = [] // [tệp, lúc, âm lượng, câu] tiếng đi kèm động tác (đập tay, vỗ tay, viết)
 // Về tư thế nghỉ (trước mỗi câu mới)
 const NGHI = (t0, phu) => [
   `tl.to(["#meo-dau", "#meo-tay-trai", "#meo-tay-phai", "#meo-tai-trai", "#meo-tai-phai", "#robot-dau", "#robot-tay-trai", "#robot-tay-phai"${phu ? `, "#${phu}-dau", "#${phu}-tay-trai", "#${phu}-tay-phai"` : ''}], { rotation: 0, duration: 0.45, ease: "sine.inOut" }, ${f(t0)});`,
@@ -404,13 +484,25 @@ loi.forEach((l, i) => {
     tw.push(`tl.to(["#${q}-ma-hong", "#${q}-nuoc-mat", "#${q}-mo-hoi", "#${q}-gian"], { opacity: 0, duration: 0.3 }, ${f(t0 - 0.3)});`)
     tw.push(`tl.to(["#${q}-may-trai", "#${q}-may-phai"], { y: 0, rotation: 0, duration: 0.3 }, ${f(t0 - 0.3)});`)
   }
-  if (!ke) tw.push(...(CU_CHI[l.cam_xuc] ?? CU_CHI[ai === 'meo' ? 'to_mo' : 'giai_thich'])(p, t0))
+  // Động tác theo lời: người nói làm, câu người kể thì nhân vật đang được kể (đứng trên sân khấu) làm
+  const dongTac = dongTacCau(l)
+  const nguoiLam = dongTac ? (ke ? phuCuaCau[i] : p) : null
+  // Có động tác thì cử chỉ cảm xúc của người làm chỉ giữ nét mặt / nhún nhảy, bỏ phần tay và đầu (động tác lo phần đó)
+  const boTayDau = (ds, q) => (q && q === nguoiLam ? ds.filter((t) => !t.includes(`#${q}-tay-`) && !t.includes(`#${q}-dau"`)) : ds)
+  if (!ke) tw.push(...boTayDau((CU_CHI[l.cam_xuc] ?? CU_CHI[ai === 'meo' ? 'to_mo' : 'giai_thich'])(p, t0), p))
+  if (nguoiLam) {
+    tw.push(...DONG_TAC[dongTac](nguoiLam, t0 + 0.3))
+    const tiengDT = { dap_tay: ['sfx-bum', 0.8, 0.22], vo_tay: ['sfx-vo-tay', 0.35, 0.25], viet: ['sfx-but-viet', 0.35, 0.3] }[dongTac]
+    if (tiengDT) amDongTac.push([tiengDT[0], t0 + tiengDT[1], tiengDT[2], i])
+    // Nhân vật phụ làm động tác mà câu sau không còn là lượt của họ: về dáng nghỉ cuối câu
+    if (nguoiLam.startsWith('phu') && nguoiLam !== phuCuaCau[i + 1]) tw.push(`tl.to(["#${nguoiLam}-dau", "#${nguoiLam}-tay-trai", "#${nguoiLam}-tay-phai"], { rotation: 0, duration: 0.3, ease: "sine.inOut" }, ${f(t0 + d - 0.2)});`)
+  }
   // Người kể đang dẫn chuyện: nhân vật đứng trên sân khấu (nhân vật chính / người được nhắc tới) diễn theo sắc thái câu kể
   // thay vì đứng yên: câu hỏi / nghịch lý → nghiêng đầu chống cằm; bước ngoặt → nhướn mày, ngạc nhiên; buồn, giận, vui,
   // lo theo đúng cảm xúc; câu kể bình thường → giữ dáng nghỉ (thở, chớp mắt)
-  else if (phuCuaCau[i]) {
+  if (ke && phuCuaCau[i]) {
     const dien = { to_mo: 'suy_nghi', suy_nghi: 'suy_nghi', bat_ngo: 'bat_ngo', buon: 'buon', tuc_gian: 'tuc_gian', vui: 'vui', lo_lang: 'lo_lang', giai_thich: 'giai_thich', khang_dinh: 'khang_dinh' }[l.cam_xuc]
-    if (dien) tw.push(...CU_CHI[dien](phuCuaCau[i], t0))
+    if (dien) tw.push(...boTayDau(CU_CHI[dien](phuCuaCau[i], t0), phuCuaCau[i]))
   }
   // Người nghe phản ứng theo lời người nói, trễ nửa giây như phản xạ thật; người thứ hai (nếu có) phản ứng dịu hơn, trễ hơn.
   // Nhân vật phụ phản ứng xong thì về dáng nghỉ trước câu sau (Mèo / Bit đã có NGHI)
@@ -1247,6 +1339,7 @@ const FOLEY_DAO_CU = {
   tien: ['sfx-tien', 0.3], dong_xu: ['sfx-tien', 0.3], tien_giay: ['sfx-tien', 0.28], dong_ho: ['sfx-tich-tac', 0.35], dong_ho_cat: ['sfx-tich-tac', 0.3],
   may_anh: ['sfx-chup-anh', 0.4], chuong: ['sfx-ting', 0.3], cup: ['sfx-ting', 0.25], huy_chuong: ['sfx-ting', 0.25],
 }
+for (const [ten, t, a, i] of amDongTac) if (!SFX[loi[i].am_thanh]) themAm(ten, t, a, 1.2)
 for (const [ten, i, t] of amDaoCu) {
   const fo = FOLEY_DAO_CU[ten]
   if (fo && !SFX[loi[i].am_thanh]) themAm(fo[0], t, fo[1], 1.6)

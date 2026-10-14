@@ -566,7 +566,9 @@ export async function trangThaiDuAn(d: DuAnYT, mayNha: string | null): Promise<T
     return { loai: 'chua_dung' }
   })
   const nhacChon = await nhacCuaDuAn(d)
-  const khop = xong && xong.ma.length === ma.length && xong.ma.every((m, i) => m === ma[i]) && (xong.nhac ?? null) === nhacChon
+  // Video đã ghép không nhạc (dựng trước khi bật nhạc nền theo chương, 12/10/2026) vẫn tính là xong: video đã dựng giữ
+  // nguyên, không bắt dựng / ghép lại; video ghép mới thì nhạc phải khớp lựa chọn hiện tại
+  const khop = xong && xong.ma.length === ma.length && xong.ma.every((m, i) => m === ma[i]) && (!xong.nhac || xong.nhac === nhacChon)
   let daGhep: TrangThaiDuAn['xong'] = null
   if (khop) {
     daGhep = { tep: xong.tep, kiem_tra: xong.kiem_tra, moc_chuong: xong.moc_chuong }

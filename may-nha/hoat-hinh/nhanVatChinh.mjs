@@ -1,6 +1,8 @@
 // Hai nhân vật chính Mèo Mun và Robot Bit (dùng chung cho video và ảnh bìa)
 // ── Nhân vật (SVG vẽ tay, mỗi bộ phận một nhóm có điểm xoay) ─────────────
 // Toạ độ nội bộ 0..600 (rộng) x 0..700 (cao), chân chạm y=680
+import { boMieng } from './mieng.mjs'
+
 export const meoSvg = `
 <svg id="meo" class="nv" viewBox="0 0 600 700" width="620" height="723">
   <g id="meo-than-tat">
@@ -28,6 +30,7 @@ export const meoSvg = `
       <path d="M288 318 L312 318 L300 332 Z" fill="#f472b6"/>
       <g id="meo-mieng-dong"><path d="M272 345 Q286 360 300 345 Q314 360 328 345" fill="none" stroke="#7c2d12" stroke-width="6" stroke-linecap="round"/></g>
       <g id="meo-mieng-mo"><ellipse cx="300" cy="358" rx="26" ry="24" fill="#7f1d1d"/><ellipse cx="300" cy="370" rx="16" ry="9" fill="#fb7185"/></g>
+      ${boMieng('meo', { cx: 300, cy: 356, w: 28, vien: '#7c2d12', net: 5 })}
       <path d="M200 330 L120 315 M200 345 L118 350 M400 330 L480 315 M400 345 L482 350" stroke="#7c2d12" stroke-width="5" stroke-linecap="round"/>
       <ellipse cx="200" cy="320" rx="22" ry="12" fill="#fb718566"/><ellipse cx="400" cy="320" rx="22" ry="12" fill="#fb718566"/>
     </g>
@@ -58,6 +61,7 @@ export const robotSvg = `
       <g id="robot-mat-phai"><rect x="334" y="215" width="58" height="70" rx="26" fill="#22d3ee"/></g>
       <g id="robot-mieng-dong"><path d="M265 322 Q300 342 335 322" fill="none" stroke="#22d3ee" stroke-width="10" stroke-linecap="round"/></g>
       <g id="robot-mieng-mo"><rect x="262" y="305" width="76" height="44" rx="22" fill="#22d3ee"/><rect x="276" y="315" width="48" height="24" rx="12" fill="#0e7490"/></g>
+      ${boMieng('robot', { cx: 300, cy: 327, w: 38, kieu: 'den', mau: '#22d3ee', toi: '#0e7490' })}
     </g>
   </g>
 </svg>`

@@ -2,8 +2,10 @@
 // Vào (trong thư mục làm việc): artifacts/loi_thoai.json (lời thoại + cảm xúc + bối cảnh + bảng tin),
 // artifacts/do_dai.json, hyperframes/assets/loi-<i>.wav. Miệng nhép theo độ to thật của giọng.
 // Chạy: node tao_video.mjs <thư mục làm việc> → <thư mục>/hyperframes/index.html (thợ đọc giọng gọi, may-nha/tho_doc.py)
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
+import { execFile } from 'node:child_process'
+import { HINH_MIENG } from './mieng.mjs'
 import { BOI_CANH } from './boiCanh.mjs'
 import { NHAN_VAT_PHU, nguoiKeSvg, nhanVatChinhSvg } from './nhanVatPhu.mjs'
 import { meoSvg, robotSvg } from './nhanVatChinh.mjs'
@@ -43,6 +45,37 @@ const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replac
 const lap = (giay, chuKy) => Math.max(0, Math.floor(giay / chuKy) - 1)
 
 // Độ to của giọng theo từng khung 1/15 giây (WAV PCM 16-bit), chuẩn hóa 0..1
+// ── Nhép miệng theo âm (Rhubarb Lip Sync, MIT): đọc từng loi-<i>.wav ra các mốc hình miệng A–H / X. Bộ nhận dạng
+// "phonetic" không phụ thuộc ngôn ngữ (giọng tiếng Việt). Kết quả lưu artifacts/mieng-<i>.json (kèm cỡ tệp wav để biết
+// khi nào phải đọc lại). Không có rhubarb.exe hoặc đọc lỗi → câu đó nhép theo độ to giọng như cũ.
+const RHUBARB = process.env.RHUBARB ?? 'C:\\Users\\Admin\\VieNeu-TTS\\rhubarb\\Rhubarb-Lip-Sync-1.14.0-Windows\\rhubarb.exe'
+const docMieng = (i) =>
+  new Promise((xong) => {
+    const wav = join(GOC, `hyperframes/assets/loi-${i}.wav`)
+    const ra = join(GOC, `artifacts/mieng-${i}.json`)
+    if (!existsSync(wav) || !existsSync(RHUBARB)) return xong(null)
+    const co = statSync(wav).size
+    try {
+      const cu = JSON.parse(readFileSync(ra, 'utf8'))
+      if (cu.co === co) return xong(cu.moc)
+    } catch {}
+    // Ghi ra tệp (-o): gọi từ Node, rhubarb.exe không in kết quả ra stdout
+    const tam = `${ra}.rhubarb`
+    execFile(RHUBARB, ['-q', '-r', 'phonetic', '-f', 'json', '--extendedShapes', 'GHX', '-o', tam, wav], { timeout: 120_000 }, (loi) => {
+      if (loi) return xong(null)
+      try {
+        const moc = JSON.parse(readFileSync(tam, 'utf8')).mouthCues.map((c) => [+c.start, c.value])
+        rmSync(tam, { force: true })
+        writeFileSync(ra, JSON.stringify({ co, moc }))
+        xong(moc)
+      } catch {
+        xong(null)
+      }
+    })
+  })
+const MIENG = []
+for (let i = 0; i < loi.length; i += 6) MIENG.push(...(await Promise.all(loi.slice(i, i + 6).map((_, k) => docMieng(i + k)))))
+
 function doTo(file) {
   const b = readFileSync(file)
   let i = 12, du = null, kenhAm = 1, tanSo = 48000
@@ -361,7 +394,22 @@ loi.forEach((l, i) => {
   }
   // Nhép miệng mượt: độ to giọng mỗi 1/15 giây được làm mềm (mở nhanh, khép chậm dần); miệng chỉ đổi mở / khép khi
   // vượt ngưỡng có trễ (không nháy liên tục), còn độ há trượt êm từ khung này sang khung sau.
-  const am = doTo(join(GOC, `hyperframes/assets/loi-${i}.wav`))
+  const mocMieng = MIENG[i]
+  if (mocMieng?.length) {
+    // Theo âm: mỗi mốc Rhubarb bật đúng một hình miệng (A, X = miệng khép sẵn có), tắt hình trước
+    const nhomMieng = (v) => (HINH_MIENG.includes(v) ? `#${p}-mieng-${v}` : `#${p}-mieng-dong`)
+    tw.push(`tl.set("#${p}-mieng-mo", { opacity: 0 }, ${f(t0)});`)
+    let truoc = `#${p}-mieng-dong`
+    for (const [bd, v] of mocMieng) {
+      if (bd >= d) break
+      const nay = nhomMieng(v)
+      if (nay === truoc) continue
+      tw.push(`tl.set("${truoc}", { opacity: 0 }, ${f(t0 + bd)}); tl.set("${nay}", { opacity: 1 }, ${f(t0 + bd)});`)
+      truoc = nay
+    }
+    if (truoc !== `#${p}-mieng-dong`) tw.push(`tl.set("${truoc}", { opacity: 0 }, ${f(t0 + d)});`)
+  }
+  const am = mocMieng?.length ? [] : doTo(join(GOC, `hyperframes/assets/loi-${i}.wav`))
   let em = 0, dangMo = false
   am.forEach((v, k) => {
     em = Math.max(v, em * 0.62)

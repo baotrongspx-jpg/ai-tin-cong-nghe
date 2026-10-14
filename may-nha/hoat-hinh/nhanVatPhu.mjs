@@ -5,6 +5,7 @@
 // đồ cầm tay vẽ trong nhóm tay nên cử động theo tay), <id>-mieng-dong / <id>-mieng-mo (nhép miệng khi nói).
 // `mau`: màu nhãn + phụ đề khi nói, `ten`: tên hiện ở phụ đề. Tên khoá phải khớp lib/ai.ts (NHAN_VAT_PHU).
 import { DAO_CU } from './daoCu.mjs'
+import { boMieng } from './mieng.mjs'
 const VIEN = '#1f2937'
 
 // Màu tối / sáng hơn một chút để đổ bóng
@@ -86,6 +87,7 @@ function nguoi(id, o) {
     <g id="${id}-gian" opacity="0"><path d="M232 112 l10 10 m6 -14 l-4 14 m14 0 l-14 2 m-2 6 l-10 10" stroke="#dc2626" stroke-width="5" stroke-linecap="round"/></g>
     <g id="${id}-mieng-dong"><path d="M182 222 Q200 236 218 222" fill="none" stroke="${nu ? '#be185d' : VIEN}" stroke-width="6" stroke-linecap="round"/></g>
     <g id="${id}-mieng-mo" opacity="0"><ellipse cx="200" cy="226" rx="16" ry="14" fill="#7f1d1d" stroke="${nu ? '#be185d' : VIEN}" stroke-width="4"/><ellipse cx="200" cy="233" rx="9" ry="5" fill="#fb7185"/></g>
+    ${boMieng(id, { cx: 200, cy: 227, w: 18, vien: nu ? '#be185d' : VIEN, net: 4 })}
   </g>`
 }
 
@@ -136,6 +138,7 @@ export const nguoiKeSvg = (id) => `
     <path d="M296 300 Q304 322 318 312" fill="none" stroke="#d99a75" stroke-width="7" stroke-linecap="round"/>
     <g id="${id}-mieng-dong"><path d="M262 352 Q300 382 338 352" fill="none" stroke="${VK}" stroke-width="8" stroke-linecap="round"/><path d="M262 352 l-8 -6 M338 352 l8 -6" stroke="${VK}" stroke-width="6" stroke-linecap="round"/></g>
     <g id="${id}-mieng-mo" opacity="0"><path d="M266 340 Q300 334 334 340 Q336 392 300 396 Q264 392 266 340 Z" fill="#7f1d1d" stroke="${VK}" stroke-width="6"/><path d="M272 342 Q300 338 328 342 L326 352 Q300 348 274 352 Z" fill="#fff"/><ellipse cx="300" cy="384" rx="20" ry="9" fill="#fb7185"/></g>
+    ${boMieng(id, { cx: 300, cy: 366, w: 36, vien: VK, net: 6 })}
     <path d="M118 260 C112 110 488 110 482 260" fill="none" stroke="#1f2937" stroke-width="20" stroke-linecap="round"/>
     <rect x="86" y="232" width="56" height="100" rx="26" fill="#1f2937" stroke="${VK}" stroke-width="6"/><rect x="458" y="232" width="56" height="100" rx="26" fill="#1f2937" stroke="${VK}" stroke-width="6"/>
     <rect x="96" y="246" width="20" height="72" rx="10" fill="#f97316"/><rect x="484" y="246" width="20" height="72" rx="10" fill="#f97316"/>

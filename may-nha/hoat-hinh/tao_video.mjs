@@ -1055,6 +1055,21 @@ loi.forEach((l, i) => {
     lia(t0 + d - 1.0, 1.45, vt.x, vt.y - 30, 0.04, 'none')
     lia(t0 + d - 0.95, 1.48, vt.x, vt.y - 34, 0.95, 'sine.inOut')
   }
+  // Câu dài (trên 5 giây): giữa câu cắt thẳng sang cận mặt người đang diễn (người nói, hoặc nhân vật đang được kể), giữ
+  // khung đẩy chậm tới hết câu / tới cú cắt phản ứng — người xem không phải nhìn một khung hơn 5 giây (góp ý 14/10/2026:
+  // 15 giây mới cắt một lần). Không cắt khi đang cận sẵn, có thẻ trên cao, đang phủ ảnh tư liệu hay sắp đổi cảnh.
+  const catPU = pu && !canCanh && !chuaDau && !lui && d > 3.2 && PHAN_UNG_MANH.has(l.cam_xuc)
+  const dien = l.ai === 'nguoi_ke' || laPhu(l.ai) ? phuCuaCau[i] : l.ai === 'meo' ? 'meo' : 'robot'
+  const phuAnh = doanAnh.some((c) => c.kieu === 'toan' && c.tu <= i && c.het >= i)
+  if (d > 5 && dien && !canCanh && !chuaDau && !lui && !phuAnh) {
+    const giua = t0 + d * 0.48
+    const het = catPU ? t0 + d - 1.0 : t0 + d + 0.05
+    if (het - giua > 1.4) {
+      const vt = dien.startsWith('phu') ? { x: viTriPhu[dien] ?? 540, y: 760 - HA_PHU } : tamLuc(dien, giua)
+      lia(giua, 1.5, vt.x, vt.y - 40, 0.04, 'none')
+      lia(giua + 0.05, 1.55, vt.x + (i % 2 ? 12 : -12), vt.y - 48, het - giua - 0.05, 'sine.inOut')
+    }
+  }
 })
 
 // ── Đạo cụ: hiện bên cạnh người nói theo nội dung câu (AI chọn), bay nhẹ rồi biến mất ─
@@ -1301,7 +1316,7 @@ loi.forEach((l, i) => {
   bd = Math.max(bd, t0 + 0.2, i === 0 && moc?.chu ? gtMoc + 0.1 : 0)
   const kt = Math.min(bd + 2.3, t0 + d + 0.35)
   if (kt - bd < 1.3) return
-  if (['so_lieu', 'trich_dan', 'dia_diem', 'bieu_tuong'].includes(m.kieu)) diemChi.push(bd + 0.2)
+  if (['so_lieu', 'trich_dan', 'dia_diem', 'bieu_tuong', 'dem_nguoc', 'bieu_do_giam', 'bieu_do_tang', 'thoa_thuan'].includes(m.kieu)) diemChi.push(bd + 0.2)
   const id = `mh${i}`
   const mh = ve(id, m)
   tw.push(...mh.tw(bd, kt - bd))

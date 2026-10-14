@@ -1,7 +1,7 @@
 import 'server-only'
 import { createHash, randomUUID } from 'node:crypto'
 import { db, type BaiViet } from './db'
-import { goiJson, vietDanYYouTube, vietPhanYouTube, type AnhBiaGoiY, type LoiThoai } from './ai'
+import { chinhTaTieuDe, goiJson, vietDanYYouTube, vietPhanYouTube, type AnhBiaGoiY, type LoiThoai } from './ai'
 import { z } from 'zod'
 import {
   dongGoiYouTube, hoSoHinhAnh, nghienCuuNhanVat, phanCanhChuong, phatTrienCauChuyen, thietKeNhanVatChinh, vietPhanPhim, TAO_HINH_MAC_DINH,
@@ -197,9 +197,12 @@ function loiThoaiGui(d: DuAnYT, k: number) {
     // Mở đầu: người kể giới thiệu phim kể chuyện gì (dòng chữ móc câu to hiện cùng lúc) → tên chương 1 → vào chuyện
     const chanDung = phim?.anh?.find((a) => a.chinh)
     const tieuDe = d.tieu_de.replace(/^Phim tiểu sử:\s*/i, '').trim()
+    const gonGon = d.tao_luc >= '2026-10-14T12:00'
     const gioiThieu = phim
-      ? `Đây là Công Nghệ 24H, và đây là câu chuyện về ${phim.ten}${tieuDe && tieuDe !== phim.ten ? `: ${cham(tieuDe)}` : '.'}`
-      : `Bạn đang xem Công Nghệ 24H. Hôm nay chúng ta cùng tìm hiểu: ${cham(tieuDe)}`
+      ? `Đây là Công Nghệ 24H, và đây là câu chuyện về ${phim.ten}${!gonGon && tieuDe && tieuDe !== phim.ten ? `: ${cham(tieuDe)}` : '.'}`
+      : gonGon
+        ? 'Bạn đang xem Công Nghệ 24H.'
+        : `Bạn đang xem Công Nghệ 24H. Hôm nay chúng ta cùng tìm hiểu: ${cham(tieuDe)}`
     const loiGioiThieu = mau(loi[0], {
       chu: gioiThieu,
       cam_xuc: 'vui',
@@ -293,7 +296,7 @@ export async function taoDuAn(o: { baiIds: string[]; yTuong: string; phut: numbe
     phut,
     nguon: { bai: bai.map((b) => ({ id: b.id, tieu_de: b.tieu_de_anh })), y_tuong: yTuong },
     nguon_chu: nguon,
-    tieu_de: dy.tieu_de.slice(0, 100),
+    tieu_de: (await chinhTaTieuDe([dy.tieu_de]))[0].slice(0, 100),
     mo_ta: dy.mo_ta,
     the: dy.the.map((t) => t.replace(/^#/, '').trim()).filter(Boolean).slice(0, 20),
     chu_de: dy.chu_de.slice(0, 20) || 'Công nghệ',
@@ -331,11 +334,11 @@ export async function vietLoiPhan(id: string, k: number) {
   if (!kb) throw new Error(`AI chưa viết được phần ${k}, thử lại sau ít phút`)
   // Biên tập viên kiểm định: tự sửa nhịp hình ảnh, chấm điểm, ghi chú. Còn lỗi nặng (không tự sửa được) thì bắt buộc AI
   // sửa theo ghi chú (còn thời gian; hết thì trang tự gọi sửa tiếp — suaLoiPhan)
-  let { loi, ...kd } = kiemDinh(kb.loi as CauYT[], { loai: d.loai, laCuoi: k === d.phan.length, coDai: laCoDai(d) })
+  let { loi, ...kd } = kiemDinhDu(d, k, kb.loi as CauYT[])
   if (!bienTapDat(kd) && (Date.now() - batDau) / 1000 < 200) {
     const s = await suaKichBan({ loi, gopY: chuBienTap(kd), nguCanh, phim: !!phim }).catch(() => null)
     if (s) {
-      const kd2 = kiemDinh(s.loi, { loai: d.loai, laCuoi: k === d.phan.length, coDai: laCoDai(d) })
+      const kd2 = kiemDinhDu(d, k, s.loi as CauYT[])
       if (loiBienTap(kd2).length < loiBienTap(kd).length) ({ loi, ...kd } = kd2)
     }
   }
@@ -376,7 +379,7 @@ export async function suaLoiPhan(id: string, k: number): Promise<{ duAn: DuAnYT;
   const s = await suaKichBan({ loi: p.loi, gopY, nguCanh, phim: d.loai === 'tieu_su' })
   if (!s) throw new Error('AI chưa sửa được (có thể hết lượt AI), thử lại sau ít phút')
   const pb2 = await phanBien('kich_ban', nguCanh, tomTatLoi(s.loi)).catch(() => null)
-  const { loi, ...kd } = kiemDinh(s.loi, { loai: d.loai, laCuoi: k === d.phan.length, coDai: laCoDai(d) })
+  const { loi, ...kd } = kiemDinhDu(d, k, s.loi as CauYT[])
   const diemCu = p.phan_bien?.diem ?? 0
   const lanCu = p.phan_bien?.lan ?? 0
   const luc = new Date().toISOString()
@@ -410,7 +413,7 @@ async function apVaoDuAn(id: string, ketQua: KetQuaBienTap, nguon: 'gemini' | 'm
   moi.phan = moi.phan.map((x, i) => {
     if (!x.loi || !ap.chi_tiet.some((c) => c.chuong === i + 1)) return x
     // Chương có sửa: kiểm định lại (điểm, ghi chú) trên lời mới; lời đổi thì phân cảnh cũ không còn đúng
-    const { loi, ...kd } = kiemDinh(ap.phan[i] as CauYT[], { loai: moi.loai, laCuoi: i === moi.phan.length - 1, coDai: laCoDai(moi) })
+    const { loi, ...kd } = kiemDinhDu(moi, i + 1, ap.phan[i] as CauYT[])
     return { ...x, loi, kiem_dinh: kd, canh: undefined }
   })
   moi.bien_tap = { luc: new Date().toISOString(), nguon, nhan_xet: ketQua.nhan_xet, chi_tiet: ap.chi_tiet }
@@ -461,11 +464,56 @@ export async function bienTapPhim(id: string, batDauLai = false): Promise<TrangT
   return { trang_thai: 'cho', duAn: moi }
 }
 
+// ── Kiểm định đầy đủ một chương (luật, không tốn lượt AI): biên tập viên (kiemDinh) + hai luật cần cả phim:
+// 1. Phim tiểu sử: câu đặt vào miệng người thật (nhân vật chính / nhân vật phụ) mà tư liệu nghiên cứu không có → gắn nhãn
+//    "Tái hiện" (người xem khó tính ghét lời bịa trình bày như lời thật). So bằng cặp từ liền nhau trùng với tư liệu.
+// 2. Chống lặp: câu gần như nguyên văn câu ở chương khác → lỗi, AI phải viết lại; cụm từ dùng quá nhiều lần cả phim → nhắc.
+const capTu = (s: string) => {
+  const w = s.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ').split(/\s+/).filter(Boolean)
+  return w.slice(1).map((x, i) => `${w[i]} ${x}`)
+}
+const CUM_THUONG = new Set(['công ty', 'của ông', 'của bà', 'của họ', 'chúng ta', 'chúng tôi', 'thế giới', 'không thể', 'một người', 'những người', 'trong khi', 'là một', 'đã trở', 'trở thành', 'của mình', 'cho đến', 'vào năm', 'năm đó', 'có thể', 'không phải', 'đó là', 'và rồi', 'rằng ông', 'mọi người', 'cuộc đời', 'câu chuyện', 'công nghệ', 'nhân vật'])
+function kiemDinhDu(d: DuAnYT, k: number, loiVao: CauYT[]) {
+  const kq = kiemDinh(loiVao, { loai: d.loai, laCuoi: k === d.phan.length, coDai: laCoDai(d) })
+  const them: { muc: 'loi' | 'nhac'; chu: string }[] = []
+  const nc = d.phim?.nghien_cuu
+  if (d.loai === 'tieu_su' && nc) {
+    const nguon = new Set(capTu([...(nc.tai_lieu_goc ?? []).map((x) => x.noi_dung), ...nc.su_that.map((x) => x.noi_dung), ...nc.moc_doi.map((x) => x.su_kien), d.phim?.tai_lieu ?? ''].join(' . ')))
+    let gan = 0
+    for (const l of kq.loi) {
+      if (l.tai_hien || ['nguoi_ke', 'meo', 'robot'].includes(l.ai)) continue
+      const c = capTu(l.chu)
+      if (c.length >= 3 && c.filter((x) => nguon.has(x)).length / c.length < 0.5) {
+        l.tai_hien = true
+        gan++
+      }
+    }
+    if (gan) them.push({ muc: 'nhac', chu: `${gan} câu đặt vào miệng người thật không thấy trong tư liệu: đã gắn nhãn "Tái hiện"` })
+  }
+  // Chống lặp với các chương khác
+  const khac = d.phan.flatMap((p, j) => (j === k - 1 ? [] : (p.loi ?? []).map((l) => ({ j: j + 1, c: new Set(capTu(l.chu)) }))))
+  for (const l of kq.loi) {
+    const c = capTu(l.chu)
+    if (c.length < 6) continue
+    const giong = khac.find((x) => c.filter((y) => x.c.has(y)).length / c.length >= 0.6)
+    if (giong) them.push({ muc: 'loi', chu: `Câu "${l.chu.slice(0, 70)}…" lặp gần nguyên văn một câu ở chương ${giong.j}: viết lại bằng ý / chi tiết mới` })
+  }
+  const dem: Record<string, number> = {}
+  for (const p of d.phan.map((x, j) => (j === k - 1 ? kq.loi : x.loi ?? []))) for (const l of p) for (const c of new Set(capTu(l.chu))) if (!CUM_THUONG.has(c)) dem[c] = (dem[c] ?? 0) + 1
+  const ten = (d.phim?.ten ?? '').toLowerCase()
+  const nhieu = Object.entries(dem).filter(([c, n]) => n >= 4 && !ten.includes(c) && kq.loi.some((l) => capTu(l.chu).includes(c))).map(([c]) => `"${c}"`)
+  if (nhieu.length) them.push({ muc: 'nhac', chu: `Cụm từ lặp nhiều lần trong phim: ${nhieu.slice(0, 5).join(', ')} — nên thay cách nói` })
+  if (!them.length) return kq
+  const ghi_chu = [...kq.ghi_chu, ...them]
+  const diem = Math.max(0, 100 - ghi_chu.filter((g) => g.muc === 'loi').length * 25 - ghi_chu.filter((g) => g.muc === 'nhac').length * 7)
+  return { ...kq, ghi_chu, diem }
+}
+
 export async function kiemDinhLaiPhan(id: string, k: number) {
   const d = await docDuAn(id)
   const p = d?.phan[k - 1]
   if (!d || !p?.loi) throw new Error('Phần này chưa có lời thoại')
-  const { loi, ...kd } = kiemDinh(p.loi, { loai: d.loai, laCuoi: k === d.phan.length, coDai: laCoDai(d) })
+  const { loi, ...kd } = kiemDinhDu(d, k, p.loi)
   const doi = JSON.stringify(loi) !== JSON.stringify(p.loi)
   d.phan[k - 1] = { ...p, loi, kiem_dinh: kd, canh: doi ? undefined : p.canh }
   await luuDuAn(d)
@@ -929,7 +977,7 @@ export async function chayBuocPhim(id: string, buoc: BuocPhim, k?: number) {
     if (!kq) throw new Error('AI chưa phát triển được câu chuyện, thử lại sau ít phút')
     if (pb) pbMoi.cau_chuyen = pb
     p.cau_chuyen = kq
-    d.tieu_de = kq.tieu_de.slice(0, 100)
+    d.tieu_de = (await chinhTaTieuDe([kq.tieu_de]))[0].slice(0, 100)
     d.chu_de = kq.chu_de.slice(0, 20) || 'Tiểu sử'
     d.the = kq.the.map((t) => t.replace(/^#/, '').trim()).filter(Boolean).slice(0, 20)
     d.mo_ta = kq.big_idea
@@ -974,6 +1022,7 @@ export async function chayBuocPhim(id: string, buoc: BuocPhim, k?: number) {
     if (!kq) throw new Error('AI chưa đóng gói được, thử lại sau ít phút')
     if (pb) pbMoi.dong_goi = pb
     p.dong_goi = kq
+    if (kq.top5.length) kq.top5 = await chinhTaTieuDe(kq.top5)
     d.tieu_de = (kq.top5[0] ?? d.tieu_de).slice(0, 100)
     d.mo_ta = kq.mo_ta
     d.the = [...kq.tu_khoa, ...kq.hashtag.map((h) => h.replace(/^#/, ''))].slice(0, 30)

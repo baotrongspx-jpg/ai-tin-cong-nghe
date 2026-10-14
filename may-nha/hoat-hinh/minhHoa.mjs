@@ -52,6 +52,32 @@ export const MINH_HOA = {
       `tl.fromTo("#${id} .mh-emoji", { scale: 0, rotation: -25 }, { scale: 1, rotation: 0, duration: 0.5, ease: "back.out(2.6)" }, ${f(t0 + 0.1)});`,
     ],
   }),
+  // ── Kể bằng hình (góp ý người xem 14/10/2026: "30 ngày cuối cùng" phải thấy đồng hồ, "tiền cạn" phải thấy biểu đồ) ──
+  // Đếm ngược: vòng đỏ cạn dần quanh thời gian còn lại, con số đập nhịp như tim
+  dem_nguoc: (id, m) => ({
+    html: `<div class="mh-khung mh-dn"><div class="mh-dn-o"><svg viewBox="0 0 220 220" width="220" height="220"><circle cx="110" cy="110" r="92" fill="#1f2937" stroke="#374151" stroke-width="16"/><circle id="${id}-vong" cx="110" cy="110" r="92" fill="none" stroke="#ef4444" stroke-width="16" stroke-linecap="round" stroke-dasharray="578" transform="rotate(-90 110 110)"/></svg><div id="${id}-so" class="mh-dn-so">${esc(m.chu_chinh)}</div></div><div class="mh-phu">${esc(m.chu_phu)}</div></div>`,
+    tw: (t0, d) => [
+      ...vaoRa(id, t0, d),
+      `tl.fromTo("#${id}-vong", { strokeDashoffset: 0 }, { strokeDashoffset: 520, duration: ${f(Math.max(0.6, d - 0.45))}, ease: "power1.in" }, ${f(t0 + 0.2)});`,
+      `tl.fromTo("#${id}-so", { scale: 1 }, { scale: 1.12, duration: 0.18, yoyo: true, repeat: ${2 * Math.max(1, Math.floor((d - 0.6) / 0.72)) - 1}, ease: "power1.inOut" }, ${f(t0 + 0.35)});`,
+    ],
+  }),
+  // Biểu đồ: đường kẻ tự vẽ ra, đi xuống (đỏ) hoặc đi lên (xanh), mũi tên ở cuối
+  bieu_do_giam: (id, m) => bieuDo(id, m, false),
+  bieu_do_tang: (id, m) => bieuDo(id, m, true),
+  // Thoả thuận: hai bên trượt vào từ hai phía, cái bắt tay bật lên ở giữa, số tiền / nội dung bên dưới
+  thoa_thuan: (id, m) => {
+    const [a = '', b = ''] = String(m.chu_chinh ?? '').split(/\s*\|\s*/)
+    return {
+      html: `<div class="mh-khung mh-tt"><div class="mh-tt-hang"><div class="mh-tt-ben a" id="${id}-a">${esc(a)}</div><div class="mh-tt-tay" id="${id}-tay">🤝</div><div class="mh-tt-ben b" id="${id}-b">${esc(b)}</div></div><div class="mh-tt-tien">${esc(m.chu_phu)}</div></div>`,
+      tw: (t0, d) => [
+        ...vaoRa(id, t0, d),
+        `tl.fromTo("#${id}-a", { x: -220, opacity: 0 }, { x: 0, opacity: 1, duration: 0.4, ease: "power3.out" }, ${f(t0 + 0.1)});`,
+        `tl.fromTo("#${id}-b", { x: 220, opacity: 0 }, { x: 0, opacity: 1, duration: 0.4, ease: "power3.out" }, ${f(t0 + 0.1)});`,
+        `tl.fromTo("#${id}-tay", { scale: 0, rotation: -30 }, { scale: 1, rotation: 0, duration: 0.45, ease: "back.out(3)" }, ${f(t0 + 0.45)});`,
+      ],
+    }
+  },
   // So sánh: hai cột A đấu B, chữ VS ở giữa
   so_sanh: (id, m) => {
     const [a = '', b = ''] = String(m.chu_chinh ?? '').split(/\s*\|\s*/)
@@ -66,6 +92,19 @@ export const MINH_HOA = {
       ],
     }
   },
+}
+
+function bieuDo(id, m, len) {
+  const diem = len ? '20,180 80,150 130,160 190,105 250,80 330,25' : '20,30 80,55 130,45 190,105 250,140 330,185'
+  const mau = len ? '#22c55e' : '#ef4444'
+  return {
+    html: `<div class="mh-khung mh-bd"><div class="mh-nhan">${esc(m.chu_chinh)}</div><svg viewBox="0 0 360 210" width="360" height="210"><path d="M20 200 H350 M20 10 V200" stroke="#475569" stroke-width="4" fill="none"/><polyline id="${id}-duong" points="${diem}" fill="none" stroke="${mau}" stroke-width="12" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="520" stroke-dashoffset="520"/><text id="${id}-mui" x="${len ? 300 : 300}" y="${len ? 40 : 205}" font-size="56" opacity="0">${len ? '📈' : '📉'}</text></svg><div class="mh-phu">${esc(m.chu_phu)}</div></div>`,
+    tw: (t0, d) => [
+      ...vaoRa(id, t0, d),
+      `tl.fromTo("#${id}-duong", { strokeDashoffset: 520 }, { strokeDashoffset: 0, duration: ${f(Math.min(1.1, d * 0.5))}, ease: "power2.inOut" }, ${f(t0 + 0.2)});`,
+      `tl.fromTo("#${id}-mui", { opacity: 0 }, { opacity: 1, duration: 0.2 }, ${f(t0 + 0.2 + Math.min(1.1, d * 0.5))});`,
+    ],
+  }
 }
 
 // Câu giật tít mở đầu (2 giây đầu, cũng là ảnh bìa TikTok): chữ lớn, từng chữ bật lên, rung nhẹ
@@ -113,6 +152,15 @@ export const CSS_MINH_HOA = `
       .mh-cot-ten { font-size: 32px; font-weight: 700; line-height: 1.15; }
       .mh-cot-phu { font-size: 22px; font-weight: 500; color: #e2e8f0; }
       .mh-vs { display: flex; align-items: center; font-size: 44px; font-weight: 700; color: #facc15; text-shadow: 0 4px 0 #000; }
+      .mh-dn-o { position: relative; width: 220px; height: 220px; }
+      .mh-dn-so { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 0 30px; font-size: 46px; font-weight: 700; line-height: 1.05; color: #fecaca; text-align: center; }
+      .mh-bd svg { display: block; }
+      .mh-tt-hang { display: flex; align-items: center; gap: 10px; }
+      .mh-tt-ben { min-width: 120px; padding: 14px 16px; border-radius: 18px; font-size: 32px; font-weight: 700; color: #fff; }
+      .mh-tt-ben.a { background: linear-gradient(160deg, #2563eb, #1e3a8a); }
+      .mh-tt-ben.b { background: linear-gradient(160deg, #e11d48, #881337); }
+      .mh-tt-tay { font-size: 84px; line-height: 1; font-family: "Emoji", sans-serif; }
+      .mh-tt-tien { font-size: 40px; font-weight: 700; color: #facc15; }
       /* Câu giật tít: dải chữ lớn ở vùng trên cùng, không phủ tối nhân vật */
       .moc { position: absolute; left: 0; right: 0; top: 210px; height: 420px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 0 50px; box-sizing: border-box; opacity: 0; }
       .moc-bt { display: block; font-size: 110px; line-height: 1; font-family: "Emoji", sans-serif; }

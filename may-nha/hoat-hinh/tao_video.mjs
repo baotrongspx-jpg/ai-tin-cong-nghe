@@ -161,7 +161,8 @@ for (const [i, d] of doDai.entries()) {
 const HET_NOI = t + DUOI // lúc lời cuối cùng dứt
 const TONG = HET_NOI + MAN_KET
 const DONG_BO = [] // artifacts/dong_bo.json: mỗi câu thoại truy ra cảnh của nó (kiểm định sau khi dựng)
-writeFileSync(join(GOC, 'artifacts/phu_de.json'), JSON.stringify(loi.map((l, i) => ({ bd: +batDau[i].toFixed(2), kt: +(batDau[i] + doDai[i]).toFixed(2), chu: l.chu }))))
+// lang: câu có khoảng lặng có chủ đích ngay trước — máy nhà hạ nhạc nền ở khoảng đó khi ghép cả phim (tho_doc.py)
+writeFileSync(join(GOC, 'artifacts/phu_de.json'), JSON.stringify(loi.map((l, i) => ({ bd: +batDau[i].toFixed(2), kt: +(batDau[i] + doDai[i]).toFixed(2), chu: l.chu, ...(l.lang && i ? { lang: true } : {}) }))))
 const tw = []
 
 // ── Nhân vật chính: nhanVatChinh.mjs (SVG vẽ tay, mỗi bộ phận một nhóm có điểm xoay) ─
@@ -1554,9 +1555,12 @@ for (const cc of chuyenCanh) {
 for (const dp of doanPhu) if (!SFX[loi[dp.tu].am_thanh]) themAm('sfx-buoc-chan', batDau[dp.tu] + 0.05, 0.22, 1.1)
 // Âm nền phục vụ cảm xúc: khoảnh khắc phát hiện / khoảng lặng có chủ đích (lang, loé sáng) và lúc buồn → không gian
 // lắng xuống (âm nền còn 35%), để lời, hơi thở và nhạc nổi lên; hết khoảnh khắc thì âm nền về như cũ
-const LANG_NEN = []
+// Khoảng lặng có chủ đích: IM THẬT (âm nền tắt hẳn từ lúc câu trước dứt tới khi câu này cất lời) — chuyên gia âm thanh
+// 14/10/2026: cả phim không có lấy một khoảng lặng thật nên khoảnh khắc lớn mất sức nặng
+const LANG_NEN = [] // [từ, đến, hệ số âm lượng]
 loi.forEach((l, i) => {
-  if (l.lang || l.anh_sang === 'loe_sang' || l.cam_xuc === 'buon') LANG_NEN.push([batDau[i] - (l.lang ? 1.7 : 0.2), batDau[i] + doDai[i]])
+  if (l.lang && i) LANG_NEN.push([batDau[i - 1] + doDai[i - 1] - 0.1, batDau[i] + 0.15, 0])
+  if (l.lang || l.anh_sang === 'loe_sang' || l.cam_xuc === 'buon') LANG_NEN.push([batDau[i] + (l.lang ? 0.15 : -0.2), batDau[i] + doDai[i], 0.35])
 })
 doanCanh.forEach((dc, k) => {
   const nen = AM_NEN[dc.ten]
@@ -1566,12 +1570,13 @@ doanCanh.forEach((dc, k) => {
   const doan = doDaiTep(nen[0])
   if (!doan) return
   // Cắt đoạn bối cảnh ở mép các khoảnh khắc lắng, mỗi khúc một mức âm lượng
-  const moc = [...new Set([tu, den, ...LANG_NEN.flat().filter((x) => x > tu && x < den)])].sort((a, b) => a - b)
+  const moc = [...new Set([tu, den, ...LANG_NEN.flatMap(([x, y]) => [x, y]).filter((x) => x > tu && x < den)])].sort((a, b) => a - b)
   for (let j = 0; j < moc.length - 1; j++) {
     const a = moc[j], b = moc[j + 1]
     if (b - a < 0.05) continue
-    const lang = LANG_NEN.some(([x, y]) => x <= a + 0.01 && b <= y + 0.01)
-    for (let luc = a; luc < b - 0.05; luc += doan) themAm(nen[0], luc, f(nen[1] * (lang ? 0.35 : 1)), b - luc)
+    const heSo = Math.min(1, ...LANG_NEN.filter(([x, y]) => x <= a + 0.01 && b <= y + 0.01).map(([, , h]) => h))
+    if (heSo <= 0) continue // im thật
+    for (let luc = a; luc < b - 0.05; luc += doan) themAm(nen[0], luc, f(nen[1] * heSo), b - luc)
   }
 })
 

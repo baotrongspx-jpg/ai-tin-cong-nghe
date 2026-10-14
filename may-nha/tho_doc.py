@@ -644,9 +644,10 @@ def dai_nhac_theo_phan(thu_muc, cac_bai, do_dai_phan, am_luong_phan=None):
     return ra
 
 
-def tron_nhac_nen(thu_muc, vao, ra, ten_nhac, am_luong, td, tep_nhac_san=None):
+def tron_nhac_nen(thu_muc, vao, ra, ten_nhac, am_luong, td, tep_nhac_san=None, khoang_lang=None):
     # Nhạc nền dưới cả video: lặp cho đủ dài, to dần đầu / nhỏ dần cuối, TỰ NHỎ ĐI khi có lời nói (nén theo giọng —
-    # sidechain), nghe rõ hơn ở chỗ chuyển cảnh / khoảng lặng / màn kết. Lỗi thì trả False (dùng bản không nhạc).
+    # sidechain), nghe rõ hơn ở chỗ chuyển cảnh / màn kết. khoang_lang: [(từ, đến)] khoảng lặng có chủ đích — nhạc hạ còn 15%
+    # (vào / ra mềm 0,25 giây) cho khoảnh khắc lớn im thật. Lỗi thì trả False (dùng bản không nhạc).
     try:
         td.bao(98, 'Trộn nhạc nền', ep=True)
         if tep_nhac_san:
@@ -658,7 +659,9 @@ def tron_nhac_nen(thu_muc, vao, ra, ten_nhac, am_luong, td, tep_nhac_san=None):
             tep_nhac = thu_muc / ('nhac-nen' + Path(ten_nhac).suffix)
             tep_nhac.write_bytes(r.content)
         tong = do_dai_video(vao) or 600
-        loc = (f'[0:a]asplit=2[giong][dieu];[1:a]volume={am_luong / 100:.2f},afade=t=in:d=2,afade=t=out:st={max(0, tong - 4):.2f}:d=4[nhac];'
+        ha = ''.join(f'*(1-0.85*clip(min((t-{a:.2f})/0.25\\,({b:.2f}-t)/0.25)\\,0\\,1))' for a, b in (khoang_lang or [])[:30] if b - a > 0.3)
+        lang = f",volume='1{ha}':eval=frame" if ha else ''
+        loc = (f'[0:a]asplit=2[giong][dieu];[1:a]volume={am_luong / 100:.2f},afade=t=in:d=2,afade=t=out:st={max(0, tong - 4):.2f}:d=4{lang}[nhac];'
                '[nhac][dieu]sidechaincompress=threshold=0.015:ratio=8:attack=20:release=450[nhacnho];'
                '[giong][nhacnho]amix=inputs=2:duration=first:normalize=0[a]')
         chay([str(FFMPEG), '-hide_banner', '-y', '-i', vao.name, '-stream_loop', '-1', '-i', tep_nhac.name, '-filter_complex', loc,
@@ -770,7 +773,19 @@ def dung_youtube(may, ds_giong, yc):
                     dai_nhac = dai_nhac_theo_phan(thu_muc, yc['nhac_phan'], [do_dai_video(p) or 0 for p in cac_phan], yc.get('am_luong_phan'))
                 except Exception:
                     traceback.print_exc()
-            if nhac and (dai_nhac or not yc.get('nhac_phan')) and tron_nhac_nen(thu_muc, ghep, ra, nhac, yc.get('am_luong_nhac', 30), td, dai_nhac):
+            # Khoảng lặng có chủ đích trên dòng thời gian cả phim (phu-de.json từng phần: câu có lang → từ lúc câu trước dứt)
+            khoang_lang, lech_kl = [], 0.0
+            for ph in cac_phan:
+                pd = ph.with_suffix('.phu-de.json')
+                try:
+                    cau = json.loads(pd.read_text(encoding='utf-8')) if pd.exists() else []
+                    for k in range(1, len(cau)):
+                        if cau[k].get('lang'):
+                            khoang_lang.append((cau[k - 1]['kt'] + lech_kl - 0.1, cau[k]['bd'] + lech_kl + 0.1))
+                except Exception:
+                    traceback.print_exc()
+                lech_kl += do_dai_video(ph) or 0
+            if nhac and (dai_nhac or not yc.get('nhac_phan')) and tron_nhac_nen(thu_muc, ghep, ra, nhac, yc.get('am_luong_nhac', 30), td, dai_nhac, khoang_lang):
                 ghep.unlink(missing_ok=True)
             else:
                 nhac = None

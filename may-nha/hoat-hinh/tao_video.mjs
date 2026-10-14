@@ -500,6 +500,7 @@ const TU_DONG_TAC = [
 const dongTacCau = (l) => (DONG_TAC[l.dong_tac] ? l.dong_tac : TU_DONG_TAC.find(([, re]) => re.test(String(l.chu ?? '').toLowerCase()))?.[0] ?? null)
 const amDongTac = [] // [tệp, lúc, âm lượng, câu] tiếng đi kèm động tác (đập tay, vỗ tay, viết)
 const LUC_DONG_TAC = {} // câu → [động tác, lúc bắt đầu] (nền rung theo cú đập…)
+const diemChi = [] // lúc con số / minh hoạ / chữ lớn hiện ra → bàn tay găng trắng trượt vào chỉ (BAN_TAY)
 // Về tư thế nghỉ (trước mỗi câu mới)
 const NGHI = (t0, phu) => [
   `tl.to(["#meo-dau", "#meo-tay-trai", "#meo-tay-phai", "#meo-tai-trai", "#meo-tai-phai", "#robot-dau", "#robot-tay-trai", "#robot-tay-phai"${phu ? `, "#${phu}-dau", "#${phu}-tay-trai", "#${phu}-tay-phai"` : ''}], { rotation: 0, duration: 0.45, ease: "sine.inOut" }, ${f(t0)});`,
@@ -1066,6 +1067,7 @@ const soDong = Object.entries(SO_DONG).map(([k, s]) => {
   tw.push(`tl.fromTo("#sd${i}", { opacity: 0, scale: 0.3, rotation: -6 }, { opacity: 1, scale: 1, rotation: -2, duration: 0.45, ease: "back.out(2.4)", immediateRender: false }, ${f(t)});`)
   tw.push(`tl.to("#sd${i}", { opacity: 0, scale: 1.25, duration: 0.3, ease: "power2.in" }, ${f(Math.max(t + 0.6, het - 0.3))});`)
   tiengSoDong.push(t)
+  diemChi.push(t)
   return `<div id="sd${i}" class="so-dong">${esc(s.chu)}</div>`
 })
 
@@ -1207,10 +1209,39 @@ let khungKeHtml = ''
 const tg = dong_thoi_gian && dong_thoi_gian.den > dong_thoi_gian.tu ? dong_thoi_gian : null
 const viTriNam = (n) => Math.max(0, Math.min(1, (n - tg.tu) / (tg.den - tg.tu)))
 let namTruoc = tg ? tg.tu : 0
+// A. Chữ khổng lồ (học từ kênh Bò và Gấu: "ADOLF HITLER 20/04/1889", "1907", "WW1" chiếm nửa khung): năm của các mốc lớn
+// đập vào giữa khung đúng lúc giọng đọc tới năm đó, kèm tiếng bùm; nơi chốn chữ nhỏ hơn bên dưới. Mốc đầu tiên của phần
+// và mốc cách năm trước từ 3 năm, cách lần chữ lớn trước ít nhất 18 giây (hiếm mới đắt). Thẻ nhỏ góc trái hiện sau đó.
+const CHU_LON = {} // câu → { nam, noi, t }
+{
+  let namLon = null, lucLon = -99
+  loi.forEach((l, i) => {
+    // Không chồng lên câu giật tít mở đầu, thẻ minh hoạ hay con số bật to của câu đó (chữ đè chữ)
+    if (!l.the_moc || (i === 0 && moc?.chu) || (MINH_HOA[l.minh_hoa?.kieu] && !l.anh_wiki?.tep) || SO_DONG[i]) return
+    const [dau, ...con] = String(l.the_moc).split('·').map((x) => x.trim())
+    const nam = dau.match(/\b(\d{3,4})\b/)?.[1]
+    if (!nam) return
+    const tNam = String(l.chu ?? '').indexOf(nam)
+    const t = Math.max(batDau[i] + 0.1, tNam >= 0 ? lucTu(i, tNam) - 0.15 : batDau[i] + 0.1)
+    if (t + 1.8 > batDau[i] + doDai[i] + 0.4) return
+    if (namLon !== null && (Math.abs(+nam - namLon) < 3 || t - lucLon < 18)) return
+    CHU_LON[i] = { nam, noi: con.join(' · '), t }
+    namLon = +nam
+    lucLon = t
+  })
+}
+const chuLon = Object.entries(CHU_LON).map(([k, c]) => {
+  const id = `cl${k}`
+  tw.push(`tl.fromTo("#${id}", { opacity: 0, scale: 2.6, rotation: -9 }, { opacity: 1, scale: 1, rotation: -3, duration: 0.28, ease: "power4.in", immediateRender: false }, ${f(c.t)});`)
+  tw.push(`tl.fromTo("#${id}", { y: 0 }, { y: 10, duration: 0.05, yoyo: true, repeat: 3, ease: "none", immediateRender: false }, ${f(c.t + 0.28)});`)
+  tw.push(`tl.to("#${id}", { opacity: 0, scale: 1.12, duration: 0.3, ease: "power2.in" }, ${f(c.t + 1.55)});`)
+  diemChi.push(c.t + 0.35)
+  return `<div id="${id}" class="chu-lon"><div class="cl-nam">${esc(c.nam)}</div>${c.noi ? `<div class="cl-noi">${esc(c.noi)}</div>` : ''}</div>`
+})
 const theMoc = []
 loi.forEach((l, i) => {
   if (!l.the_moc) return
-  const t0 = batDau[i] + 0.15
+  const t0 = CHU_LON[i] ? CHU_LON[i].t + 1.75 : batDau[i] + 0.15
   const het = Math.min(t0 + 3.6, (batDau[i + 1] ?? TONG) - 0.1)
   if (het - t0 < 1) return
   const nam = Number(String(l.the_moc).match(/\b(\d{3,4})\b/)?.[1] ?? 0)
@@ -1270,6 +1301,7 @@ loi.forEach((l, i) => {
   bd = Math.max(bd, t0 + 0.2, i === 0 && moc?.chu ? gtMoc + 0.1 : 0)
   const kt = Math.min(bd + 2.3, t0 + d + 0.35)
   if (kt - bd < 1.3) return
+  if (['so_lieu', 'trich_dan', 'dia_diem', 'bieu_tuong'].includes(m.kieu)) diemChi.push(bd + 0.2)
   const id = `mh${i}`
   const mh = ve(id, m)
   tw.push(...mh.tw(bd, kt - bd))
@@ -1353,6 +1385,60 @@ loi.forEach((l, i) => {
   anhTruoc = ten
 })
 
+// B. Bàn tay găng trắng (học từ kênh Bò và Gấu): trượt vào từ mép phải, chỉ vào thứ vừa hiện giữa khung (con số, minh hoạ,
+// ảnh tư liệu, chữ lớn), chọc nhẹ 2 nhịp rồi rút ra. Cách nhau ít nhất 7 giây cho khỏi thành trò lặp.
+const tayGang = `<svg viewBox="0 0 320 200" width="360" height="225"><g stroke="#111827" stroke-width="9" stroke-linejoin="round" stroke-linecap="round">
+  <rect x="236" y="62" width="70" height="86" rx="14" fill="#e5e7eb"/><path d="M246 70 L246 140 M262 70 L262 140" stroke-width="5" fill="none"/>
+  <path d="M238 70 Q170 52 150 70 L60 72 Q34 74 36 96 Q38 116 62 116 L132 116 Q120 136 140 150 Q150 166 176 162 Q214 166 238 146 Z" fill="#ffffff"/>
+  <path d="M136 118 Q168 112 196 124 M150 140 Q176 136 200 146" fill="none" stroke-width="6"/></g></svg>`
+const LUC_BAN_TAY = []
+const banTay = []
+{
+  const chon = [...diemChi.map((t) => Math.max(0.5, t))].sort((a, b) => a - b).filter((t, k, ds) => !k || t - ds[k - 1] >= 0.01)
+  let cuoi = -99
+  for (const t of chon) {
+    if (t - cuoi < 7 || t + 1.6 > TONG) continue
+    cuoi = t
+    const id = `bt${LUC_BAN_TAY.length}`
+    LUC_BAN_TAY.push(t)
+    tw.push(`tl.fromTo("#${id}", { opacity: 0, x: 420, rotation: 0 }, { opacity: 1, x: 0, rotation: -14, duration: 0.32, ease: "back.out(1.6)", immediateRender: false }, ${f(t)});`)
+    tw.push(`tl.fromTo("#${id}-noi", { x: 0 }, { x: -26, duration: 0.13, yoyo: true, repeat: 3, ease: "sine.inOut", immediateRender: false }, ${f(t + 0.36)});`)
+    tw.push(`tl.to("#${id}", { opacity: 0, x: 440, duration: 0.3, ease: "power2.in" }, ${f(t + 1.3)});`)
+    banTay.push(`<div id="${id}" class="ban-tay"><div id="${id}-noi">${tayGang}</div></div>`)
+  }
+}
+// C. Đoạn dồn dập ở cao trào (học từ kênh Bò và Gấu: chuỗi hình cắt ~0,15 giây): câu có cảnh hành động lớn hoặc loé sáng
+// → 6 hình nháy liên tiếp 0,13 giây (ảnh tư liệu / tranh nền của phần này, thiếu thì biểu tượng to trên nền màu), tiếng vút
+// rồi bùm. Cách nhau ít nhất 35 giây; không chen vào câu đang phủ ảnh tư liệu toàn khung.
+const LUC_DON_DAP = []
+const donDap = []
+{
+  const anhPhan = [...new Set([...loi.map((l) => l.anh_wiki?.tep), ...loi.map((l) => l.anh_nen_tep)].filter((t) => t && existsSync(join(GOC, 'hyperframes/assets', t))))]
+  const bieuTuong = [...new Set(loi.map((l) => l.bang?.bieu_tuong).filter(Boolean))]
+  const MAU = ['#b91c1c', '#111827', '#ca8a04', '#1e3a8a']
+  let cuoi = -99
+  loi.forEach((l, i) => {
+    const cao = (l.hanh_dong && !['khong', 'lich_lat'].includes(l.hanh_dong)) || l.anh_sang === 'loe_sang'
+    // Không chen vào câu đang phủ ảnh tư liệu toàn khung hay câu đã có chữ khổng lồ (hai cú đập chồng nhau)
+    if (!cao || CHU_LON[i] || doanAnh.some((c) => c.kieu === 'toan' && c.tu <= i && c.het >= i)) return
+    const t = batDau[i] + 0.15
+    if (t - cuoi < 35 || doDai[i] < 1.6 || (anhPhan.length < 3 && bieuTuong.length < 2)) return
+    cuoi = t
+    const id = `dd${LUC_DON_DAP.length}`
+    LUC_DON_DAP.push(t)
+    const hinh = Array.from({ length: 6 }, (_, j) => {
+      const k = i + j
+      if (anhPhan.length >= 3) return `<div id="${id}-${j}" class="dd-hinh"><img src="assets/${esc(anhPhan[k % anhPhan.length])}" style="transform:scale(${1.05 + (j % 3) * 0.08}) rotate(${(j % 2 ? 1 : -1) * 2}deg)"/></div>`
+      return `<div id="${id}-${j}" class="dd-hinh" style="background:${MAU[j % MAU.length]}"><span>${bieuTuong[k % bieuTuong.length]}</span></div>`
+    })
+    hinh.forEach((_, j) => {
+      tw.push(`tl.set("#${id}-${j}", { opacity: 1 }, ${f(t + j * 0.13)});`)
+      tw.push(`tl.set("#${id}-${j}", { opacity: 0 }, ${f(t + (j + 1) * 0.13)});`)
+    })
+    donDap.push(`<div id="${id}" class="don-dap">${hinh.join('')}</div>`)
+  })
+}
+
 // ── Âm thanh: hiệu ứng theo câu (AI chọn am_thanh), tiếng vút khi đổi cảnh, âm nền theo bối cảnh (ambience).
 // Tệp ở may-nha/hoat-hinh/am-thanh, thợ máy nhà chép vào assets; thiếu tệp (thợ đời cũ) thì bỏ qua.
 const doDaiTep = (ten) => {
@@ -1403,6 +1489,12 @@ const themAm = (ten, luc, amLuong, toiDa = Infinity) => {
   amPhu.push(`<audio id="ap-${amPhu.length}" src="assets/${ten}.wav" data-start="${f(luc)}" data-duration="${f(dai)}" data-track-index="${3000 + amPhu.length}" data-volume="${amLuong}"></audio>`)
 }
 for (const t of tiengSoDong) themAm('sfx-ting', t, 0.3)
+for (const c of Object.values(CHU_LON)) themAm('sfx-bum', c.t + 0.22, 0.45)
+for (const t of LUC_BAN_TAY) themAm('sfx-bop', t + 0.3, 0.25)
+for (const t of LUC_DON_DAP) {
+  themAm('sfx-vut', t, 0.35)
+  themAm('sfx-bum', t + 0.75, 0.4)
+}
 // Tiếng đạo cụ (prop foley): đạo cụ hiện ra kèm đúng tiếng của nó (bút sột soạt, giấy lật, kim loại, lửa…), xác nhận
 // điều khán giả đang thấy. Chỉ những đạo cụ có tiếng đặc trưng; câu AI đã chọn hiệu ứng riêng thì thôi (không chồng tiếng)
 const FOLEY_DAO_CU = {
@@ -1549,6 +1641,14 @@ const CSS_NGANG = `
       .lich { position: absolute; left: ${(RONG - 220) / 2}px; top: 112px; width: 220px; height: 240px; border-radius: 18px; background: #f8fafc; box-shadow: 0 18px 40px #0009; overflow: hidden; perspective: 600px; }
       .lich-dau { height: 56px; background: #dc2626; }
       .lich-to { position: absolute; left: 0; right: 0; top: 56px; bottom: 0; display: flex; align-items: center; justify-content: center; font-size: 110px; font-family: "Emoji", sans-serif; background: #fff; border-top: 4px dashed #cbd5e1; }
+      .chu-lon { position: absolute; left: 0; right: 0; top: ${NGANG ? 250 : 520}px; text-align: center; opacity: 0; pointer-events: none; }
+      .cl-nam { font-size: ${NGANG ? 300 : 260}px; font-weight: 700; line-height: 1; color: #fde047; -webkit-text-stroke: 16px #111827; paint-order: stroke fill; text-shadow: 0 16px 0 #111827, 0 30px 60px #000c; letter-spacing: 4px; }
+      .cl-noi { display: inline-block; margin-top: 18px; padding: 10px 34px; font-size: ${NGANG ? 64 : 58}px; font-weight: 700; color: #fff; background: #b91c1c; border: 6px solid #111827; border-radius: 14px; transform: rotate(2deg); box-shadow: 0 12px 0 #111827; }
+      .ban-tay { position: absolute; right: -30px; top: ${NGANG ? 430 : 980}px; opacity: 0; filter: drop-shadow(0 10px 18px #0007); }
+      .don-dap { position: absolute; inset: 0; pointer-events: none; }
+      .dd-hinh { position: absolute; inset: 0; opacity: 0; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #000; }
+      .dd-hinh img { width: 100%; height: 100%; object-fit: cover; filter: contrast(1.25) saturate(1.2); }
+      .dd-hinh span { font-size: ${NGANG ? 420 : 380}px; line-height: 1; filter: drop-shadow(0 20px 30px #000a); }
       .so-dong { position: absolute; left: 0; right: 0; top: 118px; text-align: center; font-size: 104px; font-weight: 700; line-height: 1.1; color: #fde047; -webkit-text-stroke: 10px #111827; paint-order: stroke fill; text-shadow: 0 10px 0 #111827, 0 18px 40px #000a; opacity: 0; }
       .dao-cu-khung { position: absolute; right: 80px; top: 140px; width: 170px; height: 170px; display: flex; align-items: center; justify-content: center; font-size: 128px; line-height: 1; font-family: "Emoji", sans-serif; filter: drop-shadow(0 14px 20px #0008); opacity: 0; }
       .moc { top: 110px; height: 400px; }
@@ -1683,7 +1783,7 @@ const trang = `<!doctype html>
       </div>
 ${NGANG ? bang.join('') : ''}
       <div id="vien-toi" class="clip" data-start="0" data-duration="${f(TONG)}" data-track-index="5"><div id="den"></div><div id="chop"></div></div>
-      <div id="lop-minh-hoa" class="clip" data-start="0" data-duration="${f(TONG)}" data-track-index="7">${anhThat.join('')}${giatTit.html}${theMoc.join('')}${minhHoaKhung.join('')}${daoCuKhung.join('')}${soDong.join('')}${hanhDongKhung.join('')}${khungKeHtml}${manKetHtml}${theChuongHtml}</div>${phuDe.join('')}
+      <div id="lop-minh-hoa" class="clip" data-start="0" data-duration="${f(TONG)}" data-track-index="7">${anhThat.join('')}${giatTit.html}${theMoc.join('')}${minhHoaKhung.join('')}${daoCuKhung.join('')}${soDong.join('')}${chuLon.join('')}${hanhDongKhung.join('')}${banTay.join('')}${khungKeHtml}${donDap.join('')}${manKetHtml}${theChuongHtml}</div>${phuDe.join('')}
       ${[...amThanh, ...amPhu].join('\n      ')}
     </div>
     <script>

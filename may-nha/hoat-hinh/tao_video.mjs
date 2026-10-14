@@ -499,6 +499,7 @@ const TU_DONG_TAC = [
 ]
 const dongTacCau = (l) => (DONG_TAC[l.dong_tac] ? l.dong_tac : TU_DONG_TAC.find(([, re]) => re.test(String(l.chu ?? '').toLowerCase()))?.[0] ?? null)
 const amDongTac = [] // [tệp, lúc, âm lượng, câu] tiếng đi kèm động tác (đập tay, vỗ tay, viết)
+const LUC_DONG_TAC = {} // câu → [động tác, lúc bắt đầu] (nền rung theo cú đập…)
 // Về tư thế nghỉ (trước mỗi câu mới)
 const NGHI = (t0, phu) => [
   `tl.to(["#meo-dau", "#meo-tay-trai", "#meo-tay-phai", "#meo-tai-trai", "#meo-tai-phai", "#robot-dau", "#robot-tay-trai", "#robot-tay-phai"${phu ? `, "#${phu}-dau", "#${phu}-tay-trai", "#${phu}-tay-phai"` : ''}], { rotation: 0, duration: 0.45, ease: "sine.inOut" }, ${f(t0)});`,
@@ -534,6 +535,7 @@ loi.forEach((l, i) => {
     const khop = TU_DONG_TAC.find(([ten]) => ten === dongTac)?.[1].exec(String(l.chu ?? '').toLowerCase())
     const batDauDT = Math.min(Math.max(t0 + 0.15, khop ? lucTu(i, khop.index) - 0.25 : t0 + 0.3), Math.max(t0 + 0.15, t0 + d - 0.9))
     tw.push(...DONG_TAC[dongTac](nguoiLam, batDauDT))
+    LUC_DONG_TAC[i] = [dongTac, batDauDT]
     // Tiếng đi kèm tính từ lúc bắt đầu động tác (đập: lúc tay chạm xuống)
     const tiengDT = { dap_tay: ['sfx-bum', 0.5, 0.22], vo_tay: ['sfx-vo-tay', 0.05, 0.25], viet: ['sfx-but-viet', 0.05, 0.3] }[dongTac]
     if (tiengDT) amDongTac.push([tiengDT[0], batDauDT + tiengDT[1], tiengDT[2], i])
@@ -784,7 +786,30 @@ const nenCanh = doanCanh.map((dc, k) => {
     anh = `<img id="bc${k}-anh" class="anh-nen-canh${tepAnh.startsWith('nen-') ? ' tu-lam' : ''}" src="assets/${esc(tepAnh)}" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px"/>`
     tw.push(`tl.fromTo("#bc${k}-anh", { scale: 1 }, { scale: 1.06, duration: ${f(Math.max(1, het - t0))}, ease: "none", immediateRender: false }, ${f(t0)});`)
   }
-  return `<div id="bc${k}" class="lop-nen"${k ? ' style="opacity:0"' : ''}>${svg}${anh}</div>`
+  // Nền chuyển động THEO TỪNG CÂU (lớp #bc<k>-dong, riêng với hiệu ứng đổi cảnh và phóng tranh): mỗi câu nền trôi sang
+  // khung mới (đổi chiều câu sau), độ gần xa theo sắc thái câu — căng thẳng / lo dồn nền tới, bất ngờ / khoảnh khắc lặng
+  // giật tới nhanh rồi đứng, buồn lùi ra cho không gian trống trải, vui nới rộng, suy nghĩ trôi chậm. Mỗi câu một lệnh
+  // fromTo nối tiếp (đầu câu này = cuối câu trước), không chồng lệnh nên không giật khi dựng song song.
+  const TIEN = { bat_ngo: 0.05, tuc_gian: 0.04, lo_lang: 0.035, to_mo: 0.02, suy_nghi: 0.012, giai_thich: 0.01, khang_dinh: 0.01, vui: -0.02, buon: -0.03 }
+  let s0 = 1, x0 = 0
+  for (let i = dc.tu; i <= dc.het; i++) {
+    const l = loi[i]
+    const tu = i === dc.tu ? t0 : batDau[i] - 0.15
+    const den = i === dc.het ? het : batDau[i + 1] - 0.15
+    if (den - tu < 0.3) continue
+    let s1 = s0 + (TIEN[l.cam_xuc] ?? 0.01) * (l.lang ? 1.4 : 1)
+    if (s1 > 1.1 || s1 < 1) s1 = s0 - (s1 - s0) // chạm giới hạn thì đi ngược lại
+    s1 = Math.min(1.1, Math.max(1, s1))
+    const x1 = ((i - dc.tu) % 2 ? 1 : -1) * (NGANG ? 30 : 20) * (['buon', 'suy_nghi'].includes(l.cam_xuc) ? 0.5 : 1)
+    const nhanh = l.lang || l.cam_xuc === 'bat_ngo' || l.anh_sang === 'loe_sang'
+    tw.push(`tl.fromTo("#bc${k}-dong", { scale: ${f(s0)}, x: ${f(x0)} }, { scale: ${f(s1)}, x: ${f(x1)}, duration: ${f(nhanh ? Math.min(0.55, den - tu) : den - tu)}, ease: "${nhanh ? 'power3.out' : 'sine.inOut'}", immediateRender: false }, ${f(tu)});`)
+    // Động tác mạnh trong câu (đập tay) → nền rung theo cú đập (trục y riêng, không đụng lệnh trôi ở trên)
+    const dt = LUC_DONG_TAC[i]
+    if (dt?.[0] === 'dap_tay') tw.push(`tl.fromTo("#bc${k}-dong", { y: 0 }, { y: 7, duration: 0.06, yoyo: true, repeat: 3, ease: "power1.inOut", immediateRender: false }, ${f(dt[1] + 0.5)});`)
+    s0 = s1
+    x0 = x1
+  }
+  return `<div id="bc${k}" class="lop-nen"${k ? ' style="opacity:0"' : ''}><div id="bc${k}-dong" class="nen-dong">${svg}${anh}</div></div>`
 })
 
 // ── Máy quay: cảnh rộng, cảnh vừa và cận mặt người nói; nền trôi chậm hơn nhân vật để có chiều sâu ─
@@ -1569,6 +1594,7 @@ const trang = `<!doctype html>
       #chop { position: absolute; inset: 0; background: #fff; opacity: 0; }
       .nv { filter: drop-shadow(0 0 10px #ffffff66) drop-shadow(0 24px 30px #0000008c); }
       .lop-nen { position: absolute; inset: 0; }
+      .nen-dong { position: absolute; inset: 0; transform-origin: 50% 62%; }
       .nen-svg { display: block; }
       .anh-nen-canh.tu-lam { filter: brightness(0.94) !important; }
       .anh-nen-canh { position: absolute; object-fit: cover; transform-origin: 50% 70%; filter: blur(1.2px) brightness(0.86);

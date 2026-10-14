@@ -17,6 +17,8 @@ function tao(ten, giay, nguon, loc = '') {
   console.log('đã tạo', ten)
 }
 
+// Lật trang giấy: tiếng sột soạt ồn trắng lọc cao, quét nhanh rồi tắt (ảnh tư liệu hiện ra)
+tao('lat-trang', 0.55, `anoisesrc=color=white:d=0.55:a=0.8`, "highpass=f=1800,lowpass=f=7000,volume='1.6*pow(sin(PI*min(t/0.42\\,1)),1.5)*(0.6+0.4*sin(2*PI*22*t))':eval=frame")
 // Gió thổi: tiếng ồn hồng lọc dải, to dần rồi nhỏ dần, rít nhẹ
 tao('gio', 2.6, `anoisesrc=color=pink:d=2.6:a=0.9`, "bandpass=f=550:width_type=o:w=1.4,volume='1.8*pow(sin(PI*t/2.6),2)*(0.8+0.2*sin(2*PI*1.3*t))':eval=frame")
 // Bước chân: 4 bước, tiếng thịch trầm + tiếng sột soạt đế giày

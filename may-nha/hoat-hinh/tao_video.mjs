@@ -197,8 +197,9 @@ doanPhu.forEach((dp, k) => {
   for (const i of dp.cau) phuCuaCau[i] = `phu${k}`
 })
 const laPhu = (ai) => !!NHAN_VAT_PHU[ai]
-// Ảnh thật (phim tiểu sử): các câu liền nhau cùng một ảnh gom một đoạn. Kiểu đặt: đoạn chỉ có người kể (Mèo / Bit đã
-// lui ra mép) và không có hai nhân vật phụ cùng đứng → ảnh lớn bên phải; còn lại → ảnh nhỏ trên cao giữa màn hình
+// Ảnh thật (phim tiểu sử): các câu liền nhau cùng một ảnh gom một đoạn. Kiểu đặt: đoạn chỉ có người kể (khung ngang)
+// → ảnh tư liệu phủ kín khung hình, nhân vật nhường chỗ cho tư liệu như phim tài liệu
+// (góp ý 14/10/2026: nhân vật "gánh" quá nhiều thời lượng, ảnh nhỏ góc phải như slide); còn lại → ảnh nhỏ trên cao
 const doanAnh = []
 loi.forEach((l, i) => {
   const a = l.anh_wiki
@@ -209,8 +210,7 @@ loi.forEach((l, i) => {
 })
 for (const c of doanAnh) {
   const chiNguoiKe = loi.slice(c.tu, c.het + 1).every((l) => l.ai === 'nguoi_ke')
-  const haiPhu = doanPhu.some((dp) => dp.doi && dp.tu <= c.het && dp.het >= c.tu)
-  c.kieu = NGANG && chiNguoiKe && !haiPhu ? 'ben' : 'tren'
+  c.kieu = NGANG && chiNguoiKe ? 'toan' : 'tren'
 }
 // Khung ngang: câu có thẻ nằm trên cao (thẻ minh hoạ, ảnh kiểu "trên") → máy quay lùi nhẹ + hạ khung (chừa khoảng
 // trống trên đầu nhân vật cho thẻ), không cận mặt, để thẻ không đè lên đầu ai
@@ -769,8 +769,8 @@ const daoCu = []
 const daoCuKhung = [] // khung ngang: đạo cụ ở góc trên bên phải của khung hình
 loi.forEach((l, i) => {
   const bt = DAO_CU[l.dao_cu]
-  // Câu có ảnh lớn bên phải thì bỏ đạo cụ (cùng chỗ)
-  if (!bt || (NGANG && doanAnh.some((c) => c.kieu === 'ben' && c.tu <= i && c.het >= i))) return
+  // Câu đang phủ ảnh tư liệu toàn khung thì bỏ đạo cụ
+  if (!bt || (NGANG && doanAnh.some((c) => c.kieu === 'toan' && c.tu <= i && c.het >= i))) return
   const t0 = batDau[i]
   const d = doDai[i]
   const id = `dc${i}`
@@ -972,6 +972,7 @@ loi.forEach((l, i) => {
 // chính nó làm mờ; từ từ phóng to + lia nhẹ (Ken Burns). Không ghi nguồn trên hình: ghi nguồn nằm ở mô tả YouTube
 // (trang chi tiết có đoạn "Ghi nguồn ảnh" để chép).
 // Các câu liền nhau cùng một ảnh thì giữ nguyên khung.
+const amAnh = [] // lúc từng ảnh tư liệu hiện ra (tiếng lật trang)
 const anhThat = doanAnh.map((c, k) => {
   const id = `anh${k}`
   // Câu đầu phim: chờ dòng chữ mở đầu (móc câu) chạy xong rồi mới hiện ảnh
@@ -980,9 +981,17 @@ const anhThat = doanAnh.map((c, k) => {
   // Hiện quá ngắn (dưới 1,6 giây) thì bỏ, tránh ảnh loé qua rồi tắt
   if (ra - vao < 1.6) return ''
   const huong = k % 2 ? 1 : -1
-  tw.push(`tl.fromTo("#${id}", { opacity: 0, y: -40, rotation: ${-4 * huong}, scale: 0.9 }, { opacity: 1, y: 0, rotation: ${-1.2 * huong}, scale: 1, duration: 0.55, ease: "back.out(1.6)", immediateRender: false }, ${f(vao)});`)
-  tw.push(`tl.fromTo("#${id}-anh", { scale: 1, xPercent: ${2 * huong} }, { scale: 1.12, xPercent: ${-2 * huong}, duration: ${f(ra - vao)}, ease: "none", immediateRender: false }, ${f(vao)});`)
-  tw.push(`tl.to("#${id}", { opacity: 0, y: -24, duration: 0.35, ease: "power2.in" }, ${f(ra - 0.3)});`)
+  if (c.kieu === 'toan') {
+    // Toàn khung: hiện mờ dần + lùi nhẹ, Ken Burns rõ (phóng 1 → 1,18, lia ngang), tắt mờ dần; tiếng lật trang lúc hiện
+    tw.push(`tl.fromTo("#${id}", { opacity: 0, scale: 1.05 }, { opacity: 1, scale: 1, duration: 0.45, ease: "power2.out", immediateRender: false }, ${f(vao)});`)
+    tw.push(`tl.fromTo("#${id}-anh", { scale: 1, xPercent: ${3 * huong} }, { scale: 1.18, xPercent: ${-3 * huong}, duration: ${f(ra - vao)}, ease: "none", immediateRender: false }, ${f(vao)});`)
+    tw.push(`tl.to("#${id}", { opacity: 0, duration: 0.4, ease: "power2.in" }, ${f(ra - 0.35)});`)
+  } else {
+    tw.push(`tl.fromTo("#${id}", { opacity: 0, y: -40, rotation: ${-4 * huong}, scale: 0.9 }, { opacity: 1, y: 0, rotation: ${-1.2 * huong}, scale: 1, duration: 0.55, ease: "back.out(1.6)", immediateRender: false }, ${f(vao)});`)
+    tw.push(`tl.fromTo("#${id}-anh", { scale: 1, xPercent: ${2 * huong} }, { scale: 1.12, xPercent: ${-2 * huong}, duration: ${f(ra - vao)}, ease: "none", immediateRender: false }, ${f(vao)});`)
+    tw.push(`tl.to("#${id}", { opacity: 0, y: -24, duration: 0.35, ease: "power2.in" }, ${f(ra - 0.3)});`)
+  }
+  amAnh.push(vao)
   for (let i = c.tu; i <= c.het; i++) {
     if (bangCuaCau[i] === null || bangCuaCau[i] === undefined) continue
     tw.push(`tl.to("#bang${bangCuaCau[i]}", { opacity: 0, duration: 0.1 }, ${f(vao - 0.05)});`)
@@ -990,7 +999,7 @@ const anhThat = doanAnh.map((c, k) => {
   }
   const kieu = c.kieu
   const src = `assets/${esc(c.a.tep)}`
-  return `<div id="${id}" class="anh-that ${kieu}"><div class="anh-khung"><img class="anh-nen" src="${src}"/><img id="${id}-anh" class="anh-chinh" src="${src}"/></div></div>`
+  return `<div id="${id}" class="anh-that ${kieu}"><div class="anh-khung"><img class="anh-nen" src="${src}"/><img id="${id}-anh" class="anh-chinh" src="${src}"/>${kieu === 'toan' ? '<div class="anh-toi"></div>' : ''}</div></div>`
 })
 
 // Bảng tin phía sau đổi theo lời thoại
@@ -1076,6 +1085,8 @@ const themAm = (ten, luc, amLuong, toiDa = Infinity) => {
   amPhu.push(`<audio id="ap-${amPhu.length}" src="assets/${ten}.wav" data-start="${f(luc)}" data-duration="${f(dai)}" data-track-index="${3000 + amPhu.length}" data-volume="${amLuong}"></audio>`)
 }
 for (const t of tiengSoDong) themAm('sfx-ting', t, 0.3)
+// Ảnh tư liệu hiện ra: tiếng lật trang giấy nhẹ (âm thanh đi kèm hình, bù cho phần nhân vật đứng yên)
+for (const t of amAnh) themAm('sfx-lat-trang', Math.max(0, t - 0.05), 0.4)
 for (const [ten, t, a] of amHanhDong) themAm(ten, t, a)
 for (const c of doanThoiTiet) {
   if (c.tt === 'suong') continue
@@ -1288,7 +1299,10 @@ const trang = `<!doctype html>
       .suong-may { position: absolute; border-radius: 50%; background: #f1f5f9; filter: blur(46px); opacity: 0.5; }
       .anh-that { position: absolute; opacity: 0; display: flex; flex-direction: column; align-items: center; filter: drop-shadow(0 18px 30px #000b); }
       .anh-that.tren { left: ${(RONG - 500) / 2}px; top: ${NGANG ? 118 : 300}px; width: 500px; }
-      .anh-that.ben { left: ${RONG - 60 - 720}px; top: 120px; width: 720px; }
+      .anh-that.toan { left: 0; top: 0; width: ${RONG}px; height: ${CAO}px; filter: none; }
+      .anh-that.toan .anh-khung { width: 100%; height: 100%; aspect-ratio: auto; border: 0; border-radius: 0; }
+      .anh-that.toan .anh-nen { filter: blur(28px) brightness(0.42); }
+      .anh-toi { position: absolute; inset: 0; background: radial-gradient(ellipse at center, transparent 55%, #000a 100%), linear-gradient(transparent 70%, #0009); }
       .anh-khung { position: relative; width: 100%; aspect-ratio: 5 / 3; overflow: hidden; border: 12px solid #fdfaf3; border-radius: 6px; background: #111; box-sizing: border-box; }
       .anh-nen { position: absolute; inset: -30px; width: calc(100% + 60px); height: calc(100% + 60px); object-fit: cover; filter: blur(18px) brightness(0.6); }
       .anh-chinh { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
@@ -1320,7 +1334,7 @@ const trang = `<!doctype html>
       </div>
 ${NGANG ? bang.join('') : ''}
       <div id="vien-toi" class="clip" data-start="0" data-duration="${f(TONG)}" data-track-index="5"><div id="den"></div><div id="chop"></div></div>
-      <div id="lop-minh-hoa" class="clip" data-start="0" data-duration="${f(TONG)}" data-track-index="7">${giatTit.html}${theMoc.join('')}${minhHoaKhung.join('')}${anhThat.join('')}${daoCuKhung.join('')}${soDong.join('')}${hanhDongKhung.join('')}${khungKeHtml}${manKetHtml}${theChuongHtml}</div>${phuDe.join('')}
+      <div id="lop-minh-hoa" class="clip" data-start="0" data-duration="${f(TONG)}" data-track-index="7">${anhThat.join('')}${giatTit.html}${theMoc.join('')}${minhHoaKhung.join('')}${daoCuKhung.join('')}${soDong.join('')}${hanhDongKhung.join('')}${khungKeHtml}${manKetHtml}${theChuongHtml}</div>${phuDe.join('')}
       ${[...amThanh, ...amPhu].join('\n      ')}
     </div>
     <script>

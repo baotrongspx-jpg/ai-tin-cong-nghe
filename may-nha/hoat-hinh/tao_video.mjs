@@ -546,8 +546,8 @@ const VAT = {
   dia: ['🍽️', 'truoc'], bot: ['🧽', 'phai'], vali: ['🧳', 'phai'], laptop: ['💻', 'truoc'], sach: ['📖', 'truoc'],
   mic: ['🎤', 'phai'], tien: ['💵', 'phai'], bat: ['🍜', 'truoc'], dua: ['🥢', 'phai'], co_le: ['🔧', 'phai'], chip: ['🔌', 'truoc'],
   zzz: ['💤', 'dau'], tuc: ['💢', 'dau'], tim: ['💖', 'dau'],
-  cua: ['🚪', 'canh'], em_be: ['👶', 'nguc'], ba_lo: ['🎒', 'vai'], la: ['🍂', 'trai'], chop: ['⚡', 'dau'], xe: ['🚗', 'xe'],
-  chuong: ['🔔', 'canh'], bua: ['🔨', 'phai'], nhan: ['💍', 'phai'], kinh_tay: ['🥽', 'truoc'], kinh_mat: ['🥽', 'mat'],
+  cua: ['🚪', 'canh'], em_be: ['👶', 'nguc'], ba_lo: ['🎒', 'vai'], la: ['🍂', 'trai'], chop: ['⚡', 'troi'], xe: ['🚗', 'xe'],
+  chuong: ['🔔', 'canh_cao'], bua: ['🔨', 'phai'], nhan: ['💍', 'phai'], kinh_tay: ['🥽', 'truoc'], kinh_mat: ['🥽', 'mat'],
   dong_ho_cat: ['⏳', 'nguc'], bang_ck: ['📈', 'canh_xa'], chuong_tay: ['🔔', 'trai'], hoa: ['💐', 'nguc'], man_hinh: ['🖥️', 'canh'], nut: ['🔴', 'ban'],
   noi: ['🛏️', 'noi'], be: ['👶', 'be'], binh: ['🍼', 'binh'], zzz_be: ['💤', 'be_ngu'],
 }
@@ -1404,14 +1404,31 @@ const DAU_HIEU = {} // nhân vật (meo / robot / phu<k>) → html
   })
   function d0(i) { return doDai[i] > 1.6 }
 }
-// Gắn đồ vật hành động kể chuyện vào hình nhân vật: đồ cầm tay nằm trong nhóm cánh tay (xoay theo tay), đồ đặt trước
-// người / bay trên đầu vẽ đè lên cùng
-const ganVat = (svg, id) => {
+// Đồ của CẢNH (cửa, nôi + em bé, chuông, màn hình + nút, bảng chứng khoán, tia chớp trên trời) không dồn lên người
+// nhân vật (chủ trang 15/10/2026: "cái gì cũng dồn lên nhân vật nhìn bị rối và chồng chéo") — đặt ở lớp cảnh PHÍA SAU
+// nhân vật (#bo-canh, đầu #camera-nv nên đi theo máy quay), đứng trên mặt sàn, về phía tay phải nhân vật đang với tới
+// (nhân vật lật hình thì sang trái). Đồ cầm tay (bút, nhẫn, micro, chổi…) vẫn nằm trong tay.
+// cho → [lệch ngang so với tâm nhân vật, đáy cách mặt sàn, cỡ chữ emoji]
+// Khung dọc hẹp (1080): đặt gần hơn, nhỏ hơn cho đồ không trôi ra ngoài khung
+const CHO_CANH = NGANG
+  ? { canh: [330, 0, 330], canh_cao: [270, 300, 200], canh_xa: [370, 150, 290], noi: [300, 0, 300], be: [296, 120, 118], binh: [356, 150, 60], be_ngu: [372, 250, 64], ban: [168, 150, 70], troi: [250, 560, 170] }
+  : { canh: [250, 0, 250], canh_cao: [215, 290, 160], canh_xa: [265, 160, 200], noi: [235, 0, 220], be: [232, 95, 92], binh: [280, 115, 48], be_ngu: [296, 190, 52], ban: [150, 150, 60], troi: [190, 540, 140] }
+const boCanh = []
+const ganVat = (svg, id, dp) => {
   let ra = svg
   let tren = ''
   for (const ten of VAT_CAN[id] ?? []) {
     const [bt, cho] = VAT[ten]
-    const [x, y, co] = { phai: [280, 496, 96], trai: [120, 496, 96], truoc: [200, 452, 128], dau: [300, 110, 70], canh: [452, 330, 250], nguc: [200, 372, 130], vai: [296, 318, 74], xe: [200, 470, 290], mat: [200, 192, 118], canh_xa: [500, 300, 210], ban: [262, 478, 64], noi: [200, 500, 300], be: [196, 418, 104], binh: [252, 428, 58], be_ngu: [258, 360, 54] }[cho]
+    if (CHO_CANH[cho] && dp) {
+      const [lech, cao, co] = CHO_CANH[cho]
+      const ben = dp.lech < 0 ? -1 : 1
+      const tam = 354 + dp.lech + 186
+      const san = 440 + PHU_XUONG + 544
+      const w = co * 1.3
+      boCanh.push(`<div id="${id}-vat-${ten}" class="vat-canh" style="left:${f(tam + ben * lech - w / 2)}px;top:${f(san - cao - co * 1.1)}px;width:${f(w)}px;height:${f(co * 1.1)}px;font-size:${co}px">${bt}</div>`)
+      continue
+    }
+    const [x, y, co] = { phai: [280, 496, 96], trai: [120, 496, 96], truoc: [200, 452, 128], dau: [300, 110, 70], nguc: [200, 372, 130], vai: [296, 318, 74], xe: [200, 470, 290], mat: [200, 192, 118] }[cho]
     const el = `<text id="${id}-vat-${ten}" x="${x}" y="${y}" font-size="${co}" text-anchor="middle" dominant-baseline="middle" opacity="0" style="font-family: 'Emoji', sans-serif">${bt}</text>`
     const mo = `<g id="${id}-tay-${cho}">`
     // Chèn ở CUỐI nhóm cánh tay (trước thẻ </g> khớp với nó) để đạo cụ vẽ đè lên đồ nhân vật đang cầm sẵn (cặp, sách…)
@@ -1478,7 +1495,7 @@ const nvPhu = doanPhu.map((dp, k) => {
   // Không ghi tên trên đầu (trang phục tự nói lên họ là ai); hai nhân vật chính dạt sang hai bên chừa chỗ cho nhân vật phụ
   // Mèo / Bit dạt ra bao xa: tính chung cho mọi người trên sân khấu theo thời gian (sanKhau, xem dưới)
   sanKhau.push({ vao, ra: het - 0.3, lech: dp.lech })
-  return `<div id="${id}" class="nv-phu" data-ten="${dp.ten}" style="left:${354 + dp.lech}px"><svg viewBox="${NHAN_VAT_PHU[dp.ten].viewBox ?? '0 0 400 600'}" width="372" height="558" class="nv">${ganVat(NHAN_VAT_PHU[dp.ten].svg(id), id)}</svg>${DAU_HIEU[id] ?? ''}</div>`
+  return `<div id="${id}" class="nv-phu" data-ten="${dp.ten}" style="left:${354 + dp.lech}px"><svg viewBox="${NHAN_VAT_PHU[dp.ten].viewBox ?? '0 0 400 600'}" width="372" height="558" class="nv">${ganVat(NHAN_VAT_PHU[dp.ten].svg(id), id, dp)}</svg>${DAU_HIEU[id] ?? ''}</div>`
 })
 // Mèo / Bit dạt sang hai bên chừa chỗ cho nhân vật phụ. Tính theo thời gian, mỗi lúc có người vào / ra: ai đang đứng trên
 // sân khấu, đứng ở đâu → độ dạt cần thiết (có người đứng lệch trái / phải hoặc hai người cùng đứng: dạt xa 300; một người
@@ -2467,6 +2484,8 @@ const trang = `<!doctype html>
       .logo-th { position: absolute; top: ${NGANG ? 140 : 250}px; width: 150px; display: flex; flex-direction: column; align-items: center; gap: 8px; opacity: 0; pointer-events: none; filter: drop-shadow(0 12px 18px #0007); }
       .lg-o { width: 128px; height: 128px; border-radius: 30px; display: flex; align-items: center; justify-content: center; font-weight: 800; line-height: 1; letter-spacing: -1px; border: 5px solid #ffffffdd; font-family: "BVP", "Emoji", sans-serif; }
       .lg-ten { padding: 3px 12px; border-radius: 10px; background: #0f172acc; color: #fff; font-size: 22px; font-weight: 700; white-space: nowrap; }
+      #bo-canh { position: absolute; inset: 0; pointer-events: none; }
+      .vat-canh { position: absolute; display: flex; align-items: flex-end; justify-content: center; line-height: 1; opacity: 0; font-family: "Emoji", sans-serif; filter: drop-shadow(0 16px 12px #0006); }
       .dau-hieu { position: absolute; top: 30px; font-size: 130px; font-weight: 700; line-height: 1; color: #fde047; -webkit-text-stroke: 12px #111827; paint-order: stroke fill; opacity: 0; pointer-events: none; filter: drop-shadow(0 8px 10px #0007); }
       .dh-meo { left: 450px; }
       .dh-robot { left: 70px; }
@@ -2547,6 +2566,7 @@ const trang = `<!doctype html>
       </div>${NGANG ? '' : bang.join('')}
       <div id="sau-khau" class="clip" data-start="0" data-duration="${f(TONG)}" data-track-index="4">
         <div class="troi"><div class="the-gioi"><div id="camera-nv" class="camera">
+          <div id="bo-canh">${boCanh.join('')}</div>
           ${nvPhu.join('')}
           <div id="o-meo" class="o-nv">${meoSvg}${DAU_HIEU.meo ?? ''}</div>
           <div id="o-robot" class="o-nv">${robotSvg}${DAU_HIEU.robot ?? ''}</div>

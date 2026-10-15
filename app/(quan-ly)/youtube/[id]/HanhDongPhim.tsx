@@ -159,8 +159,17 @@ export default function HanhDongPhim({ d, onDuAn }: { d: DuAnYT; onDuAn: (d: DuA
             <div className="grid gap-2 rounded-lg bg-orange-50 p-3 ring-1 ring-orange-200">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-sm font-bold text-orange-900">Cần chuẩn bị ({chuanBi.length})</p>
-                <NutChepNho chu={danhSachChuanBi(d.tieu_de, pt)} ten="📋 Chép danh sách cần chuẩn bị" lon />
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" className="btn btn-sm bg-emerald-600 text-white hover:bg-emerald-700" disabled={!!dang || cu} onClick={() => void apDung()}>
+                    {dang === 'ap' ? <Xoay /> : '✓'} Gắn (tự sửa những mục sửa được)
+                  </button>
+                  <NutChepNho chu={danhSachChuanBi(d.tieu_de, pt)} ten="📋 Chép danh sách cần chuẩn bị" lon />
+                </div>
               </div>
+              <p className="text-xs text-orange-900">
+                Nút <b>Gắn</b> tự sửa: câu đang dùng sai địa điểm (chuyển sang đúng nơi có ảnh nền), đạo cụ có emoji (người diễn cầm thêm), logo, hành động máy đã có.
+                Bạn phải tự làm: ảnh nền cho địa điểm chưa có ảnh (khung &quot;Ảnh nền phim này cần&quot;), nơi chưa có trong hồ sơ, đồ vật / hành động phải vẽ (chép yêu cầu cho Claude Code).
+              </p>
               <ul className="grid gap-1 text-sm text-orange-950">
                 {chuanBi.map((g) => (
                   <li key={g.loai + g.ten}>

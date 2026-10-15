@@ -1260,6 +1260,8 @@ const CHU_LON = {} // câu → { nam, noi, t }
   loi.forEach((l, i) => {
     // Không chồng lên câu giật tít mở đầu, thẻ minh hoạ hay con số bật to của câu đó (chữ đè chữ)
     if (!l.the_moc || (i === 0 && moc?.chu) || (MINH_HOA[l.minh_hoa?.kieu] && !l.anh_wiki?.tep) || SO_DONG[i]) return
+    // Câu đang phủ ảnh tư liệu toàn khung: chữ lớn che mặt người trong ảnh (Oppenheimer 3:20 "1942" đè mặt Groves) → để thẻ mốc nhỏ góc trái
+    if (doanAnh.some((c) => c.kieu === 'toan' && c.tu <= i && c.het >= i)) return
     const [dau, ...con] = String(l.the_moc).split('·').map((x) => x.trim())
     const nam = dau.match(/\b(\d{3,4})\b/)?.[1]
     if (!nam) return
@@ -1400,10 +1402,13 @@ const anhThat = doanAnh.map((c, k) => {
 })
 
 // Bảng tin phía sau đổi theo lời thoại
+// Thẻ chương đang phủ khung thì bảng tin chờ thẻ tắt rồi mới hiện (Oppenheimer 6:11: "Phiên điều trần năm 1954" nằm đè thẻ chương)
+const HET_THE = the_chuong ? (I_CHUONG >= 0 ? batDau[I_CHUONG] + doDai[I_CHUONG] + 0.4 : MO_CHUONG) : -1
 const bang = bangHien.map((i, j) => {
   const l = loi[i]
-  const t0 = batDau[i]
+  const t0 = batDau[i] < HET_THE ? HET_THE : batDau[i]
   const het = Math.min(j === bangHien.length - 1 ? HET_NOI : batDau[bangHien[j + 1]], t0 + 5.2)
+  if (het - t0 < 1.5) return `<div id="bang${i}" class="bang"></div>` // giữ id cho các lệnh ẩn / hiện theo ảnh tư liệu
   tw.push(`tl.from("#bang${i} .bang-noi", { scale: 0.6, opacity: 0, duration: 0.4, ease: "back.out(2)" }, ${f(t0 + 0.05)});`)
   tw.push(`tl.to("#bang${i} .bang-noi", { opacity: 0, y: -16, duration: 0.4, ease: "power1.in" }, ${f(het - 0.45)});`)
   return `
@@ -1460,7 +1465,8 @@ const banTay = []
 const LUC_DON_DAP = []
 const donDap = []
 {
-  const anhPhan = [...new Set([...loi.map((l) => l.anh_wiki?.tep), ...loi.map((l) => l.anh_nen_tep)].filter((t) => t && existsSync(join(GOC, 'hyperframes/assets', t))))]
+  // Chỉ ảnh tư liệu thật: tranh nền địa điểm (không người) nháy giữa chuỗi trông như hình bị lỗi (Oppenheimer 7:00)
+  const anhPhan = [...new Set(loi.map((l) => l.anh_wiki?.tep).filter((t) => t && existsSync(join(GOC, 'hyperframes/assets', t))))]
   const bieuTuong = [...new Set(loi.map((l) => l.bang?.bieu_tuong).filter(Boolean))]
   const MAU = ['#b91c1c', '#111827', '#ca8a04', '#1e3a8a']
   let cuoi = -99
@@ -1624,7 +1630,9 @@ if (the_chuong) {
   theChuongHtml = `<div id="the-chuong">${anhTc ? `<img id="tc-anh" class="tc-anh" src="assets/${esc(anhTc)}"/><div class="tc-phu"></div>` : ''}<div class="tc-kenh">${esc(kenh)}</div><div class="tc-so">${esc(the_chuong.nhan ?? 'CHƯƠNG')} ${esc(the_chuong.so ?? '')}</div><div class="tc-ten">${ten}</div><div class="tc-vach"></div></div>`
   const tc0 = I_CHUONG >= 0 ? Math.max(0.05, batDau[I_CHUONG] - 0.35) : 0.05
   const tc1 = I_CHUONG >= 0 ? batDau[I_CHUONG] + doDai[I_CHUONG] - 0.05 : MO_CHUONG - 0.25
-  tw.push(`tl.fromTo("#the-chuong", { opacity: 0, scale: 1 }, { opacity: 1, scale: 1, duration: 0.35, ease: "power1.out", immediateRender: false }, ${f(tc0)});`)
+  // Câu tên chương nằm ngay đầu phần: thẻ phủ kín từ khung đầu tiên (cắt thẳng từ phần trước sang thẻ), khỏi lộ cảnh dở dang
+  if (tc0 < 1) tw.push(`tl.set("#the-chuong", { opacity: 1, scale: 1 }, 0);`)
+  else tw.push(`tl.fromTo("#the-chuong", { opacity: 0, scale: 1 }, { opacity: 1, scale: 1, duration: 0.35, ease: "power1.out", immediateRender: false }, ${f(tc0)});`)
   tw.push(`tl.fromTo("#the-chuong .tc-so", { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 0.45, ease: "power3.out" }, ${f(tc0 + 0.2)});`)
   tw.push(`tl.fromTo("#the-chuong .tc-ten", { y: 60, opacity: 0 }, { y: 0, opacity: 1, duration: 0.55, ease: "power3.out" }, ${f(tc0 + 0.4)});`)
   tw.push(`tl.fromTo("#the-chuong .tc-vach", { scaleX: 0 }, { scaleX: 1, duration: 0.9, ease: "power2.inOut" }, ${f(tc0 + 0.45)});`)
@@ -1720,7 +1728,7 @@ const CSS_NGANG = `
       .tc-anh { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: saturate(0.85) brightness(0.55); }
       .tc-phu { position: absolute; inset: 0; background: radial-gradient(ellipse at center, #02061766, #020617ee); }
       .tc-kenh, .tc-ten, .tc-vach { position: relative; }
-      .tc-ten { max-width: 1400px; font-size: 76px; font-weight: 700; line-height: 1.15; text-align: center; color: #fff; text-shadow: 0 6px 30px #000; }
+      .tc-ten { max-width: 1400px; text-wrap: balance; font-size: 76px; font-weight: 700; line-height: 1.15; text-align: center; color: #fff; text-shadow: 0 6px 30px #000; }
       .tc-vach { width: 520px; height: 6px; border-radius: 3px; background: linear-gradient(90deg, transparent, #fbbf24, transparent); transform-origin: 50% 50%; }
       #man-ket { position: absolute; left: 0; right: 0; top: 70px; display: flex; flex-direction: column; align-items: center; gap: 22px; opacity: 0; }
       .mk-cam-on { font-size: 64px; font-weight: 700; color: #fff; text-shadow: 0 0 12px #000, 0 6px 0 #e11d48; }

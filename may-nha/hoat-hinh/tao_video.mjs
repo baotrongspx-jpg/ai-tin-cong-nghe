@@ -870,6 +870,44 @@ const tamLuc = (ai, t) => {
   for (const m of datMoc) if (m.t <= t + 0.3) dat = m.dat
   return { ...TAM[ai], x: TAM[ai].x + (ai === 'meo' ? -dat : dat) }
 }
+// Ký hiệu hoạt hình bật cạnh đầu nhân vật (visual emote): "!" lúc bất ngờ / sửng sốt, "?" lúc hỏi / thắc mắc. Gắn trong
+// khung của nhân vật nên đi theo nhân vật (bước, dạt, máy quay); nhân vật không có mặt thì ký hiệu cũng không hiện.
+// Câu bi kịch không dùng (trò hoạt hình lạc tông); mỗi nhân vật cách lần trước ≥ 10 giây, cả phim cách nhau ≥ 4 giây.
+const DAU_HIEU = {} // nhân vật (meo / robot / phu<k>) → html
+{
+  const cuoiNguoi = {}
+  let cuoi = -99
+  const them = (ai, kieu, t) => {
+    if (!ai || t - (cuoiNguoi[ai] ?? -99) < 10 || t - cuoi < 4) return
+    cuoiNguoi[ai] = cuoi = t
+    const id = `dh${Object.values(DAU_HIEU).join('').split('class="dau-hieu').length - 1}-${ai}`
+    const ben = kieu === '?' ? 1 : -1
+    DAU_HIEU[ai] = (DAU_HIEU[ai] ?? '') + `<div id="${id}" class="dau-hieu ${ai.startsWith('phu') ? 'dh-phu' : `dh-${ai}`}">${kieu}</div>`
+    tw.push(`tl.fromTo("#${id}", { opacity: 0, scale: 0.2, rotation: ${-25 * ben} }, { opacity: 1, scale: 1, rotation: ${12 * ben}, duration: 0.28, ease: "back.out(3)", immediateRender: false }, ${f(t)});`)
+    tw.push(`tl.to("#${id}", { rotation: ${4 * ben}, duration: 0.16, yoyo: true, repeat: 3, ease: "sine.inOut" }, ${f(t + 0.3)});`)
+    tw.push(`tl.to("#${id}", { opacity: 0, scale: 0.6, duration: 0.25, ease: "power2.in" }, ${f(t + 1.35)});`)
+  }
+  loi.forEach((l, i) => {
+    if (biKich(i) || doDai[i] < 1.4) return
+    const t0 = batDau[i]
+    // Câu hỏi: có dấu "?" hoặc kết bằng từ hỏi tiếng Việt (lời đọc thường bỏ dấu hỏi), có thể kèm tiếng gọi người nghe
+    const hoi = /\?\s*["”'»]?\s*$/.test(String(l.chu ?? '')) ||
+      /(^|\s)(không|chưa|gì|sao|nào|hả|nhỉ|chứ|thế|vậy)(\s+(bạn|Bit|Mèo|Robot Bit|Mèo Mun|nhỉ|nhé))?\s*[.!…]*\s*$/iu.test(String(l.chu ?? ''))
+    if (l.ai === 'nguoi_ke') {
+      // Câu kể: nhân vật đang được kể (trên sân khấu) phản ứng
+      const q = phuCuaCau[i]
+      if (l.cam_xuc === 'bat_ngo') them(q, '!', t0 + 0.15)
+      else if (hoi) them(q, '?', t0 + 0.3)
+      return
+    }
+    const noi = laPhu(l.ai) ? phuCuaCau[i] : l.ai === 'meo' ? 'meo' : 'robot'
+    if (l.cam_xuc === 'bat_ngo') them(noi, '!', t0 + 0.1)
+    else if (hoi && ['to_mo', 'suy_nghi', 'lo_lang', 'bat_ngo'].includes(l.cam_xuc)) them(noi, '?', t0 + 0.25)
+    // Người nghe sửng sốt theo lời người nói
+    if (PHAN_UNG[l.cam_xuc] === 'bat_ngo' && d0(i)) them(nguoiPhanUng(i)[0], '!', t0 + 0.55)
+  })
+  function d0(i) { return doDai[i] > 1.6 }
+}
 const nvPhu = doanPhu.map((dp, k) => {
   const id = `phu${k}`
   const t0 = batDau[dp.tu]
@@ -911,7 +949,7 @@ const nvPhu = doanPhu.map((dp, k) => {
   // Không ghi tên trên đầu (trang phục tự nói lên họ là ai); hai nhân vật chính dạt sang hai bên chừa chỗ cho nhân vật phụ
   // Mèo / Bit dạt ra bao xa: tính chung cho mọi người trên sân khấu theo thời gian (sanKhau, xem dưới)
   sanKhau.push({ vao, ra: het - 0.3, lech: dp.lech })
-  return `<div id="${id}" class="nv-phu" data-ten="${dp.ten}" style="left:${354 + dp.lech}px"><svg viewBox="${NHAN_VAT_PHU[dp.ten].viewBox ?? '0 0 400 600'}" width="372" height="558" class="nv">${NHAN_VAT_PHU[dp.ten].svg(id)}</svg></div>`
+  return `<div id="${id}" class="nv-phu" data-ten="${dp.ten}" style="left:${354 + dp.lech}px"><svg viewBox="${NHAN_VAT_PHU[dp.ten].viewBox ?? '0 0 400 600'}" width="372" height="558" class="nv">${NHAN_VAT_PHU[dp.ten].svg(id)}</svg>${DAU_HIEU[id] ?? ''}</div>`
 })
 // Mèo / Bit dạt sang hai bên chừa chỗ cho nhân vật phụ. Tính theo thời gian, mỗi lúc có người vào / ra: ai đang đứng trên
 // sân khấu, đứng ở đâu → độ dạt cần thiết (có người đứng lệch trái / phải hoặc hai người cùng đứng: dạt xa 300; một người
@@ -1795,7 +1833,11 @@ const trang = `<!doctype html>
       .nen-dong { position: absolute; inset: 0; transform-origin: 50% 62%; }
       .nen-svg { display: block; }
       .anh-nen-canh.tu-lam { filter: brightness(0.94) !important; }
-      .anh-nen-canh { position: absolute; object-fit: cover; transform-origin: 50% 70%; filter: blur(1.2px) brightness(0.86);
+      .dau-hieu { position: absolute; top: 30px; font-size: 130px; font-weight: 700; line-height: 1; color: #fde047; -webkit-text-stroke: 12px #111827; paint-order: stroke fill; opacity: 0; pointer-events: none; filter: drop-shadow(0 8px 10px #0007); }
+      .dh-meo { left: 450px; }
+      .dh-robot { left: 70px; }
+      .dh-phu { left: 270px; top: -20px; font-size: 104px; -webkit-text-stroke: 10px #111827; }
+      .anh-nen-canh { position: absolute; object-fit: cover; transform-origin: 50% 70%; filter: blur(1.2px) brightness(0.86) saturate(0.88);
         -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 92%, transparent 100%); mask-image: linear-gradient(to bottom, #000 0, #000 92%, transparent 100%); }
       .hat { position: absolute; border-radius: 50%; background: radial-gradient(circle, #ffffffcc, #ffffff00 70%); }
       #vien-toi { background: radial-gradient(ellipse 85% 70% at 50% 45%, transparent 55%, #00000099 100%); }
@@ -1872,8 +1914,8 @@ const trang = `<!doctype html>
       <div id="sau-khau" class="clip" data-start="0" data-duration="${f(TONG)}" data-track-index="4">
         <div class="troi"><div class="the-gioi"><div id="camera-nv" class="camera">
           ${nvPhu.join('')}
-          <div id="o-meo" class="o-nv">${meoSvg}</div>
-          <div id="o-robot" class="o-nv">${robotSvg}</div>
+          <div id="o-meo" class="o-nv">${meoSvg}${DAU_HIEU.meo ?? ''}</div>
+          <div id="o-robot" class="o-nv">${robotSvg}${DAU_HIEU.robot ?? ''}</div>
           ${daoCu.join('')}
           ${minhHoa.join('')}
         </div></div></div>

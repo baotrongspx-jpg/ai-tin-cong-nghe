@@ -42,6 +42,10 @@ export const THU_VIEN_HANH_DONG: Record<string, { ten: string; loai: LoaiHanhDon
   lai_xe: { ten: 'Lái xe', loai: 'ke_chuyen', mo_ta: 'ngồi sau xe hơi, hai tay trên vô lăng, xe chạy rồi dừng', do_vat: ['🚗 xe hơi'] },
   gong_chuong: { ten: 'Gõ chuông', loai: 'ke_chuyen', mo_ta: 'gõ búa vào chuông: niêm yết, IPO, khai mạc phiên giao dịch', do_vat: ['🔔 cái chuông', '🔨 búa'] },
   trao_nhan: { ten: 'Trao nhẫn', loai: 'ke_chuyen', mo_ta: 'trao nhẫn cưới: kết hôn, cầu hôn; tim bay lên', do_vat: ['💍 nhẫn cưới', '💖 trái tim'] },
+  lat_dong_ho: { ten: 'Lật đồng hồ cát', loai: 'ke_chuyen', mo_ta: 'quay ngược thời gian: hai tay ôm đồng hồ cát lật ngược, ngẩng nhìn hoài niệm', do_vat: ['⏳ đồng hồ cát'] },
+  rung_chuong: { ten: 'Lắc chuông', loai: 'ke_chuyen', mo_ta: 'lắc chuông cầm tay trước bảng chứng khoán, tay kia giơ nắm đấm: mở phiên, IPO', do_vat: ['🔔 chuông cầm tay', '📈 bảng chứng khoán'] },
+  om_ap: { ten: 'Ôm chầm', loai: 'ke_chuyen', mo_ta: 'cầm bó hoa và nhẫn rồi vòng tay ôm chặt: đám cưới, đoàn tụ', do_vat: ['💐 bó hoa', '💍 nhẫn', '💖 trái tim'] },
+  bam_nut: { ten: 'Bấm nút', loai: 'ke_chuyen', mo_ta: 'vươn tay ấn mạnh nút bấm, màn hình lớn bên cạnh loé lên: công bố, đổi tên, kích hoạt', do_vat: ['🖥️ màn hình lớn', '🔴 nút bấm'] },
   deo_kinh: { ten: 'Đeo kính thực tế ảo', loai: 'ke_chuyen', mo_ta: 'cầm kính VR nâng lên áp vào mắt: thực tế ảo, metaverse', do_vat: ['🥽 kính thực tế ảo'] },
 }
 

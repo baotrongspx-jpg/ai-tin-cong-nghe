@@ -626,7 +626,9 @@ For each numbered activity (who: activity | props needed) return: i, hanh_dong (
     const x = theoViec.get(i)
     const y = x?.can ? theoKhop.get(i) : undefined
     const ma = y?.hanh_dong ?? 'khong'
-    const hanh_dong = !x?.can ? 'khong' : THU_VIEN_HANH_DONG[ma] ? ma : 'moi'
+    // AI đặt mã "mới" trùng đúng tên hành động đã có (di_bo, mo_cua…) → tính là đã có
+    const maMoi = boDauMa(y?.ten_moi ?? '')
+    const hanh_dong = !x?.can ? 'khong' : THU_VIEN_HANH_DONG[ma] ? ma : THU_VIEN_HANH_DONG[maMoi]?.loai === 'ke_chuyen' ? maMoi : 'moi'
     // Đạo cụ thiếu: so emoji với đạo cụ hành động đã có (máy tự so, không để AI đoán)
     const coSan = new Set((THU_VIEN_HANH_DONG[hanh_dong]?.do_vat ?? []).map((v) => emojiGoc(v)))
     const canVat = (x?.do_vat_can ?? []).map((v) => v.trim()).filter(Boolean).slice(0, 4)

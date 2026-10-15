@@ -548,6 +548,7 @@ const VAT = {
   cua: ['🚪', 'canh'], em_be: ['👶', 'nguc'], ba_lo: ['🎒', 'vai'], la: ['🍂', 'trai'], chop: ['⚡', 'dau'], xe: ['🚗', 'xe'],
   chuong: ['🔔', 'canh'], bua: ['🔨', 'phai'], nhan: ['💍', 'phai'], kinh_tay: ['🥽', 'truoc'], kinh_mat: ['🥽', 'mat'],
   dong_ho_cat: ['⏳', 'nguc'], bang_ck: ['📈', 'canh_xa'], chuong_tay: ['🔔', 'trai'], hoa: ['💐', 'nguc'], man_hinh: ['🖥️', 'canh'], nut: ['🔴', 'ban'],
+  noi: ['🛏️', 'noi'], be: ['👶', 'be'], binh: ['🍼', 'binh'], zzz_be: ['💤', 'be_ngu'],
 }
 const VAT_CAN = {} // phu<k> → Set(tên đồ vật)
 // Đồ vật mỗi hành động kể chuyện dùng (để đạo cụ phụ vat_them chọn chỗ cầm còn trống)
@@ -558,7 +559,7 @@ const VAT_DUNG_BOI = {
   dem_tien: ['tien'], lap_rap: ['co_le', 'chip'], bi_xo: ['tuc'], an_mung: ['tim'], kiet_suc: ['zzz'],
   mo_cua: ['cua'], be_em_be: ['em_be'], di_bo: ['ba_lo'], nhin_ra_ngoai: ['la'], dong_may_tinh: ['laptop'], nhin_bao_giong: ['chop'],
   lai_xe: ['xe'], gong_chuong: ['chuong', 'bua'], trao_nhan: ['nhan', 'tim'], deo_kinh: ['kinh_tay', 'kinh_mat'],
-  lat_dong_ho: ['dong_ho_cat'], rung_chuong: ['bang_ck', 'chuong_tay'], om_ap: ['hoa', 'nhan', 'tim'], bam_nut: ['man_hinh', 'nut'],
+  lat_dong_ho: ['dong_ho_cat'], rung_chuong: ['bang_ck', 'chuong_tay'], om_ap: ['hoa', 'nhan', 'tim'], bam_nut: ['man_hinh', 'nut'], nam_noi: ['noi', 'be', 'binh', 'zzz_be'],
 }
 const vatHien = (p, ten, t, dd) => {
   if (!VAT[ten] || !p.startsWith('phu')) return []
@@ -838,6 +839,19 @@ const TRUYEN = {
     `tl.to("#${p}-tay-trai", { rotation: 24, duration: 0.4, ease: "sine.inOut" }, ${f(t + 1.1)});`,
     `tl.to("#${p}-ma-hong", { opacity: 1, duration: 0.3 }, ${f(t + 1)});`,
   ],
+  // Em bé nằm nôi (chào đời, ngày sinh): nôi trước người, em bé nằm trong nôi bú bình sữa, cựa quậy, nôi đung đưa theo
+  // nhịp; người đứng sau vịn thành nôi cúi nhìn trìu mến; cuối câu em bé ngủ, 💤 bay lên
+  nam_noi: (p, t, dd) => [
+    ...vatHien(p, 'noi', t, dd), ...vatHien(p, 'be', t + 0.15, dd - 0.15), ...vatHien(p, 'binh', t + 0.3, Math.max(0.6, dd - 0.3)),
+    ...vatHien(p, 'zzz_be', t + Math.max(0.8, dd - 1.2), Math.min(1.2, dd)),
+    `tl.fromTo("#${p}-vat-noi", { rotation: -3, transformOrigin: "50% 100%" }, { rotation: 3, duration: 0.6, yoyo: true, repeat: ${solan(dd - 0.4, 0.6)}, ease: "sine.inOut", immediateRender: false }, ${f(t + 0.3)});`,
+    `tl.fromTo("#${p}-vat-be", { rotation: 4, transformOrigin: "50% 80%" }, { rotation: -4, duration: 0.6, yoyo: true, repeat: ${solan(dd - 0.6, 0.6)}, ease: "sine.inOut", immediateRender: false }, ${f(t + 0.45)});`,
+    `tl.fromTo("#${p}-vat-binh", { y: 0 }, { y: -6, duration: 0.3, yoyo: true, repeat: ${solan(dd - 0.8, 0.3)}, ease: "sine.inOut", immediateRender: false }, ${f(t + 0.6)});`,
+    `tl.to("#${p}-tay-trai", { rotation: -22, duration: 0.4 }, ${f(t)});`,
+    `tl.to("#${p}-tay-phai", { rotation: 22, duration: 0.4 }, ${f(t)});`,
+    `tl.to("#${p}-dau", { rotation: 14, duration: 0.5, ease: "sine.inOut" }, ${f(t)});`,
+    `tl.to("#${p}-ma-hong", { opacity: 1, duration: 0.4 }, ${f(t + 0.3)});`,
+  ],
 }
 // Từ trong lời kể → hành động kể chuyện (thứ tự = ưu tiên). Ẩn dụ ("bài kiểm tra sinh tồn") không tính
 const TU_TRUYEN = [
@@ -845,7 +859,8 @@ const TU_TRUYEN = [
   ['om_ap', /ôm chầm|ôm lấy|ôm nhau|ôm chặt|ôm siết|vòng tay ôm/],
   ['bam_nut', /bấm nút|nhấn nút|ấn nút|đổi tên (tập đoàn|công ty)|công bố tên mới/],
   ['rung_chuong', /lắc chuông|rung chiếc chuông|chuông cầm tay/],
-  ['be_em_be', /chào đời|sinh ngày|sinh năm|cất tiếng khóc|bế (con|em bé|đứa)|đứa con đầu lòng|lên chức (bố|cha|mẹ)/],
+  ['nam_noi', /chào đời|sinh ngày|sinh năm|cất tiếng khóc|lọt lòng|nằm (trong )?nôi|em bé sơ sinh/],
+  ['be_em_be', /bế (con|em bé|đứa)|đứa con đầu lòng|lên chức (bố|cha|mẹ)/],
   ['trao_nhan', /kết hôn|cầu hôn|đám cưới|nhẫn cưới|lễ cưới|thành vợ chồng/],
   ['gong_chuong', /rung chuông|gõ chuông|đánh chuông|niêm yết|lên sàn (chứng khoán|giao dịch)|\bipo\b/],
   ['deo_kinh', /kính thực tế ảo|thực tế ảo|metaverse|đeo kính/],
@@ -1384,7 +1399,7 @@ const ganVat = (svg, id) => {
   let tren = ''
   for (const ten of VAT_CAN[id] ?? []) {
     const [bt, cho] = VAT[ten]
-    const [x, y, co] = { phai: [280, 496, 96], trai: [120, 496, 96], truoc: [200, 452, 128], dau: [300, 110, 70], canh: [452, 330, 250], nguc: [200, 372, 130], vai: [296, 318, 74], xe: [200, 470, 290], mat: [200, 192, 118], canh_xa: [500, 300, 210], ban: [262, 478, 64] }[cho]
+    const [x, y, co] = { phai: [280, 496, 96], trai: [120, 496, 96], truoc: [200, 452, 128], dau: [300, 110, 70], canh: [452, 330, 250], nguc: [200, 372, 130], vai: [296, 318, 74], xe: [200, 470, 290], mat: [200, 192, 118], canh_xa: [500, 300, 210], ban: [262, 478, 64], noi: [200, 500, 300], be: [196, 418, 104], binh: [252, 428, 58], be_ngu: [258, 360, 54] }[cho]
     const el = `<text id="${id}-vat-${ten}" x="${x}" y="${y}" font-size="${co}" text-anchor="middle" dominant-baseline="middle" opacity="0" style="font-family: 'Emoji', sans-serif">${bt}</text>`
     const mo = `<g id="${id}-tay-${cho}">`
     // Chèn ở CUỐI nhóm cánh tay (trước thẻ </g> khớp với nó) để đạo cụ vẽ đè lên đồ nhân vật đang cầm sẵn (cặp, sách…)

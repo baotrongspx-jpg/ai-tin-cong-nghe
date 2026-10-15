@@ -657,12 +657,35 @@ def dai_nhac_theo_phan(thu_muc, cac_bai, do_dai_phan, am_luong_phan=None):
         p = thu_muc / f'nhac-{len(tep)}{Path(ten).suffix}'
         p.write_bytes(r.content)
         tep[ten] = p
+    # Nhạc liền mạch (người xem khó tính 15/10/2026: nhạc đổi bài giật cục): các chương liền nhau cùng một bài thì bài chạy
+    # tiếp (không phát lại từ đầu, không tắt dần giữa chừng); khác bài thì hoà chéo 3 giây (bài cũ nhỏ dần trong lúc bài mới
+    # lên), không còn khoảng tắt hẳn. Âm lượng từng chương đổi dần trong 2 giây quanh mốc chương.
+    CHEO = 3.0
+    doan = []  # [tên bài, độ dài, [(mốc trong đoạn, âm lượng)]]
+    for ten, dai, al in zip(cac_bai, do_dai_phan, am_luong_phan):
+        if doan and doan[-1][0] == ten:
+            doan[-1][2].append((doan[-1][1], float(al)))
+            doan[-1][1] += dai
+        else:
+            doan.append([ten, dai, [(0.0, float(al))]])
     vao, loc = [], []
-    for j, (ten, dai) in enumerate(zip(cac_bai, do_dai_phan)):
+    for j, (ten, dai, muc) in enumerate(doan):
         vao += ['-stream_loop', '-1', '-i', tep[ten].name]
-        loc.append(f'[{j}:a]atrim=0:{dai:.2f},asetpts=PTS-STARTPTS,aformat=sample_rates=44100:channel_layouts=stereo,'
-                   f'volume={float(am_luong_phan[j]):.2f},afade=t=in:d=1.5,afade=t=out:st={max(0, dai - 1.5):.2f}:d=1.5[n{j}]')
-    loc.append(''.join(f'[n{j}]' for j in range(len(cac_bai))) + f'concat=n={len(cac_bai)}:v=0:a=1[ra]')
+        dai_cat = dai + (CHEO if j < len(doan) - 1 else 0)
+        # âm lượng bậc thang có dốc 2 giây: v0 + tổng (v_k - v_(k-1)) * clip((t - mốc_k + 1) / 2, 0, 1)
+        bieu = f'{muc[0][1]:.3f}' + ''.join(f'+({muc[m][1] - muc[m - 1][1]:.3f})*clip((t-{muc[m][0] - 1:.2f})/2\\,0\\,1)' for m in range(1, len(muc)))
+        mo = 'afade=t=in:d=1.5,' if j == 0 else ''
+        tat = f',afade=t=out:st={max(0, dai_cat - 1.5):.2f}:d=1.5' if j == len(doan) - 1 else ''
+        loc.append(f'[{j}:a]atrim=0:{dai_cat:.2f},asetpts=PTS-STARTPTS,aformat=sample_rates=44100:channel_layouts=stereo,'
+                   f"{mo}volume='{bieu}':eval=frame{tat}[n{j}]")
+    if len(doan) == 1:
+        loc[-1] = loc[-1][:-len('[n0]')] + '[ra]'
+    else:
+        truoc = 'n0'
+        for j in range(1, len(doan)):
+            ra_j = 'ra' if j == len(doan) - 1 else f'x{j}'
+            loc.append(f'[{truoc}][n{j}]acrossfade=d={CHEO}:c1=tri:c2=tri[{ra_j}]')
+            truoc = ra_j
     ra = thu_muc / 'nhac-dai.m4a'
     chay([str(FFMPEG), '-hide_banner', '-y', *vao, '-filter_complex', ';'.join(loc), '-map', '[ra]', '-c:a', 'aac', '-b:a', '192k', ra.name], thu_muc, 1800)
     for p in tep.values():

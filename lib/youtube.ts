@@ -108,8 +108,42 @@ function anhCuaChuong(d: DuAnYT, k: number): Record<number, AnhWiki> {
   if (!ds.length || !loi.length) return {}
   const kq: Record<number, AnhWiki> = {}
   if (loi.some((l) => typeof l.anh === 'number')) {
+    // Dự án từ 15/10/2026 (phim cũ giữ nguyên để khỏi dựng lại): ảnh phải ĐÚNG THỜI ĐIỂM câu đang kể — phim Jensen Huang
+    // dùng ảnh Denny's chụp 2023 cho chuyện 1978 / 1993, ảnh 2025 cho năm 2006. Năm câu đang kể = năm nhắc trong câu,
+    // không có thì năm nhắc trong 3 câu trước đó; ảnh chụp sau đó quá 3 năm thì bỏ (trừ câu nói về "ngày nay").
+    // Một ảnh chỉ dùng cho một đoạn câu liền nhau trong chương (không quay lại ảnh cũ ở câu khác).
+    const loc = d.tao_luc >= '2026-10-15T05:00'
+    const namCua = (l: CauYT) => [...`${l.chu ?? ''} ${(l as { the_moc?: string }).the_moc ?? ''}`.matchAll(/\b(1[89]\d\d|20\d\d)\b/g)].map((m) => +m[1])
+    let namDang = 0
+    let lucNam = -99
+    {
+      const truocDo = d.phan.slice(0, k - 1).flatMap((p) => p.loi ?? []).slice(-3)
+      truocDo.forEach((l, j) => {
+        if (namCua(l).length) {
+          namDang = namCua(l).at(-1)!
+          lucNam = j - truocDo.length
+        }
+      })
+    }
+    let truoc = -1
+    const daDung = new Set<number>()
     loi.forEach((l, i) => {
-      if (typeof l.anh === 'number' && ds[l.anh]) kq[i] = ds[l.anh]
+      const nam = namCua(l)
+      if (nam.length) {
+        namDang = nam.at(-1)!
+        lucNam = i
+      }
+      if (typeof l.anh !== 'number' || !ds[l.anh]) return
+      if (loc) {
+        const namAnh = Number(String(ds[l.anh].nam).match(/\b(1[89]\d\d|20\d\d)\b/)?.[1] ?? 0)
+        const homNay = /ngày nay|hiện nay|hôm nay|bây giờ|năm nay|hiện tại/i.test(l.chu ?? '')
+        const moc = nam.length ? Math.max(...nam) : i - lucNam <= 3 ? namDang : 0
+        if (namAnh && moc && namAnh > moc + 3 && !homNay) return
+        if (daDung.has(l.anh) && truoc !== l.anh) return
+      }
+      kq[i] = ds[l.anh]
+      daDung.add(l.anh)
+      truoc = l.anh
     })
     return kq
   }
@@ -215,9 +249,15 @@ function loiThoaiGui(d: DuAnYT, k: number) {
       ...(phim ? { nhan_vat_phu: 'nhan_vat_chinh' } : {}),
       ...(chanDung ? veAnh(chanDung) : {}),
     })
-    // 30 giây đầu quyết định người xem ở lại: vào thẳng chuyện — câu móc + 2 câu tiếp theo của câu chuyện (~15 giây gay
+    // 30 giây đầu quyết định người xem ở lại: vào thẳng chuyện — câu móc + các câu tiếp theo của câu chuyện (~15 giây gay
     // cấn), rồi mới chào ngắn một câu, kể tiếp. Không đọc tên chương 1 / không thẻ chương ở phần 1 (làm chậm phút đầu)
-    const dau = loi.splice(0, Math.min(3, Math.max(1, loi.length - 2)))
+    // Dự án từ 15/10/2026: đoạn mở đầu ở lại trong khoảnh khắc cao trào ~30 giây (lib/aiPhim.ts COLD OPEN) → lời chào
+    // chen đúng trước câu quay về quá khứ ("Để hiểu vì sao… phải quay về…"), không cắt ngang giữa cảnh mở đầu
+    const quayVe = d.tao_luc >= '2026-10-15T05:00'
+      ? loi.slice(2, 9).findIndex((l) => /quay về|quay ngược|trở lại năm|ngược dòng|để hiểu/i.test(String(l.chu ?? '')))
+      : -1
+    const soDau = quayVe >= 0 ? quayVe + 2 : d.tao_luc >= '2026-10-15T05:00' ? 5 : 3
+    const dau = loi.splice(0, Math.min(soDau, Math.max(1, loi.length - 2)))
     loi.unshift(...dau, loiGioiThieu)
   } else loi.unshift(...docChuong)
   if (!phim || !hinh) return { ...goc, nhan_vat: NHAN_VAT, loi }

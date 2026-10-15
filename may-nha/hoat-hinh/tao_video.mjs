@@ -1736,10 +1736,19 @@ for (const c of doanThoiTiet) {
   if (c.tt === 'suong') continue
   for (let i = c.tu; i <= c.het; i++) themAm(c.tt === 'mua' ? 'sfx-mua' : 'sfx-gio', batDau[i], c.tt === 'mua' ? 0.3 : 0.2, doDai[i] + 0.3)
 }
-loi.forEach((l, i) => {
-  const sfx = SFX[l.am_thanh]
-  if (sfx) themAm(sfx[0], batDau[i] + (l.am_thanh === 'bum' ? 0 : 0.05), sfx[1])
-})
+// Tiếng hiệu ứng theo câu chỉ để nhấn điểm mấu chốt (người xem khó tính 15/10/2026: phim Jensen Huang 79/133 câu có
+// tiếng, nghe như rải liên tục): hai tiếng cách nhau ít nhất 12 giây; riêng tiếng "bùm" ở câu sốc / bất ngờ luôn giữ
+{
+  let cuoi = -99
+  loi.forEach((l, i) => {
+    const sfx = SFX[l.am_thanh]
+    if (!sfx) return
+    const nhan = l.am_thanh === 'bum' && ['bat_ngo', 'tuc_gian', 'lo_lang'].includes(l.cam_xuc)
+    if (!nhan && batDau[i] - cuoi < 12) return
+    cuoi = batDau[i]
+    themAm(sfx[0], batDau[i] + (l.am_thanh === 'bum' ? 0 : 0.05), sfx[1])
+  })
+}
 // Đổi cảnh: tiếng vút; vào bối cảnh có âm thanh đặc trưng (phố → xe chạy, sân vận động → reo hò…) thì thêm tiếng đó
 for (const cc of chuyenCanh) {
   if (SFX[loi[cc.i].am_thanh]) continue

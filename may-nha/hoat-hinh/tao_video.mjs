@@ -533,6 +533,160 @@ const DONG_TAC = {
     `tl.to("#${p}-dau", { rotation: -4, duration: 0.4 }, ${f(t0)});`,
   ],
 }
+
+// ── HÀNH ĐỘNG KỂ CHUYỆN (chủ trang 15/10/2026: "nhân vật phải diễn theo từng lời thoại chứ không phải đứng nói không"):
+// lời kể nói nhân vật LÀM gì thì nhân vật đứng trên sân khấu làm đúng việc đó, cầm đúng đồ vật, suốt phần còn lại của câu
+// — rửa bát, xách vali ra đi, khóc, gõ máy tính, đọc sách, bị xô đẩy, ăn mừng, phát biểu, bắt tay, kiệt sức, ăn, đếm
+// tiền, lắp ráp, chạy. Tay quay: tay phải xoay dương / tay trái xoay âm = đưa vào trước người (gõ máy, rửa bát, đưa
+// micro lên miệng); ngược lại = dang ra ngoài / giơ lên. Đồ vật là emoji gắn vào tay (đi theo tay khi tay chuyển động) hoặc đặt trước người. Chỉ nhân vật
+// người (nhân vật chính / phụ, mã phu<k>); Mèo / Bit vẫn dùng cử chỉ. Đồ vật cần dùng ghi vào VAT_CAN rồi mới chèn vào
+// hình nhân vật (nvPhu).
+const VAT = {
+  dia: ['🍽️', 'truoc'], bot: ['🧽', 'phai'], vali: ['🧳', 'phai'], laptop: ['💻', 'truoc'], sach: ['📖', 'truoc'],
+  mic: ['🎤', 'phai'], tien: ['💵', 'phai'], bat: ['🍜', 'truoc'], dua: ['🥢', 'phai'], co_le: ['🔧', 'phai'], chip: ['🔌', 'truoc'],
+  zzz: ['💤', 'dau'], tuc: ['💢', 'dau'], tim: ['💖', 'dau'],
+}
+const VAT_CAN = {} // phu<k> → Set(tên đồ vật)
+const vatHien = (p, ten, t, dd) => {
+  if (!VAT[ten] || !p.startsWith('phu')) return []
+  ;(VAT_CAN[p] ??= new Set()).add(ten)
+  const id = `#${p}-vat-${ten}`
+  const bay = VAT[ten][1] === 'dau'
+  return [
+    `tl.fromTo("${id}", { opacity: 0, scale: 0.4, transformOrigin: "50% 50%"${bay ? ', y: 0' : ''} }, { opacity: 1, scale: 1${bay ? ', y: -40' : ''}, duration: ${bay ? 0.9 : 0.25}, ease: "back.out(2)", immediateRender: false }, ${f(t)});`,
+    `tl.to("${id}", { opacity: 0, duration: 0.25 }, ${f(t + Math.max(0.6, dd) - 0.25)});`,
+  ]
+}
+const solan = (giay, chuKy) => Math.max(1, Math.floor(giay / chuKy / 2)) * 2 - 1 // số lần lặp lẻ (yoyo về đúng chỗ)
+const TRUYEN = {
+  rua_bat: (p, t, dd) => [
+    ...vatHien(p, 'dia', t, dd), ...vatHien(p, 'bot', t, dd),
+    `tl.to("#${p}-tay-trai", { rotation: -16, duration: 0.3 }, ${f(t)});`,
+    `tl.to("#${p}-tay-phai", { rotation: 14, duration: 0.3 }, ${f(t)});`,
+    `tl.to("#${p}-tay-phai", { rotation: 28, duration: 0.16, yoyo: true, repeat: ${solan(dd - 0.4, 0.16)}, ease: "sine.inOut" }, ${f(t + 0.32)});`,
+    `tl.to("#${p}-dau", { rotation: 10, duration: 0.35 }, ${f(t)});`,
+  ],
+  xach_vali: (p, t, dd) => {
+    const di = Math.min(dd, 2.6)
+    return [
+      ...vatHien(p, 'vali', t, dd),
+      `tl.to("#${p}-tay-phai", { rotation: -6, duration: 0.25 }, ${f(t)});`,
+      `tl.fromTo("#${p}-tay-trai", { rotation: 18 }, { rotation: -18, duration: 0.3, yoyo: true, repeat: ${solan(di, 0.3)}, ease: "sine.inOut", immediateRender: false }, ${f(t)});`,
+      `tl.fromTo("#${p} svg", { x: 0 }, { x: 150, duration: ${f(di)}, ease: "none", immediateRender: false }, ${f(t)});`,
+      `tl.to("#${p} svg", { y: -10, duration: 0.15, yoyo: true, repeat: ${solan(di, 0.15)}, ease: "sine.inOut" }, ${f(t)});`,
+      `tl.to("#${p} svg", { x: 0, duration: 0.5, ease: "power1.inOut" }, ${f(t + Math.max(di, dd) + 0.05)});`,
+      `tl.to("#${p}-dau", { rotation: 4, duration: 0.3 }, ${f(t)});`,
+    ]
+  },
+  khoc: (p, t, dd) => [
+    `tl.to("#${p}-nuoc-mat", { opacity: 1, duration: 0.3 }, ${f(t)});`,
+    `tl.to("#${p}-nuoc-mat", { opacity: 0, duration: 0.3 }, ${f(t + Math.max(0.8, dd) - 0.3)});`,
+    `tl.to("#${p}-tay-trai", { rotation: 148, duration: 0.4, ease: "power2.out" }, ${f(t)});`,
+    `tl.to("#${p}-tay-phai", { rotation: -148, duration: 0.4, ease: "power2.out" }, ${f(t)});`,
+    `tl.to("#${p}-dau", { rotation: 14, duration: 0.4 }, ${f(t)});`,
+    `tl.to("#${p} svg", { y: 3, duration: 0.11, yoyo: true, repeat: ${solan(dd - 0.4, 0.11)}, ease: "sine.inOut" }, ${f(t + 0.4)});`,
+  ],
+  go_may: (p, t, dd) => [
+    ...vatHien(p, 'laptop', t, dd),
+    `tl.to("#${p}-tay-trai", { rotation: -14, duration: 0.3 }, ${f(t)});`,
+    `tl.to("#${p}-tay-phai", { rotation: 14, duration: 0.3 }, ${f(t)});`,
+    `tl.to("#${p}-tay-trai", { rotation: -20, duration: 0.09, yoyo: true, repeat: ${solan(dd - 0.4, 0.09)}, ease: "none" }, ${f(t + 0.32)});`,
+    `tl.to("#${p}-tay-phai", { rotation: 20, duration: 0.09, yoyo: true, repeat: ${solan(dd - 0.5, 0.09)}, ease: "none" }, ${f(t + 0.41)});`,
+    `tl.to("#${p}-dau", { rotation: 9, duration: 0.35 }, ${f(t)});`,
+  ],
+  doc_sach: (p, t, dd) => [
+    ...vatHien(p, 'sach', t, dd),
+    `tl.to("#${p}-tay-trai", { rotation: -18, duration: 0.3 }, ${f(t)});`,
+    `tl.to("#${p}-tay-phai", { rotation: 18, duration: 0.3 }, ${f(t)});`,
+    `tl.to("#${p}-tay-phai", { rotation: 40, duration: 0.25, yoyo: true, repeat: 1, ease: "sine.inOut" }, ${f(t + Math.max(0.4, dd / 2))});`,
+    `tl.to("#${p}-dau", { rotation: 12, duration: 0.35 }, ${f(t)});`,
+  ],
+  bi_xo: (p, t, dd) => [
+    ...vatHien(p, 'tuc', t + 0.1, Math.min(dd, 1.6)),
+    `tl.to("#${p}-tay-trai", { rotation: 120, duration: 0.2, ease: "power3.out" }, ${f(t)});`,
+    `tl.to("#${p}-tay-phai", { rotation: -120, duration: 0.2, ease: "power3.out" }, ${f(t)});`,
+    `tl.fromTo("#${p} svg", { x: 0 }, { x: -70, duration: 0.22, ease: "power3.out", immediateRender: false }, ${f(t)});`,
+    `tl.to("#${p} svg", { x: 0, duration: 0.7, ease: "power1.inOut" }, ${f(t + Math.max(0.5, dd - 0.7))});`,
+    `tl.to("#${p}-dau", { rotation: -10, duration: 0.2 }, ${f(t)});`,
+    `tl.to("#${p}-mo-hoi", { opacity: 1, duration: 0.3 }, ${f(t)});`,
+    `tl.to("#${p}-mo-hoi", { opacity: 0, duration: 0.3 }, ${f(t + Math.max(0.8, dd) - 0.3)});`,
+  ],
+  an_mung: (p, t, dd) => [
+    ...vatHien(p, 'tim', t + 0.2, Math.min(dd, 1.8)),
+    `tl.to("#${p}-tay-trai", { rotation: 168, duration: 0.3, ease: "back.out(1.6)" }, ${f(t)});`,
+    `tl.to("#${p}-tay-phai", { rotation: -168, duration: 0.3, ease: "back.out(1.6)" }, ${f(t)});`,
+    `tl.to("#${p} svg", { y: -55, duration: 0.24, yoyo: true, repeat: ${Math.min(5, solan(dd, 0.24))}, ease: "sine.out" }, ${f(t)});`,
+    `tl.to("#${p}-ma-hong", { opacity: 1, duration: 0.3 }, ${f(t)});`,
+  ],
+  phat_bieu: (p, t, dd) => [
+    ...vatHien(p, 'mic', t, dd),
+    `tl.to("#${p}-tay-phai", { rotation: 118, duration: 0.35, ease: "power2.out" }, ${f(t)});`,
+    `tl.fromTo("#${p}-tay-trai", { rotation: 40 }, { rotation: 95, duration: 0.55, yoyo: true, repeat: ${solan(dd - 0.4, 0.55)}, ease: "sine.inOut", immediateRender: false }, ${f(t + 0.2)});`,
+    `tl.to("#${p}-dau", { rotation: -5, duration: 0.4 }, ${f(t)});`,
+  ],
+  bat_tay: (p, t, dd) => [
+    `tl.to("#${p}-tay-phai", { rotation: -72, duration: 0.35, ease: "power2.out" }, ${f(t)});`,
+    `tl.to("#${p}-tay-phai", { rotation: -62, duration: 0.14, yoyo: true, repeat: 5, ease: "sine.inOut" }, ${f(t + 0.4)});`,
+    `tl.to("#${p}-dau", { rotation: 6, duration: 0.2, yoyo: true, repeat: 1 }, ${f(t + 0.4)});`,
+    `tl.to("#${p}-ma-hong", { opacity: 1, duration: 0.3 }, ${f(t)});`,
+  ],
+  kiet_suc: (p, t, dd) => [
+    ...vatHien(p, 'zzz', t + 0.3, dd),
+    `tl.to(["#${p}-tay-trai", "#${p}-tay-phai"], { rotation: (i) => (i ? -4 : 4), duration: 0.6, ease: "sine.inOut" }, ${f(t)});`,
+    `tl.to("#${p}-dau", { rotation: 16, duration: 0.8, ease: "sine.inOut" }, ${f(t)});`,
+    `tl.to("#${p} svg", { y: 8, duration: 0.8, ease: "sine.inOut" }, ${f(t)});`,
+    `tl.to("#${p} svg", { y: 0, duration: 0.5, ease: "sine.inOut" }, ${f(t + Math.max(1, dd))});`,
+  ],
+  an_com: (p, t, dd) => [
+    ...vatHien(p, 'bat', t, dd), ...vatHien(p, 'dua', t, dd),
+    `tl.to("#${p}-tay-trai", { rotation: -16, duration: 0.3 }, ${f(t)});`,
+    `tl.to("#${p}-tay-phai", { rotation: 30, duration: 0.3 }, ${f(t)});`,
+    `tl.to("#${p}-tay-phai", { rotation: 112, duration: 0.3, yoyo: true, repeat: ${solan(dd - 0.4, 0.3)}, ease: "sine.inOut" }, ${f(t + 0.35)});`,
+    `tl.to("#${p}-dau", { rotation: 8, duration: 0.35 }, ${f(t)});`,
+  ],
+  dem_tien: (p, t, dd) => [
+    ...vatHien(p, 'tien', t, dd),
+    `tl.to("#${p}-tay-phai", { rotation: 34, duration: 0.3 }, ${f(t)});`,
+    `tl.to("#${p}-tay-trai", { rotation: -26, duration: 0.3 }, ${f(t)});`,
+    `tl.to("#${p}-tay-trai", { rotation: -36, duration: 0.2, yoyo: true, repeat: ${solan(dd - 0.4, 0.2)}, ease: "sine.inOut" }, ${f(t + 0.35)});`,
+    `tl.to("#${p}-dau", { rotation: 10, duration: 0.35 }, ${f(t)});`,
+  ],
+  lap_rap: (p, t, dd) => [
+    ...vatHien(p, 'co_le', t, dd), ...vatHien(p, 'chip', t, dd),
+    `tl.to("#${p}-tay-trai", { rotation: -16, duration: 0.3 }, ${f(t)});`,
+    `tl.to("#${p}-tay-phai", { rotation: 26, duration: 0.3 }, ${f(t)});`,
+    `tl.to("#${p}-tay-phai", { rotation: 52, duration: 0.18, yoyo: true, repeat: ${solan(dd - 0.4, 0.18)}, ease: "power1.inOut" }, ${f(t + 0.35)});`,
+    `tl.to("#${p}-dau", { rotation: 10, duration: 0.35 }, ${f(t)});`,
+  ],
+  chay: (p, t, dd) => {
+    const di = Math.min(dd, 2)
+    return [
+      `tl.fromTo(["#${p}-tay-trai", "#${p}-tay-phai"], { rotation: (i) => (i ? 40 : -40) }, { rotation: (i) => (i ? -40 : 40), duration: 0.16, yoyo: true, repeat: ${solan(di, 0.16)}, ease: "sine.inOut", immediateRender: false }, ${f(t)});`,
+      `tl.fromTo("#${p} svg", { x: 0 }, { x: 190, duration: ${f(di)}, ease: "power1.in", immediateRender: false }, ${f(t)});`,
+      `tl.to("#${p} svg", { y: -16, duration: 0.1, yoyo: true, repeat: ${solan(di, 0.1)}, ease: "sine.inOut" }, ${f(t)});`,
+      `tl.to("#${p} svg", { x: 0, duration: 0.5, ease: "power1.inOut" }, ${f(t + Math.max(di, dd) + 0.05)});`,
+      `tl.to("#${p}-dau", { rotation: -6, duration: 0.2 }, ${f(t)});`,
+    ]
+  },
+}
+// Từ trong lời kể → hành động kể chuyện (thứ tự = ưu tiên). Ẩn dụ ("bài kiểm tra sinh tồn") không tính
+const TU_TRUYEN = [
+  ['rua_bat', /rửa (bát|chén|đĩa)|chà (sàn|bát|nồi)|dọn (dẹp )?(nhà vệ sinh|toilet|phòng vệ sinh)|lau (sàn|bàn|nhà)|đĩa bẩn/],
+  ['khoc', /khóc|nước mắt|nức nở|thút thít/],
+  ['bi_xo', /bắt nạt|xô đẩy|đánh đập|bị đánh|ức hiếp|hành hạ|bị đẩy|đẩy thẳng|xô ngã|bị đuổi/],
+  ['xach_vali', /rời (khỏi )?(quê|nhà|đất nước|tổ quốc)|di cư|xách vali|chuyển nhà|lên đường|bỏ xứ|nửa vòng trái đất|sang (mỹ|nước ngoài|pháp|anh|nhật) (sống|học|làm)/],
+  ['chay', /bỏ chạy|chạy trốn|lao đi|chạy thục mạng|chạy thật nhanh|vội vã chạy/],
+  ['go_may', /gõ (phím|máy|code)|lập trình|viết (code|phần mềm)|bàn phím|trước màn hình|máy tính cá nhân|thiết kế (chip|vi mạch)/],
+  ['lap_rap', /lắp ráp|chế tạo|sửa chữa|ráp (máy|mạch)|hàn mạch|tự tay (làm|lắp|chế)|nguyên mẫu/],
+  ['doc_sach', /đọc sách|học bài|ôn thi|miệt mài học|sách vở|cắm cúi học|tự học|thư viện/],
+  ['phat_bieu', /phát biểu|thuyết trình|diễn thuyết|lên sân khấu|keynote|ra mắt|giới thiệu sản phẩm|trình bày trước/],
+  ['bat_tay', /bắt tay|hợp tác|ký kết|liên doanh|bắt tay nhau|đối tác/],
+  ['an_mung', /ăn mừng|reo hò|nhảy cẫng|vỡ òa|mở sâm panh|nâng ly/],
+  ['kiet_suc', /kiệt sức|thức trắng|mất ngủ|làm việc (ngày đêm|suốt đêm|xuyên đêm)|rã rời|gục xuống/],
+  ['an_com', /ăn (cơm|mì|tối|trưa|vội)|bữa (ăn|cơm)|bát mì|tô mì/],
+  ['dem_tien', /đếm (tiền|từng đồng)|tiết kiệm từng|không một xu|cạn tiền|túng thiếu|tiền mặt/],
+]
+Object.assign(DONG_TAC, TRUYEN)
 // Kịch bản cũ chưa có dong_tac (hoặc AI để "khong"): đoán từ chính lời thoại, để nói gì làm nấy
 const TU_DONG_TAC = [
   ['dap_tay', /đập (bàn|tay|mạnh)|đấm|nện xuống|đập vỡ/],
@@ -549,7 +703,17 @@ const TU_DONG_TAC = [
   ['cam_vat', /cầm (lên|trên tay|chiếc|cuốn|bức|tờ)|nâng niu|đọc (thư|bức thư|lá thư)|xem (bản vẽ|bức)/],
   ['chong_cam', /suy nghĩ|trăn trở|tự hỏi|ngẫm nghĩ|băn khoăn/],
 ]
-const dongTacCau = (l) => (DONG_TAC[l.dong_tac] ? l.dong_tac : TU_DONG_TAC.find(([, re]) => re.test(String(l.chu ?? '').toLowerCase()))?.[0] ?? null)
+// Người làm động tác của câu: câu người kể → nhân vật đang được kể (trên sân khấu); câu thoại → chính người nói
+const nguoiLamCau = (l, i) => (l.ai === 'nguoi_ke' || laPhu(l.ai) ? phuCuaCau[i] : l.ai === 'meo' ? 'meo' : 'robot')
+// Hành động kể chuyện (TRUYEN) đi trước cử chỉ: lời kể nói nhân vật làm gì thì làm đúng việc đó; Mèo / Bit chỉ dùng cử chỉ
+const dongTacCau = (l, i) => {
+  const chu = String(l.chu ?? '').toLowerCase()
+  if (String(nguoiLamCau(l, i) ?? '').startsWith('phu')) {
+    const ten = TRUYEN[l.dong_tac] ? l.dong_tac : TU_TRUYEN.find(([, re]) => re.test(chu))?.[0]
+    if (ten) return ten
+  }
+  return DONG_TAC[l.dong_tac] && !TRUYEN[l.dong_tac] ? l.dong_tac : TU_DONG_TAC.find(([, re]) => re.test(chu))?.[0] ?? null
+}
 const amDongTac = [] // [tệp, lúc, âm lượng, câu] tiếng đi kèm động tác (đập tay, vỗ tay, viết)
 const LUC_DONG_TAC = {} // câu → [động tác, lúc bắt đầu] (nền rung theo cú đập…)
 const diemChi = [] // lúc con số / minh hoạ / chữ lớn hiện ra → bàn tay găng trắng trượt vào chỉ (BAN_TAY)
@@ -570,7 +734,7 @@ const NGHI = (t0, phu, bo) => {
 const DIEN_KE = { to_mo: 'suy_nghi', suy_nghi: 'suy_nghi', bat_ngo: 'bat_ngo', buon: 'buon', tuc_gian: 'tuc_gian', vui: 'vui', lo_lang: 'lo_lang', giai_thich: 'giai_thich', khang_dinh: 'khang_dinh' }
 const tuThe = (i) => {
   const l = loi[i]
-  if (!l || dongTacCau(l)) return null
+  if (!l || dongTacCau(l, i)) return null
   if (l.ai === 'nguoi_ke') return phuCuaCau[i] && DIEN_KE[l.cam_xuc] ? `${phuCuaCau[i]}|${DIEN_KE[l.cam_xuc]}` : null
   const ai = laPhu(l.ai) || l.ai === 'meo' ? l.ai : 'robot'
   const p = laPhu(ai) ? phuCuaCau[i] : ai
@@ -598,7 +762,7 @@ loi.forEach((l, i) => {
     tw.push(`tl.to(["#${q}-may-trai", "#${q}-may-phai"], { y: 0, rotation: 0, duration: 0.3 }, ${f(t0 - 0.3)});`)
   }
   // Động tác theo lời: người nói làm, câu người kể thì nhân vật đang được kể (đứng trên sân khấu) làm
-  const dongTac = dongTacCau(l)
+  const dongTac = dongTacCau(l, i)
   const nguoiLam = dongTac ? (ke ? phuCuaCau[i] : p) : null
   // Có động tác thì cử chỉ cảm xúc của người làm chỉ giữ nét mặt / nhún nhảy, bỏ phần tay và đầu (động tác lo phần đó)
   const boTayDau = (ds, q) => (q && q === nguoiLam ? ds.filter((t) => !t.includes(`#${q}-tay-`) && !t.includes(`#${q}-dau"`)) : ds)
@@ -608,9 +772,9 @@ loi.forEach((l, i) => {
   if (!ke && giu !== p) tw.push(...boTayDau((CU_CHI[camNoi] ?? CU_CHI[ai === 'meo' ? 'to_mo' : 'giai_thich'])(p, t0), p))
   if (nguoiLam) {
     // Lời có nói tới hành động ("… đập bàn …") → động tác bắt đầu ngay trước lúc giọng đọc tới chữ đó; không thì đầu câu
-    const khop = TU_DONG_TAC.find(([ten]) => ten === dongTac)?.[1].exec(String(l.chu ?? '').toLowerCase())
+    const khop = [...TU_TRUYEN, ...TU_DONG_TAC].find(([ten]) => ten === dongTac)?.[1].exec(String(l.chu ?? '').toLowerCase())
     const batDauDT = Math.min(Math.max(t0 + 0.15, khop ? lucTu(i, khop.index) - 0.25 : t0 + 0.3), Math.max(t0 + 0.15, t0 + d - 0.9))
-    tw.push(...DONG_TAC[dongTac](nguoiLam, batDauDT))
+    tw.push(...DONG_TAC[dongTac](nguoiLam, batDauDT, t0 + d - batDauDT))
     LUC_DONG_TAC[i] = [dongTac, batDauDT]
     // Tiếng đi kèm tính từ lúc bắt đầu động tác (đập: lúc tay chạm xuống)
     const tiengDT = { dap_tay: ['sfx-bum', 0.5, 0.22], vo_tay: ['sfx-vo-tay', 0.05, 0.25], viet: ['sfx-but-viet', 0.05, 0.3] }[dongTac]
@@ -765,7 +929,7 @@ loi.forEach((l, i) => {
 
 // Kiểm định đồng bộ: câu có động tác (AI chọn hoặc lời nói tới) mà không có ai trên sân khấu để diễn → ghi cảnh báo
 loi.forEach((l, i) => {
-  const dt = dongTacCau(l)
+  const dt = dongTacCau(l, i)
   if (dt && !DONG_BO.some((x) => x.cau === i)) DONG_BO.push({ cau: i, bd: +batDau[i].toFixed(2), kt: +(batDau[i] + doDai[i]).toFixed(2), chu: l.chu, dong_tac: dt, canh_bao: 'không có nhân vật trên sân khấu để diễn' })
 })
 writeFileSync(join(GOC, 'artifacts/dong_bo.json'), JSON.stringify(DONG_BO.sort((a, b) => a.cau - b.cau), null, 1))
@@ -1005,6 +1169,21 @@ const DAU_HIEU = {} // nhân vật (meo / robot / phu<k>) → html
   })
   function d0(i) { return doDai[i] > 1.6 }
 }
+// Gắn đồ vật hành động kể chuyện vào hình nhân vật: đồ cầm tay nằm trong nhóm cánh tay (xoay theo tay), đồ đặt trước
+// người / bay trên đầu vẽ đè lên cùng
+const ganVat = (svg, id) => {
+  let ra = svg
+  let tren = ''
+  for (const ten of VAT_CAN[id] ?? []) {
+    const [bt, cho] = VAT[ten]
+    const [x, y, co] = { phai: [280, 492, 78], trai: [120, 492, 78], truoc: [200, 452, 128], dau: [300, 110, 70] }[cho]
+    const el = `<text id="${id}-vat-${ten}" x="${x}" y="${y}" font-size="${co}" text-anchor="middle" dominant-baseline="middle" opacity="0" style="font-family: 'Emoji', sans-serif">${bt}</text>`
+    const mo = `<g id="${id}-tay-${cho}">`
+    if ((cho === 'phai' || cho === 'trai') && ra.includes(mo)) ra = ra.replace(mo, mo + el)
+    else tren += el
+  }
+  return ra + tren
+}
 const nvPhu = doanPhu.map((dp, k) => {
   const id = `phu${k}`
   const t0 = batDau[dp.tu]
@@ -1046,7 +1225,7 @@ const nvPhu = doanPhu.map((dp, k) => {
   // Không ghi tên trên đầu (trang phục tự nói lên họ là ai); hai nhân vật chính dạt sang hai bên chừa chỗ cho nhân vật phụ
   // Mèo / Bit dạt ra bao xa: tính chung cho mọi người trên sân khấu theo thời gian (sanKhau, xem dưới)
   sanKhau.push({ vao, ra: het - 0.3, lech: dp.lech })
-  return `<div id="${id}" class="nv-phu" data-ten="${dp.ten}" style="left:${354 + dp.lech}px"><svg viewBox="${NHAN_VAT_PHU[dp.ten].viewBox ?? '0 0 400 600'}" width="372" height="558" class="nv">${NHAN_VAT_PHU[dp.ten].svg(id)}</svg>${DAU_HIEU[id] ?? ''}</div>`
+  return `<div id="${id}" class="nv-phu" data-ten="${dp.ten}" style="left:${354 + dp.lech}px"><svg viewBox="${NHAN_VAT_PHU[dp.ten].viewBox ?? '0 0 400 600'}" width="372" height="558" class="nv">${ganVat(NHAN_VAT_PHU[dp.ten].svg(id), id)}</svg>${DAU_HIEU[id] ?? ''}</div>`
 })
 // Mèo / Bit dạt sang hai bên chừa chỗ cho nhân vật phụ. Tính theo thời gian, mỗi lúc có người vào / ra: ai đang đứng trên
 // sân khấu, đứng ở đâu → độ dạt cần thiết (có người đứng lệch trái / phải hoặc hai người cùng đứng: dạt xa 300; một người

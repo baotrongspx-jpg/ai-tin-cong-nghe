@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import type { DuAnYT } from '@/lib/youtube'
-import { THU_VIEN_HANH_DONG, coEmoji, doVatThieu, hanhDongCu, hanhDongThieu, kichBanDien, yeuCauClaudeCode } from '@/lib/thuVienHanhDong'
+import { TEN_LOAI_HINH, THU_VIEN_HANH_DONG, canChuanBi, coEmoji, danhSachChuanBi, doVatThieu, hanhDongCu, hanhDongThieu, kichBanDien, yeuCauClaudeCode } from '@/lib/thuVienHanhDong'
 import { thongBao } from '@/app/ThongBao'
 import { Xoay } from '@/app/BieuTuong'
 import { apDungHanhDongYouTube, chuanBiHanhDongYouTube } from '../actions'
@@ -61,6 +61,8 @@ export default function HanhDongPhim({ d, onDuAn }: { d: DuAnYT; onDuAn: (d: DuA
   const vatThieu = pt ? doVatThieu(pt) : []
   const vatGanDuoc = vatThieu.filter((g) => coEmoji(g.vat))
   const vatPhaiVe = vatThieu.filter((g) => !coEmoji(g.vat))
+  const chuanBi = pt ? canChuanBi(pt) : []
+  const soHinh = tatCa.reduce((t, x) => t + (x.hinh_can?.length ?? 0), 0)
   const canClaude = soThieu > 0 || vatPhaiVe.length > 0
 
   return (
@@ -81,7 +83,7 @@ export default function HanhDongPhim({ d, onDuAn }: { d: DuAnYT; onDuAn: (d: DuA
       {pt && (
         <>
           {cu && <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900 ring-1 ring-amber-200">Lời thoại đã sửa sau lần chuẩn bị này — bấm chuẩn bị lại để khớp.</p>}
-          <div className="grid gap-2 sm:grid-cols-4">
+          <div className="grid gap-2 sm:grid-cols-5">
             <div className="rounded-lg bg-slate-50 p-3 ring-1 ring-slate-200">
               <p className="text-2xl font-bold">{canDien.length}<span className="text-sm font-normal text-slate-500">/{tatCa.length} câu</span></p>
               <p className="text-xs text-slate-600">câu có việc cần diễn (không chỉ đứng nói)</p>
@@ -99,6 +101,10 @@ export default function HanhDongPhim({ d, onDuAn }: { d: DuAnYT; onDuAn: (d: DuA
               <p className="text-xs text-slate-700">
                 đạo cụ còn thiếu{vatThieu.length ? `: ${vatGanDuoc.length} gắn được ngay, ${vatPhaiVe.length} phải vẽ thêm` : ''}
               </p>
+            </div>
+            <div className={`rounded-lg p-3 ring-1 ${chuanBi.length ? 'bg-orange-50 ring-orange-200' : 'bg-emerald-50 ring-emerald-200'}`}>
+              <p className="text-2xl font-bold">{chuanBi.length}<span className="text-sm font-normal text-slate-500">/{soHinh} hình</span></p>
+              <p className="text-xs text-slate-700">hình cần chuẩn bị (logo, ảnh thật, địa điểm…)</p>
             </div>
           </div>
 
@@ -148,6 +154,24 @@ export default function HanhDongPhim({ d, onDuAn }: { d: DuAnYT; onDuAn: (d: DuA
             </div>
           )}
 
+          {chuanBi.length > 0 && (
+            <div className="grid gap-2 rounded-lg bg-orange-50 p-3 ring-1 ring-orange-200">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm font-bold text-orange-900">Cần chuẩn bị ({chuanBi.length})</p>
+                <NutChepNho chu={danhSachChuanBi(d.tieu_de, pt)} ten="📋 Chép danh sách cần chuẩn bị" lon />
+              </div>
+              <ul className="grid gap-1 text-sm text-orange-950">
+                {chuanBi.map((g) => (
+                  <li key={g.loai + g.ten}>
+                    <span className="mr-1 rounded bg-orange-100 px-1.5 text-[11px] font-semibold text-orange-800">{TEN_LOAI_HINH[g.loai]}</span>
+                    <b>{g.ten}</b> — {g.ghi_chu} <span className="text-xs text-orange-700">({g.vi_du.map((v) => `ch.${v.k} câu ${v.i + 1}`).slice(0, 4).join(', ')})</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="text-xs text-orange-800">Logo thương hiệu máy tự vẽ huy hiệu (không cần chuẩn bị). Ảnh nền địa điểm: tải ở khung &quot;Ảnh nền phim này cần&quot;. Đồ vật phải vẽ: nằm trong yêu cầu chép cho Claude Code.</p>
+            </div>
+          )}
+
           {vatThieu.length > 0 && (
             <div className="grid gap-1 rounded-lg bg-amber-50 p-3 ring-1 ring-amber-200">
               <p className="text-sm font-bold text-amber-900">Đạo cụ còn thiếu</p>
@@ -183,6 +207,27 @@ export default function HanhDongPhim({ d, onDuAn }: { d: DuAnYT; onDuAn: (d: DuA
                               {(x.do_vat_can ?? []).map((v) => (
                                 <span key={v} className={`rounded px-1.5 text-[11px] ${(x.do_vat_thieu ?? []).includes(v) ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'}`}>
                                   {v}
+                                </span>
+                              ))}
+                            </span>
+                          )}
+                          {(x.hinh_can ?? []).length > 0 && (
+                            <span className="mt-0.5 flex flex-wrap gap-1">
+                              {(x.hinh_can ?? []).map((h) => (
+                                <span
+                                  key={h.loai + h.ten}
+                                  title={h.ghi_chu}
+                                  className={`rounded px-1.5 text-[11px] ${h.co ? 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200' : 'bg-orange-100 text-orange-800 ring-1 ring-orange-300'}`}
+                                >
+                                  {h.loai === 'logo' ? (
+                                    <span className="mr-0.5 inline-block rounded px-1 font-bold text-white" style={{ background: h.mau || '#334155' }}>
+                                      {h.chu || h.ten.slice(0, 2)}
+                                    </span>
+                                  ) : (
+                                    h.emoji
+                                  )}{' '}
+                                  {TEN_LOAI_HINH[h.loai]}: {h.ten}
+                                  {!h.co && ' — cần chuẩn bị'}
                                 </span>
                               ))}
                             </span>

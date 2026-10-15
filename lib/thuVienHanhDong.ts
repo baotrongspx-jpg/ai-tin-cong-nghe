@@ -61,9 +61,51 @@ export type CauHanhDong = {
   ten_moi: string // mã đặt cho hành động mới (khi hanh_dong = 'moi')
   do_vat: string // (bản cũ) đồ vật cần (emoji)
   do_vat_can?: string[] // đạo cụ câu này cần ("🧹 cái chổi")
+  hinh_can?: HinhCan[] // mọi hình câu này cần có trên màn hình (logo, đồ vật, ảnh thật, nhân vật, địa điểm, số liệu) + đã có chưa
   chi_tiet?: string // kịch bản diễn chi tiết (cầm đạo cụ, tư thế, ánh mắt, chu trình động tác, bước chân, kết thúc, yêu cầu chuyển động)
   do_vat_thieu?: string[] // trong đó: hành động đã chọn chưa có sẵn → gắn thêm (có emoji) hoặc phải vẽ (không có emoji)
 }
+// Một hình câu thoại cần có trên màn hình (chủ trang 15/10/2026: "phân tích từng câu thoại, cần gì thì báo để chuẩn bị —
+// câu có Facebook thì có biểu tượng Facebook")
+export type HinhCan = {
+  loai: 'logo' | 'do_vat' | 'anh_that' | 'nhan_vat' | 'dia_diem' | 'so_lieu'
+  ten: string
+  emoji: string
+  mau: string // màu thương hiệu (logo)
+  chu: string // chữ trên huy hiệu (logo)
+  co: boolean // máy đã có / tự làm được
+  ghi_chu: string
+}
+export const TEN_LOAI_HINH: Record<HinhCan['loai'], string> = {
+  logo: 'Logo', do_vat: 'Đồ vật', anh_that: 'Ảnh thật', nhan_vat: 'Nhân vật', dia_diem: 'Địa điểm', so_lieu: 'Số liệu',
+}
+// Những hình còn phải chuẩn bị (chưa có), gom theo loại + tên
+export function canChuanBi(pt: PhanTichHanhDong) {
+  const nhom = new Map<string, { loai: HinhCan['loai']; ten: string; ghi_chu: string; vi_du: { k: number; i: number; chu: string }[] }>()
+  for (const c of pt.chuong)
+    for (const x of c.cau)
+      for (const h of x.hinh_can ?? []) {
+        if (h.co) continue
+        const ma = `${h.loai}|${h.ten.toLowerCase()}`
+        const g = nhom.get(ma) ?? { loai: h.loai, ten: h.ten, ghi_chu: h.ghi_chu, vi_du: [] }
+        g.vi_du.push({ k: c.k, i: x.i, chu: x.chu })
+        nhom.set(ma, g)
+      }
+  return [...nhom.values()].sort((a, b) => a.loai.localeCompare(b.loai) || b.vi_du.length - a.vi_du.length)
+}
+export function danhSachChuanBi(tieuDe: string, pt: PhanTichHanhDong) {
+  const ds = canChuanBi(pt)
+  return [
+    `CẦN CHUẨN BỊ CHO PHIM "${tieuDe}" (${ds.length} mục)`,
+    ...(['anh_that', 'dia_diem', 'nhan_vat', 'do_vat', 'so_lieu', 'logo'] as const).flatMap((loai) => {
+      const g = ds.filter((x) => x.loai === loai)
+      return g.length
+        ? ['', `== ${TEN_LOAI_HINH[loai]} (${g.length}) ==`, ...g.map((x) => `- ${x.ten} — ${x.ghi_chu} — ${x.vi_du.map((v) => `chương ${v.k} câu ${v.i + 1}`).slice(0, 4).join(', ')}`)]
+        : []
+    }),
+  ].join('\n')
+}
+
 export type PhanTichHanhDong = { luc: string; chuong: { k: number; cau: CauHanhDong[] }[] }
 
 // Kịch bản đã đổi sau lần chuẩn bị (số câu / đầu câu khác) → phải chuẩn bị lại

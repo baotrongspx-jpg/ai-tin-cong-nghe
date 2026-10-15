@@ -10,6 +10,7 @@ import { BOI_CANH } from './boiCanh.mjs'
 import { NHAN_VAT_PHU, nguoiKeSvg, nhanVatChinhSvg } from './nhanVatPhu.mjs'
 import { meoSvg, robotSvg } from './nhanVatChinh.mjs'
 import { DAO_CU } from './daoCu.mjs'
+import { logoTrongCau } from './logoThuongHieu.mjs'
 import { HANH_DONG } from './hanhDong.mjs'
 import { lopSong } from './lopSong.mjs'
 import { CSS_MINH_HOA, MINH_HOA, mocMoDau } from './minhHoa.mjs'
@@ -1698,6 +1699,42 @@ loi.forEach((l, i) => {
   tw.push(`tl.to("#${id}", { opacity: 0, scale: 0.3, duration: 0.3, ease: "power2.in" }, ${f(t0 + d - 0.2)});`)
 })
 
+// ── Huy hiệu thương hiệu (logoThuongHieu.mjs): lời thoại nhắc Facebook, Google, Nvidia… → huy hiệu bật lên ở góc trên đúng
+// lúc giọng đọc tới tên, nằm cạnh chỗ đạo cụ minh hoạ (không chồng nhau), tắt cuối câu. Thương hiệu ngoài danh sách: bước
+// chuẩn bị hành động ghi l.logo ([{ ten, mau, chu }]). Cùng thương hiệu ở câu ngay trước thì không bật lại (khỏi nhấp nháy);
+// câu đang phủ ảnh tư liệu toàn khung thì bỏ.
+const logoKhung = []
+const amLogo = [] // lúc huy hiệu bật lên → tiếng "bóp" nhỏ (phát ở phần âm thanh)
+{
+  let truoc = new Set()
+  loi.forEach((l, i) => {
+    const tuDong = logoTrongCau(l.chu)
+    const them = (Array.isArray(l.logo) ? l.logo : [])
+      .filter((x) => x && x.ten && !tuDong.some((y) => y.ten.toLowerCase() === String(x.ten).toLowerCase()))
+      .map((x) => ({ ma: String(x.ten).toLowerCase(), ten: String(x.ten), mau: /^#[0-9a-f]{3,8}$/i.test(x.mau ?? '') ? x.mau : '#334155', chu: String(x.chu || x.ten).slice(0, 5), mauChu: '#ffffff', viTri: String(l.chu ?? '').toLowerCase().indexOf(String(x.ten).toLowerCase()) }))
+    const ds = [...tuDong, ...them].slice(0, 2)
+    const nay = new Set(ds.map((x) => x.ma))
+    if (NGANG && doanAnh.some((c) => c.kieu === 'toan' && c.tu <= i && c.het >= i)) {
+      truoc = nay
+      return
+    }
+    ds.forEach((x, j) => {
+      if (truoc.has(x.ma)) return
+      const id = `lg${i}-${j}`
+      // Câu đầu có dòng chữ tít to: chờ tít chạy xong mới bật huy hiệu (khỏi đè chữ)
+      const t = Math.max(batDau[i] + 0.1, i === 0 && moc?.chu ? Math.min(batDau[0] + 2.2, batDau[0] + doDai[0]) + 0.2 : 0, (x.viTri >= 0 ? lucTu(i, x.viTri) : batDau[i] + 0.3) - 0.1)
+      const het = batDau[i] + doDai[i] - 0.15
+      if (het - t < 0.8) return
+      const co = x.chu.length <= 1 ? 96 : x.chu.length <= 2 ? 66 : x.chu.length <= 4 ? 44 : 34
+      logoKhung.push(`<div id="${id}" class="logo-th" style="${NGANG ? `right:${290 + j * 170}px` : `right:${40 + j * 160}px`}"><div class="lg-o" style="background:${x.mau};color:${x.mauChu};font-size:${co}px">${esc(x.chu)}</div><div class="lg-ten">${esc(x.ten)}</div></div>`)
+      tw.push(`tl.fromTo("#${id}", { opacity: 0, scale: 0.3, rotation: -12 }, { opacity: 1, scale: 1, rotation: 0, duration: 0.4, ease: "back.out(2.2)", immediateRender: false }, ${f(t)});`)
+      tw.push(`tl.to("#${id}", { opacity: 0, scale: 0.6, duration: 0.25, ease: "power2.in" }, ${f(het - 0.25)});`)
+      amLogo.push(t)
+    })
+    truoc = nay
+  })
+}
+
 // ── Không khí: hạt sáng lơ lửng trước nền (vị trí cố định theo công thức, không ngẫu nhiên) ─
 const hat = [...Array(16)].map((_, k) => {
   const x = NGANG ? -400 + ((k * 263) % 1860) : (k * 263) % 1040, y = 260 + ((k * 397) % 1100), r = 6 + (k % 4) * 5
@@ -2156,6 +2193,7 @@ const FOLEY_DAO_CU = {
   may_anh: ['sfx-chup-anh', 0.4], chuong: ['sfx-ting', 0.3], cup: ['sfx-ting', 0.25], huy_chuong: ['sfx-ting', 0.25],
 }
 for (const [ten, t, a, i] of amDongTac) if (!SFX[loi[i].am_thanh]) themAm(ten, t, a, 1.2)
+for (const t of amLogo) themAm('sfx-bop', t, 0.22)
 for (const [ten, i, t] of amDaoCu) {
   const fo = FOLEY_DAO_CU[ten]
   if (fo && !SFX[loi[i].am_thanh]) themAm(fo[0], t, fo[1], 1.6)
@@ -2426,6 +2464,9 @@ const trang = `<!doctype html>
       .nen-dong { position: absolute; inset: 0; transform-origin: 50% 62%; }
       .nen-svg { display: block; }
       .anh-nen-canh.tu-lam { filter: brightness(0.94) !important; }
+      .logo-th { position: absolute; top: ${NGANG ? 140 : 250}px; width: 150px; display: flex; flex-direction: column; align-items: center; gap: 8px; opacity: 0; pointer-events: none; filter: drop-shadow(0 12px 18px #0007); }
+      .lg-o { width: 128px; height: 128px; border-radius: 30px; display: flex; align-items: center; justify-content: center; font-weight: 800; line-height: 1; letter-spacing: -1px; border: 5px solid #ffffffdd; font-family: "BVP", "Emoji", sans-serif; }
+      .lg-ten { padding: 3px 12px; border-radius: 10px; background: #0f172acc; color: #fff; font-size: 22px; font-weight: 700; white-space: nowrap; }
       .dau-hieu { position: absolute; top: 30px; font-size: 130px; font-weight: 700; line-height: 1; color: #fde047; -webkit-text-stroke: 12px #111827; paint-order: stroke fill; opacity: 0; pointer-events: none; filter: drop-shadow(0 8px 10px #0007); }
       .dh-meo { left: 450px; }
       .dh-robot { left: 70px; }
@@ -2516,7 +2557,7 @@ const trang = `<!doctype html>
       </div>
 ${NGANG ? bang.join('') : ''}
       <div id="vien-toi" class="clip" data-start="0" data-duration="${f(TONG)}" data-track-index="5"><div id="den"></div><div id="hat-phim"></div><div id="chop"></div></div>
-      <div id="lop-minh-hoa" class="clip" data-start="0" data-duration="${f(TONG)}" data-track-index="7">${anhThat.join('')}${giatTit.html}${theMoc.join('')}${minhHoaKhung.join('')}${daoCuKhung.join('')}${soDong.join('')}${chuLon.join('')}${hanhDongKhung.join('')}${banTay.join('')}${khungKeHtml}${donDap.join('')}${manKetHtml}${theChuongHtml}</div>${phuDe.join('')}
+      <div id="lop-minh-hoa" class="clip" data-start="0" data-duration="${f(TONG)}" data-track-index="7">${anhThat.join('')}${giatTit.html}${theMoc.join('')}${minhHoaKhung.join('')}${daoCuKhung.join('')}${logoKhung.join('')}${soDong.join('')}${chuLon.join('')}${hanhDongKhung.join('')}${banTay.join('')}${khungKeHtml}${donDap.join('')}${manKetHtml}${theChuongHtml}</div>${phuDe.join('')}
       ${[...amThanh, ...amPhu].join('\n      ')}
     </div>
     <script>

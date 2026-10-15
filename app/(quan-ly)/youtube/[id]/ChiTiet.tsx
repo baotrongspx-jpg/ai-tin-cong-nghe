@@ -11,6 +11,7 @@ import { duyetKichBanYouTube, bienTapYouTube, chayBuocPhimYouTube, layShortsYouT
 import HoSoPhim, { KhoiDuLieu } from './HoSoPhim'
 import { bienTapDat, hoiDongDat, khauChuaDat, SO_LAN_LAM_LAI } from '@/lib/datChuan'
 import NenPhim from './NenPhim'
+import HanhDongPhim from './HanhDongPhim'
 
 const NGUOI: Record<string, string> = {
   nguoi_ke: '🎙 Người kể',
@@ -109,6 +110,12 @@ function DuyetKichBan({ d, doi, khoa, duyet }: { d: DuAnYT; doi: boolean; khoa: 
       <ul className="grid gap-1 text-sm text-amber-950">
         <li>• <b>Tên phim:</b> “{d.tieu_de}” — xem kỹ dấu tiếng Việt (giọng đọc và YouTube dùng đúng tên này)</li>
         <li>• <b>Biên tập viên:</b> {ghiChu.filter((g) => g.muc === 'loi').length} lỗi, {ghiChu.filter((g) => g.muc === 'nhac').length} ghi chú{ghiChu.length ? ' (xem ở từng chương)' : ''}</li>
+        <li>
+          • <b>Hành động nhân vật:</b>{' '}
+          {d.hanh_dong
+            ? `${d.hanh_dong.chuong.flatMap((c) => c.cau).filter((x) => x.hanh_dong === 'moi').length} câu còn thiếu hành động (xem khung "Hành động nhân vật theo lời thoại" bên dưới)`
+            : 'chưa chuẩn bị — bấm "AI đọc lời thoại & chuẩn bị hành động" ở khung bên dưới'}
+        </li>
         {d.loai === 'tieu_su' && <li>• <b>Câu tái hiện</b> (lời dựng lại, không phải trích dẫn thật): {taiHien} câu — có nhãn “Tái hiện” trên hình</li>}
         {chuaXacMinh.length > 0 && (
           <li>
@@ -853,6 +860,7 @@ export default function ChiTiet({ dau, ttDau }: { dau: DuAnYT; ttDau: TrangThaiD
 
       {d.loai === 'tieu_su' && <HoSoPhim d={d} chay={(buoc) => void chayLaiBuoc(buoc)} dangChay={!!dangChay} />}
       {d.loai === 'tieu_su' && <NenPhim d={d} onDuAn={setD} />}
+      <HanhDongPhim d={d} onDuAn={setD} />
 
       {/* Các phần */}
       <section className="grid gap-3">

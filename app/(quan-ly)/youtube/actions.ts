@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { daDangNhap } from '@/lib/xacThuc'
 import { mayNhaTat } from '@/lib/giongDoc'
 import {
-  bienTapPhim, chayBuocPhim, docDuAn, duyetKichBan, guiDung, kiemDinhLaiPhan, luuPhatAm, taoShorts, trangThaiShorts, suaThongTin, taoDuAn, taoPhim, trangThaiDuAn, vietLoiPhan, suaLoiPhan, veAnhBia, chonAnhBia, xoaDuAn, linkTaiNenPhim, xongTaiNenPhim, xoaNenPhim, veNenPhim, linkXemNenPhim, soCanhTheoDiaDiem,
+  bienTapPhim, chayBuocPhim, docDuAn, duyetKichBan, guiDung, kiemDinhLaiPhan, luuPhatAm, taoShorts, trangThaiShorts, suaThongTin, taoDuAn, taoPhim, trangThaiDuAn, vietLoiPhan, suaLoiPhan, veAnhBia, chonAnhBia, xoaDuAn, linkTaiNenPhim, xongTaiNenPhim, xoaNenPhim, veNenPhim, chuanBiHanhDong, apDungHanhDong, linkXemNenPhim, soCanhTheoDiaDiem,
   type BuocPhim, type DuAnYT, type TrangThaiBienTap, type TrangThaiDuAn, type TrangThaiShort,
 } from '@/lib/youtube'
 
@@ -216,6 +216,26 @@ export async function xongTaiNenPhimYouTube(id: string, ma: string, tep: string,
   try {
     await chanChuaDangNhap()
     return { ok: true, duAn: await xongTaiNenPhim(id, ma, tep, nho) }
+  } catch (e) {
+    return baoLoi(e)
+  }
+}
+
+// AI đọc lời thoại cả phim, chuẩn bị hành động nhân vật cho từng câu (thiếu thì đánh dấu để xây thêm)
+export async function chuanBiHanhDongYouTube(id: string): Promise<{ ok: true; duAn: DuAnYT } | Loi> {
+  try {
+    await chanChuaDangNhap()
+    return { ok: true, duAn: await chuanBiHanhDong(id) }
+  } catch (e) {
+    return baoLoi(e)
+  }
+}
+
+export async function apDungHanhDongYouTube(id: string): Promise<{ ok: true; duAn: DuAnYT; so: number; boQua: number[] } | Loi> {
+  try {
+    await chanChuaDangNhap()
+    const kq = await apDungHanhDong(id)
+    return { ok: true, ...kq }
   } catch (e) {
     return baoLoi(e)
   }

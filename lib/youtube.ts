@@ -631,7 +631,7 @@ function hinhCanCau(d: DuAnYT, l: CauYT, ds: z.infer<typeof HinhCanSchema>[]): H
         h.loai === 'logo' ? true
         : h.loai === 'do_vat' ? !!emojiCua(h.emoji)
         : h.loai === 'anh_that' ? typeof l.anh === 'number' && l.anh >= 0
-        : h.loai === 'nhan_vat' ? /mèo|mun|robot|bit|người kể/i.test(h.ten) || laNhanVatChinh(d, h.ten) || (!!l.nhan_vat_phu && !['khong', 'nhan_vat_chinh'].includes(l.nhan_vat_phu))
+        : h.loai === 'nhan_vat' ? /mèo|mun|robot|\bbit\b|người kể/i.test(h.ten) || laNhanVatChinh(d, h.ten) || (!!l.nhan_vat_phu && !['khong', 'nhan_vat_chinh'].includes(l.nhan_vat_phu))
         : h.loai === 'dia_diem' ? coNoi
         : !!l.minh_hoa?.kieu && l.minh_hoa.kieu !== 'khong'
       const ghi_chu =

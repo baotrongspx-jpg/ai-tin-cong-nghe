@@ -15,6 +15,7 @@ import { suaKichBan } from './suaKichBan'
 import { bienTapDat, hoiDongDat, khauChuaDat, loiBienTap } from './datChuan'
 import { apBienTap, deBaiBienTap, type DaBienTap, type KetQuaBienTap } from './bienTap'
 import { batNhacNen, dsNhac } from './nhacNen'
+import { veAnhGemini } from './veAnhNen'
 
 // Video YouTube dài (trang /youtube): hoạt hình Mèo Mun & Robot Bit, khung ngang 16:9, dài tới ~20 phút.
 // Mỗi dự án là một tệp youtube/<id>/du-an.json trong kho (không cần thêm bảng). AI viết dàn ý chia phần (~3 phút
@@ -1114,6 +1115,26 @@ export async function xongTaiNenPhim(id: string, ma: string, tep: string, nho = 
   d.phim!.nen = { ...(d.phim!.nen ?? {}), [ma]: { tep, luc: Date.now(), ...(nho ? { nho: true } : {}) } }
   await luuDuAn(d)
   return d
+}
+
+// AI vẽ ảnh nền cho một địa điểm (Gemini, lib/veAnhNen.ts) theo đúng mô tả trong hồ sơ phim, lưu như ảnh chủ trang tải
+// lên (thay ảnh cũ). Chủ trang vẫn thay bằng ảnh tự chọn được.
+export async function veNenPhim(id: string, ma: string) {
+  const d = kiemDiaDiem(await docDuAn(id), ma)
+  const x = d.phim!.ho_so!.dia_diem.find((v) => v.ma === ma)!
+  const moTa = [
+    `${x.ten}, ${[x.thanh_pho, x.quoc_gia].filter(Boolean).join(', ')}, era: ${x.thoi_ky}.`,
+    ...([['Architecture', x.kien_truc], ['Interior', x.noi_that], ['Exterior', x.ngoai_that], ['Colours', x.mau_sac], ['Light', x.anh_sang], ['Weather', x.thoi_tiet], ['Props', x.dao_cu], ['Atmosphere', x.khong_khi]] as const)
+      .filter(([, v]) => v)
+      .map(([k, v]) => `${k}: ${v}.`),
+  ].join('\n')
+  const anh = await veAnhGemini(moTa)
+  const duoi = anh.mime.includes('jpeg') ? '.jpg' : anh.mime.includes('webp') ? '.webp' : '.png'
+  const cu = d.phim?.nen?.[ma]
+  if (cu && !cu.tep.endsWith(duoi)) await kho().remove([duongNen(id, cu.tep), duongNen(id, `${ma}-nho.jpg`)])
+  const { error } = await kho().upload(duongNen(id, `${ma}${duoi}`), anh.du_lieu, { contentType: anh.mime, upsert: true })
+  if (error) throw new Error(`Không lưu được ảnh: ${error.message}`)
+  return xongTaiNenPhim(id, ma, `${ma}${duoi}`)
 }
 
 export async function xoaNenPhim(id: string, ma: string) {

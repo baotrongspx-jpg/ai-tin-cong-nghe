@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { DuAnYT } from '@/lib/youtube'
 import { thongBao } from '@/app/ThongBao'
 import { Xoay } from '@/app/BieuTuong'
-import { layNenPhimYouTube, xinLinkTaiNenPhimYouTube, xoaNenPhimYouTube, xongTaiNenPhimYouTube } from '../actions'
+import { layNenPhimYouTube, veNenPhimYouTube, xinLinkTaiNenPhimYouTube, xoaNenPhimYouTube, xongTaiNenPhimYouTube } from '../actions'
 
 type DiaDiem = NonNullable<NonNullable<DuAnYT['phim']>['ho_so']>['dia_diem'][number]
 
@@ -98,6 +98,25 @@ export default function NenPhim({ d, onDuAn }: { d: DuAnYT; onDuAn: (d: DuAnYT) 
     }
   }
 
+  // AI vẽ ảnh nền (Gemini) cho một địa điểm / lần lượt mọi địa điểm còn thiếu ảnh
+  const veAI = async (ma: string) => {
+    setDang(ma)
+    const kq = await veNenPhimYouTube(d.id, ma)
+    setDang(null)
+    if (!kq.ok) {
+      thongBao('loi', kq.loi)
+      return false
+    }
+    onDuAn(kq.duAn)
+    return true
+  }
+  const veTatCa = async () => {
+    for (const x of dsDiaDiem.filter((v) => !nen[v.ma])) {
+      if (!(await veAI(x.ma))) return
+    }
+    thongBao('ok', 'AI đã vẽ xong ảnh nền các địa điểm — xem lại, ảnh nào chưa ưng thì bấm AI vẽ lại hoặc tự tải ảnh khác')
+  }
+
   const xoa = async (ma: string) => {
     setDang(ma)
     const kq = await xoaNenPhimYouTube(d.id, ma)
@@ -152,6 +171,14 @@ export default function NenPhim({ d, onDuAn }: { d: DuAnYT; onDuAn: (d: DuAnYT) 
         </ul>
         <p className="mt-2 text-xs text-amber-800">Mẹo: bấm <b>Chép lời nhắn</b> ở mỗi địa điểm để dán vào công cụ AI tạo ảnh — lời nhắn đã có đủ mô tả và yêu cầu trên.</p>
       </div>
+      {co < dsDiaDiem.length && (
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="button" className="btn btn-sm bg-violet-600 text-white hover:bg-violet-700" disabled={!!dang} onClick={() => void veTatCa()}>
+            🎨 AI vẽ {dsDiaDiem.length - co} ảnh nền còn thiếu
+          </button>
+          <span className="text-xs text-slate-500">Gemini vẽ theo mô tả từng địa điểm (cần bật trả phí Gemini, khoảng 1.000 đồng / ảnh). Mỗi ảnh khoảng 10–20 giây.</span>
+        </div>
+      )}
       <input ref={chon} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => void taiLen(e.target.files?.[0])} />
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {dsDiaDiem.map((x) => (
@@ -187,6 +214,9 @@ export default function NenPhim({ d, onDuAn }: { d: DuAnYT; onDuAn: (d: DuAnYT) 
                 }}
               >
                 {dang === x.ma ? <Xoay /> : nen[x.ma] ? 'Thay ảnh' : 'Tải ảnh'}
+              </button>
+              <button type="button" className="btn btn-sm btn-nhat" disabled={!!dang} onClick={() => void veAI(x.ma).then((ok) => ok && thongBao('ok', `AI đã vẽ ảnh nền: ${x.ten}`))}>
+                {dang === x.ma ? <Xoay /> : nen[x.ma] ? '🎨 AI vẽ lại' : '🎨 AI vẽ'}
               </button>
               <button type="button" className="btn btn-sm btn-nhat" onClick={() => void chep(x)}>Chép lời nhắn</button>
               <button type="button" className="btn btn-sm btn-nhat" onClick={() => setMoChiTiet(moChiTiet === x.ma ? null : x.ma)}>

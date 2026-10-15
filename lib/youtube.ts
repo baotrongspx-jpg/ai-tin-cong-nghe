@@ -622,7 +622,7 @@ For each numbered activity (who: activity | props needed) return: i, hanh_dong (
     : { cau: [] }
   if (!khop) throw new Error(`AI chưa đối chiếu được chương ${k}, thử lại`)
   const theoKhop = new Map(khop.cau.map((x) => [x.i, x]))
-  return loi.map((l, i) => {
+  const ketQua: CauHanhDong[] = loi.map((l, i) => {
     const x = theoViec.get(i)
     const y = x?.can ? theoKhop.get(i) : undefined
     const ma = y?.hanh_dong ?? 'khong'
@@ -643,6 +643,37 @@ For each numbered activity (who: activity | props needed) return: i, hanh_dong (
       do_vat_thieu: x?.can ? canVat.filter((v) => !coSan.has(emojiGoc(v)) || !emojiCua(v)) : [],
     }
   })
+  // Lượt 3 — kịch bản diễn chi tiết cho TỪNG câu (chủ trang 15/10/2026, mẫu "nhân vật quét nhà"): cầm đạo cụ thế nào, tư
+  // thế, ánh mắt, chu trình động tác, bước chân và trọng tâm, biến thể giữa chừng, kết thúc, yêu cầu chuyển động — vừa
+  // khít thời lượng câu nói. Câu chỉ nói chuyện: vài câu ngắn về cử chỉ, ánh mắt, nét mặt. Chia nhóm 8 câu cho AI viết kỹ.
+  const nhom: number[][] = []
+  for (let i = 0; i < ketQua.length; i += 8) nhom.push(ketQua.slice(i, i + 8).map((x) => x.i))
+  const chiTiet = await Promise.all(
+    nhom.map((ds) =>
+      goiJson({
+        system: `You are the animation director of a Vietnamese 2D cartoon documentary (flat front-facing characters: head, eyebrows, eyes, mouth, two arms, body, legs; props held in the hands). For each numbered line write in VIETNAMESE the detailed ACTING SCRIPT the animator follows while the line is spoken (it lasts the given seconds), in the style of this example:
+"HÀNH ĐỘNG: NHÂN VẬT QUÉT NHÀ
+Nhân vật cầm chổi bằng hai tay, một tay nắm phần giữa cán chổi, tay còn lại giữ phía trên. Nhân vật hơi cúi người về phía trước, mắt nhìn xuống sàn nhà, tập trung vào khu vực cần dọn dẹp.
+Nhân vật bắt đầu đưa chổi từ bên trái sang bên phải, sau đó kéo chổi ngược lại một cách tự nhiên. Hai cánh tay phối hợp nhịp nhàng, thân người hơi nghiêng và di chuyển theo hướng quét. Hai chân bước từng bước nhỏ để tiến dần về phía trước, liên tục gom bụi và rác vụn thành một đống nhỏ.
+Khi quét đến góc nhà, nhân vật xoay nhẹ người, cúi thấp hơn và đưa đầu chổi sát chân tường để gom sạch bụi. Kết thúc hành động, nhân vật dừng quét, đứng thẳng người, nhìn xuống sàn kiểm tra kết quả và mỉm cười hài lòng.
+Yêu cầu chuyển động: chuyển động tự nhiên, liên tục, có trọng lượng; tay, vai, thân, đầu và chân phối hợp đồng bộ. Đầu chổi luôn chạm sàn; chổi không xuyên sàn, cán không biến dạng; nhân vật không trượt chân, không đứng bất động khi đang quét."
+For an ACTIVITY line (given): title line "HÀNH ĐỘNG: …" in capitals, then paragraphs covering — how each hand holds or uses each prop (grip points); starting posture and where the eyes look; the main motion cycle step by step with both arms, shoulders, torso and head; footwork, weight shift and travel direction; one natural variation in the middle; how it ends (final pose, glance, facial expression matching the emotion of the line); and "Yêu cầu chuyển động:" with prop contact rules (what must touch what, nothing passes through anything, props keep their shape, no sliding feet, never frozen). 90 to 160 words, faithful to the line, era-correct, nothing the line does not support.
+For a TALKING line (no activity): 2 to 3 sentences — the gesture, where the eyes look (at whom), facial expression and one small body movement, timed to the key word.`,
+        noiDung: ds
+          .map((i) => {
+            const x = ketQua[i]
+            const giay = Math.max(2, Math.round((loi[i].chu.length / 14) * 10) / 10)
+            return `${i}. [${x.nguoi || loi[i].ai}] (${giay} giây) "${loi[i].chu}" → ${x.can ? `ACTIVITY: ${x.viec}${x.do_vat_can?.length ? ` | props: ${x.do_vat_can.join(', ')}` : ''}` : `TALKING: ${x.viec}`}`
+          })
+          .join('\n'),
+        effort: 'medium',
+        kiemTra: z.object({ cau: z.array(z.object({ i: z.number().int(), chi_tiet: z.string() })) }),
+        schema: schemaMang({ i: { type: 'integer' }, chi_tiet: CHUOI }),
+      }).catch(() => null),
+    ),
+  )
+  for (const kq of chiTiet) for (const c of kq?.cau ?? []) if (ketQua[c.i]) ketQua[c.i].chi_tiet = c.chi_tiet.trim()
+  return ketQua
 }
 export async function chuanBiHanhDong(id: string) {
   const d = await docDuAn(id)

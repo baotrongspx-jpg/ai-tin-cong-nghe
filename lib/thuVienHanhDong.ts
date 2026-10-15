@@ -46,6 +46,7 @@ export type CauHanhDong = {
   ten_moi: string // mã đặt cho hành động mới (khi hanh_dong = 'moi')
   do_vat: string // (bản cũ) đồ vật cần (emoji)
   do_vat_can?: string[] // đạo cụ câu này cần ("🧹 cái chổi")
+  chi_tiet?: string // kịch bản diễn chi tiết (cầm đạo cụ, tư thế, ánh mắt, chu trình động tác, bước chân, kết thúc, yêu cầu chuyển động)
   do_vat_thieu?: string[] // trong đó: hành động đã chọn chưa có sẵn → gắn thêm (có emoji) hoặc phải vẽ (không có emoji)
 }
 export type PhanTichHanhDong = { luc: string; chuong: { k: number; cau: CauHanhDong[] }[] }
@@ -62,14 +63,14 @@ export function hanhDongCu(d: { phan: { loi: { chu: string }[] | null }[] }, pt:
 
 // Các hành động máy dựng còn thiếu, gom theo mã mới
 export function hanhDongThieu(pt: PhanTichHanhDong) {
-  const nhom = new Map<string, { ten: string; viec: string; do_vat: Set<string>; vi_du: { k: number; i: number; chu: string; viec: string }[] }>()
+  const nhom = new Map<string, { ten: string; viec: string; do_vat: Set<string>; vi_du: { k: number; i: number; chu: string; viec: string; chi_tiet?: string }[] }>()
   for (const c of pt.chuong)
     for (const x of c.cau) {
       if (x.hanh_dong !== 'moi') continue
       const ma = x.ten_moi || 'hanh_dong_moi'
       const g = nhom.get(ma) ?? { ten: ma, viec: x.viec, do_vat: new Set<string>(), vi_du: [] }
       for (const v of x.do_vat_can ?? Array.from(x.do_vat).filter((y) => /\p{Extended_Pictographic}/u.test(y))) g.do_vat.add(v)
-      g.vi_du.push({ k: c.k, i: x.i, chu: x.chu, viec: x.viec })
+      g.vi_du.push({ k: c.k, i: x.i, chu: x.chu, viec: x.viec, chi_tiet: x.chi_tiet })
       nhom.set(ma, g)
     }
   return [...nhom.values()].sort((a, b) => b.vi_du.length - a.vi_du.length)
@@ -93,6 +94,18 @@ export const emojiCua = (x: string) => x.match(/\p{Extended_Pictographic}️?(�
 // Emoji bỏ dấu biến thể (🖊️ và 🖊 là một) để so đạo cụ có sẵn / còn thiếu
 export const emojiGoc = (x: string) => emojiCua(x).replace(/️/g, '')
 
+// Kịch bản diễn chi tiết của cả phim (từng chương, từng câu) để chép / lưu
+export function kichBanDien(tieuDe: string, pt: PhanTichHanhDong, tenChuong: (k: number) => string) {
+  return [
+    `KỊCH BẢN DIỄN — ${tieuDe}`,
+    ...pt.chuong.flatMap((c) => [
+      '',
+      `===== ${tenChuong(c.k)} =====`,
+      ...c.cau.flatMap((x) => ['', `Câu ${x.i + 1} — ${x.nguoi}: "${x.chu}…"`, x.chi_tiet || x.viec, ...(x.do_vat_can?.length ? [`Đạo cụ: ${x.do_vat_can.join(', ')}`] : [])]),
+    ]),
+  ].join('\n')
+}
+
 // Lời nhắn chép vào Claude Code để xây các hành động còn thiếu
 export function yeuCauClaudeCode(tieuDe: string, pt: PhanTichHanhDong) {
   const thieu = hanhDongThieu(pt)
@@ -112,6 +125,9 @@ export function yeuCauClaudeCode(tieuDe: string, pt: PhanTichHanhDong) {
     ...thieu.flatMap((g, n) => [
       `${n + 1}. ${g.ten} — ${g.viec}${g.do_vat.size ? ` — đạo cụ đi kèm: ${[...g.do_vat].join(', ')}` : ''} — ${g.vi_du.length} câu`,
       ...g.vi_du.slice(0, 3).map((v) => `   • Chương ${v.k}, câu ${v.i + 1}: "${v.chu}…" → ${v.viec}`),
+      ...(g.vi_du.find((v) => v.chi_tiet)?.chi_tiet
+        ? ['   Kịch bản diễn (làm đúng theo):', ...g.vi_du.find((v) => v.chi_tiet)!.chi_tiet!.split('\n').map((d) => `      ${d}`)]
+        : []),
     ]),
     ...(veThem.length
       ? [

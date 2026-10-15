@@ -2,10 +2,28 @@
 
 import { useState } from 'react'
 import type { DuAnYT } from '@/lib/youtube'
-import { THU_VIEN_HANH_DONG, coEmoji, doVatThieu, hanhDongCu, hanhDongThieu, yeuCauClaudeCode } from '@/lib/thuVienHanhDong'
+import { THU_VIEN_HANH_DONG, coEmoji, doVatThieu, hanhDongCu, hanhDongThieu, kichBanDien, yeuCauClaudeCode } from '@/lib/thuVienHanhDong'
 import { thongBao } from '@/app/ThongBao'
 import { Xoay } from '@/app/BieuTuong'
 import { apDungHanhDongYouTube, chuanBiHanhDongYouTube } from '../actions'
+
+function NutChepNho({ chu, ten = 'Chép', lon = false }: { chu: string; ten?: string; lon?: boolean }) {
+  const [da, setDa] = useState(false)
+  return (
+    <button
+      type="button"
+      className={lon ? 'btn btn-sm btn-nhat' : 'justify-self-start text-xs font-semibold text-violet-700 hover:underline'}
+      onClick={() =>
+        navigator.clipboard.writeText(chu).then(() => {
+          setDa(true)
+          setTimeout(() => setDa(false), 1500)
+        })
+      }
+    >
+      {da ? '✓ Đã chép' : ten}
+    </button>
+  )
+}
 
 // Chuẩn bị hành động nhân vật trước khi dựng: AI đọc lời thoại từng chương, mỗi câu ai làm gì; máy dựng chưa có hành động
 // đó thì hiện đỏ, có nút chép yêu cầu dán vào Claude Code để xây thêm
@@ -58,7 +76,7 @@ export default function HanhDongPhim({ d, onDuAn }: { d: DuAnYT; onDuAn: (d: DuA
           {dang === 'doc' ? <Xoay /> : '🎬'} {pt ? (cu ? 'Kịch bản đã đổi — chuẩn bị lại' : 'Chuẩn bị lại') : 'AI đọc lời thoại & chuẩn bị hành động'}
         </button>
       </div>
-      {dang === 'doc' && <p className="text-sm text-slate-500">AI đang đọc {d.phan.length} chương (khoảng 30–60 giây)…</p>}
+      {dang === 'doc' && <p className="text-sm text-slate-500">AI đang đọc {d.phan.length} chương và viết kịch bản diễn cho từng câu (khoảng 1–2 phút)…</p>}
 
       {pt && (
         <>
@@ -101,6 +119,13 @@ export default function HanhDongPhim({ d, onDuAn }: { d: DuAnYT; onDuAn: (d: DuA
               >
                 {chep ? '✓ Đã chép' : '📋 Chép yêu cầu cho Claude Code'}
               </button>
+            )}
+            {tatCa.some((x) => x.chi_tiet) && (
+              <NutChepNho
+                chu={kichBanDien(d.tieu_de, pt, (k) => `${d.loai === 'tieu_su' ? 'Chương' : 'Phần'} ${k}: ${d.phan[k - 1]?.tieu_de ?? ''}`)}
+                ten="🎭 Chép kịch bản diễn cả phim"
+                lon
+              />
             )}
           </div>
           <p className="-mt-2 text-xs text-slate-500">Gắn: mỗi câu nhận hành động có sẵn, đạo cụ còn thiếu có hình (emoji) thì người diễn cầm thêm ở tay còn trống. Chỉ sửa các chương chưa dựng; chương đã dựng xong giữ nguyên. Sau khi Claude Code xây xong hành động / đạo cụ mới, bấm chuẩn bị lại rồi gắn lại.</p>
@@ -161,6 +186,15 @@ export default function HanhDongPhim({ d, onDuAn }: { d: DuAnYT; onDuAn: (d: DuA
                                 </span>
                               ))}
                             </span>
+                          )}
+                          {x.chi_tiet && (
+                            <details className="mt-1">
+                              <summary className="cursor-pointer text-xs font-semibold text-violet-700">🎭 Kịch bản diễn</summary>
+                              <div className="mt-1 grid gap-1 rounded-lg bg-violet-50 p-2 ring-1 ring-violet-100">
+                                <p className="whitespace-pre-wrap text-xs leading-relaxed text-slate-800">{x.chi_tiet}</p>
+                                <NutChepNho chu={x.chi_tiet} />
+                              </div>
+                            </details>
                           )}
                         </span>
                         <span

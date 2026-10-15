@@ -13,8 +13,8 @@ const TEN_THOI_TIET: Record<string, string> = { mua: 'mưa', tuyet: 'tuyết rơ
 const TEN_NGUOI: Record<string, string> = { nguoi_ke: 'Người kể', meo: 'Mèo Mun', robot: 'Robot Bit', nhan_vat_chinh: 'Nhân vật chính' }
 
 // Di chuyển trên sân khấu — cùng luật với máy dựng (may-nha/hoat-hinh/tao_video.mjs, lớp -buoc / -nhun)
-const CANH = new Set(['mo_cua', 'nam_noi', 'gong_chuong', 'rung_chuong', 'bam_nut', 'dam_bao_cat', 'kham_suc_khoe', 'ngoi_thien', 'buoc_vao_dai', 'doi_dau', 'dam_boc', 'dam_moc', 'ha_guc', 'can_tai', 'dung_cho_dem', 'nhan_dai'])
-const DI = new Set(['xach_vali', 'di_bo', 'chay', 'lai_xe', 'ganh_vac', 'di_may_bay'])
+const CANH = new Set(['mo_cua', 'nam_noi', 'gong_chuong', 'rung_chuong', 'bam_nut', 'dam_bao_cat', 'kham_suc_khoe', 'ngoi_thien', 'buoc_vao_dai', 'doi_dau', 'dam_boc', 'dam_moc', 'ha_guc', 'can_tai', 'dung_cho_dem', 'nhan_dai', 'treo_bien', 'can_hang', 'cat_bang'])
+const DI = new Set(['xach_vali', 'di_bo', 'chay', 'lai_xe', 'ganh_vac', 'di_may_bay', 'dap_xe'])
 const SAN = new Set(['rua_bat', 'lap_rap', 'nam_noi', 'dong_may_tinh', 'an_com', 'dem_tien'])
 function diChuyen(hanhDong: string, camXuc: string) {
   const ds: string[] = []

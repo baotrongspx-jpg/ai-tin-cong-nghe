@@ -42,6 +42,10 @@ export const THU_VIEN_HANH_DONG: Record<string, { ten: string; loai: LoaiHanhDon
   lai_xe: { ten: 'Lái xe', loai: 'ke_chuyen', mo_ta: 'ngồi sau xe hơi, hai tay trên vô lăng, xe chạy rồi dừng', do_vat: ['🚗 xe hơi'] },
   gong_chuong: { ten: 'Gõ chuông', loai: 'ke_chuyen', mo_ta: 'gõ búa vào chuông: niêm yết, IPO, khai mạc phiên giao dịch', do_vat: ['🔔 cái chuông', '🔨 búa'] },
   trao_nhan: { ten: 'Trao nhẫn', loai: 'ke_chuyen', mo_ta: 'trao nhẫn cưới: kết hôn, cầu hôn; tim bay lên', do_vat: ['💍 nhẫn cưới', '💖 trái tim'] },
+  treo_bien: { ten: 'Treo biển hiệu', loai: 'ke_chuyen', mo_ta: 'ôm biển hiệu nâng lên áp vào tường, căn chỉnh, lùi lại ngắm: mở tiệm, lập cơ sở kinh doanh', do_vat: ['🪧 biển hiệu (vẽ sẵn)'] },
+  can_hang: { ten: 'Cân hàng', loai: 'ke_chuyen', mo_ta: 'cân đĩa lắc lư, tay cầm bao gạo và cá khô, mời khách: buôn bán', do_vat: ['⚖️ cái cân', '🌾 bao gạo', '🐟 cá khô'] },
+  cat_bang: { ten: 'Cắt băng khánh thành', loai: 'ke_chuyen', mo_ta: 'kéo cắt dải băng đỏ căng ngang, băng rơi, giơ kéo vẫy đám đông', do_vat: ['✂️ chiếc kéo', '🎀 dải băng đỏ (vẽ sẵn)'] },
+  dap_xe: { ten: 'Dắt xe đạp', loai: 'ke_chuyen', mo_ta: 'dắt xe đạp đi chậm qua ngôi nhà vùng quê, dừng ngắm cảnh', do_vat: ['🚲 xe đạp', '🏡 ngôi nhà'] },
   doi_dau: { ten: 'Đối đầu trên võ đài', loai: 'ke_chuyen', mo_ta: 'đeo găng, thủ thế, tung chuỗi đấm hai tay rồi giơ tay chiến thắng: trận đấu, đối đầu', do_vat: ['🥊 găng tay', '🥊 găng tay đấm bốc', '💥 va chạm'] },
   dam_boc: { ten: 'Đấm bốc', loai: 'ke_chuyen', mo_ta: 'đeo găng tung chuỗi cú đấm thẳng, người lao theo', do_vat: ['🥊 găng tay', '🥊 găng tay đấm bốc', '💥 va chạm'] },
   dam_moc: { ten: 'Đấm móc', loai: 'ke_chuyen', mo_ta: 'cú móc hàm nhanh, người xoay theo', do_vat: ['🥊 găng tay', '💥 va chạm'] },
@@ -150,7 +154,7 @@ export function hanhDongThieu(pt: PhanTichHanhDong) {
 }
 
 // Đạo cụ còn thiếu, gom theo đạo cụ: có emoji thì gắn được ngay (nhân vật cầm thêm), không có thì phải vẽ
-export const coEmoji = (x: string) => /\p{Extended_Pictographic}/u.test(x)
+export const coEmoji = (x: string) => /\p{Extended_Pictographic}|\p{Regional_Indicator}{2}/u.test(x)
 export function doVatThieu(pt: PhanTichHanhDong) {
   const nhom = new Map<string, { vat: string; vi_du: { k: number; i: number; chu: string; viec: string }[] }>()
   for (const c of pt.chuong)
@@ -163,7 +167,7 @@ export function doVatThieu(pt: PhanTichHanhDong) {
   return [...nhom.values()].sort((a, b) => b.vi_du.length - a.vi_du.length)
 }
 // Emoji đầu tiên trong chuỗi đạo cụ ("🧹 cái chổi" → "🧹")
-export const emojiCua = (x: string) => x.match(/\p{Extended_Pictographic}️?(‍\p{Extended_Pictographic}️?)*/u)?.[0] ?? ''
+export const emojiCua = (x: string) => x.match(/\p{Regional_Indicator}{2}|\p{Extended_Pictographic}\uFE0F?(\u200D\p{Extended_Pictographic}\uFE0F?)*/u)?.[0] ?? ''
 // Emoji bỏ dấu biến thể (🖊️ và 🖊 là một) để so đạo cụ có sẵn / còn thiếu
 export const emojiGoc = (x: string) => emojiCua(x).replace(/️/g, '')
 

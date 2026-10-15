@@ -554,11 +554,30 @@ const amDongTac = [] // [tệp, lúc, âm lượng, câu] tiếng đi kèm độ
 const LUC_DONG_TAC = {} // câu → [động tác, lúc bắt đầu] (nền rung theo cú đập…)
 const diemChi = [] // lúc con số / minh hoạ / chữ lớn hiện ra → bàn tay găng trắng trượt vào chỉ (BAN_TAY)
 // Về tư thế nghỉ (trước mỗi câu mới)
-const NGHI = (t0, phu) => [
-  `tl.to(["#meo-dau", "#meo-tay-trai", "#meo-tay-phai", "#meo-tai-trai", "#meo-tai-phai", "#robot-dau", "#robot-tay-trai", "#robot-tay-phai"${phu ? `, "#${phu}-dau", "#${phu}-tay-trai", "#${phu}-tay-phai"` : ''}], { rotation: 0, duration: 0.45, ease: "sine.inOut" }, ${f(t0)});`,
-  `tl.to(["#meo-mat-trai", "#meo-mat-phai", "#robot-mat-trai", "#robot-mat-phai"], { scale: 1, duration: 0.4, ease: "sine.inOut" }, ${f(t0)});`,
-  `tl.to(["#meo-con-ngoi-trai", "#meo-con-ngoi-phai"], { y: 0, duration: 0.4, ease: "sine.inOut" }, ${f(t0)});`,
-]
+// bo: nhân vật đang GIỮ tư thế sang câu sau (giuTuThe) — không đưa họ về dáng nghỉ
+const NGHI = (t0, phu, bo) => {
+  const loc = (ds) => ds.filter((x) => !bo || !x.startsWith(`#${bo}-`)).map((x) => `"${x}"`).join(', ')
+  const xoay = ['#meo-dau', '#meo-tay-trai', '#meo-tay-phai', '#meo-tai-trai', '#meo-tai-phai', '#robot-dau', '#robot-tay-trai', '#robot-tay-phai', ...(phu ? [`#${phu}-dau`, `#${phu}-tay-trai`, `#${phu}-tay-phai`] : [])]
+  return [
+    `tl.to([${loc(xoay)}], { rotation: 0, duration: 0.45, ease: "sine.inOut" }, ${f(t0)});`,
+    `tl.to([${loc(['#meo-mat-trai', '#meo-mat-phai', '#robot-mat-trai', '#robot-mat-phai'])}], { scale: 1, duration: 0.4, ease: "sine.inOut" }, ${f(t0)});`,
+    `tl.to([${loc(['#meo-con-ngoi-trai', '#meo-con-ngoi-phai'])}], { y: 0, duration: 0.4, ease: "sine.inOut" }, ${f(t0)});`,
+  ].filter((x) => !x.startsWith('tl.to([]'))
+}
+// Giữ tư thế (liên tục giữa hai câu): cùng một người diễn cùng một cử chỉ ở hai câu liền nhau (không có động tác riêng,
+// không có khoảng lặng chen giữa) → giữ nguyên dáng đang có sang câu sau, KHÔNG hạ tay về nghỉ rồi giơ lại (trước đây mỗi
+// câu đều đặt lại mọi người về dáng nghỉ → tay hạ xuống giơ lên liên tục, trông như giật)
+const DIEN_KE = { to_mo: 'suy_nghi', suy_nghi: 'suy_nghi', bat_ngo: 'bat_ngo', buon: 'buon', tuc_gian: 'tuc_gian', vui: 'vui', lo_lang: 'lo_lang', giai_thich: 'giai_thich', khang_dinh: 'khang_dinh' }
+const tuThe = (i) => {
+  const l = loi[i]
+  if (!l || dongTacCau(l)) return null
+  if (l.ai === 'nguoi_ke') return phuCuaCau[i] && DIEN_KE[l.cam_xuc] ? `${phuCuaCau[i]}|${DIEN_KE[l.cam_xuc]}` : null
+  const ai = laPhu(l.ai) || l.ai === 'meo' ? l.ai : 'robot'
+  const p = laPhu(ai) ? phuCuaCau[i] : ai
+  const cam = biKich(i) && (p === 'meo' || p === 'robot') && ['vui', 'bat_ngo', 'to_mo'].includes(l.cam_xuc) ? 'buon' : l.cam_xuc
+  return p && CU_CHI[cam] ? `${p}|${cam}` : null
+}
+const giuTuThe = loi.map((l, i) => (i && !l.lang && tuThe(i) && tuThe(i) === tuThe(i - 1) ? tuThe(i).split('|')[0] : null))
 
 const phuDe = []
 const amThanh = []
@@ -571,8 +590,9 @@ loi.forEach((l, i) => {
   // p: tiền tố bộ phận của người nói (meo / robot / phu<k>)
   const p = laPhu(ai) ? phuCuaCau[i] : ai
   const nghe = ai === 'meo' ? 'robot' : 'meo'
-  if (i) tw.push(...NGHI(t0 - 0.3, phuCuaCau[i - 1] && phuCuaCau[i - 1] === phuCuaCau[i] ? phuCuaCau[i] : null))
-  if (i && phuCuaCau[i - 1]) {
+  const giu = giuTuThe[i]
+  if (i) tw.push(...NGHI(t0 - 0.3, phuCuaCau[i - 1] && phuCuaCau[i - 1] === phuCuaCau[i] ? phuCuaCau[i] : null, giu))
+  if (i && phuCuaCau[i - 1] && phuCuaCau[i - 1] !== giu) {
     const q = phuCuaCau[i - 1]
     tw.push(`tl.to(["#${q}-ma-hong", "#${q}-nuoc-mat", "#${q}-mo-hoi", "#${q}-gian"], { opacity: 0, duration: 0.3 }, ${f(t0 - 0.3)});`)
     tw.push(`tl.to(["#${q}-may-trai", "#${q}-may-phai"], { y: 0, rotation: 0, duration: 0.3 }, ${f(t0 - 0.3)});`)
@@ -584,7 +604,8 @@ loi.forEach((l, i) => {
   const boTayDau = (ds, q) => (q && q === nguoiLam ? ds.filter((t) => !t.includes(`#${q}-tay-`) && !t.includes(`#${q}-dau"`)) : ds)
   // Câu bi kịch: Mèo / Bit không nhảy nhót vui vẻ (video Oppenheimer: Mèo giơ tay cười cạnh cảnh bom) → cúi đầu buồn
   const camNoi = biKich(i) && (p === 'meo' || p === 'robot') && ['vui', 'bat_ngo', 'to_mo'].includes(l.cam_xuc) ? 'buon' : l.cam_xuc
-  if (!ke) tw.push(...boTayDau((CU_CHI[camNoi] ?? CU_CHI[ai === 'meo' ? 'to_mo' : 'giai_thich'])(p, t0), p))
+  // Đang giữ tư thế từ câu trước: không diễn lại cử chỉ từ đầu (miệng, mắt, thở vẫn chạy theo lời)
+  if (!ke && giu !== p) tw.push(...boTayDau((CU_CHI[camNoi] ?? CU_CHI[ai === 'meo' ? 'to_mo' : 'giai_thich'])(p, t0), p))
   if (nguoiLam) {
     // Lời có nói tới hành động ("… đập bàn …") → động tác bắt đầu ngay trước lúc giọng đọc tới chữ đó; không thì đầu câu
     const khop = TU_DONG_TAC.find(([ten]) => ten === dongTac)?.[1].exec(String(l.chu ?? '').toLowerCase())
@@ -603,7 +624,7 @@ loi.forEach((l, i) => {
   // lo theo đúng cảm xúc; câu kể bình thường → giữ dáng nghỉ (thở, chớp mắt)
   if (ke && phuCuaCau[i]) {
     const dien = { to_mo: 'suy_nghi', suy_nghi: 'suy_nghi', bat_ngo: 'bat_ngo', buon: 'buon', tuc_gian: 'tuc_gian', vui: 'vui', lo_lang: 'lo_lang', giai_thich: 'giai_thich', khang_dinh: 'khang_dinh' }[l.cam_xuc]
-    if (dien) tw.push(...boTayDau(CU_CHI[dien](phuCuaCau[i], t0), phuCuaCau[i]))
+    if (dien && giu !== phuCuaCau[i]) tw.push(...boTayDau(CU_CHI[dien](phuCuaCau[i], t0), phuCuaCau[i]))
   }
   // Người nghe phản ứng theo lời người nói, trễ nửa giây như phản xạ thật; người thứ hai (nếu có) phản ứng dịu hơn, trễ hơn.
   // Nhân vật phụ phản ứng xong thì về dáng nghỉ trước câu sau (Mèo / Bit đã có NGHI)

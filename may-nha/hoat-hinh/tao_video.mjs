@@ -551,6 +551,14 @@ const VAT = {
   noi: ['🛏️', 'noi'], be: ['👶', 'be'], binh: ['🍼', 'binh'], zzz_be: ['💤', 'be_ngu'],
 }
 const VAT_CAN = {} // phu<k> → Set(tên đồ vật)
+// Cất đồ nhân vật cầm sẵn (nhóm <id>-cam-tay-trai / -phai trong hình nhân vật) từ lúc a tới lúc b
+const catDoSan = (p, a, b) => {
+  tw.push(`tl.to(["#${p}-cam-tay-trai", "#${p}-cam-tay-phai"], { opacity: 0, duration: 0.2 }, ${f(Math.max(0, a - 0.15))});`)
+  tw.push(`tl.to(["#${p}-cam-tay-trai", "#${p}-cam-tay-phai"], { opacity: 1, duration: 0.3 }, ${f(b)});`)
+}
+// Câu có đạo cụ của hành động (hành động kể chuyện hoặc đạo cụ phụ vat_them): mỗi lúc một bộ đạo cụ — tắt đạo cụ
+// minh hoạ bật lên (dao_cu), dấu ! / ? cạnh đầu
+const coDoVatHanhDong = (i) => !!(LUC_DONG_TAC[i] && TRUYEN[LUC_DONG_TAC[i][0]]) || (Array.isArray(loi[i]?.vat_them) && loi[i].vat_them.length > 0)
 // Đồ vật mỗi hành động kể chuyện dùng (để đạo cụ phụ vat_them chọn chỗ cầm còn trống)
 // Cử chỉ bận tay (đạo cụ phụ không đặt vào tay đó)
 const TAY_BAN = { viet: ['phai'], chi_tay: ['phai'], dap_tay: ['phai'], tay_len_nguc: ['phai'], cam_vat: [], vay_tay: ['phai'] }
@@ -976,6 +984,8 @@ loi.forEach((l, i) => {
     const khop = [...TU_TRUYEN, ...TU_DONG_TAC].find(([ten]) => ten === dongTac)?.[1].exec(String(l.chu ?? '').toLowerCase())
     const batDauDT = Math.min(Math.max(t0 + 0.15, khop ? lucTu(i, khop.index) - 0.25 : t0 + 0.3), Math.max(t0 + 0.15, t0 + d - 0.9))
     tw.push(...DONG_TAC[dongTac](nguoiLam, batDauDT, t0 + d - batDauDT))
+    // Đang làm hành động kể chuyện: đồ nhân vật cầm sẵn (cặp, sách…) cất đi cho khỏi chồng lên đạo cụ của hành động
+    if (TRUYEN[dongTac] && String(nguoiLam).startsWith('phu')) catDoSan(nguoiLam, batDauDT, t0 + d)
     LUC_DONG_TAC[i] = [dongTac, batDauDT]
     // Tiếng đi kèm tính từ lúc bắt đầu động tác (đập: lúc tay chạm xuống)
     const tiengDT = { dap_tay: ['sfx-bum', 0.5, 0.22], vo_tay: ['sfx-vo-tay', 0.05, 0.25], viet: ['sfx-but-viet', 0.05, 0.3], gong_chuong: ['sfx-ting', 0.49, 0.3], mo_cua: ['sfx-go-cua', 0.3, 0.12], rung_chuong: ['sfx-ting', 0.35, 0.3], bam_nut: ['sfx-bop', 0.55, 0.35] }[dongTac]
@@ -990,6 +1000,7 @@ loi.forEach((l, i) => {
     const q = nguoiLamCau(l, i)
     const them = Array.isArray(l.vat_them) ? l.vat_them.filter((x) => typeof x === 'string' && x.trim()).slice(0, 2) : []
     if (them.length && String(q ?? '').startsWith('phu')) {
+      if (!TRUYEN[dongTac]) catDoSan(q, LUC_DONG_TAC[i]?.[1] ?? t0 + 0.3, t0 + d)
       // Tay đang làm cử chỉ (viết, chỉ, đập…) thì đạo cụ sang chỗ khác; bút / dụng cụ viết luôn ở tay phải (tay viết)
       const dung = new Set([...(VAT_DUNG_BOI[dongTac] ?? []).map((v) => VAT[v]?.[1]), ...(TAY_BAN[dongTac] ?? [])])
       const trong = ['phai', 'truoc', 'trai'].filter((c) => !dung.has(c))
@@ -1372,7 +1383,7 @@ const DAU_HIEU = {} // nhân vật (meo / robot / phu<k>) → html
     tw.push(`tl.to("#${id}", { opacity: 0, scale: 0.6, duration: 0.25, ease: "power2.in" }, ${f(t + 1.35)});`)
   }
   loi.forEach((l, i) => {
-    if (biKich(i) || doDai[i] < 1.4) return
+    if (biKich(i) || doDai[i] < 1.4 || coDoVatHanhDong(i)) return
     const t0 = batDau[i]
     // Câu hỏi: có dấu "?" hoặc kết bằng từ hỏi tiếng Việt (lời đọc thường bỏ dấu hỏi), có thể kèm tiếng gọi người nghe
     const hoi = /\?\s*["”'»]?\s*$/.test(String(l.chu ?? '')) ||
@@ -1674,7 +1685,7 @@ const amDaoCu = [] // [tên đạo cụ, câu, lúc hiện] → tiếng đạo c
 loi.forEach((l, i) => {
   const bt = DAO_CU[l.dao_cu]
   // Câu đang phủ ảnh tư liệu toàn khung thì bỏ đạo cụ
-  if (!bt || (NGANG && doanAnh.some((c) => c.kieu === 'toan' && c.tu <= i && c.het >= i))) return
+  if (!bt || (NGANG && doanAnh.some((c) => c.kieu === 'toan' && c.tu <= i && c.het >= i)) || coDoVatHanhDong(i)) return
   const t0 = batDau[i]
   const d = doDai[i]
   const id = `dc${i}`

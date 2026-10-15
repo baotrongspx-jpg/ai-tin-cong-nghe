@@ -49,7 +49,7 @@ function nguoi(id, o) {
   const ban = (x) =>
     `<circle cx="${x}" cy="456" r="20" fill="${da}" ${vien(5)}/><ellipse cx="${x + (x < 200 ? 15 : -15)}" cy="448" rx="7" ry="10" fill="${da}" ${vien(4)}/>`
   const canhTay = (x, them, nhom) =>
-    `<g id="${id}-${nhom}"><rect x="${x}" y="300" width="44" height="140" rx="22" fill="${tay}" ${vien(6)}/><rect x="${x + 3}" y="424" width="38" height="12" rx="6" fill="${pha(tay, -0.2)}"/>${ban(x + 22)}${them}</g>`
+    `<g id="${id}-${nhom}"><rect x="${x}" y="300" width="44" height="140" rx="22" fill="${tay}" ${vien(6)}/><rect x="${x + 3}" y="424" width="38" height="12" rx="6" fill="${pha(tay, -0.2)}"/>${ban(x + 22)}<g id="${id}-cam-${nhom}">${them}</g></g>`
   const coAo =
     co === 'so_mi'
       ? `<path d="M172 290 L200 322 L228 290 L222 282 L200 300 L178 282 Z" fill="#f8fafc" ${vien(4)}/>`

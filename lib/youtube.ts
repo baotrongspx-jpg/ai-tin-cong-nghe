@@ -600,24 +600,34 @@ const laNhanVatChinh = (d: DuAnYT, ten: string) => {
   return ds.some((x) => ten.toLowerCase().includes(x))
 }
 const LOAI_HINH = new Set(['logo', 'do_vat', 'anh_that', 'nhan_vat', 'dia_diem', 'so_lieu'])
+// Hai tên nơi chốn khớp nhau: bỏ dấu, có chung một chữ dài từ 4 ký tự ("Đài Nam" ~ "Tainan, Đài Loan" thì không — AI ghi
+// tên theo lời thoại, hồ sơ có cả thành phố / quốc gia nên thường trùng ít nhất một chữ)
+const boDau = (x: string) => x.normalize('NFD').replace(/\p{M}/gu, '').replace(/đ/gi, 'd').toLowerCase()
+function khopTen(a: string, b: string) {
+  const ca = new Set(boDau(a).split(/[^a-z0-9]+/).filter((x) => x.length >= 4))
+  return boDau(b).split(/[^a-z0-9]+/).some((x) => x.length >= 4 && ca.has(x)) || boDau(a).includes(boDau(b).trim())
+}
 function hinhCanCau(d: DuAnYT, l: CauYT, ds: z.infer<typeof HinhCanSchema>[]): HinhCan[] {
   return ds
     .filter((h) => LOAI_HINH.has(h.loai) && h.ten.trim())
     .slice(0, 5)
     .map((h) => {
+      // Địa điểm: phim tiểu sử phải đúng NƠI (câu sinh ra ở Đài Nam mà ảnh nền là trường Oneida → sai), không chỉ có ảnh nền
+      const noiCau = d.phim?.ho_so?.dia_diem.find((x) => x.ma === l.dia_diem)
+      const dungNoi = !noiCau || khopTen([noiCau.ten, noiCau.thanh_pho, noiCau.quoc_gia].join(' '), h.ten)
       const co =
         h.loai === 'logo' ? true
         : h.loai === 'do_vat' ? !!emojiCua(h.emoji)
         : h.loai === 'anh_that' ? typeof l.anh === 'number' && l.anh >= 0
         : h.loai === 'nhan_vat' ? laNhanVatChinh(d, h.ten) || (!!l.nhan_vat_phu && !['khong', 'nhan_vat_chinh'].includes(l.nhan_vat_phu))
-        : h.loai === 'dia_diem' ? d.loai !== 'tieu_su' || !l.dia_diem || !!d.phim?.nen?.[l.dia_diem]
+        : h.loai === 'dia_diem' ? d.loai !== 'tieu_su' || (!!l.dia_diem && !!d.phim?.nen?.[l.dia_diem] && dungNoi)
         : !!l.minh_hoa?.kieu && l.minh_hoa.kieu !== 'khong'
       const ghi_chu =
         h.loai === 'logo' ? 'máy tự vẽ huy hiệu'
         : co ? 'đã có'
         : h.loai === 'do_vat' ? 'chưa có hình — phải vẽ'
         : h.loai === 'anh_that' ? 'cần ảnh thật'
-        : h.loai === 'dia_diem' ? 'cần ảnh nền địa điểm'
+        : h.loai === 'dia_diem' ? (noiCau && !dungNoi ? `bối cảnh đang là "${noiCau.ten}" — sai nơi, cần cảnh ${h.ten}` : 'cần ảnh nền địa điểm')
         : h.loai === 'so_lieu' ? 'nên có thẻ số liệu'
         : 'cần nhân vật'
       return { loai: h.loai as HinhCan['loai'], ten: h.ten.trim(), emoji: emojiCua(h.emoji), mau: /^#[0-9a-f]{3,8}$/i.test(h.mau) ? h.mau : '', chu: h.chu.trim().slice(0, 5), co, ghi_chu }
@@ -664,7 +674,9 @@ For each numbered activity (who: activity | props needed) return: i, hanh_dong (
     const ma = y?.hanh_dong ?? 'khong'
     // AI đặt mã "mới" trùng đúng tên hành động đã có (di_bo, mo_cua…) → tính là đã có
     const maMoi = boDauMa(y?.ten_moi ?? '')
-    const hanh_dong = !x?.can ? 'khong' : THU_VIEN_HANH_DONG[ma] ? ma : THU_VIEN_HANH_DONG[maMoi]?.loai === 'ke_chuyen' ? maMoi : 'moi'
+    const chon = !x?.can ? 'khong' : THU_VIEN_HANH_DONG[ma] ? ma : THU_VIEN_HANH_DONG[maMoi]?.loai === 'ke_chuyen' ? maMoi : 'moi'
+    // Em bé sơ sinh / chào đời → em bé nằm nôi (AI hay chọn "khóc" của người lớn)
+    const hanh_dong = x?.can && /sơ sinh|chào đời|lọt lòng|em bé/i.test(x.viec) && ['khoc', 'moi', 'be_em_be'].includes(chon) && !/bế/i.test(x.viec) ? 'nam_noi' : chon
     // Đạo cụ thiếu: so emoji với đạo cụ hành động đã có (máy tự so, không để AI đoán)
     const coSan = new Set((THU_VIEN_HANH_DONG[hanh_dong]?.do_vat ?? []).map((v) => emojiGoc(v)))
     const canVat = (x?.do_vat_can ?? []).map((v) => v.trim()).filter(Boolean).slice(0, 4)
@@ -679,7 +691,7 @@ For each numbered activity (who: activity | props needed) return: i, hanh_dong (
       do_vat: '',
       do_vat_can: canVat,
       hinh_can: hinhCanCau(d, l, x?.hinh_can ?? []),
-      do_vat_thieu: x?.can ? canVat.filter((v) => !coSan.has(emojiGoc(v)) || !emojiCua(v)) : [],
+      do_vat_thieu: canVat.filter((v) => !coSan.has(emojiGoc(v)) || !emojiCua(v)),
     }
   })
   // Lượt 3 — kịch bản diễn chi tiết cho TỪNG câu (chủ trang 15/10/2026, mẫu "nhân vật quét nhà"): cầm đạo cụ thế nào, tư

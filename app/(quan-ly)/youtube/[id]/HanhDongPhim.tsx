@@ -6,6 +6,7 @@ import { TEN_LOAI_HINH, THU_VIEN_HANH_DONG, canChuanBi, coEmoji, danhSachChuanBi
 import { thongBao } from '@/app/ThongBao'
 import { Xoay } from '@/app/BieuTuong'
 import { apDungHanhDongYouTube, chuanBiHanhDongYouTube } from '../actions'
+import BocTachPhim from './BocTachPhim'
 
 function NutChepNho({ chu, ten = 'Chép', lon = false }: { chu: string; ten?: string; lon?: boolean }) {
   const [da, setDa] = useState(false)
@@ -185,6 +186,8 @@ export default function HanhDongPhim({ d, onDuAn }: { d: DuAnYT; onDuAn: (d: DuA
               <p className="text-xs text-amber-800">Vàng: gắn được ngay (bấm Gắn). Đỏ: chưa có hình — nằm trong yêu cầu chép cho Claude Code.</p>
             </div>
           )}
+
+          <BocTachPhim d={d} pt={pt} />
 
           <div className="grid gap-2">
             {pt.chuong.map((c) => (

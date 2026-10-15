@@ -33,6 +33,16 @@ export const THU_VIEN_HANH_DONG: Record<string, { ten: string; loai: LoaiHanhDon
   dem_tien: { ten: 'Đếm tiền', loai: 'ke_chuyen', mo_ta: 'đếm tiền, túng thiếu, tiết kiệm từng đồng (tiền 💵 trong tay)', do_vat: ['💵 tiền'] },
   lap_rap: { ten: 'Lắp ráp', loai: 'ke_chuyen', mo_ta: 'lắp ráp, sửa chữa, chế tạo nguyên mẫu (cờ lê 🔧, linh kiện 🔌)', do_vat: ['🔧 cờ lê', '🔌 linh kiện'] },
   chay: { ten: 'Chạy', loai: 'ke_chuyen', mo_ta: 'chạy, bỏ chạy, vội vã lao đi' },
+  mo_cua: { ten: 'Mở cửa', loai: 'ke_chuyen', mo_ta: 'mở cửa / cánh cổng: vươn tay nắm tay nắm, cửa xoay mở, lùi nửa bước', do_vat: ['🚪 cánh cửa'] },
+  be_em_be: { ten: 'Bế em bé', loai: 'ke_chuyen', mo_ta: 'em bé chào đời, bế em bé trước ngực, ru nhẹ', do_vat: ['👶 em bé'] },
+  di_bo: { ten: 'Đi bộ', loai: 'ke_chuyen', mo_ta: 'bước vào trường / bước qua cổng / đi tới: đeo ba lô, hai tay nắm quai, bước đều', do_vat: ['🎒 ba lô'] },
+  nhin_ra_ngoai: { ten: 'Nhìn ra ngoài', loai: 'ke_chuyen', mo_ta: 'nhìn ra cửa sổ, ngắm mùa thu: tay nâng chiếc lá ngang mắt, đăm chiêu', do_vat: ['🍂 chiếc lá'] },
+  dong_may_tinh: { ten: 'Gập máy tính', loai: 'ke_chuyen', mo_ta: 'gập laptop thất vọng: trang web bị đóng, bỏ cuộc', do_vat: ['💻 máy tính xách tay'] },
+  nhin_bao_giong: { ten: 'Nhìn bão giông', loai: 'ke_chuyen', mo_ta: 'ngước nhìn bão giông, tia chớp loé trên đầu: sóng gió, tranh cãi sắp tới', do_vat: ['⚡ tia chớp'] },
+  lai_xe: { ten: 'Lái xe', loai: 'ke_chuyen', mo_ta: 'ngồi sau xe hơi, hai tay trên vô lăng, xe chạy rồi dừng', do_vat: ['🚗 xe hơi'] },
+  gong_chuong: { ten: 'Gõ chuông', loai: 'ke_chuyen', mo_ta: 'gõ búa vào chuông: niêm yết, IPO, khai mạc phiên giao dịch', do_vat: ['🔔 cái chuông', '🔨 búa'] },
+  trao_nhan: { ten: 'Trao nhẫn', loai: 'ke_chuyen', mo_ta: 'trao nhẫn cưới: kết hôn, cầu hôn; tim bay lên', do_vat: ['💍 nhẫn cưới', '💖 trái tim'] },
+  deo_kinh: { ten: 'Đeo kính thực tế ảo', loai: 'ke_chuyen', mo_ta: 'cầm kính VR nâng lên áp vào mắt: thực tế ảo, metaverse', do_vat: ['🥽 kính thực tế ảo'] },
 }
 
 // Kết quả AI chuẩn bị hành động cho cả phim (lưu trong dự án, không đụng tới lời thoại nên không làm phần đã dựng phải dựng lại)

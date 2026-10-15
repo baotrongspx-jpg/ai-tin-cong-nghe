@@ -545,6 +545,8 @@ const VAT = {
   dia: ['🍽️', 'truoc'], bot: ['🧽', 'phai'], vali: ['🧳', 'phai'], laptop: ['💻', 'truoc'], sach: ['📖', 'truoc'],
   mic: ['🎤', 'phai'], tien: ['💵', 'phai'], bat: ['🍜', 'truoc'], dua: ['🥢', 'phai'], co_le: ['🔧', 'phai'], chip: ['🔌', 'truoc'],
   zzz: ['💤', 'dau'], tuc: ['💢', 'dau'], tim: ['💖', 'dau'],
+  cua: ['🚪', 'canh'], em_be: ['👶', 'nguc'], ba_lo: ['🎒', 'vai'], la: ['🍂', 'trai'], chop: ['⚡', 'dau'], xe: ['🚗', 'xe'],
+  chuong: ['🔔', 'canh'], bua: ['🔨', 'phai'], nhan: ['💍', 'phai'], kinh_tay: ['🥽', 'truoc'], kinh_mat: ['🥽', 'mat'],
 }
 const VAT_CAN = {} // phu<k> → Set(tên đồ vật)
 // Đồ vật mỗi hành động kể chuyện dùng (để đạo cụ phụ vat_them chọn chỗ cầm còn trống)
@@ -553,6 +555,8 @@ const TAY_BAN = { viet: ['phai'], chi_tay: ['phai'], dap_tay: ['phai'], tay_len_
 const VAT_DUNG_BOI = {
   rua_bat: ['dia', 'bot'], xach_vali: ['vali'], go_may: ['laptop'], doc_sach: ['sach'], phat_bieu: ['mic'], an_com: ['bat', 'dua'],
   dem_tien: ['tien'], lap_rap: ['co_le', 'chip'], bi_xo: ['tuc'], an_mung: ['tim'], kiet_suc: ['zzz'],
+  mo_cua: ['cua'], be_em_be: ['em_be'], di_bo: ['ba_lo'], nhin_ra_ngoai: ['la'], dong_may_tinh: ['laptop'], nhin_bao_giong: ['chop'],
+  lai_xe: ['xe'], gong_chuong: ['chuong', 'bua'], trao_nhan: ['nhan', 'tim'], deo_kinh: ['kinh_tay', 'kinh_mat'],
 }
 const vatHien = (p, ten, t, dd) => {
   if (!VAT[ten] || !p.startsWith('phu')) return []
@@ -675,9 +679,126 @@ const TRUYEN = {
       `tl.to("#${p}-dau", { rotation: -6, duration: 0.2 }, ${f(t)});`,
     ]
   },
+  // ── Bộ 2 (phim Mark Zuckerberg 15/10/2026, theo kịch bản diễn của bước chuẩn bị hành động) ──
+  // Mở cửa: vươn tay phải nắm tay nắm, cửa xoay quanh bản lề mở ra (co ngang), lùi nửa bước nhường cửa, thả tay, mỉm cười
+  mo_cua: (p, t, dd) => {
+    const mo = Math.min(1.2, Math.max(0.6, dd * 0.45))
+    return [
+      ...vatHien(p, 'cua', t, dd),
+      `tl.to("#${p}-tay-phai", { rotation: -64, duration: 0.35, ease: "power2.out" }, ${f(t)});`,
+      `tl.to("#${p}-tay-trai", { rotation: 12, duration: 0.35 }, ${f(t)});`,
+      `tl.to("#${p}-dau", { rotation: -6, duration: 0.3 }, ${f(t)});`,
+      `tl.fromTo("#${p}-vat-cua", { scaleX: 1, transformOrigin: "100% 50%" }, { scaleX: 0.28, duration: ${f(mo)}, ease: "power2.inOut", immediateRender: false }, ${f(t + 0.45)});`,
+      `tl.fromTo("#${p} svg", { x: 0 }, { x: -26, duration: 0.4, ease: "power1.out", immediateRender: false }, ${f(t + 0.5)});`,
+      `tl.to("#${p}-tay-phai", { rotation: -8, duration: 0.4, ease: "sine.inOut" }, ${f(t + 0.5 + mo)});`,
+      `tl.to("#${p}-ma-hong", { opacity: 1, duration: 0.3 }, ${f(t + 0.5 + mo)});`,
+      `tl.to("#${p} svg", { x: 0, duration: 0.5, ease: "power1.inOut" }, ${f(t + Math.max(dd, 0.9 + mo) + 0.05)});`,
+    ]
+  },
+  // Bế em bé: hai tay ôm em bé trước ngực, ru nhẹ theo nhịp, đầu nghiêng nhìn xuống trìu mến, má ửng hồng
+  be_em_be: (p, t, dd) => [
+    ...vatHien(p, 'em_be', t, dd),
+    `tl.to("#${p}-tay-trai", { rotation: -34, duration: 0.4, ease: "sine.out" }, ${f(t)});`,
+    `tl.to("#${p}-tay-phai", { rotation: 34, duration: 0.4, ease: "sine.out" }, ${f(t)});`,
+    `tl.fromTo(["#${p}-tay-trai", "#${p}-tay-phai"], { rotation: (i) => (i ? 34 : -34) }, { rotation: (i) => (i ? 26 : -42), duration: 0.5, yoyo: true, repeat: ${solan(dd - 0.5, 0.5)}, ease: "sine.inOut", immediateRender: false }, ${f(t + 0.45)});`,
+    `tl.to("#${p}-dau", { rotation: 12, duration: 0.5 }, ${f(t)});`,
+    `tl.to("#${p}-ma-hong", { opacity: 1, duration: 0.4 }, ${f(t + 0.3)});`,
+  ],
+  // Đi bộ (bước vào trường, bước qua cổng): ba lô trên vai, hai tay nắm quai, bước đều, ngước nhìn tự tin
+  di_bo: (p, t, dd) => {
+    const di = Math.min(dd, 2.4)
+    return [
+      ...vatHien(p, 'ba_lo', t, dd),
+      `tl.fromTo(["#${p}-tay-trai", "#${p}-tay-phai"], { rotation: (i) => (i ? 10 : -10) }, { rotation: (i) => (i ? 16 : -16), duration: 0.32, yoyo: true, repeat: ${solan(di, 0.32)}, ease: "sine.inOut", immediateRender: false }, ${f(t)});`,
+      `tl.fromTo("#${p} svg", { x: 0 }, { x: 130, duration: ${f(di)}, ease: "none", immediateRender: false }, ${f(t)});`,
+      `tl.to("#${p} svg", { y: -9, duration: 0.16, yoyo: true, repeat: ${solan(di, 0.16)}, ease: "sine.inOut" }, ${f(t)});`,
+      `tl.to("#${p}-dau", { rotation: -5, duration: 0.4 }, ${f(t)});`,
+      `tl.to("#${p} svg", { x: 0, duration: 0.5, ease: "power1.inOut" }, ${f(t + Math.max(di, dd) + 0.05)});`,
+    ]
+  },
+  // Nhìn ra ngoài: tay trái nâng chiếc lá lên ngang mắt ngắm, xoay nhẹ cuống lá, đầu nghiêng đăm chiêu, hạ tay
+  nhin_ra_ngoai: (p, t, dd) => [
+    ...vatHien(p, 'la', t, dd),
+    `tl.to("#${p}-tay-trai", { rotation: -126, duration: 0.5, ease: "sine.out" }, ${f(t)});`,
+    `tl.to("#${p}-dau", { rotation: -8, duration: 0.5 }, ${f(t)});`,
+    `tl.fromTo("#${p}-vat-la", { rotation: -12, transformOrigin: "50% 100%" }, { rotation: 14, duration: 0.45, yoyo: true, repeat: ${solan(dd - 1, 0.45)}, ease: "sine.inOut", immediateRender: false }, ${f(t + 0.55)});`,
+    `tl.to("#${p}-tay-trai", { rotation: -24, duration: 0.45, ease: "sine.inOut" }, ${f(t + Math.max(0.9, dd - 0.5))});`,
+  ],
+  // Gập máy tính: laptop trước người, hai tay nắm viền màn hình gập xuống chậm, vai chùng, đầu gục buồn bã
+  dong_may_tinh: (p, t, dd) => [
+    ...vatHien(p, 'laptop', t, dd),
+    `tl.to("#${p}-tay-trai", { rotation: -16, duration: 0.3 }, ${f(t)});`,
+    `tl.to("#${p}-tay-phai", { rotation: 16, duration: 0.3 }, ${f(t)});`,
+    `tl.fromTo("#${p}-vat-laptop", { scaleY: 1, transformOrigin: "50% 100%" }, { scaleY: 0.22, duration: 0.7, ease: "power1.inOut", immediateRender: false }, ${f(t + 0.5)});`,
+    `tl.to(["#${p}-tay-trai", "#${p}-tay-phai"], { rotation: (i) => (i ? 6 : -6), duration: 0.7, ease: "power1.inOut" }, ${f(t + 0.5)});`,
+    `tl.to("#${p}-dau", { rotation: 16, duration: 0.8, ease: "sine.inOut" }, ${f(t + 0.6)});`,
+    `tl.to("#${p} svg", { y: 7, duration: 0.8, ease: "sine.inOut" }, ${f(t + 0.6)});`,
+    `tl.to("#${p} svg", { y: 0, duration: 0.5, ease: "sine.inOut" }, ${f(t + Math.max(1.5, dd))});`,
+  ],
+  // Nhìn bão giông (sóng gió sắp tới): ngước nhìn lên, tia chớp loé trên đầu, tay trái nắm chặt, đổ mồ hôi, đứng vững
+  nhin_bao_giong: (p, t, dd) => [
+    ...vatHien(p, 'chop', t + 0.2, dd),
+    `tl.to("#${p}-dau", { rotation: -12, duration: 0.4 }, ${f(t)});`,
+    `tl.to("#${p}-tay-trai", { rotation: 10, duration: 0.3 }, ${f(t)});`,
+    `tl.to("#${p}-tay-phai", { rotation: -24, duration: 0.4 }, ${f(t)});`,
+    // Tia chớp loé (số lần lặp vừa khít trước lúc tia chớp tắt, không thì lệnh loé kết thúc sau và tia chớp sót sang câu sau)
+    ...(dd > 1.9 ? [`tl.fromTo("#${p}-vat-chop", { opacity: 1 }, { opacity: 0.15, duration: 0.1, yoyo: true, repeat: ${Math.min(5, solan(dd - 1.5, 0.1))}, ease: "none", immediateRender: false }, ${f(t + 1.15)});`] : []),
+    `tl.to("#${p}-mo-hoi", { opacity: 1, duration: 0.3 }, ${f(t + 0.3)});`,
+    `tl.to("#${p}-mo-hoi", { opacity: 0, duration: 0.3 }, ${f(t + Math.max(1, dd) - 0.3)});`,
+  ],
+  // Lái xe: ngồi sau chiếc xe (xe che nửa người), hai tay đặt trên vô lăng, đánh lái nhẹ, xe chạy ngang rồi dừng
+  lai_xe: (p, t, dd) => {
+    const di = Math.min(dd, 2.6)
+    return [
+      ...vatHien(p, 'xe', t, dd),
+      `tl.to("#${p}-tay-trai", { rotation: -26, duration: 0.3 }, ${f(t)});`,
+      `tl.to("#${p}-tay-phai", { rotation: 26, duration: 0.3 }, ${f(t)});`,
+      `tl.fromTo(["#${p}-tay-trai", "#${p}-tay-phai"], { rotation: (i) => (i ? 26 : -26) }, { rotation: (i) => (i ? 36 : -16), duration: 0.5, yoyo: true, repeat: ${solan(di, 0.5)}, ease: "sine.inOut", immediateRender: false }, ${f(t + 0.35)});`,
+      `tl.fromTo("#${p} svg", { x: 0 }, { x: 170, duration: ${f(di)}, ease: "power1.inOut", immediateRender: false }, ${f(t)});`,
+      `tl.to("#${p} svg", { y: -4, duration: 0.12, yoyo: true, repeat: ${solan(di, 0.12)}, ease: "sine.inOut" }, ${f(t)});`,
+      `tl.to("#${p} svg", { x: 0, duration: 0.5, ease: "power1.inOut" }, ${f(t + Math.max(di, dd) + 0.05)});`,
+    ]
+  },
+  // Gõ chuông (khai mạc phiên giao dịch, niêm yết): búa tay phải vung qua đầu rồi gõ xuống chuông bên cạnh nhiều nhịp,
+  // chuông rung theo cú gõ, tay trái chống hông, cười rạng rỡ
+  gong_chuong: (p, t, dd) => [
+    ...vatHien(p, 'chuong', t, dd), ...vatHien(p, 'bua', t, dd),
+    `tl.to("#${p}-tay-phai", { rotation: -150, duration: 0.3, ease: "power2.out" }, ${f(t)});`,
+    `tl.to("#${p}-tay-phai", { rotation: -92, duration: 0.14, yoyo: true, repeat: 5, ease: "power2.in" }, ${f(t + 0.35)});`,
+    `tl.fromTo("#${p}-vat-chuong", { rotation: -9, transformOrigin: "50% 0%" }, { rotation: 9, duration: 0.14, yoyo: true, repeat: 5, ease: "sine.inOut", immediateRender: false }, ${f(t + 0.49)});`,
+    `tl.to("#${p}-tay-trai", { rotation: 26, duration: 0.3 }, ${f(t)});`,
+    `tl.to("#${p}-ma-hong", { opacity: 1, duration: 0.3 }, ${f(t + 0.4)});`,
+  ],
+  // Trao nhẫn (cầu hôn, kết hôn): tay phải cầm nhẫn chậm rãi đưa ra phía trước, dừng một nhịp, rồi hai tay đan trước ngực,
+  // trái tim bay lên, má ửng hồng
+  trao_nhan: (p, t, dd) => [
+    ...vatHien(p, 'nhan', t, Math.min(dd, 1.6)), ...vatHien(p, 'tim', t + 1.2, Math.max(0.6, dd - 1.2)),
+    `tl.to("#${p}-tay-phai", { rotation: -52, duration: 0.8, ease: "sine.inOut" }, ${f(t)});`,
+    `tl.to("#${p}-dau", { rotation: 8, duration: 0.6 }, ${f(t)});`,
+    `tl.to(["#${p}-tay-trai", "#${p}-tay-phai"], { rotation: (i) => (i ? 20 : -20), duration: 0.5, ease: "sine.inOut" }, ${f(t + 1.4)});`,
+    `tl.to("#${p}-ma-hong", { opacity: 1, duration: 0.4 }, ${f(t + 0.4)});`,
+  ],
+  // Đeo kính thực tế ảo: hai tay cầm kính trước người, nâng lên áp vào mắt (kính chuyển lên mặt), buông tay, ngẩng đầu hào hứng
+  deo_kinh: (p, t, dd) => [
+    ...vatHien(p, 'kinh_tay', t, 1.15), ...vatHien(p, 'kinh_mat', t + 1.05, Math.max(0.6, dd - 1.05)),
+    `tl.to("#${p}-tay-trai", { rotation: -16, duration: 0.3 }, ${f(t)});`,
+    `tl.to("#${p}-tay-phai", { rotation: 16, duration: 0.3 }, ${f(t)});`,
+    `tl.to("#${p}-tay-trai", { rotation: -142, duration: 0.45, ease: "power1.inOut" }, ${f(t + 0.6)});`,
+    `tl.to("#${p}-tay-phai", { rotation: 142, duration: 0.45, ease: "power1.inOut" }, ${f(t + 0.6)});`,
+    `tl.to(["#${p}-tay-trai", "#${p}-tay-phai"], { rotation: 0, duration: 0.45, ease: "sine.inOut" }, ${f(t + 1.3)});`,
+    `tl.to("#${p}-dau", { rotation: -6, duration: 0.4 }, ${f(t + 1.3)});`,
+  ],
 }
 // Từ trong lời kể → hành động kể chuyện (thứ tự = ưu tiên). Ẩn dụ ("bài kiểm tra sinh tồn") không tính
 const TU_TRUYEN = [
+  ['be_em_be', /chào đời|sinh ngày|sinh năm|cất tiếng khóc|bế (con|em bé|đứa)|đứa con đầu lòng|lên chức (bố|cha|mẹ)/],
+  ['trao_nhan', /kết hôn|cầu hôn|đám cưới|nhẫn cưới|lễ cưới|thành vợ chồng/],
+  ['gong_chuong', /rung chuông|gõ chuông|đánh chuông|niêm yết|lên sàn (chứng khoán|giao dịch)|\bipo\b/],
+  ['deo_kinh', /kính thực tế ảo|thực tế ảo|metaverse|đeo kính/],
+  ['dong_may_tinh', /gập (máy|laptop)|đóng (máy|laptop)|(trang web|website) bị (đóng|khóa|gỡ)|bị đóng cửa ngay|tắt máy tính/],
+  ['lai_xe', /lái xe|chuyến xe|lên xe|đi xe|ô tô|xe hơi/],
+  ['mo_cua', /mở (toang )?(cửa|cánh cửa|cánh cổng|cổng)|cánh cửa .{0,20}mở ra|cánh cổng .{0,20}(mở|rộng)/],
+  ['nhin_bao_giong', /bão giông|giông bão|sóng gió|cơn bão|bão tố/],
   ['rua_bat', /rửa (bát|chén|đĩa)|chà (sàn|bát|nồi)|dọn (dẹp )?(nhà vệ sinh|toilet|phòng vệ sinh)|lau (sàn|bàn|nhà)|đĩa bẩn/],
   ['khoc', /khóc|nước mắt|nức nở|thút thít/],
   ['bi_xo', /bắt nạt|xô đẩy|đánh đập|bị đánh|ức hiếp|hành hạ|bị đẩy|đẩy thẳng|xô ngã|bị đuổi/],
@@ -692,6 +813,8 @@ const TU_TRUYEN = [
   ['kiet_suc', /kiệt sức|thức trắng|mất ngủ|làm việc (ngày đêm|suốt đêm|xuyên đêm)|rã rời|gục xuống/],
   ['an_com', /ăn (cơm|mì|tối|trưa|vội)|bữa (ăn|cơm)|bát mì|tô mì/],
   ['dem_tien', /đếm (tiền|từng đồng)|tiết kiệm từng|không một xu|cạn tiền|túng thiếu|tiền mặt/],
+  ['di_bo', /bước (chân )?vào|bước qua|đi bộ|rảo bước|bước tới|đặt chân (vào|đến|tới)/],
+  ['nhin_ra_ngoai', /nhìn ra (cửa sổ|ngoài)|ngắm (nhìn )?(lá|cảnh|mùa)|lá (vàng|phong) rơi|mùa thu/],
 ]
 Object.assign(DONG_TAC, TRUYEN)
 // Kịch bản cũ chưa có dong_tac (hoặc AI để "khong"): đoán từ chính lời thoại, để nói gì làm nấy
@@ -786,7 +909,7 @@ loi.forEach((l, i) => {
     tw.push(...DONG_TAC[dongTac](nguoiLam, batDauDT, t0 + d - batDauDT))
     LUC_DONG_TAC[i] = [dongTac, batDauDT]
     // Tiếng đi kèm tính từ lúc bắt đầu động tác (đập: lúc tay chạm xuống)
-    const tiengDT = { dap_tay: ['sfx-bum', 0.5, 0.22], vo_tay: ['sfx-vo-tay', 0.05, 0.25], viet: ['sfx-but-viet', 0.05, 0.3] }[dongTac]
+    const tiengDT = { dap_tay: ['sfx-bum', 0.5, 0.22], vo_tay: ['sfx-vo-tay', 0.05, 0.25], viet: ['sfx-but-viet', 0.05, 0.3], gong_chuong: ['sfx-ting', 0.49, 0.3], mo_cua: ['sfx-go-cua', 0.3, 0.12] }[dongTac]
     if (tiengDT) amDongTac.push([tiengDT[0], batDauDT + tiengDT[1], tiengDT[2], i])
     // Nhân vật phụ làm động tác mà câu sau không còn là lượt của họ: về dáng nghỉ cuối câu
     DONG_BO.push({ cau: i, bd: +t0.toFixed(2), kt: +(t0 + d).toFixed(2), chu: l.chu, nguoi_lam: nguoiLam, dong_tac: dongTac, luc: +batDauDT.toFixed(2), tu_loi: !!khop })
@@ -1207,7 +1330,7 @@ const ganVat = (svg, id) => {
   let tren = ''
   for (const ten of VAT_CAN[id] ?? []) {
     const [bt, cho] = VAT[ten]
-    const [x, y, co] = { phai: [280, 496, 96], trai: [120, 496, 96], truoc: [200, 452, 128], dau: [300, 110, 70] }[cho]
+    const [x, y, co] = { phai: [280, 496, 96], trai: [120, 496, 96], truoc: [200, 452, 128], dau: [300, 110, 70], canh: [452, 330, 250], nguc: [200, 372, 130], vai: [296, 318, 74], xe: [200, 470, 290], mat: [200, 192, 118] }[cho]
     const el = `<text id="${id}-vat-${ten}" x="${x}" y="${y}" font-size="${co}" text-anchor="middle" dominant-baseline="middle" opacity="0" style="font-family: 'Emoji', sans-serif">${bt}</text>`
     const mo = `<g id="${id}-tay-${cho}">`
     if ((cho === 'phai' || cho === 'trai') && ra.includes(mo)) ra = ra.replace(mo, mo + el)

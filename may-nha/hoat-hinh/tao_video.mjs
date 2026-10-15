@@ -547,6 +547,13 @@ const VAT = {
   zzz: ['💤', 'dau'], tuc: ['💢', 'dau'], tim: ['💖', 'dau'],
 }
 const VAT_CAN = {} // phu<k> → Set(tên đồ vật)
+// Đồ vật mỗi hành động kể chuyện dùng (để đạo cụ phụ vat_them chọn chỗ cầm còn trống)
+// Cử chỉ bận tay (đạo cụ phụ không đặt vào tay đó)
+const TAY_BAN = { viet: ['phai'], chi_tay: ['phai'], dap_tay: ['phai'], tay_len_nguc: ['phai'], cam_vat: [], vay_tay: ['phai'] }
+const VAT_DUNG_BOI = {
+  rua_bat: ['dia', 'bot'], xach_vali: ['vali'], go_may: ['laptop'], doc_sach: ['sach'], phat_bieu: ['mic'], an_com: ['bat', 'dua'],
+  dem_tien: ['tien'], lap_rap: ['co_le', 'chip'], bi_xo: ['tuc'], an_mung: ['tim'], kiet_suc: ['zzz'],
+}
 const vatHien = (p, ten, t, dd) => {
   if (!VAT[ten] || !p.startsWith('phu')) return []
   ;(VAT_CAN[p] ??= new Set()).add(ten)
@@ -708,6 +715,8 @@ const nguoiLamCau = (l, i) => (l.ai === 'nguoi_ke' || laPhu(l.ai) ? phuCuaCau[i]
 // Hành động kể chuyện (TRUYEN) đi trước cử chỉ: lời kể nói nhân vật làm gì thì làm đúng việc đó; Mèo / Bit chỉ dùng cử chỉ
 const dongTacCau = (l, i) => {
   const chu = String(l.chu ?? '').toLowerCase()
+  // Chủ trang đã chốt ở bước chuẩn bị hành động (trang dự án) → dùng đúng hành động đó
+  if (l.hanh_dong_chot && DONG_TAC[l.dong_tac] && (!TRUYEN[l.dong_tac] || String(nguoiLamCau(l, i) ?? '').startsWith('phu'))) return l.dong_tac
   if (String(nguoiLamCau(l, i) ?? '').startsWith('phu')) {
     const ten = TRUYEN[l.dong_tac] ? l.dong_tac : TU_TRUYEN.find(([, re]) => re.test(chu))?.[0]
     if (ten) return ten
@@ -782,6 +791,28 @@ loi.forEach((l, i) => {
     // Nhân vật phụ làm động tác mà câu sau không còn là lượt của họ: về dáng nghỉ cuối câu
     DONG_BO.push({ cau: i, bd: +t0.toFixed(2), kt: +(t0 + d).toFixed(2), chu: l.chu, nguoi_lam: nguoiLam, dong_tac: dongTac, luc: +batDauDT.toFixed(2), tu_loi: !!khop })
     if (nguoiLam.startsWith('phu') && nguoiLam !== phuCuaCau[i + 1]) tw.push(`tl.to(["#${nguoiLam}-dau", "#${nguoiLam}-tay-trai", "#${nguoiLam}-tay-phai"], { rotation: 0, duration: 0.3, ease: "sine.inOut" }, ${f(t0 + d - 0.2)});`)
+  }
+  // Đạo cụ phụ (chuẩn bị hành động trên trang: vat_them) — người diễn cầm thêm đồ vật lời kể nói tới (cái chổi, cây bút,
+  // tờ hợp đồng…) ở chỗ hành động đang làm chưa dùng (tay phải → tay trái → trước người), từ lúc bắt đầu động tác tới hết câu
+  {
+    const q = nguoiLamCau(l, i)
+    const them = Array.isArray(l.vat_them) ? l.vat_them.filter((x) => typeof x === 'string' && x.trim()).slice(0, 2) : []
+    if (them.length && String(q ?? '').startsWith('phu')) {
+      // Tay đang làm cử chỉ (viết, chỉ, đập…) thì đạo cụ sang chỗ khác; bút / dụng cụ viết luôn ở tay phải (tay viết)
+      const dung = new Set([...(VAT_DUNG_BOI[dongTac] ?? []).map((v) => VAT[v]?.[1]), ...(TAY_BAN[dongTac] ?? [])])
+      const trong = ['phai', 'truoc', 'trai'].filter((c) => !dung.has(c))
+      const VIET = /[🖊✒✏🖋🖌]/u
+      them.sort((a, b) => Number(VIET.test(b)) - Number(VIET.test(a)))
+      const bd = LUC_DONG_TAC[i]?.[1] ?? t0 + 0.3
+      let so = 0
+      them.forEach((bt) => {
+        const cho = VIET.test(bt) && dongTac === 'viet' ? 'phai' : trong[so++]
+        if (!cho) return
+        const ten = `e${[...bt].map((c) => c.codePointAt(0).toString(16)).join('')}_${cho}`
+        VAT[ten] = [bt, cho]
+        tw.push(...vatHien(q, ten, bd, t0 + d - bd))
+      })
+    }
   }
   // Người kể đang dẫn chuyện: nhân vật đứng trên sân khấu (nhân vật chính / người được nhắc tới) diễn theo sắc thái câu kể
   // thay vì đứng yên: câu hỏi / nghịch lý → nghiêng đầu chống cằm; bước ngoặt → nhướn mày, ngạc nhiên; buồn, giận, vui,
@@ -1176,7 +1207,7 @@ const ganVat = (svg, id) => {
   let tren = ''
   for (const ten of VAT_CAN[id] ?? []) {
     const [bt, cho] = VAT[ten]
-    const [x, y, co] = { phai: [280, 492, 78], trai: [120, 492, 78], truoc: [200, 452, 128], dau: [300, 110, 70] }[cho]
+    const [x, y, co] = { phai: [280, 496, 96], trai: [120, 496, 96], truoc: [200, 452, 128], dau: [300, 110, 70] }[cho]
     const el = `<text id="${id}-vat-${ten}" x="${x}" y="${y}" font-size="${co}" text-anchor="middle" dominant-baseline="middle" opacity="0" style="font-family: 'Emoji', sans-serif">${bt}</text>`
     const mo = `<g id="${id}-tay-${cho}">`
     if ((cho === 'phai' || cho === 'trai') && ra.includes(mo)) ra = ra.replace(mo, mo + el)

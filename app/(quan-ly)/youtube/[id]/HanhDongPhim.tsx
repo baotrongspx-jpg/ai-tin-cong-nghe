@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import type { DuAnYT } from '@/lib/youtube'
-import { THU_VIEN_HANH_DONG, hanhDongCu, hanhDongThieu, yeuCauClaudeCode } from '@/lib/thuVienHanhDong'
+import { THU_VIEN_HANH_DONG, coEmoji, doVatThieu, hanhDongCu, hanhDongThieu, yeuCauClaudeCode } from '@/lib/thuVienHanhDong'
 import { thongBao } from '@/app/ThongBao'
 import { Xoay } from '@/app/BieuTuong'
 import { apDungHanhDongYouTube, chuanBiHanhDongYouTube } from '../actions'
@@ -40,6 +40,10 @@ export default function HanhDongPhim({ d, onDuAn }: { d: DuAnYT; onDuAn: (d: DuA
   const thieu = pt ? hanhDongThieu(pt) : []
   const soThieu = thieu.reduce((t, g) => t + g.vi_du.length, 0)
   const yeuCau = pt ? yeuCauClaudeCode(d.tieu_de, pt) : ''
+  const vatThieu = pt ? doVatThieu(pt) : []
+  const vatGanDuoc = vatThieu.filter((g) => coEmoji(g.vat))
+  const vatPhaiVe = vatThieu.filter((g) => !coEmoji(g.vat))
+  const canClaude = soThieu > 0 || vatPhaiVe.length > 0
 
   return (
     <section className="the grid gap-4 p-5">
@@ -47,7 +51,7 @@ export default function HanhDongPhim({ d, onDuAn }: { d: DuAnYT; onDuAn: (d: DuA
         <div>
           <h2 className="font-bold">🎬 Hành động nhân vật theo lời thoại</h2>
           <p className="mt-1 text-sm text-slate-600">
-            Trước khi dựng: AI đọc lời thoại từng chương, mỗi câu nhân vật phải <b>làm</b> gì trên hình (rửa bát, xách vali, gõ máy…). Hành động máy dựng chưa có sẽ hiện màu đỏ — bấm <b>Chép yêu cầu cho Claude Code</b> rồi dán vào Claude Code để xây thêm.
+            Trước khi dựng: AI đọc lời thoại từng chương, mỗi câu nhân vật phải <b>làm</b> gì trên hình và cần <b>đạo cụ</b> gì để diễn cùng (rửa chén có cái chén, quét nhà có cái chổi, ký hợp đồng có bút và tờ hợp đồng…). Hành động / đạo cụ máy dựng chưa có sẽ hiện màu đỏ — bấm <b>Chép yêu cầu cho Claude Code</b> rồi dán vào Claude Code để xây thêm.
           </p>
         </div>
         <button type="button" className="btn btn-sm bg-violet-600 text-white hover:bg-violet-700" disabled={!!dang} onClick={() => void doc()}>
@@ -59,7 +63,7 @@ export default function HanhDongPhim({ d, onDuAn }: { d: DuAnYT; onDuAn: (d: DuA
       {pt && (
         <>
           {cu && <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900 ring-1 ring-amber-200">Lời thoại đã sửa sau lần chuẩn bị này — bấm chuẩn bị lại để khớp.</p>}
-          <div className="grid gap-2 sm:grid-cols-3">
+          <div className="grid gap-2 sm:grid-cols-4">
             <div className="rounded-lg bg-slate-50 p-3 ring-1 ring-slate-200">
               <p className="text-2xl font-bold">{canDien.length}<span className="text-sm font-normal text-slate-500">/{tatCa.length} câu</span></p>
               <p className="text-xs text-slate-600">câu có việc cần diễn (không chỉ đứng nói)</p>
@@ -72,13 +76,19 @@ export default function HanhDongPhim({ d, onDuAn }: { d: DuAnYT; onDuAn: (d: DuA
               <p className={`text-2xl font-bold ${soThieu ? 'text-red-700' : 'text-emerald-700'}`}>{soThieu}</p>
               <p className={`text-xs ${soThieu ? 'text-red-800' : 'text-emerald-800'}`}>{soThieu ? `câu THIẾU hành động (${thieu.length} loại cần xây thêm)` : 'không thiếu hành động nào'}</p>
             </div>
+            <div className={`rounded-lg p-3 ring-1 ${vatPhaiVe.length ? 'bg-red-50 ring-red-200' : vatGanDuoc.length ? 'bg-amber-50 ring-amber-200' : 'bg-emerald-50 ring-emerald-200'}`}>
+              <p className="text-2xl font-bold">{vatThieu.length}</p>
+              <p className="text-xs text-slate-700">
+                đạo cụ còn thiếu{vatThieu.length ? `: ${vatGanDuoc.length} gắn được ngay, ${vatPhaiVe.length} phải vẽ thêm` : ''}
+              </p>
+            </div>
           </div>
 
           <div className="flex flex-wrap gap-2">
             <button type="button" className="btn btn-sm bg-emerald-600 text-white hover:bg-emerald-700" disabled={!!dang || cu} onClick={() => void apDung()}>
-              {dang === 'ap' ? <Xoay /> : '✓'} Gắn hành động có sẵn vào kịch bản
+              {dang === 'ap' ? <Xoay /> : '✓'} Gắn hành động & đạo cụ vào kịch bản
             </button>
-            {soThieu > 0 && (
+            {canClaude && (
               <button
                 type="button"
                 className="btn btn-sm btn-nhat"
@@ -93,7 +103,7 @@ export default function HanhDongPhim({ d, onDuAn }: { d: DuAnYT; onDuAn: (d: DuA
               </button>
             )}
           </div>
-          <p className="-mt-2 text-xs text-slate-500">Gắn hành động chỉ sửa các chương chưa dựng; chương đã dựng xong giữ nguyên. Sau khi Claude Code xây xong hành động mới, bấm chuẩn bị lại rồi gắn lại.</p>
+          <p className="-mt-2 text-xs text-slate-500">Gắn: mỗi câu nhận hành động có sẵn, đạo cụ còn thiếu có hình (emoji) thì người diễn cầm thêm ở tay còn trống. Chỉ sửa các chương chưa dựng; chương đã dựng xong giữ nguyên. Sau khi Claude Code xây xong hành động / đạo cụ mới, bấm chuẩn bị lại rồi gắn lại.</p>
 
           {thieu.length > 0 && (
             <div className="grid gap-2 rounded-lg bg-red-50 p-3 ring-1 ring-red-200">
@@ -113,6 +123,20 @@ export default function HanhDongPhim({ d, onDuAn }: { d: DuAnYT; onDuAn: (d: DuA
             </div>
           )}
 
+          {vatThieu.length > 0 && (
+            <div className="grid gap-1 rounded-lg bg-amber-50 p-3 ring-1 ring-amber-200">
+              <p className="text-sm font-bold text-amber-900">Đạo cụ còn thiếu</p>
+              <ul className="flex flex-wrap gap-1.5 text-xs">
+                {vatThieu.map((g) => (
+                  <li key={g.vat} className={`rounded-full px-2 py-0.5 font-semibold ${coEmoji(g.vat) ? 'bg-amber-100 text-amber-900' : 'bg-red-100 text-red-700'}`}>
+                    {g.vat} ({g.vi_du.length}){coEmoji(g.vat) ? '' : ' — phải vẽ'}
+                  </li>
+                ))}
+              </ul>
+              <p className="text-xs text-amber-800">Vàng: gắn được ngay (bấm Gắn). Đỏ: chưa có hình — nằm trong yêu cầu chép cho Claude Code.</p>
+            </div>
+          )}
+
           <div className="grid gap-2">
             {pt.chuong.map((c) => (
               <details key={c.k} className="rounded-lg ring-1 ring-slate-200">
@@ -129,6 +153,15 @@ export default function HanhDongPhim({ d, onDuAn }: { d: DuAnYT; onDuAn: (d: DuA
                       <li key={x.i} className="grid gap-0.5 border-t border-slate-100 pt-1 sm:grid-cols-[1fr_auto] sm:gap-3">
                         <span className="text-slate-700">
                           <span className="text-xs text-slate-400">{x.i + 1}.</span> {x.chu}… <span className="text-xs text-slate-500">— {x.nguoi}: {x.viec}</span>
+                          {(x.do_vat_can ?? []).length > 0 && (
+                            <span className="ml-1 inline-flex flex-wrap gap-1 align-middle">
+                              {(x.do_vat_can ?? []).map((v) => (
+                                <span key={v} className={`rounded px-1.5 text-[11px] ${(x.do_vat_thieu ?? []).includes(v) ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'}`}>
+                                  {v}
+                                </span>
+                              ))}
+                            </span>
+                          )}
                         </span>
                         <span
                           className={`h-fit justify-self-start rounded-full px-2 py-0.5 text-xs font-semibold ${

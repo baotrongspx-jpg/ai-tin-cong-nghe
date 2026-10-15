@@ -16,7 +16,7 @@ import { bienTapDat, hoiDongDat, khauChuaDat, loiBienTap } from './datChuan'
 import { apBienTap, deBaiBienTap, type DaBienTap, type KetQuaBienTap } from './bienTap'
 import { batNhacNen, dsNhac } from './nhacNen'
 import { veAnhGemini } from './veAnhNen'
-import { THU_VIEN_HANH_DONG, type CauHanhDong, type PhanTichHanhDong } from './thuVienHanhDong'
+import { THU_VIEN_HANH_DONG, emojiCua, emojiGoc, type CauHanhDong, type PhanTichHanhDong } from './thuVienHanhDong'
 
 // Video YouTube dài (trang /youtube): hoạt hình Mèo Mun & Robot Bit, khung ngang 16:9, dài tới ~20 phút.
 // Mỗi dự án là một tệp youtube/<id>/du-an.json trong kho (không cần thêm bảng). AI viết dàn ý chia phần (~3 phút
@@ -44,6 +44,8 @@ export type CauYT = Omit<LoiThoai[number], 'ai' | 'nhan_vat_phu'> & {
   the_moc?: string
   dia_diem?: string // phim tiểu sử: mã địa điểm trong hồ sơ (LOC_xx) của cảnh chứa câu này, "" = không thuộc địa điểm nào (ganDiaDiem)
   anh?: number // phim tiểu sử: số thứ tự ảnh Wikipedia (d.phim.anh) hiện trong câu này, -1 = không
+  hanh_dong_chot?: boolean // hành động do chủ trang chốt ở bước chuẩn bị (máy dựng ưu tiên hơn tự đoán từ chữ)
+  vat_them?: string[] // đạo cụ phụ (emoji) người diễn cầm thêm ở tay còn trống trong câu này (chuẩn bị hành động)
 }
 export type PhanYT = {
   tieu_de: string
@@ -572,46 +574,62 @@ export async function duyetKichBan(id: string) {
 // từng câu, từng chương; thiếu thì hiển thị ra để chép vào Claude Code"). AI đọc từng chương, mỗi câu: ai làm, làm gì trên
 // hình, máy dựng đã có hành động đó chưa (THU_VIEN_HANH_DONG) — chưa có thì đặt mã mới. Kết quả lưu riêng (d.hanh_dong),
 // không sửa lời thoại; bấm "Áp dụng" mới ghi mã hành động có sẵn vào dong_tac của các chương chưa dựng.
-const HanhDongSchema = z.object({
-  cau: z.array(z.object({ i: z.number().int(), nguoi: z.string(), can: z.boolean(), hanh_dong: z.string(), viec: z.string(), ten_moi: z.string(), do_vat: z.string() })),
+// Hai lượt AI tách bạch (lượt gộp làm AI uốn mô tả cho khớp hành động có sẵn: "cất tiếng khóc chào đời" thành "ngồi đọc
+// sách"): lượt 1 KHÔNG thấy thư viện — chỉ đọc lời, ghi việc thật sự xảy ra trên hình và đạo cụ cần; lượt 2 đem từng việc
+// đó so với thư viện: có hành động làm đúng việc đó chưa, đạo cụ nào hành động đó chưa có.
+const ViecSchema = z.object({ cau: z.array(z.object({ i: z.number().int(), nguoi: z.string(), can: z.boolean(), viec: z.string(), do_vat_can: z.array(z.string()) })) })
+const KhopSchema = z.object({ cau: z.array(z.object({ i: z.number().int(), hanh_dong: z.string(), ten_moi: z.string() })) })
+const schemaMang = (thuocTinh: Record<string, unknown>) => ({
+  type: 'object',
+  properties: { cau: { type: 'array', items: { type: 'object', properties: thuocTinh, required: Object.keys(thuocTinh), additionalProperties: false } } },
+  required: ['cau'],
+  additionalProperties: false,
 })
+const CHUOI = { type: 'string' }
+// Mã hành động mới: bỏ dấu tiếng Việt (khuân vác → khuan_vac), chỉ chữ thường, số, gạch dưới
+const boDauMa = (x: string) =>
+  x.normalize('NFD').replace(/\p{M}/gu, '').replace(/đ/gi, 'd').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'chua_dat_ten'
+const MANG_CHUOI = { type: 'array', items: { type: 'string' } }
 export async function hanhDongChuong(d: DuAnYT, k: number): Promise<CauHanhDong[]> {
   const loi = d.phan[k - 1]?.loi ?? []
   if (!loi.length) return []
-  const thuVien = Object.entries(THU_VIEN_HANH_DONG).map(([ma, v]) => `${ma} (${v.loai === 'ke_chuyen' ? 'story action with props' : 'gesture'}): ${v.mo_ta}`).join('\n')
   const ten = d.phim?.ten ? `The main character (nhan_vat_chinh) is ${d.phim.ten}.` : ''
-  const kq = await goiJson({
-    system: `You are the animation director of a Vietnamese 2D cartoon documentary. Characters are flat front-facing rigs: head, eyebrows, eyes, mouth, two arms rotating at the shoulder, small steps; props are emoji held in a hand or placed in front of the body. For EVERY numbered line decide what the viewer should SEE a character DO while it is spoken, so characters act the words instead of standing and talking. ${ten}
-Who acts: on a narrator line (ai = nguoi_ke) the person the narrator describes (nhan_vat_phu, or the main character); on a dialogue line the speaker. Mèo Mun (meo) and Robot Bit (robot) are the mascot hosts: they only use gestures.
-Library of actions the renderer can already perform:
-${thuVien}
-For each line return: i (the line number), nguoi (who acts, in Vietnamese: the person's name or role, "Mèo Mun", "Robot Bit"), can (true when the line tells an event or a concrete visible activity of a person — being born, moving, studying, working, founding a company, signing, launching, travelling, fighting, building, crying, eating, being arrested, receiving an award… In a biography most narrator lines that tell what happened are true; false only for commentary, questions, reactions, explanations and lessons, where talking with a gesture is enough), hanh_dong (when can is true: the STORY ACTION code that literally shows that activity; a gesture is NOT acceptable for an event, and a story action that shows something else is not acceptable either — then use "moi" so the missing action gets built; when can is false: the best gesture code, or "khong"), viec (in Vietnamese, at most 15 words: exactly what the character does on screen, e.g. "đứng sau quầy rửa chồng bát đĩa bẩn"), ten_moi (only when hanh_dong is "moi": a short snake_case code without diacritics naming the new activity, e.g. "ky_hop_dong", "lai_xe", "bi_bat"; reuse the same code for the same activity; otherwise ""), do_vat (emoji props the action needs, e.g. "🚗", or ""). Metaphors ("lửa thử vàng", "cuộc chiến sinh tồn") are not physical activities.`,
+  const viec = await goiJson({
+    system: `You are the animation director of a Vietnamese 2D cartoon documentary. For EVERY numbered line write what the viewer should SEE a character DO while it is spoken, so characters act the words with real objects instead of standing and talking. ${ten}
+Who acts: on a narrator line (ai = nguoi_ke) the person the narrator describes (nhan_vat_phu, or the main character); on a dialogue line the speaker. Mèo Mun (meo) and Robot Bit (robot) are the mascot hosts.
+For each line return: i (the line number), nguoi (who acts, in Vietnamese: name or role, "Mèo Mun", "Robot Bit"), can (true when the line tells an event or a concrete visible activity of a person — being born, moving, studying, working, cleaning, founding a company, signing, launching, travelling, fighting, building, crying, hugging, eating, being arrested, receiving an award… In a biography most narrator lines that tell what happened are true; false only for commentary, questions, reactions, explanations and lessons; mascot lines are false), viec (in Vietnamese, at most 12 words: the core activity the LINE itself tells, in plain words — verb + object, e.g. "em bé sơ sinh khóc", "lau nhà vệ sinh bằng giẻ", "ôm chầm cha mẹ", "ký hợp đồng"; never invent staging the line does not say; a line that only states a fact, a time, a place or a feeling has can false; for can false: the gesture while talking), do_vat_can (EVERY object the person acts with, each as "emoji + Vietnamese name": ["🧹 cái chổi"], ["🥣 cái chén", "🧽 miếng rửa"], ["🖊️ cây bút", "📜 tờ hợp đồng"]; the closest single emoji, or only the Vietnamese name when no emoji fits; [] when no object). Metaphors ("lửa thử vàng", "cuộc chiến sinh tồn") are not physical activities.`,
     noiDung: loi.map((l, i) => `${i}. [${l.ai}${l.nhan_vat_phu && l.nhan_vat_phu !== 'khong' ? ` / ${l.nhan_vat_phu}` : ''}] ${l.chu}`).join('\n'),
-    effort: 'low',
-    kiemTra: HanhDongSchema,
-    schema: {
-      type: 'object',
-      properties: {
-        cau: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: { i: { type: 'integer' }, nguoi: { type: 'string' }, can: { type: 'boolean' }, hanh_dong: { type: 'string' }, viec: { type: 'string' }, ten_moi: { type: 'string' }, do_vat: { type: 'string' } },
-            required: ['i', 'nguoi', 'can', 'hanh_dong', 'viec', 'ten_moi', 'do_vat'],
-            additionalProperties: false,
-          },
-        },
-      },
-      required: ['cau'],
-      additionalProperties: false,
-    },
+    effort: 'medium',
+    kiemTra: ViecSchema,
+    schema: schemaMang({ i: { type: 'integer' }, nguoi: CHUOI, can: { type: 'boolean' }, viec: CHUOI, do_vat_can: MANG_CHUOI }),
   })
-  if (!kq) throw new Error(`AI chưa đọc được chương ${k}, thử lại`)
-  const theo = new Map(kq.cau.map((x) => [x.i, x]))
+  if (!viec) throw new Error(`AI chưa đọc được chương ${k}, thử lại`)
+  const theoViec = new Map(viec.cau.map((x) => [x.i, x]))
+  const thuVien = Object.entries(THU_VIEN_HANH_DONG)
+    .map(([ma, v]) => `${ma} (${v.loai === 'ke_chuyen' ? 'story action' : 'gesture'}): ${v.mo_ta}${v.do_vat ? ` [props it already has: ${v.do_vat.join(', ')}]` : ' [no props]'}`)
+    .join('\n')
+  const can = viec.cau.filter((x) => x.can)
+  const khop = can.length
+    ? await goiJson({
+        system: `You match planned on-screen activities of a 2D cartoon to the renderer's action library. Library:
+${thuVien}
+For each numbered activity (who: activity | props needed) return: i, hanh_dong (the library code that shows exactly the SAME body movement: a story action, or a GESTURE when the activity is that gesture done with an object — pointing at a letter = chi_tay, holding up an exam paper = cam_vat or gio_tay, slamming a report on the table = dap_tay, writing / signing = viet, standing proudly = khoanh_tay — the needed objects are added as props. "moi" only when the body must do something no library code does — judge strictly: hugging is not a handshake, walking into a building is not being pushed, wiping a toilet is not washing dishes, a newborn crying is not an adult crying, riding a bicycle is not running), ten_moi (when "moi": a short GENERAL snake_case code without diacritics for the kind of movement, reusable across lines and films, e.g. "chao_doi" (a baby is born), "lau_don" (wiping, mopping, cleaning), "om" (hugging), "di_bo" (walking somewhere), "dap_xe", "lai_xe", "bi_bat"; never "hanh_dong_moi"; else "").`,
+        noiDung: can.map((x) => `${x.i}. ${x.nguoi}: ${x.viec} | ${x.do_vat_can.join(', ') || '—'}`).join('\n'),
+        effort: 'medium',
+        kiemTra: KhopSchema,
+        schema: schemaMang({ i: { type: 'integer' }, hanh_dong: CHUOI, ten_moi: CHUOI }),
+      })
+    : { cau: [] }
+  if (!khop) throw new Error(`AI chưa đối chiếu được chương ${k}, thử lại`)
+  const theoKhop = new Map(khop.cau.map((x) => [x.i, x]))
   return loi.map((l, i) => {
-    const x = theo.get(i)
-    const ma = x?.hanh_dong ?? 'khong'
-    const hanh_dong = THU_VIEN_HANH_DONG[ma] || ma === 'moi' ? ma : x?.can ? 'moi' : 'khong'
+    const x = theoViec.get(i)
+    const y = x?.can ? theoKhop.get(i) : undefined
+    const ma = y?.hanh_dong ?? 'khong'
+    const hanh_dong = !x?.can ? 'khong' : THU_VIEN_HANH_DONG[ma] ? ma : 'moi'
+    // Đạo cụ thiếu: so emoji với đạo cụ hành động đã có (máy tự so, không để AI đoán)
+    const coSan = new Set((THU_VIEN_HANH_DONG[hanh_dong]?.do_vat ?? []).map((v) => emojiGoc(v)))
+    const canVat = (x?.do_vat_can ?? []).map((v) => v.trim()).filter(Boolean).slice(0, 4)
     return {
       i,
       chu: l.chu.slice(0, 60),
@@ -619,8 +637,10 @@ For each line return: i (the line number), nguoi (who acts, in Vietnamese: the p
       can: !!x?.can,
       hanh_dong,
       viec: x?.viec ?? '',
-      ten_moi: hanh_dong === 'moi' ? (x?.ten_moi || (THU_VIEN_HANH_DONG[ma] ? '' : ma) || 'hanh_dong_moi').toLowerCase().replace(/[^a-z0-9_]/g, '_') : '',
-      do_vat: x?.do_vat ?? '',
+      ten_moi: hanh_dong === 'moi' ? boDauMa(y?.ten_moi && y.ten_moi !== 'hanh_dong_moi' ? y.ten_moi : 'chua_dat_ten') : '',
+      do_vat: '',
+      do_vat_can: canVat,
+      do_vat_thieu: x?.can ? canVat.filter((v) => !coSan.has(emojiGoc(v)) || !emojiCua(v)) : [],
     }
   })
 }
@@ -651,8 +671,17 @@ export async function apDungHanhDong(id: string) {
     }
     for (const x of c.cau) {
       const l = p.loi[x.i]
-      if (!l || !THU_VIEN_HANH_DONG[x.hanh_dong] || l.chu.slice(0, 60) !== x.chu || l.dong_tac === x.hanh_dong) continue
+      if (!l || l.chu.slice(0, 60) !== x.chu) continue
+      // Đạo cụ còn thiếu có emoji → người diễn cầm thêm (tối đa 2); không có emoji thì phải vẽ (Claude Code)
+      const them = (x.do_vat_thieu ?? []).map(emojiCua).filter(Boolean).slice(0, 2)
+      if (JSON.stringify(them) !== JSON.stringify(l.vat_them ?? [])) {
+        if (them.length) l.vat_them = them
+        else delete l.vat_them
+        so++
+      }
+      if (!THU_VIEN_HANH_DONG[x.hanh_dong] || (l.dong_tac === x.hanh_dong && l.hanh_dong_chot)) continue
       l.dong_tac = x.hanh_dong as typeof l.dong_tac
+      l.hanh_dong_chot = true
       so++
     }
   }

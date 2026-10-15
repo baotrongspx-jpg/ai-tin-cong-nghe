@@ -5,7 +5,7 @@ import type { DuAnYT } from '@/lib/youtube'
 import { TEN_LOAI_HINH, THU_VIEN_HANH_DONG, canChuanBi, coEmoji, danhSachChuanBi, doVatThieu, hanhDongCu, hanhDongThieu, kichBanDien, yeuCauClaudeCode } from '@/lib/thuVienHanhDong'
 import { thongBao } from '@/app/ThongBao'
 import { Xoay } from '@/app/BieuTuong'
-import { apDungHanhDongYouTube, chuanBiHanhDongYouTube } from '../actions'
+import { apDungHanhDongYouTube, chuanBiHanhDongYouTube, themDiaDiemYouTube } from '../actions'
 import BocTachPhim from './BocTachPhim'
 
 function NutChepNho({ chu, ten = 'Chép', lon = false }: { chu: string; ten?: string; lon?: boolean }) {
@@ -31,6 +31,16 @@ function NutChepNho({ chu, ten = 'Chép', lon = false }: { chu: string; ten?: st
 export default function HanhDongPhim({ d, onDuAn }: { d: DuAnYT; onDuAn: (d: DuAnYT) => void }) {
   const [dang, setDang] = useState<'doc' | 'ap' | null>(null)
   const [chep, setChep] = useState(false)
+  const [dangThem, setDangThem] = useState<string | null>(null)
+  // Thêm địa điểm chưa có vào hồ sơ phim → tải / AI vẽ ảnh nền ở khung Ảnh nền, rồi chuẩn bị lại
+  const themNoi = async (ten: string) => {
+    setDangThem(ten)
+    const kq = await themDiaDiemYouTube(d.id, ten)
+    setDangThem(null)
+    if (!kq.ok) return thongBao('loi', kq.loi)
+    onDuAn(kq.duAn)
+    thongBao('ok', `Đã thêm "${ten}" vào hồ sơ — tải ảnh hoặc bấm AI vẽ ở khung "Ảnh nền phim này cần", rồi bấm Chuẩn bị lại`)
+  }
   const daViet = d.phan.every((p) => p.loi)
   const pt = d.hanh_dong
   const cu = hanhDongCu(d, pt)
@@ -175,6 +185,11 @@ export default function HanhDongPhim({ d, onDuAn }: { d: DuAnYT; onDuAn: (d: DuA
                   <li key={g.loai + g.ten}>
                     <span className="mr-1 rounded bg-orange-100 px-1.5 text-[11px] font-semibold text-orange-800">{TEN_LOAI_HINH[g.loai]}</span>
                     <b>{g.ten}</b> — {g.ghi_chu} <span className="text-xs text-orange-700">({g.vi_du.map((v) => `ch.${v.k} câu ${v.i + 1}`).slice(0, 4).join(', ')})</span>
+                    {g.loai === 'dia_diem' && g.ghi_chu.startsWith('nơi "') && d.loai === 'tieu_su' && (
+                      <button type="button" className="btn btn-sm btn-nhat ml-2" disabled={!!dangThem} onClick={() => void themNoi(g.ten)}>
+                        {dangThem === g.ten ? <Xoay /> : '➕'} Thêm vào hồ sơ
+                      </button>
+                    )}
                   </li>
                 ))}
               </ul>

@@ -848,16 +848,44 @@ const lia = (t, scale, ox, oy, giay, ease = 'power2.inOut', xoay = 0) => {
   // đưa điểm (ox, oy) về giữa khung với độ phóng `scale` (gốc biến đổi ở điểm giữa khung GIUA_X, GIUA_Y), nghiêng `xoay` độ
   const x = scale === 1 ? 0 : -(ox - GIUA_X) * scale
   const y = scale === 1 ? 0 : -(oy - GIUA_Y) * scale
-  tw.push(`tl.to("#camera-nv", { scale: ${f(scale)}, x: ${f(x)}, y: ${f(y)}, rotation: ${f(xoay)}, duration: ${f(giay)}, ease: "${ease}" }, ${f(t)});`)
+  MAY.nv.push({ t, giay, ease, v: { scale, x, y, rotation: xoay } })
   // Nền luôn phủ kín khung: phóng thêm cho mép mờ (blur) và góc nghiêng, rồi giới hạn độ dịch để mép nền không lộ thành sọc
   const xn = xoay * SAU_NEN
   const sn = (1 + (scale - 1) * SAU_NEN) * (1.03 + Math.abs(xn) * 0.035)
   const kep = (v, du) => Math.max(-du, Math.min(du, v))
   const nx = kep(x * SAU_NEN, (RONG * sn - RONG) / 2 - 8)
   const ny = kep(y * SAU_NEN, (CAO * sn - CAO) / 2 - 8)
-  tw.push(`tl.to("#camera-nen", { scale: ${f(sn)}, x: ${f(nx)}, y: ${f(ny)}, rotation: ${f(xn)}, duration: ${f(giay)}, ease: "${ease}" }, ${f(t)});`)
+  MAY.nen.push({ t, giay, ease, v: { scale: sn, x: nx, y: ny, rotation: xn } })
 }
 tw.push(`gsap.set("#camera-nen", { scale: 1.03 });`)
+// Máy quay KHÔNG BAO GIỜ có hai lệnh chạy chồng nhau (nguồn giật số 1): các lệnh lia gom vào MAY rồi mới xuất. Lệnh sau
+// bắt đầu trước khi lệnh trước xong → lệnh trước dừng đúng lúc đó (tại vị trí nó đang đi tới), lệnh sau xuất phát từ
+// chính vị trí ấy (fromTo, giá trị tính sẵn). Đoạn bị cắt giữ kiểu tăng giảm tốc cũ trên quãng ngắn hơn: dừng êm, không giật. Trước đây hai lệnh chồng nhau: GSAP lấy điểm xuất phát theo thứ tự tua, mà
+// máy dựng tua từng khúc riêng → mỗi khúc một điểm xuất phát → khung hình nhảy cóc ở chỗ nối khúc.
+const MAY = { nv: [], nen: [] }
+const EASE = (ten) => {
+  const [loai, kieu = 'out'] = String(ten).split('.')
+  const mu = { power1: 2, power2: 3, power3: 4, power4: 5 }[loai]
+  if (mu) return kieu === 'in' ? (p) => p ** mu : kieu === 'inOut' ? (p) => (p < 0.5 ? (2 * p) ** mu / 2 : 1 - (2 * (1 - p)) ** mu / 2) : (p) => 1 - (1 - p) ** mu
+  if (loai === 'sine') return kieu === 'in' ? (p) => 1 - Math.cos((p * Math.PI) / 2) : kieu === 'inOut' ? (p) => -(Math.cos(Math.PI * p) - 1) / 2 : (p) => Math.sin((p * Math.PI) / 2)
+  return (p) => p // none / linear
+}
+function xuatMayQuay(sel, ds, dau) {
+  const lenh = ds.map((m, k) => ({ ...m, k })).sort((a, b) => a.t - b.t || a.k - b.k)
+  let v = { ...dau }
+  lenh.forEach((m, j) => {
+    const sau = lenh[j + 1]
+    const het = m.t + m.giay
+    // Lệnh sau bắt đầu cùng lúc (hoặc gần như) → lệnh này không kịp chạy, bỏ
+    if (sau && sau.t - m.t < 0.02) return
+    const cat = sau && sau.t < het - 0.005 ? sau.t : het
+    const tl = (cat - m.t) / m.giay
+    const e = EASE(m.ease)(Math.max(0, Math.min(1, tl)))
+    const den = Object.fromEntries(Object.keys(v).map((k) => [k, v[k] + (m.v[k] - v[k]) * e]))
+    tw.push(`tl.fromTo("${sel}", { scale: ${f(v.scale)}, x: ${f(v.x)}, y: ${f(v.y)}, rotation: ${f(v.rotation)} }, { scale: ${f(den.scale)}, x: ${f(den.x)}, y: ${f(den.y)}, rotation: ${f(den.rotation)}, duration: ${f(cat - m.t)}, ease: "${m.ease}", immediateRender: false }, ${f(m.t)});`)
+    v = den
+  })
+}
 // ── Nhân vật phụ (AI chọn khi lời thoại nhắc tới): đứng phía sau giữa hai nhân vật chính, vẫy tay / gật đầu ─
 const daGioiThieu = new Set()
 const gioiThieu = new Set() // câu có nhân vật phụ lần đầu xuất hiện → máy quay quay sang giới thiệu
@@ -1802,6 +1830,61 @@ const CSS_NGANG = `
       .mk-o { position: absolute; top: 380px; width: 520px; height: 293px; border-radius: 18px; border: 5px dashed #ffffffaa; background: #0f172a99; display: flex; align-items: center; justify-content: center; font-size: 40px; font-weight: 700; color: #fff; opacity: 0; }
       .mk-o0 { left: 70px; } .mk-o1 { right: 70px; }
       .mk-phu { margin-top: 44px; font-size: 32px; font-weight: 500; color: #e2e8f0; text-shadow: 0 0 8px #000; }`
+
+xuatMayQuay('#camera-nv', MAY.nv, { scale: 1, x: 0, y: 0, rotation: 0 })
+xuatMayQuay('#camera-nen', MAY.nen, { scale: 1.03, x: 0, y: 0, rotation: 0 })
+
+// Gỡ chồng lệnh cho mọi bộ phận còn lại (tay, mày, tim, khung nhân vật…): hai lệnh cùng chỉnh một thuộc tính của cùng một
+// phần tử mà chạy chồng nhau thì lệnh sau xong trước → lệnh trước giành lại → bộ phận giật về chỗ cũ; điểm xuất phát
+// của lệnh sau còn tuỳ thứ tự tua (mỗi khúc dựng một kiểu). Lệnh trước được rút ngắn cho xong đúng lúc lệnh sau bắt đầu
+// (lệnh rung / lặp thì bớt số lần lặp, giữ số lẻ để về đúng chỗ). Hai lệnh cùng bắt đầu một lúc trên đúng các thuộc tính
+// ấy thì lệnh trước bị lệnh sau che hết → bỏ.
+{
+  const META = new Set(['duration', 'ease', 'yoyo', 'repeat', 'immediateRender', 'delay', 'stagger', 'overwrite', 'repeatDelay'])
+  const ds = []
+  tw.forEach((chu, k) => {
+    const m = /^tl\.(to|fromTo)\((\[[^\]]*\]|"[^"]*"), ([\s\S]*), ([\d.]+)\);$/.exec(chu)
+    if (!m) return
+    const ids = m[2].replace(/[[\]"]/g, '').split(',').map((x) => x.trim()).filter(Boolean)
+    const obj = m[1] === 'fromTo' ? m[3].slice(m[3].lastIndexOf('}, {') + 3) : m[3]
+    const tt = new Set([...obj.matchAll(/(?:^|[{,]\s*)"?([a-zA-Z-]+)"?\s*:/g)].map((x) => x[1]).filter((x) => !META.has(x)))
+    const giay = Number(/duration: ([\d.]+)/.exec(obj)?.[1] ?? 0.5)
+    const lap = Number(/repeat: (-?\d+)/.exec(obj)?.[1] ?? 0)
+    if (lap < 0) return
+    ds.push({ k, t: Number(m[4]), giay, lap, yoyo: /yoyo: true/.test(obj), ids, tt, het: Number(m[4]) + giay * (lap + 1) })
+  })
+  ds.sort((x, y) => x.t - y.t || x.k - y.k)
+  const dang = new Map() // "id|thuộc tính" → lệnh gần nhất
+  for (const c of ds) {
+    for (const id of c.ids) for (const t of c.tt) {
+      const q = dang.get(`${id}|${t}`)
+      if (q && q !== c && !q.bo && q.het > c.t + 0.005) {
+        if (c.t - q.t < 0.005) {
+          // cùng lúc bắt đầu: lệnh trước bị che hết (mọi thuộc tính của nó đều có trong lệnh sau) thì bỏ
+          if ([...q.tt].every((x) => c.tt.has(x)) && q.ids.every((x) => c.ids.includes(x)) && q.het <= c.het + 0.005) {
+            q.bo = true
+            tw[q.k] = ''
+          }
+        } else {
+          const con = c.t - q.t
+          let chu = tw[q.k]
+          if (q.lap > 0) {
+            let lan = Math.floor(con / q.giay) - 1
+            if (q.yoyo && lan % 2 === 0) lan -= 1
+            if (lan >= 1) chu = chu.replace(/repeat: \d+/, `repeat: ${lan}`)
+            else chu = chu.replace(/repeat: \d+/, 'repeat: 1').replace(/duration: [\d.]+/, `duration: ${f(Math.max(0.01, con / 2))}`)
+            q.het = q.t + (lan >= 1 ? q.giay * (lan + 1) : con)
+          } else {
+            chu = chu.replace(/duration: [\d.]+/, `duration: ${f(Math.max(0.01, con))}`)
+            q.het = c.t
+          }
+          tw[q.k] = chu
+        }
+      }
+      dang.set(`${id}|${t}`, c)
+    }
+  }
+}
 
 const trang = `<!doctype html>
 <html lang="vi">

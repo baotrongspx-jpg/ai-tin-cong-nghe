@@ -1259,7 +1259,9 @@ const CHU_LON = {} // câu → { nam, noi, t }
   let namLon = null, lucLon = -99
   loi.forEach((l, i) => {
     // Không chồng lên câu giật tít mở đầu, thẻ minh hoạ hay con số bật to của câu đó (chữ đè chữ)
-    if (!l.the_moc || (i === 0 && moc?.chu) || (MINH_HOA[l.minh_hoa?.kieu] && !l.anh_wiki?.tep) || SO_DONG[i]) return
+    // Chỉ video ngang (kiểu dáng chữ lớn / bàn tay / chuỗi hình nằm trong CSS_NGANG): video dọc thiếu kiểu dáng thì các
+    // khối này hiện trơ trên màn hình từ đầu (TikTok 14–15/10/2026: bàn tay găng đứng sẵn góc trên)
+    if (!NGANG || !l.the_moc || (i === 0 && moc?.chu) || (MINH_HOA[l.minh_hoa?.kieu] && !l.anh_wiki?.tep) || SO_DONG[i]) return
     // Câu đang phủ ảnh tư liệu toàn khung: chữ lớn che mặt người trong ảnh (Oppenheimer 3:20 "1942" đè mặt Groves) → để thẻ mốc nhỏ góc trái
     if (doanAnh.some((c) => c.kieu === 'toan' && c.tu <= i && c.het >= i)) return
     const [dau, ...con] = String(l.the_moc).split('·').map((x) => x.trim())
@@ -1423,6 +1425,27 @@ const ANH_SANG = {
   binh_thuong: ['#000000', 0], am_ap: ['#ffa53d', 0.32], lanh: ['#3b6dff', 0.32], cang_thang: ['#0b0b2a', 0.5],
   tuoi_sang: ['#fff1a6', 0.3], mo_mong: ['#d59cff', 0.35], bi_an: ['#3a0a55', 0.48], canh_bao: ['#ff1f1f', 0.3], loe_sang: ['#000000', 0],
 }
+// Ánh sáng viền ôm nhân vật ăn theo tông màu của câu (ánh sáng môi trường hắt vào), nhân vật hoà vào cảnh thay vì nổi
+// như hình dán
+const VIEN = {
+  binh_thuong: 'rgba(255, 255, 255, 0.4)', am_ap: 'rgba(255, 179, 92, 0.6)', lanh: 'rgba(127, 178, 255, 0.6)',
+  cang_thang: 'rgba(165, 180, 252, 0.45)', tuoi_sang: 'rgba(255, 241, 166, 0.6)', mo_mong: 'rgba(227, 181, 255, 0.6)',
+  bi_an: 'rgba(180, 124, 255, 0.55)', canh_bao: 'rgba(255, 107, 107, 0.6)', loe_sang: 'rgba(255, 255, 255, 0.55)',
+}
+tw.push(`gsap.set("#camera-nv", { "--vien": "${VIEN.binh_thuong}" });`)
+// Máy cầm tay trôi vi mô suốt phim (không khung nào đứng chết): lớp .troi bọc nền + nhân vật, mỗi trục một nhịp sóng
+// riêng (lệch pha nên không lặp đều); hạt phim đổi 8 lần / giây như phim nhựa
+{
+  const song = (thuoc, bien, chuKy) => {
+    const lan = Math.max(1, Math.floor(TONG / chuKy))
+    tw.push(`tl.fromTo(".troi", { ${thuoc}: ${-bien} }, { ${thuoc}: ${bien}, duration: ${f(chuKy)}, yoyo: true, repeat: ${lan - 1}, ease: "sine.inOut", immediateRender: true }, 0);`)
+  }
+  song('x', 5, 3.7)
+  song('y', 4, 2.9)
+  song('rotation', 0.12, 5.3)
+  const buoc = Math.max(1, Math.round(TONG * 8))
+  tw.push(`tl.fromTo("#hat-phim", { backgroundPosition: "0px 0px" }, { backgroundPosition: "${buoc * 73}px ${buoc * 47}px", duration: ${f(TONG)}, ease: "steps(${buoc})", immediateRender: true }, 0);`)
+}
 let anhTruoc = 'binh_thuong'
 loi.forEach((l, i) => {
   const ten = ANH_SANG[l.anh_sang] ? l.anh_sang : 'binh_thuong'
@@ -1431,6 +1454,7 @@ loi.forEach((l, i) => {
   if (ten !== anhTruoc) {
     const [mau, op] = ANH_SANG[ten]
     tw.push(`tl.to("#den", { backgroundColor: "${mau}", opacity: ${op}, duration: 0.6, ease: "sine.inOut" }, ${f(Math.max(0, t0 - 0.3))});`)
+    tw.push(`tl.to("#camera-nv", { "--vien": "${VIEN[ten]}", duration: 0.6, ease: "sine.inOut" }, ${f(Math.max(0, t0 - 0.3))});`)
   }
   if (ten === 'canh_bao') tw.push(`tl.to("#den", { opacity: 0.1, duration: 0.45, yoyo: true, repeat: ${2 * Math.max(1, Math.floor(d / 0.9)) - 1}, ease: "sine.inOut" }, ${f(t0 + 0.3)});`)
   if (ten === 'loe_sang') tw.push(`tl.fromTo("#chop", { opacity: 0.45 }, { opacity: 0, duration: 0.6, ease: "power2.out", immediateRender: false }, ${f(t0)});`)
@@ -1448,7 +1472,7 @@ const banTay = []
 {
   const chon = [...diemChi.map((t) => Math.max(0.5, t))].sort((a, b) => a - b).filter((t, k, ds) => !k || t - ds[k - 1] >= 0.01)
   let cuoi = -99
-  for (const t of chon) {
+  for (const t of NGANG ? chon : []) {
     if (t - cuoi < 7 || t + 1.6 > TONG) continue
     cuoi = t
     const id = `bt${LUC_BAN_TAY.length}`
@@ -1471,7 +1495,7 @@ const donDap = []
   const MAU = ['#b91c1c', '#111827', '#ca8a04', '#1e3a8a']
   let cuoi = -99
   loi.forEach((l, i) => {
-    const cao = (l.hanh_dong && !['khong', 'lich_lat'].includes(l.hanh_dong)) || l.anh_sang === 'loe_sang'
+    const cao = NGANG && ((l.hanh_dong && !['khong', 'lich_lat'].includes(l.hanh_dong)) || l.anh_sang === 'loe_sang')
     // Không chen vào câu đang phủ ảnh tư liệu toàn khung hay câu đã có chữ khổng lồ (hai cú đập chồng nhau)
     if (!cao || CHU_LON[i] || doanAnh.some((c) => c.kieu === 'toan' && c.tu <= i && c.het >= i)) return
     const t = batDau[i] + 0.15
@@ -1762,7 +1786,11 @@ const trang = `<!doctype html>
       #toi-chuyen { position: absolute; inset: 0; background: #000; opacity: 0; }
       #den { position: absolute; inset: 0; background: #000; opacity: 0; mix-blend-mode: soft-light; }
       #chop { position: absolute; inset: 0; background: #fff; opacity: 0; }
-      .nv { filter: drop-shadow(0 0 10px #ffffff66) drop-shadow(0 24px 30px #0000008c); }
+      .nv { filter: drop-shadow(0 0 10px var(--vien, rgba(255, 255, 255, 0.4))) drop-shadow(0 24px 30px #0000008c); }
+      .troi { position: absolute; inset: 0; }
+      .troi-nen { transform: scale(1.015); }
+      #hat-phim { position: absolute; inset: 0; opacity: 0.09; mix-blend-mode: overlay; background-size: 220px 220px;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 1.6 -0.3'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)'/%3E%3C/svg%3E"); }
       .lop-nen { position: absolute; inset: 0; }
       .nen-dong { position: absolute; inset: 0; transform-origin: 50% 62%; }
       .nen-svg { display: block; }
@@ -1832,7 +1860,7 @@ const trang = `<!doctype html>
   <body>
     <div id="root" data-composition-id="main" data-width="${RONG}" data-height="${CAO}" data-duration="${f(TONG)}">
       <div id="canh" class="clip" data-start="0" data-duration="${f(TONG)}" data-track-index="0">
-        <div class="the-gioi"><div id="camera-nen" class="camera">${nenCanh.join('')}${hat.join('')}</div></div>
+        <div class="troi troi-nen"><div class="the-gioi"><div id="camera-nen" class="camera">${nenCanh.join('')}${hat.join('')}</div></div></div>
         <div id="toi-chuyen"></div>
         <div id="vet-quet"></div>
         ${hanhDongNen.join('')}
@@ -1842,17 +1870,17 @@ const trang = `<!doctype html>
         <div class="kenh"><span class="vach"></span>${esc(kenh)}</div><div class="chude">${esc(chu_de)}</div>
       </div>${NGANG ? '' : bang.join('')}
       <div id="sau-khau" class="clip" data-start="0" data-duration="${f(TONG)}" data-track-index="4">
-        <div class="the-gioi"><div id="camera-nv" class="camera">
+        <div class="troi"><div class="the-gioi"><div id="camera-nv" class="camera">
           ${nvPhu.join('')}
           <div id="o-meo" class="o-nv">${meoSvg}</div>
           <div id="o-robot" class="o-nv">${robotSvg}</div>
           ${daoCu.join('')}
           ${minhHoa.join('')}
-        </div></div>
+        </div></div></div>
         ${tienCanh.join('')}
       </div>
 ${NGANG ? bang.join('') : ''}
-      <div id="vien-toi" class="clip" data-start="0" data-duration="${f(TONG)}" data-track-index="5"><div id="den"></div><div id="chop"></div></div>
+      <div id="vien-toi" class="clip" data-start="0" data-duration="${f(TONG)}" data-track-index="5"><div id="den"></div><div id="hat-phim"></div><div id="chop"></div></div>
       <div id="lop-minh-hoa" class="clip" data-start="0" data-duration="${f(TONG)}" data-track-index="7">${anhThat.join('')}${giatTit.html}${theMoc.join('')}${minhHoaKhung.join('')}${daoCuKhung.join('')}${soDong.join('')}${chuLon.join('')}${hanhDongKhung.join('')}${banTay.join('')}${khungKeHtml}${donDap.join('')}${manKetHtml}${theChuongHtml}</div>${phuDe.join('')}
       ${[...amThanh, ...amPhu].join('\n      ')}
     </div>

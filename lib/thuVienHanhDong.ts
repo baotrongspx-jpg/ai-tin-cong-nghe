@@ -89,6 +89,7 @@ export type HinhCan = {
   mau: string // màu thương hiệu (logo)
   chu: string // chữ trên huy hiệu (logo)
   co: boolean // máy đã có / tự làm được
+  ma?: string // địa điểm: mã địa điểm trong hồ sơ phim nơi này đúng là (LOC_xx)
   ghi_chu: string
 }
 export const TEN_LOAI_HINH: Record<HinhCan['loai'], string> = {

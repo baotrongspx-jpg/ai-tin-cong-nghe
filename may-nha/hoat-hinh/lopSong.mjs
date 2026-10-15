@@ -6,7 +6,7 @@
 // thức (không ngẫu nhiên). lopSong(ten, id, { f, lap, NGANG }) → { svg, tw(t0, d) }
 const LOAI = {
   pho: ['pho_florida', 'thanh_pho_dem', 'thanh_pho_tuyet', 'cho', 'cong_truong', 'cang_bien', 'san_bay'],
-  tu_nhien: ['nong_thon', 'nui_rung', 'thao_nguyen', 'lang_xua', 'bai_bien', 'sa_mac', 'den_chua', 'thanh_co', 'chien_truong', 'bien_ca', 'be_phong', 'san_van_dong', 'vu_tru'],
+  tu_nhien: ['nong_thon', 'nui_rung', 'thao_nguyen', 'lang_xua', 'bai_bien', 'sa_mac', 'den_chua', 'thanh_co', 'chien_truong', 'do_nat', 'bien_ca', 'be_phong', 'san_van_dong', 'vu_tru'],
 }
 const loaiCua = (ten) => (LOAI.pho.includes(ten) ? 'pho' : LOAI.tu_nhien.includes(ten) ? 'tu_nhien' : 'trong_nha')
 const DEM = ['thanh_pho_dem', 'vu_tru', 'be_phong', 'phong_thu', 'phim_truong']

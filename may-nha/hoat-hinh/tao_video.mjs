@@ -283,6 +283,9 @@ const nguoiPhanUng = (i) => {
   const p = nguoiNoiCau(i)
   return [p === 'meo' ? 'robot' : 'meo', ...coMatCau(i).filter((q) => q !== p)]
 }
+// Câu bi kịch: cảm xúc buồn hoặc lời nói về cái chết / chiến tranh / thảm hoạ / bệnh hiểm nghèo
+const TU_BI_KICH = /chết|tử vong|thiệt mạng|qua đời|hy sinh|giết|thảm sát|thảm họa|thảm hoạ|bom|tàn phá|xóa sổ|xoá sổ|đổ nát|chiến tranh|ung thư|tro bụi|bức xạ|nạn nhân/
+const biKich = (i) => !!loi[i] && (loi[i].cam_xuc === 'buon' || TU_BI_KICH.test(String(loi[i].chu ?? '').toLowerCase()))
 // Phản ứng theo lời người nói (tạo tương phản: người nổi giận → người nghe chột dạ; người kể khổ → người nghe buồn theo;
 // giải thích → người nghe ngẫm nghĩ; tò mò hỏi → người nghe suy nghĩ tìm câu trả lời)
 const PHAN_UNG = {
@@ -531,7 +534,9 @@ loi.forEach((l, i) => {
   const nguoiLam = dongTac ? (ke ? phuCuaCau[i] : p) : null
   // Có động tác thì cử chỉ cảm xúc của người làm chỉ giữ nét mặt / nhún nhảy, bỏ phần tay và đầu (động tác lo phần đó)
   const boTayDau = (ds, q) => (q && q === nguoiLam ? ds.filter((t) => !t.includes(`#${q}-tay-`) && !t.includes(`#${q}-dau"`)) : ds)
-  if (!ke) tw.push(...boTayDau((CU_CHI[l.cam_xuc] ?? CU_CHI[ai === 'meo' ? 'to_mo' : 'giai_thich'])(p, t0), p))
+  // Câu bi kịch: Mèo / Bit không nhảy nhót vui vẻ (video Oppenheimer: Mèo giơ tay cười cạnh cảnh bom) → cúi đầu buồn
+  const camNoi = biKich(i) && (p === 'meo' || p === 'robot') && ['vui', 'bat_ngo', 'to_mo'].includes(l.cam_xuc) ? 'buon' : l.cam_xuc
+  if (!ke) tw.push(...boTayDau((CU_CHI[camNoi] ?? CU_CHI[ai === 'meo' ? 'to_mo' : 'giai_thich'])(p, t0), p))
   if (nguoiLam) {
     // Lời có nói tới hành động ("… đập bàn …") → động tác bắt đầu ngay trước lúc giọng đọc tới chữ đó; không thì đầu câu
     const khop = TU_DONG_TAC.find(([ten]) => ten === dongTac)?.[1].exec(String(l.chu ?? '').toLowerCase())
@@ -556,7 +561,7 @@ loi.forEach((l, i) => {
   // Nhân vật phụ phản ứng xong thì về dáng nghỉ trước câu sau (Mèo / Bit đã có NGHI)
   if (!ke && d > 1.6 && PHAN_UNG[l.cam_xuc]) {
     nguoiPhanUng(i).slice(0, 2).forEach((q, j) => {
-      const cx = j && ['lo_lang', 'bat_ngo'].includes(PHAN_UNG[l.cam_xuc]) ? 'suy_nghi' : PHAN_UNG[l.cam_xuc]
+      const cx = biKich(i) ? 'buon' : j && ['lo_lang', 'bat_ngo'].includes(PHAN_UNG[l.cam_xuc]) ? 'suy_nghi' : PHAN_UNG[l.cam_xuc]
       tw.push(...CU_CHI[cx](q, t0 + 0.5 + j * 0.3))
       if (q.startsWith('phu') && q !== phuCuaCau[i + 1]) {
         const v = t0 + d - 0.2
@@ -729,6 +734,8 @@ const tienCanh = NGANG
     })
   : []
 const KIEU_CHUYEN = ['truot', 'phong', 'quet', 'mo', 'xuyen']
+// Bối cảnh tươi sáng: gặp câu bi kịch thì phải tối, mất màu (xem vòng nền theo câu)
+const VUI_TUOI = new Set(['truong_quay', 'van_phong', 'cua_hang', 'phong_khach', 'truong_hoc', 'san_khau', 'bai_bien', 'san_van_dong', 'nha_hang', 'cho', 'pho_florida', 'phong_hop', 'san_chung_khoan', 'thanh_pho_dem'])
 const chuyenCanh = [] // { i: câu đầu cảnh mới, t: lúc đổi, kieu } (để chèn tiếng vút)
 const nenCanh = doanCanh.map((dc, k) => {
   // Kiểu chuyển cảnh AI chọn theo cảm xúc (chuyen_canh ở câu đầu của cảnh mới); không có thì lần lượt từng kiểu
@@ -805,6 +812,12 @@ const nenCanh = doanCanh.map((dc, k) => {
     const x1 = ((i - dc.tu) % 2 ? 1 : -1) * (NGANG ? 30 : 20) * (['buon', 'suy_nghi'].includes(l.cam_xuc) ? 0.5 : 1)
     const nhanh = l.lang || l.cam_xuc === 'bat_ngo' || l.anh_sang === 'loe_sang'
     tw.push(`tl.fromTo("#bc${k}-dong", { scale: ${f(s0)}, x: ${f(x0)} }, { scale: ${f(s1)}, x: ${f(x1)}, duration: ${f(nhanh ? Math.min(0.55, den - tu) : den - tu)}, ease: "${nhanh ? 'power3.out' : 'sine.inOut'}", immediateRender: false }, ${f(tu)});`)
+    // Câu bi kịch trên nền vui tươi (văn phòng, cửa hàng, phố nắng…: video Oppenheimer dùng văn phòng xanh có biểu đồ đi lên
+    // cho Hiroshima) → nền tối, mất màu suốt câu; câu sau hết bi kịch thì trả màu
+    const toi = biKich(i) && VUI_TUOI.has(dc.ten)
+    const toiTruoc = i > dc.tu && biKich(i - 1)
+    if (toi && !toiTruoc) tw.push(`tl.to("#bc${k}-dong", { filter: "saturate(0.2) brightness(0.5) contrast(1.15)", duration: 0.6, ease: "power1.inOut" }, ${f(tu)});`)
+    if (!toi && toiTruoc && VUI_TUOI.has(dc.ten)) tw.push(`tl.to("#bc${k}-dong", { filter: "saturate(1) brightness(1) contrast(1)", duration: 0.6, ease: "power1.inOut" }, ${f(tu)});`)
     // Động tác mạnh trong câu (đập tay) → nền rung theo cú đập (trục y riêng, không đụng lệnh trôi ở trên)
     const dt = LUC_DONG_TAC[i]
     if (dt?.[0] === 'dap_tay') tw.push(`tl.fromTo("#bc${k}-dong", { y: 0 }, { y: 7, duration: 0.06, yoyo: true, repeat: 3, ease: "power1.inOut", immediateRender: false }, ${f(dt[1] + 0.5)});`)
@@ -820,7 +833,18 @@ const TAM = { meo: { x: 290 - GIAN, y: 870 }, robot: { x: 790 + GIAN, y: 870 } }
 const SAU_NEN = 0.55 // nền dịch chuyển bằng 55% nhân vật
 // Khung ngang thấp: cận nhân vật phụ nhắm thấp hơn 100 để cả người lọt khung, thẻ tên không đè bảng tin
 const HA_PHU = NGANG ? 100 - PHU_XUONG : 0
+// Cắt thẳng đầu câu (đạo diễn 15/10/2026: 64% khung đứng yên, máy quay lia mượt giữa các câu nên ít "cú cắt"): trong vòng
+// máy quay, CAT_DAU = lúc bắt đầu câu; lệnh lia đầu câu (ngắn ≤ 0,8 giây) mà khung mới khác khung đang có từ 12% trở lên
+// → cắt trong 1 khung hình. Khung na ná nhau thì vẫn lia mượt (cắt giữa hai khung giống nhau trông như giật).
+let CAT_DAU = null
+let camScale = 1
 const lia = (t, scale, ox, oy, giay, ease = 'power2.inOut', xoay = 0) => {
+  if (CAT_DAU !== null && t <= CAT_DAU + 0.01 && giay <= 0.8 && Math.abs(scale - camScale) >= 0.12) {
+    t = Math.max(0, CAT_DAU - 0.08)
+    giay = 0.04
+    ease = 'none'
+  }
+  camScale = scale
   // đưa điểm (ox, oy) về giữa khung với độ phóng `scale` (gốc biến đổi ở điểm giữa khung GIUA_X, GIUA_Y), nghiêng `xoay` độ
   const x = scale === 1 ? 0 : -(ox - GIUA_X) * scale
   const y = scale === 1 ? 0 : -(oy - GIUA_Y) * scale
@@ -961,6 +985,7 @@ const truocDoiCanh = new Set(doanCanh.slice(0, -1).map((dc) => dc.het))
 loi.forEach((l, i) => {
   const t0 = batDau[i]
   const d = doDai[i]
+  CAT_DAU = i ? t0 : null
   const tam = tamLuc(l.ai, t0) ?? (l.ai === 'nguoi_ke' ? { x: GIUA_X, y: 900 } : tamLuc('robot', t0))
   const nghe = l.ai === 'meo' ? 'robot' : 'meo'
   const lui = truocDoiCanh.has(i) && d > 2.2 ? 0.7 : 0 // chừa cuối câu để lùi về cảnh rộng
@@ -1062,7 +1087,7 @@ loi.forEach((l, i) => {
   const catPU = pu && !canCanh && !chuaDau && !lui && d > 3.2 && PHAN_UNG_MANH.has(l.cam_xuc)
   const dien = l.ai === 'nguoi_ke' || laPhu(l.ai) ? phuCuaCau[i] : l.ai === 'meo' ? 'meo' : 'robot'
   const phuAnh = doanAnh.some((c) => c.kieu === 'toan' && c.tu <= i && c.het >= i)
-  if (d > 5 && dien && !canCanh && !chuaDau && !lui && !phuAnh) {
+  if (d > 4 && dien && !canCanh && !chuaDau && !lui && !phuAnh) {
     const giua = t0 + d * 0.48
     const het = catPU ? t0 + d - 1.0 : t0 + d + 0.05
     if (het - giua > 1.4) {
@@ -1072,6 +1097,7 @@ loi.forEach((l, i) => {
     }
   }
 })
+CAT_DAU = null
 
 // ── Đạo cụ: hiện bên cạnh người nói theo nội dung câu (AI chọn), bay nhẹ rồi biến mất ─
 // Con số bật to (chọn ở SO_DONG): phóng từ nhỏ, giữ 1,6 giây, vụt mờ
@@ -1350,7 +1376,12 @@ const anhThat = doanAnh.map((c, k) => {
   if (c.kieu === 'toan') {
     // Toàn khung: hiện mờ dần + lùi nhẹ, Ken Burns rõ (phóng 1 → 1,18, lia ngang), tắt mờ dần; tiếng lật trang lúc hiện
     tw.push(`tl.fromTo("#${id}", { opacity: 0, scale: 1.05 }, { opacity: 1, scale: 1, duration: 0.45, ease: "power2.out", immediateRender: false }, ${f(vao)});`)
-    tw.push(`tl.fromTo("#${id}-anh", { scale: 1, xPercent: ${3 * huong} }, { scale: 1.18, xPercent: ${-3 * huong}, duration: ${f(ra - vao)}, ease: "none", immediateRender: false }, ${f(vao)});`)
+    if (ra - vao > 4.5) {
+      // Ảnh giữ lâu: nửa đầu Ken Burns toàn ảnh, giữa đoạn cắt thẳng vào chi tiết (phần trên ảnh: thường là khuôn mặt) — không khung nào đứng quá ~4 giây
+      const giua = (vao + ra) / 2
+      tw.push(`tl.fromTo("#${id}-anh", { scale: 1, xPercent: ${3 * huong}, yPercent: 0 }, { scale: 1.1, xPercent: 0, yPercent: 0, duration: ${f(giua - vao)}, ease: "none", immediateRender: false }, ${f(vao)});`)
+      tw.push(`tl.fromTo("#${id}-anh", { scale: 1.55, xPercent: ${-5 * huong}, yPercent: 9 }, { scale: 1.68, xPercent: ${-2 * huong}, yPercent: 11, duration: ${f(ra - giua)}, ease: "none", immediateRender: false }, ${f(giua)});`)
+    } else tw.push(`tl.fromTo("#${id}-anh", { scale: 1, xPercent: ${3 * huong} }, { scale: 1.18, xPercent: ${-3 * huong}, duration: ${f(ra - vao)}, ease: "none", immediateRender: false }, ${f(vao)});`)
     tw.push(`tl.to("#${id}", { opacity: 0, duration: 0.4, ease: "power2.in" }, ${f(ra - 0.35)});`)
   } else {
     tw.push(`tl.fromTo("#${id}", { opacity: 0, y: -40, rotation: ${-4 * huong}, scale: 0.9 }, { opacity: 1, y: 0, rotation: ${-1.2 * huong}, scale: 1, duration: 0.55, ease: "back.out(1.6)", immediateRender: false }, ${f(vao)});`)
@@ -1483,7 +1514,7 @@ const AM_VAO_CANH = {
   pho_florida: 'xe_chay', thanh_pho_dem: 'xe_chay', nong_thon: 'gio', nui_rung: 'gio', thanh_pho_tuyet: 'gio', truong_hoc: 'chuong_truong',
   san_bay: 'may_bay', san_van_dong: 'reo_ho', san_khau: 'vo_tay', hoi_truong: 'vo_tay', cong_truong: 'bua', bai_bien: 'nuoc', cang_bien: 'nuoc',
   san_chung_khoan: 'tien', cho: 'buoc_chan', nha_ngheo: 'gio',
-  thao_nguyen: 'gio', chien_truong: 'reo_ho', thanh_co: 'gio', sa_mac: 'gio', bien_ca: 'nuoc', ga_ra: 'bua', phim_truong: 'chup_anh',
+  thao_nguyen: 'gio', chien_truong: 'reo_ho', thanh_co: 'gio', sa_mac: 'gio', bien_ca: 'nuoc', ga_ra: 'bua', phim_truong: 'chup_anh', do_nat: 'gio',
 }
 const AM_NEN = {
   truong_quay: ['nen-phong', 0.25], pho_florida: ['nen-pho', 0.09], may_chu: ['nen-may-chu', 0.07], don_canh_sat: ['nen-phong', 0.3],
@@ -1497,6 +1528,7 @@ const AM_NEN = {
   thao_nguyen: ['nen-thien-nhien', 0.25], cung_dien: ['nen-phong', 0.2], chien_truong: ['nen-dam-dong', 0.3], thanh_co: ['nen-thien-nhien', 0.2],
   lang_xua: ['nen-thien-nhien', 0.25], sa_mac: ['nen-thien-nhien', 0.15], bien_ca: ['nen-bien', 0.12], den_chua: ['nen-phong', 0.2],
   ga_ra: ['nen-may-moc', 0.05], be_phong: ['nen-may-moc', 0.08], phong_thu: ['nen-phong', 0.15], phim_truong: ['nen-van-phong', 0.3],
+  do_nat: ['nen-thien-nhien', 0.12],
 }
 const amPhu = []
 const themAm = (ten, luc, amLuong, toiDa = Infinity) => {
@@ -1506,6 +1538,9 @@ const themAm = (ten, luc, amLuong, toiDa = Infinity) => {
 }
 for (const t of tiengSoDong) themAm('sfx-ting', t, 0.3)
 for (const c of Object.values(CHU_LON)) themAm('sfx-bum', c.t + 0.22, 0.45)
+loi.forEach((l, i) => {
+  if (l.lang && i && biKich(i - 1) && !SFX[l.am_thanh]) themAm('sfx-bum', Math.max(0, batDau[i - 1] + doDai[i - 1] - 0.25), 0.3, 1.4)
+})
 for (const t of LUC_BAN_TAY) themAm('sfx-bop', t + 0.3, 0.25)
 for (const t of LUC_DON_DAP) {
   themAm('sfx-vut', t, 0.35)
@@ -1584,7 +1619,9 @@ doanCanh.forEach((dc, k) => {
 let theChuongHtml = ''
 if (the_chuong) {
   const ten = esc(the_chuong.ten ?? '')
-  theChuongHtml = `<div id="the-chuong"><div class="tc-kenh">${esc(kenh)}</div><div class="tc-so">${esc(the_chuong.nhan ?? 'CHƯƠNG')} ${esc(the_chuong.so ?? '')}</div><div class="tc-ten">${ten}</div><div class="tc-vach"></div></div>`
+  // Ảnh nền thẻ chương: ảnh nền địa điểm / ảnh tư liệu đầu tiên của phần này (đạo diễn 15/10/2026: thẻ chương chỉ là màn tối)
+  const anhTc = [...loi.map((l) => l.anh_nen_tep), ...loi.map((l) => l.anh_wiki?.tep)].find((t) => t && existsSync(join(GOC, 'hyperframes/assets', t)))
+  theChuongHtml = `<div id="the-chuong">${anhTc ? `<img id="tc-anh" class="tc-anh" src="assets/${esc(anhTc)}"/><div class="tc-phu"></div>` : ''}<div class="tc-kenh">${esc(kenh)}</div><div class="tc-so">${esc(the_chuong.nhan ?? 'CHƯƠNG')} ${esc(the_chuong.so ?? '')}</div><div class="tc-ten">${ten}</div><div class="tc-vach"></div></div>`
   const tc0 = I_CHUONG >= 0 ? Math.max(0.05, batDau[I_CHUONG] - 0.35) : 0.05
   const tc1 = I_CHUONG >= 0 ? batDau[I_CHUONG] + doDai[I_CHUONG] - 0.05 : MO_CHUONG - 0.25
   tw.push(`tl.fromTo("#the-chuong", { opacity: 0, scale: 1 }, { opacity: 1, scale: 1, duration: 0.35, ease: "power1.out", immediateRender: false }, ${f(tc0)});`)
@@ -1593,6 +1630,8 @@ if (the_chuong) {
   tw.push(`tl.fromTo("#the-chuong .tc-vach", { scaleX: 0 }, { scaleX: 1, duration: 0.9, ease: "power2.inOut" }, ${f(tc0 + 0.45)});`)
   tw.push(`tl.to("#the-chuong", { opacity: 0, scale: 1.05, duration: 0.45, ease: "power2.in" }, ${f(tc1)});`)
   themAm('sfx-vut', tc0 + 0.35, 0.3)
+  themAm('sfx-bum', tc0 + 0.42, 0.3)
+  if (anhTc) tw.push(`tl.fromTo("#tc-anh", { scale: 1.12 }, { scale: 1, duration: ${f(Math.max(1, tc1 - tc0 + 0.4))}, ease: "power1.out", immediateRender: false }, ${f(tc0)});`)
 }
 // ── Màn kết: cảm ơn + nút ĐĂNG KÝ có con trỏ bấm + chuông; Mèo / Bit quay lại vẫy tay ─
 let manKetHtml = ''
@@ -1677,7 +1716,10 @@ const CSS_NGANG = `
       .pd-dong { font-size: 42px; }
       #the-chuong { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: radial-gradient(ellipse at center, #1e1b4bf2, #020617fa); opacity: 0; }
       .tc-kenh { font-size: 30px; font-weight: 700; letter-spacing: 8px; color: #38bdf8; }
-      .tc-so { font-size: 40px; font-weight: 700; letter-spacing: 12px; color: #fbbf24; }
+      .tc-so { position: relative; font-size: 64px; font-weight: 700; letter-spacing: 16px; color: #fbbf24; text-shadow: 0 4px 24px #000; }
+      .tc-anh { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: saturate(0.85) brightness(0.55); }
+      .tc-phu { position: absolute; inset: 0; background: radial-gradient(ellipse at center, #02061766, #020617ee); }
+      .tc-kenh, .tc-ten, .tc-vach { position: relative; }
       .tc-ten { max-width: 1400px; font-size: 76px; font-weight: 700; line-height: 1.15; text-align: center; color: #fff; text-shadow: 0 6px 30px #000; }
       .tc-vach { width: 520px; height: 6px; border-radius: 3px; background: linear-gradient(90deg, transparent, #fbbf24, transparent); transform-origin: 50% 50%; }
       #man-ket { position: absolute; left: 0; right: 0; top: 70px; display: flex; flex-direction: column; align-items: center; gap: 22px; opacity: 0; }

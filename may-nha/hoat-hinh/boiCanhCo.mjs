@@ -84,6 +84,24 @@ export function boiCanhCo({ san, f, lap }) {
     }),
 
     // Chiến trường xưa: trời đỏ cam, khói bốc thành cột, doanh trại lều xa, rừng giáo mác, cờ hiệu, khiên gãy trên đất
+    // Đổ nát (thế kỷ 20–21): trời xám đỏ, khói bốc, nhà cao tầng gãy đổ, khung thép trơ, gạch vụn — chiến tranh, bom
+    // nguyên tử, không kích, động đất. Không bao giờ dùng văn phòng / phố nắng cho thảm hoạ
+    do_nat: (id) => ({
+      svg: `
+        <defs>${tg(id, 'troi', '#1c1917', '#7f1d1d')}</defs>
+        <rect width="1080" height="1920" fill="url(#${id}-troi)"/>
+        <circle cx="760" cy="560" r="120" fill="#fca5a5" opacity="0.18"/>
+        ${[0, 1, 2].map((k) => `<g id="${id}-khoi${k}" opacity="0.65">${[0, 1, 2, 3].map((j) => `<circle cx="${180 + k * 330 + j * 16}" cy="${900 - j * 120}" r="${60 + j * 22}" fill="#44403c"/>`).join('')}</g>`).join('')}
+        <path d="M60 1180 L60 760 L120 700 L170 760 L170 1180 Z M230 1180 L230 640 L290 640 L300 700 L340 610 L360 1180 Z M420 1180 L420 820 L470 790 L520 860 L540 1180 Z M600 1180 L600 600 L660 560 L700 640 L720 1180 Z M780 1180 L780 720 L820 680 L860 760 L900 700 L920 1180 Z M960 1180 L960 820 L1040 780 L1040 1180 Z" fill="#292524"/>
+        ${[...Array(14)].map((_, k) => `<rect x="${250 + (k % 2) * 40}" y="${660 + Math.floor(k / 2) * 70}" width="22" height="34" fill="#0c0a09"/>`).join('')}
+        ${[...Array(10)].map((_, k) => `<rect x="${615 + (k % 2) * 46}" y="${620 + Math.floor(k / 2) * 80}" width="24" height="40" fill="#0c0a09"/>`).join('')}
+        <path d="M640 600 L640 470 M660 600 L690 500 M700 640 L740 560" stroke="#57534e" stroke-width="8" stroke-linecap="round"/>
+        <path d="M0 1180 Q120 1120 240 1170 Q360 1110 480 1165 Q620 1115 760 1170 Q900 1120 1080 1160 L1080 1180 Z" fill="#57534e"/>
+        ${[...Array(12)].map((_, k) => `<path d="M${40 + k * 88} 1178 l${18 + (k % 3) * 6} -${14 + (k % 4) * 5} l${16 + (k % 2) * 8} ${14 + (k % 3) * 4} Z" fill="#78716c"/>`).join('')}
+        ${san(id, '#44403c', '#1c1917', '#78716c', '#fca5a5')}`,
+      tw: (t0, d) => [...[0, 1, 2].map((k) => `tl.fromTo("#${id}-khoi${k}", { y: 0, opacity: 0.65 }, { y: -70, opacity: 0.4, duration: 3.2, yoyo: true, repeat: ${lap(d, 3.2)}, ease: "sine.inOut" }, ${f(t0 + k * 0.6)});`)],
+    }),
+
     chien_truong: (id) => ({
       svg: `
         <defs>${tg(id, 'troi', '#7c2d12', '#fb923c')}</defs>

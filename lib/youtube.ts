@@ -1174,7 +1174,7 @@ export async function ganDiaDiem(d: DuAnYT) {
   const canh = cacCanh(d)
   if (!canh.some((c) => d.phan[c.k].loi![c.tu].dia_diem === undefined)) return false
   const kq = await goiJson({
-    system: `You are the production designer of an animated biography film. For every scene of the script, pick the location from the film bible where it takes place (ma), or "" when it fits none of them (for example the TV studio where the two mascot hosts talk, or a place not in the list). Use the chapter, the year, the scene setting (boi_canh) and what the lines describe.`,
+    system: `You are the production designer of an animated biography film. For every scene of the script, pick the location from the film bible where it takes place (ma). Use "" ONLY for the TV studio where the two mascot hosts talk; for any other scene pick the closest fitting location (the same city, the same period, the place the person is at that moment) rather than leaving it empty, so the film does not fall back to a generic backdrop. Use the chapter, the year, the scene setting (boi_canh) and what the lines describe.`,
     noiDung: JSON.stringify({
       dia_diem: dd.map((x) => ({ ma: x.ma, ten: x.ten, thanh_pho: x.thanh_pho, thoi_ky: x.thoi_ky })),
       canh: canh.map((c) => ({

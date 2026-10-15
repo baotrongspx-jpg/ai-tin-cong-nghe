@@ -28,6 +28,8 @@ const CO_DAU = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽê�
 const CHINH = new Set(['meo', 'robot', 'nguoi_ke'])
 const DAI_TOI_DA = 180 // ký tự (~9-10 giây đọc): dài hơn thì tách đôi
 const DOI_KHUNG = ['trung_canh', 'can_canh', 'toan_canh', 'goc_thap']
+const TU_BI_KICH = /chết|tử vong|thiệt mạng|qua đời|hy sinh|giết|thảm sát|thảm họa|thảm hoạ|bom|tàn phá|xóa sổ|xoá sổ|đổ nát|chiến tranh|ung thư|tro bụi|bức xạ|nạn nhân/
+const TIENG_LONG = /bay màu|toang|chịu luôn|lật mặt|trù dập|xịn sò|đỉnh của chóp|hết nước chấm|ảo thật|căng đét|bá đạo|hết chỗ nói|đen đủi/
 // Lời nói tới hành động → động tác (giống TU_DONG_TAC trong may-nha/hoat-hinh/tao_video.mjs; sửa một chỗ thì sửa cả hai)
 const TU_DONG_TAC: [string, RegExp][] = [
   ['dap_tay', /đập (bàn|tay|mạnh)|đấm|nện xuống|đập vỡ/],
@@ -61,9 +63,9 @@ function tachDoi(chu: string): [string, string] | null {
 // tạm biệt hay "đón xem chương tiếp theo"; chương cuối giữ tối đa 2 câu chào kết.
 const LOI_CHAO =
   /(hẹn gặp lại|tạm biệt|(đón|chờ) (xem |đón )?(chương|phần|tập)|(chương|phần|tập) (tiếp theo|sau|cuối|cuối cùng) (để|nhé|sẽ|của)|bấm đăng ký|nhấn đăng ký|đăng ký kênh|đăng ký ngay|nhấn chuông|bấm chuông|bấm like|nhấn like|theo dõi kênh|subscribe|đồng hành cùng (chúng tôi|kênh|công nghệ 24h))/i
-export function locLoiChao<T extends { chu: string }>(loi: T[], laCuoi: boolean): { loi: T[]; bo: number[] } {
+export function locLoiChao<T extends { chu: string }>(loi: T[], laCuoi: boolean, giu = 2): { loi: T[]; bo: number[] } {
   const khop = loi.map((l, i) => (LOI_CHAO.test(l.chu) ? i : -1)).filter((i) => i >= 0)
-  const bo = laCuoi ? khop.slice(0, -2) : khop
+  const bo = laCuoi ? khop.slice(0, -giu) : khop
   return { loi: loi.filter((_, i) => !bo.includes(i)), bo }
 }
 
@@ -80,8 +82,9 @@ export function kiemDinh<T extends Cau>(goc: T[], o: { loai?: 'thuong' | 'tieu_s
   }
 
   // ── 0. Bỏ câu chào / hẹn chương sau giữa phim (phim xem liền một mạch) ──
-  const sach = locLoiChao(goc, !!o.laCuoi)
-  for (let k = 0; k < sach.bo.length; k++) dem(o.laCuoi ? 'Bớt câu chào kết thừa (giữ 2 câu)' : 'Bỏ câu chào / hẹn chương sau giữa phim cho mạch phim liền')
+  // Phim tiểu sử chỉ giữ 1 câu chào kết (video Oppenheimer: "bấm đăng ký" rồi lại "hẹn gặp lại")
+  const sach = locLoiChao(goc, !!o.laCuoi, tieuSu ? 1 : 2)
+  for (let k = 0; k < sach.bo.length; k++) dem(o.laCuoi ? `Bớt câu chào kết thừa (giữ ${tieuSu ? 1 : 2} câu)` : 'Bỏ câu chào / hẹn chương sau giữa phim cho mạch phim liền')
 
   // ── 1. Tách câu quá dài ──
   const loi: T[] = []
@@ -142,8 +145,36 @@ export function kiemDinh<T extends Cau>(goc: T[], o: { loai?: 'thuong' | 'tieu_s
     }
   })
 
+  // ── 2b. Giọng điệu đoạn bi kịch + khoảng lặng (bài học video Oppenheimer 15/10/2026) ──
+  const biKich = (l?: T) => !!l && (l.cam_xuc === 'buon' || TU_BI_KICH.test(l.chu.toLowerCase()))
+  const ganBiKich = (i: number) => biKich(loi[i]) || biKich(loi[i - 1]) || biKich(loi[i - 2])
+  const dua: string[] = []
+  loi.forEach((l, i) => {
+    if (l.ai !== 'meo' && l.ai !== 'robot') return
+    // Linh vật vui vẻ ngay giữa đoạn bi kịch → buồn (sửa an toàn, không đổi chữ)
+    if (ganBiKich(i) && (l.cam_xuc === 'vui' || l.cam_xuc === 'bat_ngo')) {
+      l.cam_xuc = 'buon'
+      dem('Linh vật không vui vẻ giữa đoạn bi kịch')
+    }
+    // Tiếng lóng / câu đùa giữa đoạn bi kịch → lỗi, AI phải viết lại
+    if (ganBiKich(i) && TIENG_LONG.test(l.chu.toLowerCase())) dua.push(l.chu.slice(0, 60))
+  })
+  // Phim tiểu sử: chương chưa có khoảng lặng nào → đặt một khoảng lặng ngay sau câu nặng nhất (câu bi kịch / câu trích dẫn
+  // của nhân vật chính lúc buồn hay bất ngờ), để khoảnh khắc lớn có chỗ thở
+  if (tieuSu && loi.length > 6 && !loi.some((l) => l.lang)) {
+    const nang = loi.findIndex((l, i) => i >= 1 && i < loi.length - 1 && (biKich(l) || (l.ai === 'nhan_vat_chinh' && (l.cam_xuc === 'buon' || l.cam_xuc === 'bat_ngo'))))
+    if (nang >= 0) {
+      loi[nang + 1].lang = true
+      dem('Thêm khoảng lặng sau câu nặng nhất chương')
+    }
+  }
+
   // ── 3. Chấm điểm + ghi chú ──
   const ghiChu: GhiChuKiemDinh[] = []
+  if (dua.length) ghiChu.push({ muc: 'loi', chu: `Linh vật đùa / dùng tiếng lóng giữa đoạn bi kịch (chết chóc, chiến tranh, thảm hoạ): "${dua.slice(0, 2).join('", "')}" — viết lại nghiêm túc hoặc bỏ` })
+  // Câu liệt kê dài như đọc lý lịch (nhiều tên riêng nối bằng dấu phẩy)
+  const lyLich = loi.filter((l) => (l.chu.match(/(?:^|,\s*)(?:[A-ZĐ][\p{L}]+(?:\s+[A-ZĐ][\p{L}]+)*)/gu) ?? []).length >= 4 && (l.chu.match(/,/g) ?? []).length >= 3)
+  if (lyLich.length) ghiChu.push({ muc: 'nhac', chu: `Câu liệt kê dài như đọc lý lịch: "${lyLich[0].chu.slice(0, 70)}…" — gộp lại, kể một chi tiết đắt thay vì kể tên` })
   // Câu người kể có hành động nhưng không ai đứng trên sân khấu để diễn (hình sẽ không theo lời)
   const khongAiDien = loi.filter((l) => l.ai === 'nguoi_ke' && l.dong_tac && l.dong_tac !== 'khong' && (!l.nhan_vat_phu || l.nhan_vat_phu === 'khong')).length
   if (khongAiDien) ghiChu.push({ muc: 'nhac', chu: `${khongAiDien} câu kể có hành động nhưng không có nhân vật trên sân khấu để diễn (thiếu nhân vật phụ cho câu đó)` })

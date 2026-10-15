@@ -303,7 +303,7 @@ TU_KHOA_CANH = {
     'lang_xua': 'old vietnamese village with banyan tree', 'sa_mac': 'desert dunes landscape at sunset',
     'bien_ca': 'old sailing ship on the open ocean', 'den_chua': 'asian pagoda temple in the mountains',
     'ga_ra': 'garage workshop with tools on the wall', 'be_phong': 'rocket launch pad at dawn',
-    'phong_thu': 'music recording studio with microphone', 'phim_truong': 'film studio set with cameras and lights',
+    'phong_thu': 'music recording studio with microphone', 'phim_truong': 'film studio set with cameras and lights', 'do_nat': 'ruined city after bombing with smoke and rubble',
 }
 KHO_PIXABAY = THU_MUC_TAM.parent / 'anh-pixabay'  # tranh đã tải (theo mã) + kết quả tìm (Pixabay yêu cầu nhớ 24 giờ) + điểm AI chấm
 

@@ -134,6 +134,54 @@ function doTo(file) {
   return ds.map((x) => x / max)
 }
 
+// ── Chống cảnh nhảy qua lại (phim Jensen Huang 15/10/2026: nhà hàng → phòng thu Mèo / Bit → nhà hàng mỗi câu một lần):
+// đoạn chen giữa hai câu cùng một cảnh mà chỉ gồm lời Mèo / Bit (tối đa 3 câu), hoặc chỉ một câu ngắn dưới 4,5 giây,
+// thì ở luôn cảnh đang có; lời Mèo / Bit nối sau một cảnh (tối đa 3 câu) cũng ở lại cảnh đó — Mèo / Bit bình luận ngay tại chỗ, không cắt về phòng thu rồi cắt ngược lại.
+{
+  const canh = (l) => (BOI_CANH[l?.boi_canh] ? l.boi_canh : 'truong_quay')
+  const linhVat = (l) => l.ai === 'meo' || l.ai === 'robot'
+  let i = 1
+  while (i < loi.length) {
+    const truoc = loi[i - 1]
+    if (canh(loi[i]) === canh(truoc)) { i++; continue }
+    let j = i
+    while (j < loi.length && j - i < 3 && canh(loi[j]) !== canh(truoc) && (j === i || linhVat(loi[j]) === linhVat(loi[i]))) j++
+    const doan = loi.slice(i, j)
+    const giay = doan.reduce((tong, _, k) => tong + (doDai[i + k] ?? 0), 0)
+    // Lời Mèo / Bit nối sau một cảnh: bình luận ngay tại cảnh đó (dù câu sau sang cảnh khác: 1 lần cắt thay vì 2)
+    // (chỉ khi câu trước là người kể / nhân vật khác: video tin chỉ có Mèo / Bit thì cảnh vẫn đổi theo lời như cũ)
+    if ((doan.every(linhVat) && !linhVat(truoc)) || (j < loi.length && canh(loi[j]) === canh(truoc) && doan.length === 1 && giay < 4.5)) {
+      for (const l of doan) {
+        l.boi_canh = truoc.boi_canh
+        if (truoc.dia_diem) l.dia_diem = truoc.dia_diem
+      }
+      i = j
+    } else i++
+  }
+}
+// ── Cảnh hành động sau lưng nhân vật (pháo hoa, tên lửa, đám đông…): AI hay rải quá tay (Jensen Huang: 9 lần pháo hoa,
+// có lần bắn trên cảnh trường cải huấn u ám). Pháo hoa chỉ ở câu VUI; câu buồn không có cảnh hành động nào; cùng một
+// loại cách nhau ít nhất 60 giây, hai cảnh hành động bất kỳ cách nhau ít nhất 20 giây.
+{
+  const cuoiLoai = {}
+  let cuoi = -99
+  let luc = 0
+  loi.forEach((l, i) => {
+    const hd = l.hanh_dong
+    if (hd && hd !== 'khong' && hd !== 'lich_lat') {
+      const sai = (hd === 'phao_hoa' && l.cam_xuc !== 'vui') || l.cam_xuc === 'buon' || luc - (cuoiLoai[hd] ?? -99) < 60 || luc - cuoi < 20
+      // Câu sau nối tiếp đúng cảnh đó (hành động kéo dài) thì giữ
+      const noi = i && loi[i - 1].hanh_dong === hd
+      if (sai && !noi) l.hanh_dong = 'khong'
+      else {
+        cuoiLoai[hd] = luc
+        cuoi = luc
+      }
+    }
+    luc += doDai[i] ?? 0
+  })
+}
+
 const batDau = []
 // Thẻ chương (video YouTube nhiều phần). Có câu người kể đọc tên chương (la_chuong, lib/youtube.ts chèn) thì thẻ
 // hiện đúng trong câu đó; không có thì như cũ: 2,4 giây đầu phần im lặng là màn tiêu đề. Màn kết 6 giây cuối video.
@@ -1565,7 +1613,8 @@ const donDap = []
     // Không chen vào câu đang phủ ảnh tư liệu toàn khung hay câu đã có chữ khổng lồ (hai cú đập chồng nhau)
     if (!cao || CHU_LON[i] || doanAnh.some((c) => c.kieu === 'toan' && c.tu <= i && c.het >= i)) return
     const t = batDau[i] + 0.15
-    if (t - cuoi < 35 || doDai[i] < 1.6 || (anhPhan.length < 3 && bieuTuong.length < 2)) return
+    // Chỉ khi có đủ 3 ảnh tư liệu thật: chuỗi biểu tượng nháy trên nền màu (trái tim, ngọn lửa, mặt trăng…) trông như lỗi hình
+    if (t - cuoi < 35 || doDai[i] < 1.6 || anhPhan.length < 3) return
     cuoi = t
     const id = `dd${LUC_DON_DAP.length}`
     LUC_DON_DAP.push(t)

@@ -1481,6 +1481,66 @@ const nvPhu = doanPhu.map((dp, k) => {
   tw.push(`tl.to("#${id}-tay-phai", { rotation: 0, duration: 0.3 }, ${f(t0 + 1.9)});`)
   // Đứng trên sân khấu (Character Acting Engine, cấp 1 – idle): thở (thân phồng nhẹ), dồn trọng tâm trái – phải rất chậm,
   // chớp mắt ở mốc cố định. Không gật đầu liên tục cho có: gật / nhìn người nói làm theo từng câu (xem phần câu thoại)
+  // ── Di chuyển trên sân khấu theo từng câu (chủ trang 15/10/2026: "hành động quá sơ sài, toàn đứng, không có chuyển
+  // động nhiều phía"). Lớp #<id>-buoc: đi ngang giữa các vị trí trên sân khấu, tiến gần / lùi xa máy quay (to / nhỏ);
+  // lớp #<id>-nhun: dáng bước (nhún + lắc theo nhịp chân), khom người làm việc sát sàn, nhảy. Tách khỏi svg (động tác
+  // tay chân, đi lại của hành động kể chuyện) nên không giành nhau.
+  //  · hành động có đồ của cảnh (cửa, nôi, chuông…): về đúng chỗ đứng cạnh đồ (vị trí 0)
+  //  · hành động đi lại (xách vali, đi bộ, chạy, lái xe): đứng sẵn bên trái để đi sang phải không ra khỏi khung
+  //  · câu khác đổi vị trí theo vòng phải → giữa → trái → giữa; khẳng định / tức giận bước lên gần máy quay; bất ngờ
+  //    giật lùi; buồn lùi xa, chậm; vui nảy lên khi tới nơi
+  {
+    const BUOC = NGANG ? 180 : 140
+    const CANH = new Set(['mo_cua', 'nam_noi', 'gong_chuong', 'rung_chuong', 'bam_nut'])
+    const DI = new Set(['xach_vali', 'di_bo', 'chay', 'lai_xe'])
+    const SAN = new Set(['rua_bat', 'lap_rap', 'nam_noi', 'dong_may_tinh', 'an_com', 'dem_tien'])
+    const VONG = [1, 0, -1, 0]
+    let viTri = 0
+    let gan = 1
+    let vong = 0
+    for (let i = dp.tu; i <= dp.het; i++) {
+      if (phuCuaCau[i] !== id) continue
+      const l = loi[i]
+      const t = batDau[i] + 0.05
+      const d = doDai[i]
+      const dt = LUC_DONG_TAC[i]?.[0]
+      let den = viTri
+      let ganDen = 1
+      if (CANH.has(dt)) den = 0
+      else if (DI.has(dt)) den = -1
+      else if (i > dp.tu) den = VONG[vong++ % VONG.length]
+      if (['khang_dinh', 'tuc_gian'].includes(l.cam_xuc)) ganDen = 1.08
+      else if (l.cam_xuc === 'buon') ganDen = 0.94
+      const giatLui = l.cam_xuc === 'bat_ngo' && !dt
+      if (giatLui) ganDen = 0.95
+      if (den === viTri && Math.abs(ganDen - gan) < 0.01) {
+        // Đứng yên câu này: dồn trọng tâm sang một bên rồi về (không đứng chết)
+        if (d > 2.5) tw.push(`tl.to("#${id}-nhun", { rotation: ${i % 2 ? 2.2 : -2.2}, duration: 0.6, yoyo: true, repeat: 1, ease: "sine.inOut" }, ${f(t + 0.4)});`)
+      } else {
+        const quang = Math.abs(den - viTri)
+        const giay = giatLui ? 0.28 : Math.min(1.1, Math.max(0.55, 0.45 + quang * 0.3 + (l.cam_xuc === 'buon' ? 0.3 : 0)))
+        tw.push(`tl.to("#${id}-buoc", { x: ${den * BUOC}, scale: ${ganDen}, y: ${f((ganDen - 1) * 300)}, duration: ${f(giay)}, ease: "${giatLui ? 'power3.out' : 'sine.inOut'}" }, ${f(t)});`)
+        if (quang > 0) {
+          // Dáng bước: nhún theo nhịp chân, lắc người nghiêng về hướng đi
+          const nhip = 0.16
+          const lan = Math.max(1, Math.round(giay / nhip / 2)) * 2 - 1
+          const huong = den > viTri ? 1 : -1
+          tw.push(`tl.fromTo("#${id}-nhun", { y: 0 }, { y: -9, duration: ${nhip}, yoyo: true, repeat: ${lan}, ease: "sine.inOut", immediateRender: false }, ${f(t)});`)
+          tw.push(`tl.fromTo("#${id}-nhun", { rotation: ${-3 + huong * 2} }, { rotation: ${3 + huong * 2}, duration: ${nhip}, yoyo: true, repeat: ${lan}, ease: "sine.inOut", immediateRender: false }, ${f(t)});`)
+          tw.push(`tl.to("#${id}-nhun", { rotation: 0, duration: 0.15 }, ${f(t + giay)});`)
+        } else if (giatLui) tw.push(`tl.fromTo("#${id}-nhun", { y: 0 }, { y: -26, duration: 0.14, yoyo: true, repeat: 1, ease: "power2.out", immediateRender: false }, ${f(t)});`)
+        if (l.cam_xuc === 'vui' && !dt) tw.push(`tl.fromTo("#${id}-nhun", { y: 0 }, { y: -30, duration: 0.18, yoyo: true, repeat: 1, ease: "sine.out", immediateRender: false }, ${f(t + giay + 0.05)});`)
+        viTri = den
+        gan = ganDen
+      }
+      // Làm việc sát sàn: khom người trong lúc làm, đứng thẳng lại cuối câu
+      if (SAN.has(dt)) {
+        const bd = LUC_DONG_TAC[i][1]
+        tw.push(`tl.to("#${id}-nhun", { scaleY: 0.94, y: 16, duration: 0.35, ease: "sine.inOut" }, ${f(bd)});`)
+        tw.push(`tl.to("#${id}-nhun", { scaleY: 1, y: 0, duration: 0.35, ease: "sine.inOut" }, ${f(batDau[i] + d - 0.3)});`)
+      }
+    }
+  }
   const dung = vao + diVao, roi = het - 0.3
   if (roi - dung > 1) {
     tw.push(`gsap.set("#${id} svg", { transformOrigin: "50% 100%" }); gsap.set("#${id}-mat", { svgOrigin: "200 188" });`)
@@ -1495,7 +1555,7 @@ const nvPhu = doanPhu.map((dp, k) => {
   // Không ghi tên trên đầu (trang phục tự nói lên họ là ai); hai nhân vật chính dạt sang hai bên chừa chỗ cho nhân vật phụ
   // Mèo / Bit dạt ra bao xa: tính chung cho mọi người trên sân khấu theo thời gian (sanKhau, xem dưới)
   sanKhau.push({ vao, ra: het - 0.3, lech: dp.lech })
-  return `<div id="${id}" class="nv-phu" data-ten="${dp.ten}" style="left:${354 + dp.lech}px"><svg viewBox="${NHAN_VAT_PHU[dp.ten].viewBox ?? '0 0 400 600'}" width="372" height="558" class="nv">${ganVat(NHAN_VAT_PHU[dp.ten].svg(id), id, dp)}</svg>${DAU_HIEU[id] ?? ''}</div>`
+  return `<div id="${id}" class="nv-phu" data-ten="${dp.ten}" style="left:${354 + dp.lech}px"><div id="${id}-buoc" class="nv-buoc"><div id="${id}-nhun" class="nv-buoc"><svg viewBox="${NHAN_VAT_PHU[dp.ten].viewBox ?? '0 0 400 600'}" width="372" height="558" class="nv">${ganVat(NHAN_VAT_PHU[dp.ten].svg(id), id, dp)}</svg></div></div>${DAU_HIEU[id] ?? ''}</div>`
 })
 // Mèo / Bit dạt sang hai bên chừa chỗ cho nhân vật phụ. Tính theo thời gian, mỗi lúc có người vào / ra: ai đang đứng trên
 // sân khấu, đứng ở đâu → độ dạt cần thiết (có người đứng lệch trái / phải hoặc hai người cùng đứng: dạt xa 300; một người
@@ -2484,6 +2544,7 @@ const trang = `<!doctype html>
       .logo-th { position: absolute; top: ${NGANG ? 140 : 250}px; width: 150px; display: flex; flex-direction: column; align-items: center; gap: 8px; opacity: 0; pointer-events: none; filter: drop-shadow(0 12px 18px #0007); }
       .lg-o { width: 128px; height: 128px; border-radius: 30px; display: flex; align-items: center; justify-content: center; font-weight: 800; line-height: 1; letter-spacing: -1px; border: 5px solid #ffffffdd; font-family: "BVP", "Emoji", sans-serif; }
       .lg-ten { padding: 3px 12px; border-radius: 10px; background: #0f172acc; color: #fff; font-size: 22px; font-weight: 700; white-space: nowrap; }
+      .nv-buoc { position: relative; transform-origin: 50% 100%; }
       #bo-canh { position: absolute; inset: 0; pointer-events: none; }
       .vat-canh { position: absolute; display: flex; align-items: flex-end; justify-content: center; line-height: 1; opacity: 0; font-family: "Emoji", sans-serif; filter: drop-shadow(0 16px 12px #0006); }
       .dau-hieu { position: absolute; top: 30px; font-size: 130px; font-weight: 700; line-height: 1; color: #fde047; -webkit-text-stroke: 12px #111827; paint-order: stroke fill; opacity: 0; pointer-events: none; filter: drop-shadow(0 8px 10px #0007); }

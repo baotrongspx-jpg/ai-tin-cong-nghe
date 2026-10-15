@@ -679,6 +679,9 @@ For each numbered activity (who: activity | props needed) return: i, hanh_dong (
     const hanh_dong = x?.can && /sơ sinh|chào đời|lọt lòng|em bé/i.test(x.viec) && ['khoc', 'moi', 'be_em_be'].includes(chon) && !/bế/i.test(x.viec) ? 'nam_noi' : chon
     // Đạo cụ thiếu: so emoji với đạo cụ hành động đã có (máy tự so, không để AI đoán)
     const coSan = new Set((THU_VIEN_HANH_DONG[hanh_dong]?.do_vat ?? []).map((v) => emojiGoc(v)))
+    // Đồ vẽ sẵn (không emoji: còng tay, dây đài…) so theo tên
+    const tenCoSan = (THU_VIEN_HANH_DONG[hanh_dong]?.do_vat ?? []).map((v) => boDau(v))
+    const daCo = (v: string) => (emojiCua(v) && coSan.has(emojiGoc(v))) || tenCoSan.some((x) => khopTen(x, v))
     const canVat = (x?.do_vat_can ?? []).map((v) => v.trim()).filter(Boolean).slice(0, 4)
     return {
       i,
@@ -691,7 +694,7 @@ For each numbered activity (who: activity | props needed) return: i, hanh_dong (
       do_vat: '',
       do_vat_can: canVat,
       hinh_can: hinhCanCau(d, l, x?.hinh_can ?? []),
-      do_vat_thieu: canVat.filter((v) => !coSan.has(emojiGoc(v)) || !emojiCua(v)),
+      do_vat_thieu: canVat.filter((v) => !daCo(v)),
     }
   })
   // Lượt 3 — kịch bản diễn chi tiết cho TỪNG câu (chủ trang 15/10/2026, mẫu "nhân vật quét nhà"): cầm đạo cụ thế nào, tư

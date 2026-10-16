@@ -159,12 +159,12 @@ export function boiCanhThem({ san, toaNha, f, lap }) {
         ${[0, 1, 2, 3, 4].map((k) => `<rect x="${40 + k * 250}" y="260" width="14" height="560" fill="#cbd5e1"/>`).join('')}<rect x="40" y="260" width="1000" height="560" rx="18" fill="none" stroke="#cbd5e1" stroke-width="14"/>
         <rect x="660" y="860" width="380" height="200" rx="12" fill="#0f172a" stroke="#475569" stroke-width="6"/>
         ${[0, 1, 2, 3].map((k) => `<text x="680" y="${910 + k * 42}" font-family="monospace" font-size="30" fill="${k % 2 ? '#fde047' : '#4ade80'}">${['VN123 HAN 08:15', 'SG456 SGN 09:40', 'NY789 JFK 11:05', 'TK321 IST 13:30'][k]}</text>`).join('')}
-        <rect id="${id}-dong" x="672" y="872" width="356" height="40" fill="#fde04733"/>
+        <rect id="${id}-vet-bang" x="672" y="872" width="356" height="40" fill="#fde04733"/>
         ${[0, 1, 2, 3].map((k) => `<rect x="${60 + k * 140}" y="1000" width="110" height="80" rx="14" fill="#3b82f6"/><rect x="${70 + k * 140}" y="1080" width="12" height="80" fill="#64748b"/>`).join('')}
         ${san(id, '#cbd5e1', '#94a3b8', '#e2e8f0', '#ffffff')}`,
       tw: (t0, d) => [
         `tl.fromTo("#${id}-may-bay", { x: -300, y: 100 }, { x: 700, y: -260, duration: ${f(Math.max(3, d))}, ease: "power1.in" }, ${f(t0)});`,
-        `tl.fromTo("#${id}-dong", { y: 0 }, { y: 126, duration: 0.6, repeat: ${lap(d, 0.6)}, ease: "steps(3)" }, ${f(t0)});`,
+        `tl.fromTo("#${id}-vet-bang", { y: 0 }, { y: 126, duration: 0.6, repeat: ${lap(d, 0.6)}, ease: "steps(3)" }, ${f(t0)});`,
         trotMay(id, 0, d, t0, 40),
       ],
     }),

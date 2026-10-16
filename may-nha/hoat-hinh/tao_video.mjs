@@ -3426,26 +3426,29 @@ loi.forEach((l, i) => {
   }
   if (canCanh && lui) tw.push(`tl.to("#o-${nghe}", { xPercent: 0, duration: ${f(lui)}, ease: "power2.inOut" }, ${f(t0 + d - lui)});`)
   // Shot / reverse shot: lời mạnh (giận, bất ngờ, buồn, lo) trong câu đủ dài → cuối câu máy cắt qua mặt người phản ứng
+  // Mỗi cảnh sau cú cắt giữ ít nhất 1,6 giây (phim Messi 16/10/2026: câu 3,5 giây cắt sang Bit 1 giây rồi câu sau cắt về
+  // cảnh rộng — hai cú cắt trong 1 giây, khán giả thấy màn hình giật)
   // chính, giữ tới hết câu (câu sau máy quay tự về người nói mới). Không cắt khi đang cận một người (người nghe đã lùi ra
   // ngoài khung), khi có thẻ trên cao, hay khi sắp đổi cảnh (đã lùi về cảnh rộng)
   const pu = nguoiPhanUng(i)[0]
-  if (pu && !canCanh && !chuaDau && !lui && d > 3.2 && PHAN_UNG_MANH.has(l.cam_xuc)) {
+  const CAT_PU = 1.6
+  if (pu && !canCanh && !chuaDau && !lui && d > 4.5 && PHAN_UNG_MANH.has(l.cam_xuc)) {
     const vt = pu.startsWith('phu') ? { x: viTriPhu[pu] ?? 540, y: 720 - HA_PHU } : tamLuc(pu, t0 + d - 1)
     // Cắt thẳng (1 khung hình) như cắt cảnh thật, không lia nhanh: lia 0,22 giây ở 24 hình/giây trông như hình giật
     // (video 14/10/2026). Sau đó giữ khung, đẩy rất chậm tới hết câu (lệnh này chạy tới cuối nên đè lệnh máy quay của câu)
-    lia(t0 + d - 1.0, 1.45, vt.x, vt.y - 30, 0.04, 'none')
-    lia(t0 + d - 0.95, 1.48, vt.x, vt.y - 34, 0.95, 'sine.inOut')
+    lia(t0 + d - CAT_PU, 1.45, vt.x, vt.y - 30, 0.04, 'none')
+    lia(t0 + d - CAT_PU + 0.05, 1.48, vt.x, vt.y - 34, CAT_PU - 0.05, 'sine.inOut')
   }
   // Câu dài (trên 5 giây): giữa câu cắt thẳng sang cận mặt người đang diễn (người nói, hoặc nhân vật đang được kể), giữ
   // khung đẩy chậm tới hết câu / tới cú cắt phản ứng — người xem không phải nhìn một khung hơn 5 giây (góp ý 14/10/2026:
   // 15 giây mới cắt một lần). Không cắt khi đang cận sẵn, có thẻ trên cao, đang phủ ảnh tư liệu hay sắp đổi cảnh.
-  const catPU = pu && !canCanh && !chuaDau && !lui && d > 3.2 && PHAN_UNG_MANH.has(l.cam_xuc)
+  const catPU = pu && !canCanh && !chuaDau && !lui && d > 4.5 && PHAN_UNG_MANH.has(l.cam_xuc)
   const dien = l.ai === 'nguoi_ke' || laPhu(l.ai) ? phuCuaCau[i] : l.ai === 'meo' ? 'meo' : 'robot'
   const phuAnh = doanAnh.some((c) => c.kieu === 'toan' && c.tu <= i && c.het >= i)
   if (d > 4 && dien && !canCanh && !chuaDau && !lui && !phuAnh && !LUC_DONG_TAC[i]) {
     const giua = t0 + d * 0.48
-    const het = catPU ? t0 + d - 1.0 : t0 + d + 0.05
-    if (het - giua > 1.4) {
+    const het = catPU ? t0 + d - CAT_PU : t0 + d + 0.05
+    if (het - giua > 2 && giua - t0 > 2) {
       const vt = dien.startsWith('phu') ? { x: viTriPhu[dien] ?? 540, y: 760 - HA_PHU } : tamLuc(dien, giua)
       lia(giua, 1.5, vt.x, vt.y - 40, 0.04, 'none')
       lia(giua + 0.05, 1.55, vt.x + (i % 2 ? 12 : -12), vt.y - 48, het - giua - 0.05, 'sine.inOut')
@@ -3691,8 +3694,9 @@ loi.forEach((l, i) => {
   if (coThanh) {
     const a = viTriNam(namTruoc) * 100
     const b = viTriNam(nam) * 100
-    tw.push(`tl.fromTo("#tm${i}-cham", { left: "${f(a)}%" }, { left: "${f(b)}%", duration: 1.1, ease: "power2.inOut", immediateRender: false }, ${f(t0 + 0.35)});`)
-    tw.push(`tl.fromTo("#tm${i}-da", { width: "${f(a)}%" }, { width: "${f(b)}%", duration: 1.1, ease: "power2.inOut", immediateRender: false }, ${f(t0 + 0.35)});`)
+    // x / scaleX (biến hình) thay cho left / width: left, width nhích từng điểm ảnh nguyên → chấm trượt giật
+    tw.push(`tl.fromTo("#tm${i}-cham", { x: ${f(a * 3.4)} }, { x: ${f(b * 3.4)}, duration: 1.1, ease: "power2.inOut", immediateRender: false }, ${f(t0 + 0.35)});`)
+    tw.push(`tl.fromTo("#tm${i}-da", { scaleX: ${f(a / 100)} }, { scaleX: ${f(b / 100)}, duration: 1.1, ease: "power2.inOut", immediateRender: false }, ${f(t0 + 0.35)});`)
     namTruoc = nam
   }
   tw.push(`tl.to("#tm${i}", { opacity: 0, x: -40, duration: 0.35, ease: "power2.in" }, ${f(het - 0.35)});`)
@@ -4307,8 +4311,8 @@ const trang = `<!doctype html>
       .the-moc-khoi { position: absolute; left: 56px; top: ${NGANG ? 150 : 240}px; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; opacity: 0; }
       .tg-thanh { display: flex; align-items: center; gap: 12px; padding: 8px 16px; border-radius: 12px; background: #0f172acc; font-size: 22px; font-weight: 700; color: #cbd5e1; box-shadow: 0 10px 24px #0007; }
       .tg-ray { position: relative; width: 340px; height: 8px; border-radius: 4px; background: #334155; }
-      .tg-da { position: absolute; left: 0; top: 0; height: 100%; border-radius: 4px; background: linear-gradient(90deg, #f59e0b, #fbbf24); }
-      .tg-cham { position: absolute; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; background: #fde68a; border: 4px solid #f59e0b; box-shadow: 0 0 12px #fbbf24; }
+      .tg-da { position: absolute; left: 0; top: 0; width: 100%; height: 100%; transform-origin: 0 50%; border-radius: 4px; background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+      .tg-cham { position: absolute; left: 0; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; background: #fde68a; border: 4px solid #f59e0b; box-shadow: 0 0 12px #fbbf24; }
       .the-moc { position: relative; display: flex; align-items: center; gap: 12px; padding: 12px 24px 12px 18px; border-radius: 14px; background: #0f172ae6; border-left: 8px solid #fbbf24; font-size: ${NGANG ? 34 : 38}px; font-weight: 700; color: #fff; box-shadow: 0 16px 36px #0008; }
       .dao-cu.nguoi_ke { left: ${NGANG ? 1220 : 445}px; top: ${NGANG ? 560 : 380}px; }
       .pd-dong { font-size: 48px; font-weight: 700; line-height: 1.2; white-space: nowrap; text-shadow: 0 0 5px #000, 0 3px 0 #000, 2.5px 2.5px 0 #000, -2.5px 2.5px 0 #000, 2.5px -2.5px 0 #000, -2.5px -2.5px 0 #000; }

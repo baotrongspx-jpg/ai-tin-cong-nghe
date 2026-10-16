@@ -42,6 +42,7 @@ export const THU_VIEN_HANH_DONG: Record<string, { ten: string; loai: LoaiHanhDon
   lai_xe: { ten: 'Lái xe', loai: 'ke_chuyen', mo_ta: 'ngồi sau xe hơi, hai tay trên vô lăng, xe chạy rồi dừng', do_vat: ['🚗 xe hơi'] },
   gong_chuong: { ten: 'Gõ chuông', loai: 'ke_chuyen', mo_ta: 'gõ búa vào chuông: niêm yết, IPO, khai mạc phiên giao dịch', do_vat: ['🔔 cái chuông', '🔨 búa'] },
   trao_nhan: { ten: 'Trao nhẫn', loai: 'ke_chuyen', mo_ta: 'trao nhẫn cưới: kết hôn, cầu hôn; tim bay lên', do_vat: ['💍 nhẫn cưới', '💖 trái tim'] },
+  choi_bai: { ten: 'Chơi bài', loai: 'ke_chuyen', mo_ta: 'ngồi sau bàn dạ xanh, cầm xấp bài, chồm tới căng thẳng, đánh một lá xuống bàn, thở dài: cờ bạc, sòng bạc', do_vat: ['🃏 lá bài', '🃏 bộ bài', '🪙 phỉnh / chip (vẽ trên bàn)', 'bàn bài (vẽ sẵn)'] },
   treo_bien: { ten: 'Treo biển hiệu', loai: 'ke_chuyen', mo_ta: 'ôm biển hiệu nâng lên áp vào tường, căn chỉnh, lùi lại ngắm: mở tiệm, lập cơ sở kinh doanh', do_vat: ['🪧 biển hiệu (vẽ sẵn)'] },
   can_hang: { ten: 'Cân hàng', loai: 'ke_chuyen', mo_ta: 'cân đĩa lắc lư, tay cầm bao gạo và cá khô, mời khách: buôn bán', do_vat: ['⚖️ cái cân', '🌾 bao gạo', '🐟 cá khô'] },
   cat_bang: { ten: 'Cắt băng khánh thành', loai: 'ke_chuyen', mo_ta: 'kéo cắt dải băng đỏ căng ngang, băng rơi, giơ kéo vẫy đám đông', do_vat: ['✂️ chiếc kéo', '🎀 dải băng đỏ (vẽ sẵn)'] },

@@ -608,7 +608,7 @@ function khopTen(a: string, b: string) {
   return boDau(b).split(/[^a-z0-9]+/).some((x) => x.length >= 4 && ca.has(x)) || boDau(a).includes(boDau(b).trim())
 }
 const laLoaiPhu = (ma?: string) => !!ma && ma !== 'khong' && (NHAN_VAT_PHU as readonly string[]).includes(ma)
-function hinhCanCau(d: DuAnYT, l: CauYT, ds: z.infer<typeof HinhCanSchema>[]): HinhCan[] {
+function hinhCanCau(d: DuAnYT, l: CauYT, ds: z.infer<typeof HinhCanSchema>[], nguoi = ''): HinhCan[] {
   return ds
     .filter((h) => LOAI_HINH.has(h.loai) && h.ten.trim())
     .slice(0, 5)
@@ -628,8 +628,12 @@ function hinhCanCau(d: DuAnYT, l: CauYT, ds: z.infer<typeof HinhCanSchema>[]): H
           else if (l.dia_diem !== noiCan.ma) [coNoi, ghiNoi] = [false, `câu đang dùng "${noiCau?.ten ?? 'phòng thu'}" — nên là "${noiCan.ten}" (bấm Gắn để sửa)`]
         } else [coNoi, ghiNoi] = [false, `nơi "${h.ten.trim()}" chưa có trong hồ sơ địa điểm — câu đang dùng "${noiCau?.ten ?? 'phòng thu'}"`]
       }
+      // Sân khấu mỗi câu chỉ đứng được một nhân vật người: người chỉ được NHẮC TỚI (không phải người làm hành động của câu,
+      // vd "Tesla bị cảnh sát đưa về" — người diễn là Tesla) thì giữ người đang diễn, không đòi đổi
+      const chiNhacToi = h.loai === 'nhan_vat' && laLoaiPhu(h.ma) && !!nguoi.trim() && !khopTen(nguoi, h.ten)
       const co =
-        h.loai === 'logo' ? true
+        chiNhacToi ? true
+        : h.loai === 'logo' ? true
         : h.loai === 'do_vat' ? !!emojiCua(h.emoji)
         : h.loai === 'anh_that' ? typeof l.anh === 'number' && l.anh >= 0
         // Nhân vật: Mèo / Bit / người kể luôn có; nhân vật chính (AI chỉ ra, kể cả người sáng lập trong phim về công ty)
@@ -638,7 +642,8 @@ function hinhCanCau(d: DuAnYT, l: CauYT, ds: z.infer<typeof HinhCanSchema>[]): H
         : h.loai === 'dia_diem' ? coNoi
         : !!l.minh_hoa?.kieu && l.minh_hoa.kieu !== 'khong'
       const ghi_chu =
-        h.loai === 'logo' ? 'máy tự vẽ huy hiệu'
+        chiNhacToi ? 'chỉ được nhắc tới — sân khấu giữ người đang diễn (mỗi câu đứng được một nhân vật)'
+        : h.loai === 'logo' ? 'máy tự vẽ huy hiệu'
         : co ? 'đã có'
         : h.loai === 'do_vat' ? 'chưa có hình — phải vẽ'
         : h.loai === 'anh_that' ? 'cần ảnh thật'
@@ -713,7 +718,7 @@ For each numbered activity (who: activity | props needed) return: i, hanh_dong (
       ten_moi: hanh_dong === 'moi' ? boDauMa(y?.ten_moi && y.ten_moi !== 'hanh_dong_moi' ? y.ten_moi : 'chua_dat_ten') : '',
       do_vat: '',
       do_vat_can: canVat,
-      hinh_can: hinhCanCau(d, l, x?.hinh_can ?? []),
+      hinh_can: hinhCanCau(d, l, x?.hinh_can ?? [], x?.nguoi ?? ''),
       do_vat_thieu: canVat.filter((v) => !daCo(v)),
     }
   })
@@ -817,10 +822,19 @@ export async function apDungHanhDong(id: string) {
         so++
       }
       // Câu người kể nói về một người khác nhân vật chính (đối tác, người kế nghiệp…) → đưa đúng nhân vật phụ lên sân khấu
-      const canPhu = (x.hinh_can ?? []).find((h) => h.loai === 'nhan_vat' && !h.co && laLoaiPhu(h.ma))?.ma
+      const canPhu = (x.hinh_can ?? []).find((h) => h.loai === 'nhan_vat' && !h.co && laLoaiPhu(h.ma) && (!x.nguoi?.trim() || khopTen(x.nguoi, h.ten)))?.ma
       if (canPhu && l.ai === 'nguoi_ke' && l.nhan_vat_phu !== canPhu) {
         l.nhan_vat_phu = canPhu as typeof l.nhan_vat_phu
         so++
+      }
+      // Danh sách cần chuẩn bị tự cập nhật: mục Gắn vừa sửa xong (đúng địa điểm, đúng nhân vật phụ) thành "đã có"
+      for (const h of x.hinh_can ?? []) {
+        if (h.co) continue
+        const xong = (h.loai === 'nhan_vat' && laLoaiPhu(h.ma) && l.nhan_vat_phu === h.ma) || (h.loai === 'dia_diem' && !!h.ma && l.dia_diem === h.ma && !!d.phim?.nen?.[h.ma])
+        if (xong) {
+          h.co = true
+          h.ghi_chu = 'đã có'
+        }
       }
       // Logo thương hiệu câu nhắc tới → huy hiệu bật lên (máy dựng tự nhận thương hiệu quen; đây thêm cả thương hiệu lạ)
       const logo = (x.hinh_can ?? []).filter((h) => h.loai === 'logo').slice(0, 2).map((h) => ({ ten: h.ten, mau: h.mau, chu: h.chu || h.ten.slice(0, 2) }))

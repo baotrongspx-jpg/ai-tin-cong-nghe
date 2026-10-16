@@ -549,6 +549,7 @@ const VE_VAT = {
   can: '<svg viewBox="0 0 100 100"><rect x="8" y="58" width="84" height="30" rx="8" fill="#e5e7eb" stroke="#374151" stroke-width="4"/><circle cx="50" cy="73" r="10" fill="#fff" stroke="#374151" stroke-width="3"/><path d="M50 73 L56 66" stroke="#dc2626" stroke-width="3"/></svg>',
   dai: '<svg viewBox="0 0 100 100"><rect x="0" y="40" width="100" height="22" rx="6" fill="#111827"/><ellipse cx="50" cy="51" rx="24" ry="18" fill="#facc15" stroke="#a16207" stroke-width="4"/><circle cx="50" cy="51" r="6" fill="#dc2626"/></svg>',
   day: '<svg viewBox="0 0 100 100"><rect x="0" y="10" width="6" height="90" fill="#334155"/><rect x="94" y="10" width="6" height="90" fill="#334155"/><path d="M0 30 H100" stroke="#dc2626" stroke-width="5"/><path d="M0 50 H100" stroke="#f8fafc" stroke-width="5"/><path d="M0 70 H100" stroke="#2563eb" stroke-width="5"/></svg>',
+  ban_bai: '<svg viewBox="0 0 100 100"><rect x="10" y="56" width="6" height="42" fill="#78350f"/><rect x="84" y="56" width="6" height="42" fill="#78350f"/><rect x="0" y="40" width="100" height="18" rx="6" fill="#14532d"/><rect x="2" y="41" width="96" height="11" rx="4" fill="#15803d"/><circle cx="72" cy="46" r="4" fill="#ef4444" stroke="#fff" stroke-width="1"/><circle cx="80" cy="47" r="4" fill="#3b82f6" stroke="#fff" stroke-width="1"/><circle cx="76" cy="43" r="4" fill="#facc15" stroke="#fff" stroke-width="1"/></svg>',
   bien: '<svg viewBox="0 0 100 100"><rect x="4" y="26" width="92" height="48" rx="6" fill="#92400e" stroke="#451a03" stroke-width="4"/><rect x="12" y="34" width="76" height="32" rx="3" fill="#fde68a"/><path d="M22 50 H78" stroke="#92400e" stroke-width="6" stroke-linecap="round"/></svg>',
   bang_do: '<svg viewBox="0 0 100 100"><path d="M0 46 Q50 56 100 46" fill="none" stroke="#dc2626" stroke-width="7"/><rect x="0" y="30" width="4" height="40" fill="#334155"/><rect x="96" y="30" width="4" height="40" fill="#334155"/><circle cx="50" cy="52" r="8" fill="#ef4444" stroke="#991b1b" stroke-width="2"/></svg>',
   dem: '<svg viewBox="0 0 100 100"><ellipse cx="50" cy="66" rx="48" ry="24" fill="#7c3aed" stroke="#4c1d95" stroke-width="4"/><ellipse cx="50" cy="58" rx="36" ry="10" fill="#a78bfa" opacity="0.7"/></svg>',
@@ -581,6 +582,7 @@ const VAT = {
   noi: ['🛏️', 'noi'], be: ['👶', 'be'], binh: ['🍼', 'binh'], zzz_be: ['💤', 'be_ngu'],
   gang_p: ['🥊', 'phai'], gang_t: ['🥊', 'trai'], no: ['💥', 'va_cham'], no_t: ['💥', 'va_cham_t'], bao_cat: [VE_VAT.bao_cat, 'canh_cao'], day_dai: [VE_VAT.day, 'day'],
   gio_do: ['🧺', 'truoc'], cong: [VE_VAT.cong, 'truoc'], can_sk: [VE_VAT.can, 'canh'], dai: [VE_VAT.dai, 'eo'], ly: ['🍸', 'phai'],
+  ban_bai: [VE_VAT.ban_bai, 'ban_ngoi'], bai_tay: ['🃏', 'bai_nguc'], la_danh: ['🃏', 'tren_ban'],
   bien: [VE_VAT.bien, 'nguc'], can_dia: ['⚖️', 'canh_cao'], gao: ['🌾', 'phai'], ca_kho: ['🐟', 'trai'], bang_do: [VE_VAT.bang_do, 'day'], keo: ['✂️', 'phai'],
   xe_dap: ['🚲', 'xe'], nha_que: ['🏡', 'canh_xa'],
   den_tiec: ['🪩', 'troi'], not_nhac: ['🎵', 'dau'], may_bay: ['✈️', 'bay'], dem_thien: [VE_VAT.dem, 'dem'], hao_quang: ['✨', 'dau'],
@@ -606,7 +608,7 @@ const VAT_DUNG_BOI = {
   doi_dau: ['gang_p', 'gang_t', 'no', 'no_t'], dam_boc: ['gang_p', 'gang_t', 'no', 'no_t'], dam_moc: ['gang_p', 'gang_t', 'no'], ha_guc: ['gang_p', 'gang_t', 'no_t'],
   dung_cho_dem: ['gang_p', 'gang_t'], buoc_vao_dai: ['gang_p', 'gang_t', 'day_dai'], dam_bao_cat: ['gang_p', 'gang_t', 'no', 'bao_cat'],
   can_tai: ['gang_p', 'gang_t', 'tuc'], ganh_vac: ['gio_do'], bat_giu: ['cong'], kham_suc_khoe: ['can_sk'], nhan_dai: ['dai'],
-  treo_bien: ['bien'], can_hang: ['can_dia', 'gao', 'ca_kho'], cat_bang: ['bang_do', 'keo'], dap_xe: ['xe_dap', 'nha_que'],
+  choi_bai: ['ban_bai', 'bai_tay', 'la_danh'], treo_bien: ['bien'], can_hang: ['can_dia', 'gao', 'ca_kho'], cat_bang: ['bang_do', 'keo'], dap_xe: ['xe_dap', 'nha_que'],
   tiec_tung: ['ly', 'den_tiec', 'not_nhac'], di_may_bay: ['may_bay', 'vali'], ngoi_thien: ['dem_thien', 'hao_quang'],
 }
 const vatHien = (p, ten, t, dd) => {
@@ -960,6 +962,26 @@ const TRUYEN = {
       `tl.to("#${p} svg", { x: 0, duration: 0.5 }, ${f(t + Math.max(di, dd) + 0.05)});`,
     ]
   },
+  // ── Bộ 6 (phim Nikola Tesla 16/10/2026) ──
+  // Chơi bài (cờ bạc, sòng bạc): bàn dạ xanh trước người (như ngồi sau bàn), tay trái cầm xấp bài trước ngực, người chồm
+  // tới, mắt dán vào bài, mồ hôi; tay phải rút một lá đánh xuống bàn dứt khoát; cuối thở dài, cúi đầu tiếc nuối
+  choi_bai: (p, t, dd) => [
+    ...vatHien(p, 'ban_bai', t, dd), ...vatHien(p, 'bai_tay', t, dd), ...vatHien(p, 'la_danh', t + Math.min(1.4, dd * 0.5), Math.max(0.6, dd - Math.min(1.4, dd * 0.5))),
+    `tl.to("#${p}-tay-trai", { rotation: -30, duration: 0.35 }, ${f(t)});`,
+    `tl.to("#${p}-tay-phai", { rotation: 22, duration: 0.35 }, ${f(t)});`,
+    `tl.to("#${p} svg", { y: 14, duration: 0.4, ease: "sine.inOut" }, ${f(t)});`,
+    `tl.to("#${p}-dau", { rotation: 12, duration: 0.4 }, ${f(t)});`,
+    `tl.to("#${p}-mo-hoi", { opacity: 1, duration: 0.3 }, ${f(t + 0.4)});`,
+    `tl.to("#${p}-tay-phai", { rotation: 30, duration: 0.18, yoyo: true, repeat: 3, ease: "sine.inOut" }, ${f(t + 0.5)});`,
+    // đánh lá bài xuống bàn
+    `tl.to("#${p}-tay-phai", { rotation: 48, duration: 0.14, ease: "power3.in" }, ${f(t + Math.min(1.4, dd * 0.5))});`,
+    `tl.fromTo("#${p}-vat-la_danh", { y: -70, x: 60, rotation: -25 }, { y: 0, x: 0, rotation: 12, duration: 0.22, ease: "power2.in", immediateRender: false }, ${f(t + Math.min(1.4, dd * 0.5))});`,
+    `tl.to("#${p}-tay-phai", { rotation: 18, duration: 0.3 }, ${f(t + Math.min(1.4, dd * 0.5) + 0.2)});`,
+    `tl.to("#${p}-dau", { rotation: 16, duration: 0.5, ease: "sine.inOut" }, ${f(t + Math.max(1.8, dd - 0.8))});`,
+    `tl.to("#${p} svg", { scaleY: 0.97, duration: 0.4, yoyo: true, repeat: 1, ease: "sine.inOut" }, ${f(t + Math.max(1.8, dd - 0.8))});`,
+    `tl.to("#${p}-mo-hoi", { opacity: 0, duration: 0.3 }, ${f(t + Math.max(1, dd) - 0.3)});`,
+    `tl.to("#${p} svg", { y: 0, duration: 0.4 }, ${f(t + Math.max(1.2, dd) + 0.05)});`,
+  ],
   doi_dau: (p, t, dd) => [
     ...gangTay(p, t, dd), ...thuThe(p, t),
     ...chuoiDam(p, t + 0.35, Math.max(0.6, dd - 1.3)),
@@ -1126,6 +1148,7 @@ function chuoiDam(p, t, giay, vaoBao = false) {
 }
 // Từ trong lời kể → hành động kể chuyện (thứ tự = ưu tiên). Ẩn dụ ("bài kiểm tra sinh tồn") không tính
 const TU_TRUYEN = [
+  ['choi_bai', /cờ bạc|đánh bạc|sòng bạc|chơi bài|bài bạc|con bạc/],
   ['cat_bang', /cắt băng|khánh thành|khai trương nhà máy/],
   ['treo_bien', /treo biển|biển hiệu|mở (một )?(cửa hàng|tiệm)/],
   ['can_hang', /buôn bán|bán (gạo|cá|hàng)|cân (gạo|hàng)|hàng khô/],
@@ -1719,7 +1742,7 @@ const ganVat = (svg, id, dp, toaDo) => {
       continue
     }
     if (toaDo && !toaDo[cho]) continue
-    const [x, y, co] = toaDo?.[cho] ?? { phai: [280, 496, 96], trai: [120, 496, 96], truoc: [200, 452, 128], dau: [300, 110, 70], nguc: [200, 372, 130], vai: [296, 318, 74], xe: [200, 470, 290], mat: [200, 192, 118], day: [200, 420, 380], eo: [200, 402, 150], dem: [200, 522, 300] }[cho]
+    const [x, y, co] = toaDo?.[cho] ?? { phai: [280, 496, 96], trai: [120, 496, 96], truoc: [200, 452, 128], dau: [300, 110, 70], nguc: [200, 372, 130], vai: [296, 318, 74], xe: [200, 470, 290], mat: [200, 192, 118], day: [200, 420, 380], eo: [200, 402, 150], dem: [200, 522, 300], ban_ngoi: [200, 470, 380], bai_nguc: [214, 386, 96], tren_ban: [150, 432, 64] }[cho]
     // Đồ vẽ sẵn (VE_VAT, khung 100×100): nhóm ngoài đặt chỗ + cỡ, nhóm trong mang id để GSAP chạy (không đè transform)
     const el = bt.startsWith('<')
       ? `<g transform="translate(${bt.includes(CAN_CO) ? `${x - 10.5 * (co / 100)} ${y - 95 * (co / 100)}` : `${x - co / 2} ${y - co / 2}`}) scale(${co / 100})"><g id="${id}-vat-${ten}" opacity="0">${bt.replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, '')}</g></g>`
@@ -1785,7 +1808,7 @@ const nvPhu = doanPhu.map((dp, k) => {
   //    giật lùi; buồn lùi xa, chậm; vui nảy lên khi tới nơi
   {
     const BUOC = NGANG ? 180 : 140
-    const CANH = new Set(['mo_cua', 'nam_noi', 'gong_chuong', 'rung_chuong', 'bam_nut', 'dam_bao_cat', 'kham_suc_khoe', 'ngoi_thien', 'buoc_vao_dai', 'doi_dau', 'dam_boc', 'dam_moc', 'ha_guc', 'can_tai', 'dung_cho_dem', 'nhan_dai', 'treo_bien', 'can_hang', 'cat_bang'])
+    const CANH = new Set(['mo_cua', 'nam_noi', 'gong_chuong', 'rung_chuong', 'bam_nut', 'dam_bao_cat', 'kham_suc_khoe', 'ngoi_thien', 'buoc_vao_dai', 'doi_dau', 'dam_boc', 'dam_moc', 'ha_guc', 'can_tai', 'dung_cho_dem', 'nhan_dai', 'treo_bien', 'can_hang', 'cat_bang', 'choi_bai'])
     const DI = new Set(['xach_vali', 'di_bo', 'chay', 'lai_xe', 'ganh_vac', 'di_may_bay', 'dap_xe'])
     const SAN = new Set(['rua_bat', 'lap_rap', 'nam_noi', 'dong_may_tinh', 'an_com', 'dem_tien'])
     const VONG = [1, 0, -1, 0]

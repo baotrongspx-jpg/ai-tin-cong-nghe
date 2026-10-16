@@ -2025,12 +2025,16 @@ const nenCanh = doanCanh.map((dc, k) => {
     anh = `<img id="bc${k}-anh" class="anh-nen-canh${tepAnh.startsWith('nen-') ? ' tu-lam' : ''}" src="assets/${esc(tepAnh)}" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px"/>`
     tw.push(`tl.fromTo("#bc${k}-anh", { scale: 1 }, { scale: 1.06, duration: ${f(Math.max(1, het - t0))}, ease: "none", immediateRender: false }, ${f(t0)});`)
   }
-  // Nền chuyển động THEO TỪNG CÂU (lớp #bc<k>-dong, riêng với hiệu ứng đổi cảnh và phóng tranh): mỗi câu nền trôi sang
-  // khung mới (đổi chiều câu sau), độ gần xa theo sắc thái câu — căng thẳng / lo dồn nền tới, bất ngờ / khoảnh khắc lặng
+  // Nền chuyển động THEO TỪNG CÂU (lớp #bc<k>-dong, riêng với hiệu ứng đổi cảnh và phóng tranh): cả cảnh trôi MỘT chiều
+  // đều đặn như máy quay thật (chủ trang 16/10/2026: "background đôi khi bị giật" — trước đây mỗi câu đổi chiều, tăng tốc
+  // rồi dừng, nền lắc qua lắc lại), cảnh sau trôi chiều ngược lại; độ gần xa theo sắc thái câu — căng thẳng / lo dồn nền tới, bất ngờ / khoảnh khắc lặng
   // giật tới nhanh rồi đứng, buồn lùi ra cho không gian trống trải, vui nới rộng, suy nghĩ trôi chậm. Mỗi câu một lệnh
   // fromTo nối tiếp (đầu câu này = cuối câu trước), không chồng lệnh nên không giật khi dựng song song.
   const TIEN = { bat_ngo: 0.05, tuc_gian: 0.04, lo_lang: 0.035, to_mo: 0.02, suy_nghi: 0.012, giai_thich: 0.01, khang_dinh: 0.01, vui: -0.02, buon: -0.03 }
-  let s0 = 1, x0 = 0
+  let s0 = 1
+  const bienX = NGANG ? 30 : 20
+  const xLuc = (tt) => (k % 2 ? 1 : -1) * (-bienX + 2 * bienX * Math.min(1, Math.max(0, (tt - t0) / Math.max(1, het - t0))))
+  let x0 = xLuc(t0)
   for (let i = dc.tu; i <= dc.het; i++) {
     const l = loi[i]
     const tu = i === dc.tu ? t0 : batDau[i] - 0.15
@@ -2039,9 +2043,14 @@ const nenCanh = doanCanh.map((dc, k) => {
     let s1 = s0 + (TIEN[l.cam_xuc] ?? 0.01) * (l.lang ? 1.4 : 1)
     if (s1 > 1.1 || s1 < 1) s1 = s0 - (s1 - s0) // chạm giới hạn thì đi ngược lại
     s1 = Math.min(1.1, Math.max(1, s1))
-    const x1 = ((i - dc.tu) % 2 ? 1 : -1) * (NGANG ? 30 : 20) * (['buon', 'suy_nghi'].includes(l.cam_xuc) ? 0.5 : 1)
+    const x1 = xLuc(den)
     const nhanh = l.lang || l.cam_xuc === 'bat_ngo' || l.anh_sang === 'loe_sang'
-    tw.push(`tl.fromTo("#bc${k}-dong", { scale: ${f(s0)}, x: ${f(x0)} }, { scale: ${f(s1)}, x: ${f(x1)}, duration: ${f(nhanh ? Math.min(0.55, den - tu) : den - tu)}, ease: "${nhanh ? 'power3.out' : 'sine.inOut'}", immediateRender: false }, ${f(tu)});`)
+    if (nhanh && den - tu > 0.9) {
+      // dồn nền tới nhanh một nhịp rồi trôi tiếp đều (không đứng khựng tới hết câu)
+      const xg = x0 + (x1 - x0) * (0.55 / (den - tu))
+      tw.push(`tl.fromTo("#bc${k}-dong", { scale: ${f(s0)}, x: ${f(x0)} }, { scale: ${f(s1)}, x: ${f(xg)}, duration: 0.55, ease: "power3.out", immediateRender: false }, ${f(tu)});`)
+      tw.push(`tl.fromTo("#bc${k}-dong", { scale: ${f(s1)}, x: ${f(xg)} }, { scale: ${f(s1)}, x: ${f(x1)}, duration: ${f(den - tu - 0.55)}, ease: "none", immediateRender: false }, ${f(tu + 0.55)});`)
+    } else tw.push(`tl.fromTo("#bc${k}-dong", { scale: ${f(s0)}, x: ${f(x0)} }, { scale: ${f(s1)}, x: ${f(x1)}, duration: ${f(den - tu)}, ease: "none", immediateRender: false }, ${f(tu)});`)
     // Câu bi kịch trên nền vui tươi (văn phòng, cửa hàng, phố nắng…: video Oppenheimer dùng văn phòng xanh có biểu đồ đi lên
     // cho Hiroshima) → nền tối, mất màu suốt câu; câu sau hết bi kịch thì trả màu
     const toi = biKich(i) && VUI_TUOI.has(dc.ten)
@@ -2069,10 +2078,18 @@ const HA_PHU = NGANG ? 100 - PHU_XUONG : 0
 let CAT_DAU = null
 let camScale = 1
 const lia = (t, scale, ox, oy, giay, ease = 'power2.inOut', xoay = 0) => {
-  if (CAT_DAU !== null && t <= CAT_DAU + 0.01 && giay <= 0.8 && Math.abs(scale - camScale) >= 0.12) {
+  // Chỉ cắt thẳng khi khung đổi hẳn (độ phóng lệch từ 0,3): cắt giữa hai khung chỉ chặt hơn 10–25% là "jump cut", nền và
+  // người gần như đứng nguyên chỗ nên trông như giật (chủ trang 16/10/2026: "background đôi khi bị giật"). Khung lệch vừa
+  // (0,12–0,3) → lia mượt nửa giây bắt đầu ngay trước câu mới
+  const lech = Math.abs(scale - camScale)
+  if (CAT_DAU !== null && t <= CAT_DAU + 0.01 && giay <= 0.8 && lech >= 0.3) {
     t = Math.max(0, CAT_DAU - 0.08)
     giay = 0.04
     ease = 'none'
+  } else if (CAT_DAU !== null && t <= CAT_DAU + 0.01 && giay <= 0.8 && lech >= 0.12) {
+    t = Math.max(0, CAT_DAU - 0.3)
+    giay = Math.max(giay, 0.55)
+    ease = 'sine.inOut'
   }
   camScale = scale
   // đưa điểm (ox, oy) về giữa khung với độ phóng `scale` (gốc biến đổi ở điểm giữa khung GIUA_X, GIUA_Y), nghiêng `xoay` độ
@@ -2081,7 +2098,7 @@ const lia = (t, scale, ox, oy, giay, ease = 'power2.inOut', xoay = 0) => {
   MAY.nv.push({ t, giay, ease, v: { scale, x, y, rotation: xoay } })
   // Nền luôn phủ kín khung: phóng thêm cho mép mờ (blur) và góc nghiêng, rồi giới hạn độ dịch để mép nền không lộ thành sọc
   const xn = xoay * SAU_NEN
-  const sn = (1 + (scale - 1) * SAU_NEN) * (1.03 + Math.abs(xn) * 0.035)
+  const sn = Math.max(1, 1 + (scale - 1) * SAU_NEN) * (1.03 + Math.abs(xn) * 0.035)
   const kep = (v, du) => Math.max(-du, Math.min(du, v))
   const nx = kep(x * SAU_NEN, (RONG * sn - RONG) / 2 - 8)
   const ny = kep(y * SAU_NEN, (CAO * sn - CAO) / 2 - 8)

@@ -86,7 +86,21 @@ async function suaChuHong(x: unknown): Promise<unknown> {
 
 const cho = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
+// Cả lượt các model đều báo quá tải (503 "high demand", 500, mất kết nối) → nghỉ rồi thử lại cả lượt, tối đa 3 lượt
+// (chủ trang 16/10/2026: "Gemini lỗi: … experiencing high demand" khi Chuẩn bị). Hết lượt miễn phí (429) thì chờ cũng vô ích → báo lỗi ngay
 async function goiGemini(opts: YeuCauJson<unknown>): Promise<string | null> {
+  for (let vong = 0; ; vong++) {
+    try {
+      return await goiGeminiMotLuot(opts)
+    } catch (e) {
+      const qt = e instanceof Error && /quá tải|high demand|overloaded|UNAVAILABLE|503|500|fetch failed|timeout|aborted/i.test(e.message)
+      if (!qt || vong >= 2) throw e
+      await cho(vong ? 15000 : 6000)
+    }
+  }
+}
+
+async function goiGeminiMotLuot(opts: YeuCauJson<unknown>): Promise<string | null> {
   let loiCuoi = ''
   for (const model of opts.moHinh ?? MODEL_GEMINI) {
     for (let lan = 0; lan < 2; lan++) {

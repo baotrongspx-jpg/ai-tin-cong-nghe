@@ -566,15 +566,21 @@ def tao_srt(cac_cau):
     khoi = []
     for c in cac_cau:
         tu = c['chu'].split()
-        doan, hien = [], []
+        # Số đoạn đủ để mỗi đoạn <= ~84 ký tự, rồi chia đều số chữ giữa các đoạn (đánh giá phim Ferrari 16/10/2026: chia tham
+        # lam để đoạn cuối chỉ còn 1–2 chữ như "trong.", "Romeo.", khán giả đọc thấy hụt)
+        so_doan = max(1, -(-len(' '.join(tu)) // 84))
+        doan, hien, muc = [], [], len(' '.join(tu)) / so_doan
         for w in tu:
-            if hien and len(' '.join(hien + [w])) > 84:
+            if hien and len(doan) < so_doan - 1 and len(' '.join(hien + [w])) > muc + 6:
                 doan.append(hien)
                 hien = [w]
             else:
                 hien.append(w)
         if hien:
             doan.append(hien)
+        # đoạn cuối vẫn quá ngắn (dưới 3 chữ) thì gộp vào đoạn trước
+        if len(doan) > 1 and len(doan[-1]) < 3:
+            doan[-2] += doan.pop()
         tong = max(1, sum(len(' '.join(d)) for d in doan))
         t = c['bd']
         for d in doan:

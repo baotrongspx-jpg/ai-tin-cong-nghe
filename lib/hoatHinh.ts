@@ -39,6 +39,10 @@ export const NHAN_VAT = {
   dau_bep: { ten: 'Đầu bếp', giong: 'Phạm Tuyên' },
   nu_doanh_nhan: { ten: 'Nữ doanh nhân', giong: 'Kim Thanh' },
   nguoi_nuoc_ngoai: { ten: 'Người nước ngoài', giong: 'Adam bựa' },
+  // Người phương Tây thời xưa
+  dan_lang_tay: { ten: 'Dân làng', giong: 'Phạm Tuyên' },
+  linh_the_chien: { ten: 'Người lính', giong: 'Xuân Vĩnh' },
+  phu_nu_tay_xua: { ten: 'Người phụ nữ', giong: 'Ngọc Linh' },
   // Vai cổ trang
   vua: { ten: 'Nhà vua', giong: 'Minh Đức' },
   hoang_hau: { ten: 'Hoàng hậu', giong: 'Đoan Trang' },

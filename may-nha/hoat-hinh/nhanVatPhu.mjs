@@ -378,17 +378,71 @@ export const NHAN_VAT_PHU = {
         tayPhai: `<path d="M244 452 L322 452 L330 478 L236 478 Z" fill="#475569" ${vien(5)}/><rect x="250" y="410" width="66" height="44" rx="5" fill="#0f172a" ${vien(5)}/><path d="M258 422 h30 M258 432 h44 M258 442 h22" stroke="#22c55e" stroke-width="3"/>`,
       }),
   },
+  // Người phương Tây thời xưa (Âu, Mỹ 1900–1960; đánh giá phim Ferrari 16/10/2026: dân làng Ý đội nón lá, quân Đồng Minh
+  // thành cảnh sát vì máy chỉ có nhân vật kiểu Việt)
+  dan_lang_tay: {
+    mau: '#fdba74',
+    bieu_tuong: '🧢',
+    ten: 'Dân làng',
+    svg: (id) =>
+      nguoi(id, {
+        da: '#f1c7a5',
+        ao: '#f5f5f4',
+        tay: '#f5f5f4',
+        quan: '#44403c',
+        giay: '#3f2a1d',
+        co: 'so_mi',
+        may: '#6b3a1d',
+        tocTruoc: `${toc.ngan('#6b3a1d')}<path d="M108 150 Q106 86 200 82 Q294 86 292 142 Z" fill="#57534e" ${vien(6)}/><path d="M96 152 Q150 132 224 140 L218 160 Q150 154 98 166 Z" fill="#44403c" ${vien(5)}/>`,
+        than: `<path d="M140 300 L178 294 L200 420 L222 294 L260 300 L262 470 L138 470 Z" fill="#78350f" ${vien(5)}/><circle cx="200" cy="440" r="4" fill="#fde68a"/><circle cx="188" cy="400" r="0"/><path d="M154 300 L150 470 M246 300 L250 470" stroke="#57534e" stroke-width="7"/>`,
+      }),
+  },
+  linh_the_chien: {
+    mau: '#a8a29e',
+    bieu_tuong: '🪖',
+    ten: 'Người lính',
+    svg: (id) =>
+      nguoi(id, {
+        ao: '#57602e',
+        quan: '#4a5026',
+        giay: '#292524',
+        co: 'so_mi',
+        tocTruoc: `<path d="M98 168 C98 66 302 66 302 168 Z" fill="#4b5320" ${vien(7)}/><path d="M84 162 Q200 184 316 162 L316 176 Q200 200 84 176 Z" fill="#3b4119" ${vien(6)}/><path d="M118 176 Q150 250 182 262 M282 176 Q250 250 218 262" stroke="#3b4119" stroke-width="4" fill="none"/>`,
+        than: `<rect x="134" y="448" width="132" height="18" rx="4" fill="#3f2a1d" ${vien(4)}/><rect x="190" y="444" width="20" height="26" rx="3" fill="#a8a29e" ${vien(3)}/><rect x="146" y="330" width="34" height="30" rx="4" fill="#4a5026" ${vien(4)}/><rect x="220" y="330" width="34" height="30" rx="4" fill="#4a5026" ${vien(4)}/><path d="M150 296 L250 446" stroke="#3f2a1d" stroke-width="10"/>`,
+      }),
+  },
+  phu_nu_tay_xua: {
+    mau: '#f9a8d4',
+    bieu_tuong: '👒',
+    ten: 'Người phụ nữ',
+    svg: (id) =>
+      nguoi(id, {
+        da: '#fbe0cc',
+        ao: '#1e3a8a',
+        quan: '#1e3a8a',
+        vay: true,
+        nu: true,
+        co: 'tron',
+        may: '#7c4a24',
+        tocSau: `<path d="M112 200 C96 90 304 90 288 200 L292 236 Q200 256 108 236 Z" fill="#7c4a24" ${vien(6)}/>`,
+        tocTruoc: `<path d="M118 160 C112 90 288 90 282 160 C262 128 138 128 118 160 Z" fill="#7c4a24" ${vien(5)}/><path d="M110 150 C108 70 292 70 290 150 Q200 120 110 150 Z" fill="#9f1239" ${vien(6)}/><path d="M112 140 Q200 112 288 140" stroke="#fbbf24" stroke-width="7" fill="none"/>`,
+        than: `<path d="M176 292 Q200 312 224 292" fill="none" stroke="#f8fafc" stroke-width="8"/>${[164, 182, 200, 218, 236].map((x, k) => `<circle cx="${x}" cy="${304 + (k === 2 ? 10 : k === 1 || k === 3 ? 6 : 0)}" r="5" fill="#f8fafc" ${vien(1.5)}/>`).join('')}<circle cx="170" cy="380" r="5" fill="#f8fafc"/><circle cx="230" cy="410" r="5" fill="#f8fafc"/><circle cx="182" cy="440" r="5" fill="#f8fafc"/>`,
+      }),
+  },
+  // Doanh nhân: vest XÁM, kính, cà vạt xanh, tóc muối tiêu (nhân vật chính hay mặc vest đen cà vạt đỏ — trước đây hai người
+  // giống hệt nhau, khán giả không biết ai là ai)
   doanh_nhan: {
     mau: '#cbd5e1',
     bieu_tuong: '👔',
     ten: 'Doanh nhân',
     svg: (id) =>
       nguoi(id, {
-        ao: '#1e293b',
-        quan: '#0f172a',
+        ao: '#6b7280',
+        quan: '#4b5563',
         co: 'vest',
-        tocTruoc: toc.reNgoi('#1c1917'),
-        than: `${caVat('#dc2626')}<path d="M232 338 L252 338" stroke="#f8fafc" stroke-width="5"/><circle cx="200" cy="452" r="4" fill="#94a3b8"/>`,
+        tocTruoc: toc.reNgoi('#57534e'),
+        mat: matMacDinh() + kinh(),
+        than: `${caVat('#1d4ed8')}<path d="M232 338 L252 338" stroke="#f8fafc" stroke-width="5"/><circle cx="200" cy="452" r="4" fill="#94a3b8"/>`,
         tayTrai: `<rect x="86" y="470" width="70" height="52" rx="8" fill="#78350f" ${vien(5)}/><path d="M108 470 Q121 452 134 470" fill="none" stroke="${VIEN}" stroke-width="5"/><rect x="116" y="490" width="10" height="8" fill="#facc15"/>`,
         tayPhai: `<rect x="262" y="424" width="36" height="10" rx="3" fill="#facc15" ${vien(3)}/>`,
       }),

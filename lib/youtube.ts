@@ -239,8 +239,12 @@ function loiThoaiGui(d: DuAnYT, k: number) {
     const chanDung = phim?.anh?.find((a) => a.chinh)
     const tieuDe = d.tieu_de.replace(/^Phim tiểu sử:\s*/i, '').trim()
     const gonGon = d.tao_luc >= '2026-10-14T12:00'
+    // Tên trong câu giới thiệu: phim tạo từ 2026-10-16T09:30 dùng tên chuẩn của bước nghiên cứu (vd "Enzo Ferrari"), không thì viết hoa
+    // chữ đầu tên đã gõ (đánh giá phim Ferrari 16/10/2026: phụ đề in "ferari" đúng như chữ gõ lúc tạo phim)
+    const tenChuan = phim?.nghien_cuu?.ho_so?.ten?.trim() ?? ''
+    const tenGioi = !phim ? '' : d.tao_luc < '2026-10-16T09:30' ? phim.ten : tenChuan && tenChuan.length <= 32 ? tenChuan : phim.ten.trim().replace(/(^|\s)(\p{Ll})/gu, (_m, a: string, b: string) => a + b.toLocaleUpperCase('vi-VN'))
     const gioiThieu = phim
-      ? `Đây là Công Nghệ 24H, và đây là câu chuyện về ${phim.ten}${!gonGon && tieuDe && tieuDe !== phim.ten ? `: ${cham(tieuDe)}` : '.'}`
+      ? `Đây là Công Nghệ 24H, và đây là câu chuyện về ${tenGioi}${!gonGon && tieuDe && tieuDe !== phim.ten ? `: ${cham(tieuDe)}` : '.'}`
       : gonGon
         ? 'Bạn đang xem Công Nghệ 24H.'
         : `Bạn đang xem Công Nghệ 24H. Hôm nay chúng ta cùng tìm hiểu: ${cham(tieuDe)}`
@@ -1496,6 +1500,8 @@ export async function veNenPhim(id: string, ma: string) {
   const x = d.phim!.ho_so!.dia_diem.find((v) => v.ma === ma)!
   const moTa = [
     `${x.ten}, ${[x.thanh_pho, x.quoc_gia].filter(Boolean).join(', ')}, era: ${x.thoi_ky}.`,
+    // Đúng thời kỳ tuyệt đối (đánh giá phim Ferrari: cảnh năm 1943 có xe Ferrari đời mới đậu trước nhà máy)
+    `Strictly period-accurate for ${x.thoi_ky}: no vehicle, sign, logo, building detail or object from any later era (no modern cars, no modern signage, no present-day additions).`,
     ...([['Architecture', x.kien_truc], ['Interior', x.noi_that], ['Exterior', x.ngoai_that], ['Colours', x.mau_sac], ['Light', x.anh_sang], ['Weather', x.thoi_tiet], ['Props', x.dao_cu], ['Atmosphere', x.khong_khi]] as const)
       .filter(([, v]) => v)
       .map(([k, v]) => `${k}: ${v}.`),

@@ -3089,7 +3089,9 @@ loi.forEach((l, i) => {
     : !laPhu(l.ai) && !gioiThieu.has(i) && i > 0 && i < loi.length - 1 && ['bat_ngo', 'lo_lang', 'vui', 'suy_nghi'].includes(l.cam_xuc)
   // Nhân vật phụ nói trong đoạn căng thẳng cũng có thể rung tay
   if (!chiDan && l.may_quay === 'rung_tay') rungTay(t0, conLai + 0.3)
-  if (l.ai === 'nguoi_ke') {
+  // Phim tiểu sử: cả câu nhân vật (chính / phụ) nói trong cảnh tái hiện, Mèo / Bit cũng lui ra (đánh giá phim Ferrari
+  // 16/10/2026: robot to che 1/3 khung trong văn phòng Milan năm 1939 — khán giả bị kéo ra khỏi cảnh lịch sử)
+  if (l.ai === 'nguoi_ke' || (nhan_vat_chinh && laPhu(l.ai))) {
     // B-roll: lời kể đi cùng cảnh minh hoạ, Mèo / Bit lui hẳn ra hai mép (quay lại khi tới lượt họ)
     tw.push(`tl.to("#o-meo", { xPercent: -150, duration: 0.6, ease: "power2.inOut" }, ${f(Math.max(0, t0 - 0.35))});`)
     tw.push(`tl.to("#o-robot", { xPercent: 150, duration: 0.6, ease: "power2.inOut" }, ${f(Math.max(0, t0 - 0.35))});`)
@@ -3829,8 +3831,9 @@ const CSS_NGANG = `
       .dd-hinh span { font-size: ${NGANG ? 420 : 380}px; line-height: 1; filter: drop-shadow(0 20px 30px #000a); }
       .so-dong { position: absolute; left: 0; right: 0; top: 118px; text-align: center; font-size: 104px; font-weight: 700; line-height: 1.1; color: #fde047; -webkit-text-stroke: 10px #111827; paint-order: stroke fill; text-shadow: 0 10px 0 #111827, 0 18px 40px #000a; opacity: 0; }
       .dao-cu-khung { position: absolute; right: 80px; top: 140px; width: 170px; height: 170px; display: flex; align-items: center; justify-content: center; font-size: 128px; line-height: 1; font-family: "Emoji", sans-serif; filter: drop-shadow(0 14px 20px #0008); opacity: 0; }
-      .moc { top: 110px; height: 400px; }
-      .moc-chu { font-size: 76px; }
+      .moc { top: 70px; height: auto; }
+      .moc-chu { font-size: 70px; max-width: 1500px; padding: 14px 40px 22px; border-radius: 28px; background: #0f172ad9; box-shadow: 0 16px 40px #0009; }
+      .moc-chu.dai { font-size: 54px; }
       .phu-de { height: 250px; padding: 0 200px 40px; background: linear-gradient(transparent, #00000066 50%, #00000088); }
       .pd-dong { font-size: 42px; }
       #the-chuong { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: radial-gradient(ellipse at center, #1e1b4bf2, #020617fa); opacity: 0; }

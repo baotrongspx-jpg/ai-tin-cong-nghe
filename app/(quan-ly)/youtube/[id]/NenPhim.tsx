@@ -26,7 +26,7 @@ const CHI_TIET: [keyof DiaDiem, string][] = [
 // Lời nhắn để tạo ảnh bằng công cụ AI (Notebook, Gemini…) cho đúng địa điểm và đúng yêu cầu ảnh nền
 const loiNhan = (x: DiaDiem) =>
   [
-    `Tạo ảnh nền khổ ngang 16:9 (1920×1080 trở lên), KHÔNG có người, không chữ, không logo: ${x.ten}, ${[x.thanh_pho, x.quoc_gia].filter(Boolean).join(', ')}, thời kỳ ${x.thoi_ky}.`,
+    `Tạo ảnh nền khổ ngang 16:9 (1920×1080 trở lên), KHÔNG có người, không chữ, không logo: ${x.ten}, ${[x.thanh_pho, x.quoc_gia].filter(Boolean).join(', ')}, thời kỳ ${x.thoi_ky}. Đúng thời kỳ tuyệt đối: không có xe cộ, biển hiệu, logo, chi tiết kiến trúc hay đồ vật của thời sau (không xe đời mới, không biển hiệu hiện đại).`,
     ...CHI_TIET.map(([k, ten]) => (x[k] ? `${ten}: ${x[k]}.` : '')).filter(Boolean),
     'Góc nhìn ngang tầm mắt, mặt sàn chiếm khoảng 1/4 phía dưới, giữa ảnh để trống cho nhân vật đứng.',
   ].join('\n')

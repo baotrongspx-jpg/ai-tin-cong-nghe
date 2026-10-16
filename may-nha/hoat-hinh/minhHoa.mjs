@@ -113,7 +113,7 @@ export function mocMoDau(moc, giay, tu = 0) {
   if (!moc?.chu) return { html: '', tw: [] }
   const tuNgu = String(moc.chu).split(/\s+/).filter(Boolean)
   return {
-    html: `<div id="moc" class="moc"><div class="moc-bt">${esc(moc.bieu_tuong ?? '🔥')}</div><div class="moc-chu">${tuNgu.map((w, k) => `<span id="moc-${k}" class="moc-tu">${esc(w)}</span>`).join(' ')}</div></div>`,
+    html: `<div id="moc" class="moc"><div class="moc-bt">${esc(moc.bieu_tuong ?? '🔥')}</div><div class="moc-chu${tuNgu.length > 6 ? ' dai' : ''}">${tuNgu.map((w, k) => `<span id="moc-${k}" class="moc-tu">${esc(w)}</span>`).join(' ')}</div></div>`,
     tw: [
       `tl.set("#moc", { opacity: 1 }, ${f(tu)});`,
       `tl.fromTo("#moc .moc-bt", { scale: 0, rotation: -30 }, { scale: 1, rotation: 0, duration: 0.4, ease: "back.out(2.5)" }, ${f(tu)});`,

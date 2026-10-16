@@ -370,6 +370,11 @@ if (NGANG) {
   loi.forEach((l, i) => {
     if (l.hanh_dong === 'lich_lat') THE_TREN.add(i)
   })
+} else {
+  // Khung dọc: thẻ minh hoạ nằm cố định dưới tên kênh → câu có thẻ cũng lùi máy, hạ khung (không cận mặt lên đụng thẻ)
+  loi.forEach((l, i) => {
+    if (MINH_HOA[l.minh_hoa?.kieu] && !l.anh_wiki?.tep && l.hanh_dong !== 'lich_lat') THE_TREN.add(i)
+  })
 }
 // Chữ động nhấn con số (khung ngang): câu có con số kèm đơn vị ("40.000 kỵ binh", "70%", "3 tỷ đô") → con số bật to giữa
 // phía trên đúng lúc giọng đọc tới. Bỏ qua câu đã có thẻ / ảnh, năm đứng một mình (đã có thanh dòng thời gian); tối đa
@@ -1231,6 +1236,7 @@ const dongTacCau = (l, i) => {
 }
 const amDongTac = [] // [tệp, lúc, âm lượng, câu] tiếng đi kèm động tác (đập tay, vỗ tay, viết)
 const LUC_DONG_TAC = {} // câu → [động tác, lúc bắt đầu] (nền rung theo cú đập…)
+const X_BUOC = {} // câu → độ dịch ngang (px) của người diễn trên sân khấu lúc câu đó (lớp -buoc), máy quay bám theo
 const diemChi = [] // lúc con số / minh hoạ / chữ lớn hiện ra → bàn tay găng trắng trượt vào chỉ (BAN_TAY)
 // Về tư thế nghỉ (trước mỗi câu mới)
 // bo: nhân vật đang GIỮ tư thế sang câu sau (giuTuThe) — không đưa họ về dáng nghỉ
@@ -1900,6 +1906,7 @@ const nvPhu = doanPhu.map((dp, k) => {
         quay('ba_tu', t + 0.35, l.cam_xuc === 'buon' ? ben : -ben, 0.35)
         veThang(t + d - 0.5, 0.3)
       }
+      X_BUOC[i] = viTri < 0 && !NGANG ? Math.round(viTri * BUOC * 0.6) : viTri * BUOC
       // Làm việc sát sàn: khom người trong lúc làm, đứng thẳng lại cuối câu
       if (SAN.has(dt)) {
         const bd = LUC_DONG_TAC[i][1]
@@ -1952,8 +1959,8 @@ const KHUNG = { toan_canh: 1, trung_canh: 1.2, can_canh: 1.48, sieu_can: 1.85, g
 // Rung tay (handheld): lắc nhẹ cả thế giới (nền + nhân vật), số lần lẻ để kết thúc đúng chỗ cũ
 const rungTay = (t0, d) =>
   tw.push(`tl.fromTo(".the-gioi", { x: ${LECH_X}, y: ${LECH_Y}, rotation: 0 }, { x: ${LECH_X + 7}, y: ${LECH_Y - 5}, rotation: 0.25, duration: 0.19, yoyo: true, repeat: ${2 * Math.max(1, Math.floor(d / 0.38)) + 1}, ease: "sine.inOut" }, ${f(t0)});`)
-function quayChiDan(l, i, t0, conLai) {
-  const tam = tamLuc(l.ai, t0) ?? (l.ai === 'nguoi_ke' ? { x: GIUA_X, y: 900 } : tamLuc('robot', t0))
+function quayChiDan(l, i, t0, conLai, tamRieng = null) {
+  const tam = tamRieng ?? tamLuc(l.ai, t0) ?? (l.ai === 'nguoi_ke' ? { x: GIUA_X, y: 900 } : tamLuc('robot', t0))
   const ben = tamLuc(l.ai === 'meo' ? 'robot' : 'meo', t0)
   const s = KHUNG[l.khung_hinh]
   const ox = l.khung_hinh === 'toan_canh' ? GIUA_X : ['trung_canh', 'goc_cao'].includes(l.khung_hinh) ? (tam.x + GIUA_X) / 2 : tam.x
@@ -2009,6 +2016,38 @@ loi.forEach((l, i) => {
     // Thẻ trên cao: lùi nhẹ (0,92) và hạ khung ~170px để đầu mọi người nằm dưới thẻ; trôi rất chậm cho khỏi đứng hình
     lia(Math.max(0, t0 - 0.25), 0.92, GIUA_X, GIUA_Y - 185, 0.55)
     lia(t0 + 0.35, 0.93, GIUA_X + (i % 2 ? 12 : -12), GIUA_Y - 185, conLai, 'sine.inOut')
+  } else if (l.ai === 'nguoi_ke' && phuCuaCau[i]) {
+    // Lời kể, có người đang diễn (chủ trang 16/10/2026: "máy quay đứng một cỡ cảnh"): máy bám theo chỗ người đó đứng;
+    //  · câu mở một cảnh mới: toàn cảnh giới thiệu nơi chốn
+    //  · câu có hành động: trung cảnh thấy trọn người + đạo cụ (không cận làm mất đạo cụ khỏi khung)
+    //  · buồn / bất ngờ / lo lắng / tức giận (không hành động): cận mặt người diễn
+    //  · còn lại: theo cỡ cảnh AI chọn, lệch về phía người diễn
+    const ax = (viTriPhu[phuCuaCau[i]] ?? 540) + (X_BUOC[i] ?? 0)
+    const mat = 740 - HA_PHU
+    const moCanh = i === 0 || doanCanh.some((dc) => dc.tu === i) || (!!l.dia_diem && l.dia_diem !== loi[i - 1]?.dia_diem)
+    const vao = Math.max(0, t0 - 0.2)
+    if (moCanh) {
+      lia(vao, 1, GIUA_X, GIUA_Y, 0.6)
+      lia(t0 + 0.4, 1.05, (ax + GIUA_X) / 2, GIUA_Y - 10, conLai, 'sine.inOut')
+    } else if (LUC_DONG_TAC[i]) {
+      lia(vao, NGANG ? 1.1 : 1.2, (ax * 2 + GIUA_X) / 3, 880, 0.55)
+      lia(t0 + 0.35, NGANG ? 1.14 : 1.24, (ax * 2 + GIUA_X) / 3, 870, conLai, 'sine.inOut')
+    } else if (l.cam_xuc === 'bat_ngo') {
+      lia(t0 - 0.1, 1.6, ax, mat - 40, 0.42, 'power2.out')
+      lia(t0 + 0.35, 1.63, ax, mat - 40, conLai, 'sine.out')
+    } else if (l.cam_xuc === 'buon' || l.cam_xuc === 'lo_lang') {
+      lia(Math.max(0, t0 - 0.3), 1.32, ax, mat - 10, 0.8, 'sine.inOut')
+      lia(t0 + 0.5, 1.5, ax, mat - 30, conLai, 'sine.inOut')
+    } else if (l.cam_xuc === 'tuc_gian') {
+      lia(t0 - 0.1, 1.5, ax, mat - 30, 0.35, 'power3.out')
+      rungTay(t0 + 0.3, Math.min(1.6, conLai))
+    } else if (KHUNG[l.khung_hinh] !== undefined) {
+      quayChiDan(l, i, t0, conLai, { x: ax, y: mat + 40 })
+    } else {
+      const sc = i % 2 ? 1.2 : 1.14
+      lia(vao, sc, (ax + GIUA_X) / 2, 960, 0.6)
+      lia(t0 + 0.4, sc + 0.04, (ax + GIUA_X) / 2 + (i % 2 ? 18 : -18), 960, conLai, 'sine.inOut')
+    }
   } else if (chiDan) {
     canCanhChiDan = quayChiDan(l, i, t0, conLai)
   } else if (laPhu(l.ai)) {
@@ -2099,7 +2138,7 @@ loi.forEach((l, i) => {
   const catPU = pu && !canCanh && !chuaDau && !lui && d > 3.2 && PHAN_UNG_MANH.has(l.cam_xuc)
   const dien = l.ai === 'nguoi_ke' || laPhu(l.ai) ? phuCuaCau[i] : l.ai === 'meo' ? 'meo' : 'robot'
   const phuAnh = doanAnh.some((c) => c.kieu === 'toan' && c.tu <= i && c.het >= i)
-  if (d > 4 && dien && !canCanh && !chuaDau && !lui && !phuAnh) {
+  if (d > 4 && dien && !canCanh && !chuaDau && !lui && !phuAnh && !LUC_DONG_TAC[i]) {
     const giua = t0 + d * 0.48
     const het = catPU ? t0 + d - 1.0 : t0 + d + 0.05
     if (het - giua > 1.4) {

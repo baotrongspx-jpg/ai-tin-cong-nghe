@@ -3578,18 +3578,24 @@ const donDap = []
     if (!cao || CHU_LON[i] || doanAnh.some((c) => c.kieu === 'toan' && c.tu <= i && c.het >= i)) return
     const t = batDau[i] + 0.15
     // Chỉ khi có đủ 3 ảnh tư liệu thật: chuỗi biểu tượng nháy trên nền màu (trái tim, ngọn lửa, mặt trăng…) trông như lỗi hình
-    if (t - cuoi < 35 || doDai[i] < 1.6 || anhPhan.length < 3) return
+    // Phim tiểu sử (đạo diễn duyệt phim Ferrari 16/10/2026, 7:05: chuỗi nháy 6 ảnh × 0,13 giây lấy ảnh cả chương — xe đua thập
+    // niên 1970, siêu xe 2002 chen vào câu năm 1947, nháy như lỗi hình): chỉ ảnh của các câu GẦN ĐÓ (cùng giai đoạn đang kể),
+    // 4 ảnh, mỗi ảnh 0,4 giây cho mắt kịp nhìn
+    const anhGan = nhan_vat_chinh ? [...new Set(loi.slice(Math.max(0, i - 6), i + 7).map((x) => x.anh_wiki?.tep).filter((x) => x && anhPhan.includes(x)))] : anhPhan
+    if (t - cuoi < 35 || doDai[i] < 1.6 || anhGan.length < 3) return
     cuoi = t
     const id = `dd${LUC_DON_DAP.length}`
     LUC_DON_DAP.push(t)
-    const hinh = Array.from({ length: 6 }, (_, j) => {
+    const soHinh = nhan_vat_chinh ? 4 : 6
+    const nhip = nhan_vat_chinh ? 0.4 : 0.13
+    const hinh = Array.from({ length: soHinh }, (_, j) => {
       const k = i + j
-      if (anhPhan.length >= 3) return `<div id="${id}-${j}" class="dd-hinh"><img src="assets/${esc(anhPhan[k % anhPhan.length])}" style="transform:scale(${1.05 + (j % 3) * 0.08}) rotate(${(j % 2 ? 1 : -1) * 2}deg)"/></div>`
+      if (anhGan.length >= 3) return `<div id="${id}-${j}" class="dd-hinh"><img src="assets/${esc(anhGan[k % anhGan.length])}" style="transform:scale(${1.05 + (j % 3) * 0.08}) rotate(${(j % 2 ? 1 : -1) * 2}deg)"/></div>`
       return `<div id="${id}-${j}" class="dd-hinh" style="background:${MAU[j % MAU.length]}"><span>${bieuTuong[k % bieuTuong.length]}</span></div>`
     })
     hinh.forEach((_, j) => {
-      tw.push(`tl.set("#${id}-${j}", { opacity: 1 }, ${f(t + j * 0.13)});`)
-      tw.push(`tl.set("#${id}-${j}", { opacity: 0 }, ${f(t + (j + 1) * 0.13)});`)
+      tw.push(`tl.set("#${id}-${j}", { opacity: 1 }, ${f(t + j * nhip)});`)
+      tw.push(`tl.set("#${id}-${j}", { opacity: 0 }, ${f(t + (j + 1) * nhip)});`)
     })
     donDap.push(`<div id="${id}" class="don-dap">${hinh.join('')}</div>`)
   })
@@ -3653,7 +3659,7 @@ loi.forEach((l, i) => {
 for (const t of LUC_BAN_TAY) themAm('sfx-bop', t + 0.3, 0.25)
 for (const t of LUC_DON_DAP) {
   themAm('sfx-vut', t, 0.35)
-  themAm('sfx-bum', t + 0.75, 0.4)
+  themAm('sfx-bum', t + (nhan_vat_chinh ? 1.55 : 0.75), 0.4) // phim tiểu sử: chuỗi 4 ảnh × 0,4 giây
 }
 // Tiếng đạo cụ (prop foley): đạo cụ hiện ra kèm đúng tiếng của nó (bút sột soạt, giấy lật, kim loại, lửa…), xác nhận
 // điều khán giả đang thấy. Chỉ những đạo cụ có tiếng đặc trưng; câu AI đã chọn hiệu ứng riêng thì thôi (không chồng tiếng)

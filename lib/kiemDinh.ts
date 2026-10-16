@@ -207,6 +207,10 @@ export function kiemDinh<T extends Cau>(goc: T[], o: { loai?: 'thuong' | 'tieu_s
   const ke = ty((l) => l.ai === 'nguoi_ke')
   const chinh = ty((l) => l.ai === 'meo' || l.ai === 'robot')
   if (tieuSu) {
+    // Mèo / Bit trong phim tiểu sử: 5–8% mỗi bên (≤ 16% cả hai). Phim Michael Jackson 16/10/2026: 22%, hai linh vật xen ngay
+    // sau tai nạn và vụ báo lá cải, kéo người xem ra khỏi câu chuyện
+    if (chinh > 0.2) ghiChu.push({ muc: 'loi', chu: `Mun và Bit nói ${Math.round(chinh * 100)}% số câu (phim tiểu sử nên khoảng 10–16%): bớt lời hai linh vật, để người kể và nhân vật dẫn chuyện` })
+    else if (chinh > 0.16) ghiChu.push({ muc: 'nhac', chu: `Mun và Bit nói ${Math.round(chinh * 100)}% số câu, hơi nhiều cho phim tiểu sử (nên khoảng 10–16%)` })
     if (ke > 0.6) ghiChu.push({ muc: 'nhac', chu: `Người kể nói ${Math.round(ke * 100)}% số câu, hơi giống đọc sách: nên cho nhân vật tái hiện và Mun / Bit xen vào nhiều hơn` })
     if (ke < 0.25) ghiChu.push({ muc: 'nhac', chu: `Người kể chỉ nói ${Math.round(ke * 100)}% số câu, mạch phim có thể rời rạc` })
   } else if (chinh < 0.3) ghiChu.push({ muc: 'nhac', chu: `Mun và Bit chỉ nói ${Math.round(chinh * 100)}% số câu, nên để hai nhân vật chính dẫn dắt nhiều hơn` })

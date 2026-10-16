@@ -2869,6 +2869,19 @@ const tuThe = (i) => {
 }
 const giuTuThe = loi.map((l, i) => (i && !l.lang && tuThe(i) && tuThe(i) === tuThe(i - 1) ? tuThe(i).split('|')[0] : null))
 
+// Miệng khép của nhân vật người vẽ sẵn hình cười → câu bi kịch / buồn / lo / giận lật thành miệng trễ xuống (lật dọc
+// nét cười), câu khác trả lại (phim Michael Jackson 6:40: bác sĩ cười khi kể nguyên nhân cái chết)
+{
+  const buonCu = {}
+  loi.forEach((l, i) => {
+    const q = phuCuaCau[i]
+    if (!q) return
+    const buon = biKich(i) || ['buon', 'lo_lang', 'tuc_gian'].includes(l.cam_xuc)
+    if ((buonCu[q] ?? false) === buon) return
+    buonCu[q] = buon
+    tw.push(`tl.to("#${q}-mieng-dong", { scaleY: ${buon ? -0.8 : 1}, transformOrigin: "50% 50%", duration: 0.25 }, ${f(Math.max(0, batDau[i] - 0.25))});`)
+  })
+}
 const phuDe = []
 const amThanh = []
 loi.forEach((l, i) => {
@@ -2900,7 +2913,10 @@ loi.forEach((l, i) => {
     // Lời có nói tới hành động ("… đập bàn …") → động tác bắt đầu ngay trước lúc giọng đọc tới chữ đó; không thì đầu câu
     const khop = [...TU_TRUYEN, ...TU_DONG_TAC].find(([ten]) => ten === dongTac)?.[1].exec(String(l.chu ?? '').toLowerCase())
     const batDauDT = Math.min(Math.max(t0 + 0.15, khop ? lucTu(i, khop.index) - 0.25 : t0 + 0.3), Math.max(t0 + 0.15, t0 + d - 0.9))
-    tw.push(...DONG_TAC[dongTac](nguoiLam, batDauDT, t0 + d - batDauDT))
+    // Câu bi kịch / buồn / lo / giận: bỏ bước cười (má ửng) của hành động (phim Michael Jackson 6:33: bác sĩ cười đắc ý
+    // tung báo đúng câu báo tin Michael qua đời)
+    const nghiem = biKich(i) || ['buon', 'lo_lang', 'tuc_gian'].includes(l.cam_xuc)
+    tw.push(...DONG_TAC[dongTac](nguoiLam, batDauDT, t0 + d - batDauDT).filter((x) => !(nghiem && x.includes('-ma-hong"') && /opacity: 1\b/.test(x))))
     // Đang làm hành động kể chuyện: đồ nhân vật cầm sẵn (cặp, sách…) cất đi cho khỏi chồng lên đạo cụ của hành động
     if (TRUYEN[dongTac] && String(nguoiLam).startsWith('phu')) catDoSan(nguoiLam, batDauDT, t0 + d)
     LUC_DONG_TAC[i] = [dongTac, batDauDT]
@@ -3676,8 +3692,13 @@ loi.forEach((l, i) => {
     // Thẻ trên cao: lùi nhẹ (0,92) và hạ khung ~170px để đầu mọi người nằm dưới thẻ; trôi rất chậm cho khỏi đứng hình
     // Câu có hành động (ngồi, khom…) hạ khung ít hơn, kẻo người hạ thấp chìm xuống dải phụ đề
     const ha = LUC_DONG_TAC[i] ? 20 : 185
-    lia(Math.max(0, t0 - 0.25), 0.92, GIUA_X, GIUA_Y - ha, 0.55)
-    lia(t0 + 0.35, 0.93, GIUA_X + (i % 2 ? 12 : -12), GIUA_Y - ha, conLai, 'sine.inOut')
+    // Câu có hành động không hạ khung được → khung ngang: dời người diễn sang một phần ba khung, thẻ ở giữa trên không còn
+    // đè mặt (phim Michael Jackson 0:08: thẻ "Roi da" che mặt ông bố)
+    const q = phuCuaCau[i] ?? (laPhu(l.ai) ? l.ai : null)
+    const ax = q ? (viTriPhu[q] ?? GIUA_X) + (X_BUOC[i] ?? 0) : null
+    const ox = NGANG && LUC_DONG_TAC[i] && ax !== null ? ax + (ax >= GIUA_X ? -520 : 520) : GIUA_X
+    lia(Math.max(0, t0 - 0.25), 0.92, ox, GIUA_Y - ha, 0.55)
+    lia(t0 + 0.35, 0.93, ox + (i % 2 ? 12 : -12), GIUA_Y - ha, conLai, 'sine.inOut')
   } else if (l.ai === 'nguoi_ke' && phuCuaCau[i]) {
     // Lời kể, có người đang diễn (chủ trang 16/10/2026: "máy quay đứng một cỡ cảnh"): máy bám theo chỗ người đó đứng;
     //  · câu mở một cảnh mới: toàn cảnh giới thiệu nơi chốn
@@ -4041,7 +4062,8 @@ const chuLon = Object.entries(CHU_LON).map(([k, c]) => {
 const theMoc = []
 loi.forEach((l, i) => {
   if (!l.the_moc) return
-  const t0 = CHU_LON[i] ? CHU_LON[i].t + 1.75 : batDau[i] + 0.15
+  // không hiện chồng lên câu giật tít đầu phim (phim Michael Jackson 0:00: tít bị thẻ "1958 · Gary" che mất chữ đầu)
+  const t0 = Math.max(CHU_LON[i] ? CHU_LON[i].t + 1.75 : batDau[i] + 0.15, moc?.chu ? Math.min(batDau[0] + 2.2, batDau[0] + doDai[0]) + 0.1 : 0)
   const het = Math.min(t0 + 3.6, (batDau[i + 1] ?? TONG) - 0.1)
   if (het - t0 < 1) return
   const nam = Number(String(l.the_moc).match(/\b(\d{3,4})\b/)?.[1] ?? 0)

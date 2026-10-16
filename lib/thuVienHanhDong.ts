@@ -4,7 +4,8 @@
 
 export type LoaiHanhDong = 'cu_chi' | 'ke_chuyen'
 // do_vat: đạo cụ hành động đã có sẵn (emoji + tên). Câu cần thêm đạo cụ khác thì gắn vat_them (nhân vật cầm thêm ở tay còn trống)
-export const THU_VIEN_HANH_DONG: Record<string, { ten: string; loai: LoaiHanhDong; mo_ta: string; do_vat?: string[] }> = {
+// tu_nam: hành động chỉ hợp từ năm đó (moonwalk ra đời năm 1983) — câu kể năm trước đó không dùng
+export const THU_VIEN_HANH_DONG: Record<string, { ten: string; loai: LoaiHanhDong; mo_ta: string; do_vat?: string[]; tu_nam?: number }> = {
   chi_tay: { ten: 'Chỉ tay', loai: 'cu_chi', mo_ta: 'chỉ tay: buộc tội, đòi hỏi, chỉ đường' },
   khoanh_tay: { ten: 'Khoanh tay', loai: 'cu_chi', mo_ta: 'khoanh tay: tự tin, thách thức, từ chối' },
   cui_dau: { ten: 'Cúi đầu', loai: 'cu_chi', mo_ta: 'cúi đầu: thất vọng, xấu hổ, thua cuộc, xin lỗi' },
@@ -48,7 +49,7 @@ export const THU_VIEN_HANH_DONG: Record<string, { ten: string; loai: LoaiHanhDon
   phat_hanh_album: { ten: 'Phát hành album', loai: 'ke_chuyen', mo_ta: 'hai tay nâng đĩa nhạc trước ngực, bước sang bên giới thiệu, nâng cao khoe, cười tự hào: ra mắt album', do_vat: ['💿 đĩa nhạc'] },
   cam_cup: { ten: 'Cầm cúp vàng', loai: 'ke_chuyen', mo_ta: 'hai tay nâng cúp vàng trước ngực, nâng cao ngẩng đầu, xoay cúp lấp lánh, cười mãn nguyện: giải thưởng, kỷ lục', do_vat: ['🏆 cúp vàng', '✨ lấp lánh'] },
   chinh_mu: { ten: 'Chỉnh vành mũ', loai: 'ke_chuyen', mo_ta: 'tay phải cầm mũ phớt đưa lên đội, hai tay chỉnh vành, chân nhún theo nhạc, kéo vành che nửa trán: phong cách sân khấu', do_vat: ['🎩 chiếc mũ (vẽ sẵn: mũ phớt đen)'] },
-  nhay_mua: { ten: 'Nhảy moonwalk', loai: 'ke_chuyen', mo_ta: 'hai đầu gối thay nhau gập nhón gót, người trôi lùi đều, tay đánh nhẹ, dừng lại ngẩng đầu cười tự mãn: điệu nhảy, vũ đạo', do_vat: [] },
+  nhay_mua: { ten: 'Nhảy moonwalk', loai: 'ke_chuyen', tu_nam: 1983, mo_ta: 'hai đầu gối thay nhau gập nhón gót, người trôi lùi đều, tay đánh nhẹ, dừng lại ngẩng đầu cười tự mãn: điệu nhảy, vũ đạo', do_vat: [] },
   dung_duoi_den: { ten: 'Đứng dưới ánh đèn chớp', loai: 'ke_chuyen', mo_ta: 'sân khấu tối, đèn màu quét qua lại, mắt đảo cảnh giác, lùi nửa bước thủ thế, giơ tay che trán chắn ánh chói, đứng sững căng thẳng: hiểm hoạ trên sân khấu', do_vat: ['đèn sân khấu (vẽ sẵn)'] },
   bang_bo: { ten: 'Bác sĩ băng bó', loai: 'ke_chuyen', mo_ta: 'bệnh nhân đứng cạnh, bác sĩ cầm cuộn băng quấn quanh đầu (băng trắng hiện dần), ấn mép băng gật đầu, lùi lại thở phào lo âu: băng bó vết bỏng, chữa trị', do_vat: ['🩹 băng gạc (vẽ sẵn: cuộn băng)', 'bệnh nhân (vẽ sẵn)'] },
   nhin_guong: { ten: 'Nhìn vào gương', loai: 'ke_chuyen', mo_ta: 'hai tay ôm gương trước ngực, cúi nhìn bàng hoàng, lắc đầu, chớp mắt liên tục, hạ gương ngẩng lên rưng rưng: thấy mình thay đổi, bệnh da', do_vat: ['🪞 chiếc gương (vẽ sẵn)'] },
@@ -130,6 +131,7 @@ export type CauHanhDong = {
   i: number // số thứ tự câu trong chương
   chu: string // đầu câu (để biết kịch bản đã đổi sau lần chuẩn bị)
   nguoi: string // ai làm
+  chinh?: boolean // người làm chính là nhân vật chính của phim (AI lượt 1 đánh dấu — không đoán theo tên: cha con cùng họ)
   can: boolean // câu có nói tới một việc nhìn thấy được, cần diễn (không chỉ đứng nói)
   hanh_dong: string // mã trong THU_VIEN_HANH_DONG | 'moi' (máy chưa có) | 'khong'
   viec: string // nhân vật làm gì trên hình

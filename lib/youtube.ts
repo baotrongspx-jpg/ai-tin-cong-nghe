@@ -661,7 +661,8 @@ function hinhCanCau(d: DuAnYT, l: CauYT, ds: z.infer<typeof HinhCanSchema>[], ng
       }
     })
 }
-export async function hanhDongChuong(d: DuAnYT, k: number): Promise<CauHanhDong[]> {
+// truoc: việc phải xong trước khi đối chiếu hình cần (gắn câu → địa điểm), chạy song song với lượt 1 cho nhanh
+export async function hanhDongChuong(d: DuAnYT, k: number, truoc?: Promise<unknown>): Promise<CauHanhDong[]> {
   const loi = d.phan[k - 1]?.loi ?? []
   if (!loi.length) return []
   const ten = d.phim?.ten ? `The main character (nhan_vat_chinh) is ${d.phim.ten}.` : ''
@@ -684,6 +685,8 @@ For each line return: i (the line number), nguoi (who acts, in Vietnamese: name 
     .map(([ma, v]) => `${ma} (${v.loai === 'ke_chuyen' ? 'story action' : 'gesture'}): ${v.mo_ta}${v.do_vat ? ` [props it already has: ${v.do_vat.join(', ')}]` : ' [no props]'}`)
     .join('\n')
   const can = viec.cau.filter((x) => x.can)
+  // Lượt 3 chỉ cần kết quả lượt 1 → chạy cùng lúc với lượt 2 (trước đây chờ nhau, chuẩn bị lâu gấp đôi)
+  const choChiTiet = chiTietDien(loi, theoViec)
   const khop = can.length
     ? await goiJson({
         system: `You match planned on-screen activities of a 2D cartoon to the renderer's action library. Library:
@@ -696,6 +699,7 @@ For each numbered activity (who: activity | props needed) return: i, hanh_dong (
       })
     : { cau: [] }
   if (!khop) throw new Error(`AI chưa đối chiếu được chương ${k}, thử lại`)
+  await truoc?.catch(() => null)
   const theoKhop = new Map(khop.cau.map((x) => [x.i, x]))
   const ketQua: CauHanhDong[] = loi.map((l, i) => {
     const x = theoViec.get(i)
@@ -730,9 +734,13 @@ For each numbered activity (who: activity | props needed) return: i, hanh_dong (
   // Lượt 3 — kịch bản diễn chi tiết cho TỪNG câu (chủ trang 15/10/2026, mẫu "nhân vật quét nhà"): cầm đạo cụ thế nào, tư
   // thế, ánh mắt, chu trình động tác, bước chân và trọng tâm, biến thể giữa chừng, kết thúc, yêu cầu chuyển động — vừa
   // khít thời lượng câu nói. Câu chỉ nói chuyện: vài câu ngắn về cử chỉ, ánh mắt, nét mặt. Chia nhóm 8 câu cho AI viết kỹ.
+  for (const kq of await choChiTiet) for (const c of kq?.cau ?? []) if (ketQua[c.i]) ketQua[c.i].chi_tiet = c.chi_tiet.trim()
+  return ketQua
+}
+function chiTietDien(loi: CauYT[], theoViec: Map<number, z.infer<typeof ViecSchema>['cau'][number]>) {
   const nhom: number[][] = []
-  for (let i = 0; i < ketQua.length; i += 8) nhom.push(ketQua.slice(i, i + 8).map((x) => x.i))
-  const chiTiet = await Promise.all(
+  for (let i = 0; i < loi.length; i += 8) nhom.push(loi.slice(i, i + 8).map((_, j) => i + j))
+  return Promise.all(
     nhom.map((ds) =>
       goiJson({
         system: `You are the animation director of a Vietnamese 2D cartoon documentary (flat front-facing characters: head, eyebrows, eyes, mouth, two arms, body, legs; props held in the hands). For each numbered line write in VIETNAMESE the detailed ACTING SCRIPT the animator follows while the line is spoken (it lasts the given seconds), in the style of this example:
@@ -745,7 +753,8 @@ For an ACTIVITY line (given): title line "HÀNH ĐỘNG: …" in capitals, then 
 For a TALKING line (no activity): 2 to 3 sentences — the gesture, where the eyes look (at whom), facial expression and one small body movement, timed to the key word.`,
         noiDung: ds
           .map((i) => {
-            const x = ketQua[i]
+            const v = theoViec.get(i)
+            const x = { nguoi: v?.nguoi ?? '', can: !!v?.can, viec: v?.viec ?? '', do_vat_can: (v?.do_vat_can ?? []).map((t) => t.trim()).filter(Boolean).slice(0, 4) }
             const giay = Math.max(2, Math.round((loi[i].chu.length / 14) * 10) / 10)
             return `${i}. [${x.nguoi || loi[i].ai}] (${giay} giây) "${loi[i].chu}" → ${x.can ? `ACTIVITY: ${x.viec}${x.do_vat_can?.length ? ` | props: ${x.do_vat_can.join(', ')}` : ''}` : `TALKING: ${x.viec}`}`
           })
@@ -756,8 +765,6 @@ For a TALKING line (no activity): 2 to 3 sentences — the gesture, where the ey
       }).catch(() => null),
     ),
   )
-  for (const kq of chiTiet) for (const c of kq?.cau ?? []) if (ketQua[c.i]) ketQua[c.i].chi_tiet = c.chi_tiet.trim()
-  return ketQua
 }
 // Chủ trang xem video rồi chấm cảnh từng câu (quy trình đạo diễn theo lời kể, 16/10/2026: "không đánh dấu hoàn thành nếu
 // cảnh chưa được kiểm tra") — đạt / lỗi + ghi chú lỗi; kq rỗng = bỏ chấm (về "chưa xác minh")
@@ -806,8 +813,10 @@ export async function chuanBiHanhDong(id: string) {
   if (!d) throw new Error('Không tìm thấy video')
   if (d.phan.some((p) => !p.loi)) throw new Error('Còn chương chưa có lời thoại')
   // Gắn câu → địa điểm trước (cùng bước lúc Dựng), để bảng phản ánh đúng ảnh nền sẽ dùng
-  if (await ganDiaDiem(d).catch(() => false)) await luuDuAn(d)
-  const chuong = await Promise.all(d.phan.map(async (_, j) => ({ k: j + 1, cau: await hanhDongChuong(d, j + 1) })))
+  // chạy cùng lúc với lượt 1 các chương (chỉ cần xong trước khi đối chiếu hình cần)
+  const gan = ganDiaDiem(d).then(async (x) => { if (x) await luuDuAn(d) }).catch(() => null)
+  const chuong = await Promise.all(d.phan.map(async (_, j) => ({ k: j + 1, cau: await hanhDongChuong(d, j + 1, gan) })))
+  await gan
   const moi = await docDuAn(id)
   if (!moi) throw new Error('Không tìm thấy video')
   // Giữ kết quả chấm cảnh của chủ trang cho câu không đổi lời

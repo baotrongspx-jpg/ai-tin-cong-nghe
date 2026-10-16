@@ -995,12 +995,14 @@ const TRUYEN = {
     `tl.to("#${p}-tay-phai", { rotation: -168, duration: 0.3, ease: "back.out(1.6)" }, ${f(t + Math.max(1, dd - 0.8))});`,
     `tl.to("#${p}-dau", { rotation: -6, duration: 0.3 }, ${f(t + Math.max(1, dd - 0.8))});`,
   ],
-  dam_boc: (p, t, dd) => [...gangTay(p, t, dd), ...thuThe(p, t), ...chuoiDam(p, t + 0.35, Math.max(0.6, dd - 0.9)), `tl.to("#${p}-dau", { rotation: 5, duration: 0.2 }, ${f(t)});`],
+  dam_boc: (p, t, dd) => [...gangTay(p, t, dd), ...thuThe(p, t), ...chuoiDam(p, t + 0.35, Math.max(0.6, dd - 0.9)), `tl.to("#${p}-dau", { rotation: 5, duration: 0.2 }, ${f(t)});`, ...thaKhuyu(p, t + Math.max(0.95, dd - 0.4))],
   dam_moc: (p, t, dd) => [
     ...gangTay(p, t, dd), ...thuThe(p, t),
     // Móc hàm: tay phải vung theo cung từ thế thủ ra ngoài rồi lên, người xoay theo, đầu nghiêng theo hướng ra đòn
-    `tl.fromTo("#${p}-tay-phai", { rotation: 120 }, { rotation: -40, duration: 0.16, ease: "power3.out", immediateRender: false }, ${f(t + 0.45)});`,
-    `tl.to("#${p}-tay-phai", { rotation: 120, duration: 0.3, ease: "power2.inOut" }, ${f(t + 0.75)});`,
+    `tl.fromTo("#${p}-tay-phai", { rotation: ${THU(p).phai} }, { rotation: -40, duration: 0.16, ease: "power3.out", immediateRender: false }, ${f(t + 0.45)});`,
+    `tl.to("#${p}-tay-phai", { rotation: ${THU(p).phai}, duration: 0.3, ease: "power2.inOut" }, ${f(t + 0.75)});`,
+    ...(coKhop(p) ? [`tl.to("#${p}-cang-phai", { rotation: 70, duration: 0.16, ease: "power3.out" }, ${f(t + 0.45)});`, `tl.to("#${p}-cang-phai", { rotation: 160, duration: 0.3 }, ${f(t + 0.75)});`] : []),
+    ...thaKhuyu(p, t + Math.max(1.2, dd - 0.4)),
     `tl.fromTo("#${p} svg", { rotation: 0 }, { rotation: -5, duration: 0.16, yoyo: true, repeat: 1, ease: "power2.out", immediateRender: false }, ${f(t + 0.45)});`,
     `tl.to("#${p}-dau", { rotation: -9, duration: 0.16, yoyo: true, repeat: 1 }, ${f(t + 0.45)});`,
     ...vatHien(p, 'no', t + 0.58, 0.45),
@@ -1012,7 +1014,9 @@ const TRUYEN = {
     `tl.to("#${p}-tay-trai", { rotation: 88, duration: 0.12, ease: "power4.out" }, ${f(t + 0.62)});`,
     `tl.fromTo("#${p} svg", { x: 0 }, { x: -36, duration: 0.12, yoyo: true, repeat: 1, ease: "power3.out", immediateRender: false }, ${f(t + 0.62)});`,
     ...vatHien(p, 'no_t', t + 0.72, 0.6),
-    `tl.to("#${p}-tay-trai", { rotation: -120, duration: 0.3 }, ${f(t + 1.1)});`,
+    `tl.to("#${p}-tay-trai", { rotation: ${THU(p).trai}, duration: 0.3 }, ${f(t + 1.1)});`,
+    ...(coKhop(p) ? [`tl.to("#${p}-cang-trai", { rotation: 0, duration: 0.12, ease: "power4.out" }, ${f(t + 0.62)});`, `tl.to("#${p}-cang-trai", { rotation: -160, duration: 0.3 }, ${f(t + 1.1)});`] : []),
+    ...thaKhuyu(p, t + Math.max(1.6, dd - 0.6)),
     `tl.to(["#${p}-tay-trai", "#${p}-tay-phai"], { rotation: (i) => (i ? -10 : 10), duration: 0.45, ease: "sine.inOut" }, ${f(t + Math.max(1.6, dd - 0.6))});`,
     `tl.to("#${p} svg", { scaleY: 1.03, duration: 0.3, yoyo: true, repeat: 3, ease: "sine.inOut" }, ${f(t + Math.max(1.6, dd - 0.6))});`,
   ],
@@ -1119,8 +1123,14 @@ const TRUYEN = {
   // Ngồi thiền: đệm thiền che chân (người hạ thấp như ngồi xếp bằng), hai tay đặt trên gối, mắt nhắm, thở chậm, hào quang
   ngoi_thien: (p, t, dd) => [
     ...vatHien(p, 'dem_thien', t, dd), ...vatHien(p, 'hao_quang', t + 0.4, Math.max(0.6, dd - 0.4)),
-    `tl.to("#${p} svg", { y: 110, duration: 0.5, ease: "sine.inOut" }, ${f(t)});`,
+    `tl.to("#${p} svg", { y: ${coKhop(p) ? 62 : 110}, duration: 0.5, ease: "sine.inOut" }, ${f(t)});`,
     `tl.to(["#${p}-tay-trai", "#${p}-tay-phai"], { rotation: (i) => (i ? 28 : -28), duration: 0.5 }, ${f(t)});`,
+    // Có khớp: ngồi xếp chân thật (đùi mở ra hai bên, ống chân gập vào trong), hai cẳng tay đặt lên gối
+    ...(coKhop(p) ? [
+      `tl.to(["#${p}-chan-trai", "#${p}-chan-phai", "#${p}-ong-trai", "#${p}-ong-phai"], { rotation: (i) => [80, -80, -100, 100][i], duration: 0.5, ease: "sine.inOut" }, ${f(t)});`,
+      `tl.to(["#${p}-cang-trai", "#${p}-cang-phai"], { rotation: (i) => (i ? 40 : -40), duration: 0.5 }, ${f(t)});`,
+      `tl.to(["#${p}-chan-trai", "#${p}-chan-phai", "#${p}-ong-trai", "#${p}-ong-phai", "#${p}-cang-trai", "#${p}-cang-phai"], { rotation: 0, duration: 0.5, ease: "sine.inOut" }, ${f(t + Math.max(1, dd) + 0.05)});`,
+    ] : []),
     `tl.to("#${p}-mat", { scaleY: 0.12, duration: 0.3 }, ${f(t + 0.4)});`,
     `tl.to("#${p}-mat", { scaleY: 1, duration: 0.3 }, ${f(t + Math.max(1, dd) - 0.3)});`,
     `tl.to("#${p} svg", { scaleY: 1.025, duration: 1, yoyo: true, repeat: ${solan(dd - 0.6, 1)}, ease: "sine.inOut" }, ${f(t + 0.5)});`,
@@ -1129,15 +1139,39 @@ const TRUYEN = {
 }
 // Quyền anh: hai găng, thế thủ (hai găng sát cằm), chuỗi đấm thẳng xen kẽ hai tay (tay vụt ra ngoài rồi thu về, người
 // lao theo), tia va chạm 💥 cạnh nắm đấm; vaoBao: đấm vào bao cát bên phải (chỉ tay phải ra đòn về phía bao)
+// Nhân vật hình người (phu…) có khớp khuỷu / gối (nhanVatPhu.mjs); Mèo / Bit không
+const coKhop = (p) => String(p).startsWith('phu')
+// Bước chân có khớp (đi / chạy, chủ trang 16/10/2026): đùi đánh trước – sau quanh hông, ống chân gập khi chân đưa ra sau,
+// hai cẳng tay hơi co. Trong hệ toạ độ hình (góc nghiêng gốc nhìn sang trái): xoay dương = đưa về phía trước
+function buocChan(p, t, dd, nhip = 0.32, chay = false) {
+  if (!coKhop(p) || dd < 0.2) return []
+  const a = chay ? 34 : 20
+  const g = chay ? 64 : 28
+  const lap = solan(dd, nhip)
+  const ket = t + (lap + 1) * nhip
+  return [
+    `tl.fromTo("#${p}-chan-trai", { rotation: ${a} }, { rotation: ${-a}, duration: ${f(nhip)}, yoyo: true, repeat: ${lap}, ease: "sine.inOut", immediateRender: false }, ${f(t)});`,
+    `tl.fromTo("#${p}-chan-phai", { rotation: ${-a} }, { rotation: ${a}, duration: ${f(nhip)}, yoyo: true, repeat: ${lap}, ease: "sine.inOut", immediateRender: false }, ${f(t)});`,
+    `tl.fromTo("#${p}-ong-trai", { rotation: 0 }, { rotation: ${-g}, duration: ${f(nhip)}, yoyo: true, repeat: ${lap}, ease: "sine.inOut", immediateRender: false }, ${f(t)});`,
+    `tl.fromTo("#${p}-ong-phai", { rotation: ${-g} }, { rotation: 0, duration: ${f(nhip)}, yoyo: true, repeat: ${lap}, ease: "sine.inOut", immediateRender: false }, ${f(t)});`,
+    `tl.to(["#${p}-cang-trai", "#${p}-cang-phai"], { rotation: ${chay ? 80 : 28}, duration: 0.15 }, ${f(t)});`,
+    `tl.to(["#${p}-chan-trai", "#${p}-chan-phai", "#${p}-ong-trai", "#${p}-ong-phai", "#${p}-cang-trai", "#${p}-cang-phai"], { rotation: 0, duration: 0.15 }, ${f(ket)});`,
+  ]
+}
+// Thế thủ: người có khớp co khuỷu, hai nắm đấm sát cằm (cánh tay trên hơi mở ra ngoài); Mèo / Bit giơ cả cánh tay
+const THU = (p) => (coKhop(p) ? { phai: -25, trai: 25 } : { phai: 120, trai: -120 })
 function gangTay(p, t, dd) {
   return [...vatHien(p, 'gang_p', t, dd), ...vatHien(p, 'gang_t', t, dd)]
 }
 function thuThe(p, t) {
   return [
-    `tl.to("#${p}-tay-phai", { rotation: 120, duration: 0.25, ease: "power2.out" }, ${f(t)});`,
-    `tl.to("#${p}-tay-trai", { rotation: -120, duration: 0.25, ease: "power2.out" }, ${f(t)});`,
+    `tl.to("#${p}-tay-phai", { rotation: ${THU(p).phai}, duration: 0.25, ease: "power2.out" }, ${f(t)});`,
+    `tl.to("#${p}-tay-trai", { rotation: ${THU(p).trai}, duration: 0.25, ease: "power2.out" }, ${f(t)});`,
+    ...(coKhop(p) ? [`tl.to(["#${p}-cang-phai", "#${p}-cang-trai"], { rotation: (i) => (i ? -160 : 160), duration: 0.25, ease: "power2.out" }, ${f(t)});`] : []),
   ]
 }
+// Hết đòn: duỗi khuỷu về thẳng
+const thaKhuyu = (p, t) => (coKhop(p) ? [`tl.to(["#${p}-cang-phai", "#${p}-cang-trai"], { rotation: 0, duration: 0.35 }, ${f(t)});`] : [])
 function chuoiDam(p, t, giay, vaoBao = false) {
   const ra = []
   const nhip = 0.42
@@ -1146,7 +1180,12 @@ function chuoiDam(p, t, giay, vaoBao = false) {
     const tay = phai ? 'phai' : 'trai'
     const t1 = t + k * nhip
     ra.push(`tl.to("#${p}-tay-${tay}", { rotation: ${phai ? -88 : 88}, duration: 0.09, ease: "power3.out" }, ${f(t1)});`)
-    ra.push(`tl.to("#${p}-tay-${tay}", { rotation: ${phai ? 120 : -120}, duration: 0.2, ease: "power2.inOut" }, ${f(t1 + 0.12)});`)
+    ra.push(`tl.to("#${p}-tay-${tay}", { rotation: ${THU(p)[tay]}, duration: 0.2, ease: "power2.inOut" }, ${f(t1 + 0.12)});`)
+    // Có khuỷu: cẳng tay duỗi thẳng theo cú đấm rồi co về thế thủ
+    if (coKhop(p)) {
+      ra.push(`tl.to("#${p}-cang-${tay}", { rotation: 0, duration: 0.09, ease: "power3.out" }, ${f(t1)});`)
+      ra.push(`tl.to("#${p}-cang-${tay}", { rotation: ${phai ? 160 : -160}, duration: 0.2, ease: "power2.inOut" }, ${f(t1 + 0.12)});`)
+    }
     ra.push(`tl.fromTo("#${p} svg", { x: 0 }, { x: ${phai ? 18 : -18}, duration: 0.09, yoyo: true, repeat: 1, ease: "power2.out", immediateRender: false }, ${f(t1)});`)
     if (k % 2 === 0 || !phai) ra.push(...vatHien(p, phai ? 'no' : 'no_t', t1 + 0.08, 0.3))
   }
@@ -1754,7 +1793,8 @@ const ganVat = (svg, id, dp, toaDo) => {
     const el = bt.startsWith('<')
       ? `<g transform="translate(${bt.includes(CAN_CO) ? `${x - 10.5 * (co / 100)} ${y - 95 * (co / 100)}` : `${x - co / 2} ${y - co / 2}`}) scale(${co / 100})"><g id="${id}-vat-${ten}" opacity="0">${bt.replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, '')}</g></g>`
       : `<text id="${id}-vat-${ten}" x="${x}" y="${y}" font-size="${co}" text-anchor="middle" dominant-baseline="middle" opacity="0" style="font-family: 'Emoji', sans-serif">${bt}</text>`
-    const mo = `<g id="${id}-tay-${cho}">`
+    // Người có khớp khuỷu: đồ cầm tay gắn vào cẳng tay (đi theo bàn tay khi gập khuỷu)
+    const mo = ra.includes(`<g id="${id}-cang-${cho}">`) ? `<g id="${id}-cang-${cho}">` : `<g id="${id}-tay-${cho}">`
     // Chèn ở CUỐI nhóm cánh tay (trước thẻ </g> khớp với nó) để đạo cụ vẽ đè lên đồ nhân vật đang cầm sẵn (cặp, sách…)
     const dau = ra.indexOf(mo)
     if ((cho === 'phai' || cho === 'trai') && dau >= 0) {
@@ -1821,6 +1861,7 @@ const nvPhu = doanPhu.map((dp, k) => {
   }
   if (coGoc) for (const [bp, tam] of Object.entries(TAM_GOC)) tw.push(`gsap.set("${chonGoc(id, bp)}", { svgOrigin: "${tam}" });`)
   tw.push(`gsap.set("#${id}-dau", { svgOrigin: "200 250" }); gsap.set("#${id}-tay-phai", { svgOrigin: "270 300" }); gsap.set("#${id}-tay-trai", { svgOrigin: "130 300" }); gsap.set("#${id}-mieng-mo", { svgOrigin: "200 226" });`)
+  tw.push(`gsap.set("#${id}-cang-phai", { svgOrigin: "280 372" }); gsap.set("#${id}-cang-trai", { svgOrigin: "120 372" }); gsap.set("#${id}-chan-trai", { svgOrigin: "174 470" }); gsap.set("#${id}-chan-phai", { svgOrigin: "226 470" }); gsap.set("#${id}-ong-trai", { svgOrigin: "174 512" }); gsap.set("#${id}-ong-phai", { svgOrigin: "226 512" });`)
   // Đi bộ vào từ mép gần chỗ họ đứng (người bên trái vào từ trái), xong bước trước khi câu của họ bắt đầu; không sớm
   // hơn lúc câu trước dứt tiếng. Bước đi: nhún người + đánh hai tay, số bước lẻ để kết thúc đúng tư thế
   const ben = dp.lech < 0 || (dp.lech === 0 && k % 2) ? -1 : 1
@@ -1831,6 +1872,7 @@ const nvPhu = doanPhu.map((dp, k) => {
   tw.push(`tl.fromTo("#${id}", { opacity: 0, x: ${ben * 620}, y: 0, scale: 1 }, { opacity: 1, x: 0, duration: ${f(diVao)}, ease: "power1.out" }, ${f(vao)});`)
   quay('nghieng', vao, -ben, 0)
   veThang(vao + diVao - 0.12)
+  tw.push(...buocChan(id, vao, diVao, Math.max(0.16, diVao / 3)))
   tw.push(`tl.fromTo("#${id} svg", { y: 0 }, { y: -14, duration: ${f(diVao / 6)}, yoyo: true, repeat: 5, ease: "sine.inOut" }, ${f(vao)});`)
   tw.push(`tl.fromTo(["#${id}-tay-trai", "#${id}-tay-phai"], { rotation: (i) => (i ? -22 : 22) }, { rotation: (i) => (i ? 22 : -22), duration: ${f(diVao / 3)}, yoyo: true, repeat: 2, ease: "sine.inOut" }, ${f(vao)});`)
   tw.push(`tl.to(["#${id}-tay-trai", "#${id}-tay-phai"], { rotation: 0, duration: 0.2 }, ${f(vao + diVao)});`)
@@ -1889,6 +1931,7 @@ const nvPhu = doanPhu.map((dp, k) => {
           if (!SAN.has(dt) && !DI.has(dt) && giay >= 0.5) {
             quay('nghieng', t, huong, 0.18)
             veThang(t + giay - 0.1, 0.2)
+            tw.push(...buocChan(id, t, giay, 0.2))
           }
           tw.push(`tl.fromTo("#${id}-nhun", { y: 0 }, { y: -9, duration: ${nhip}, yoyo: true, repeat: ${lan}, ease: "sine.inOut", immediateRender: false }, ${f(t)});`)
           tw.push(`tl.fromTo("#${id}-nhun", { rotation: ${-3 + huong * 2} }, { rotation: ${3 + huong * 2}, duration: ${nhip}, yoyo: true, repeat: ${lan}, ease: "sine.inOut", immediateRender: false }, ${f(t)});`)
@@ -1898,10 +1941,12 @@ const nvPhu = doanPhu.map((dp, k) => {
         viTri = den
         gan = ganDen
       }
-      if (['di_bo', 'chay', 'xach_vali', 'ganh_vac'].includes(dt)) {
+      if (['di_bo', 'chay', 'xach_vali', 'ganh_vac', 'dap_xe'].includes(dt)) {
         const bd = LUC_DONG_TAC[i][1]
+        const di = Math.max(0.6, Math.min(dt === 'chay' ? 2 : 2.4, batDau[i] + d - bd))
         quay('nghieng', bd, 1, 0.18)
-        veThang(bd + Math.max(0.6, Math.min(dt === 'chay' ? 2 : 2.4, batDau[i] + d - bd)), 0.2)
+        veThang(bd + di, 0.2)
+        tw.push(...buocChan(id, bd, di, dt === 'chay' ? 0.2 : 0.32, dt === 'chay'))
       } else if (!dt && d > 2 && (l.cam_xuc === 'buon' || l.cam_xuc === 'suy_nghi')) {
         quay('ba_tu', t + 0.35, l.cam_xuc === 'buon' ? ben : -ben, 0.35)
         veThang(t + d - 0.5, 0.3)
@@ -1925,6 +1970,7 @@ const nvPhu = doanPhu.map((dp, k) => {
   // Rời sân khấu: quay lưng đi ra phía mép đã vào
   // Hết nhiệm vụ: rời nhanh (0,35 giây) ngay cuối câu cuối của mình, nhường chỗ cho người kế tiếp
   quay('nghieng', het - 0.32, ben, 0.12)
+  tw.push(...buocChan(id, het - 0.3, 0.35, 0.17))
   tw.push(`tl.to("#${id}", { x: ${ben * 420}, opacity: 0, duration: 0.35, ease: "power2.in" }, ${f(het - 0.3)});`)
   tw.push(`tl.to("#${id} svg", { y: -12, duration: 0.1, yoyo: true, repeat: 3, ease: "sine.inOut" }, ${f(het - 0.3)});`)
   // Không ghi tên trên đầu (trang phục tự nói lên họ là ai); hai nhân vật chính dạt sang hai bên chừa chỗ cho nhân vật phụ
@@ -2014,8 +2060,10 @@ loi.forEach((l, i) => {
   let canCanhChiDan = false
   if (chuaDau) {
     // Thẻ trên cao: lùi nhẹ (0,92) và hạ khung ~170px để đầu mọi người nằm dưới thẻ; trôi rất chậm cho khỏi đứng hình
-    lia(Math.max(0, t0 - 0.25), 0.92, GIUA_X, GIUA_Y - 185, 0.55)
-    lia(t0 + 0.35, 0.93, GIUA_X + (i % 2 ? 12 : -12), GIUA_Y - 185, conLai, 'sine.inOut')
+    // Câu có hành động (ngồi, khom…) hạ khung ít hơn, kẻo người hạ thấp chìm xuống dải phụ đề
+    const ha = LUC_DONG_TAC[i] ? 20 : 185
+    lia(Math.max(0, t0 - 0.25), 0.92, GIUA_X, GIUA_Y - ha, 0.55)
+    lia(t0 + 0.35, 0.93, GIUA_X + (i % 2 ? 12 : -12), GIUA_Y - ha, conLai, 'sine.inOut')
   } else if (l.ai === 'nguoi_ke' && phuCuaCau[i]) {
     // Lời kể, có người đang diễn (chủ trang 16/10/2026: "máy quay đứng một cỡ cảnh"): máy bám theo chỗ người đó đứng;
     //  · câu mở một cảnh mới: toàn cảnh giới thiệu nơi chốn

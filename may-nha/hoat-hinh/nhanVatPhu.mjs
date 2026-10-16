@@ -36,20 +36,31 @@ function nguoi(id, o) {
     tocSau = '', tocTruoc = '', may = '#3f2a1d', mat = '', nu = false, gia = false, sau = '', than = '', tayPhai = '', tayTrai = '', rau = '', mauToc = may,
   } = o
   const daToi = pha(da, -0.18)
-  const chan = vay
-    ? `<rect x="160" y="470" width="30" height="96" rx="12" fill="${da}" ${vien(5)}/><rect x="210" y="470" width="30" height="96" rx="12" fill="${da}" ${vien(5)}/>
-       <path d="M140 428 L260 428 L280 522 Q200 538 120 522 Z" fill="${quan}" ${vien(6)}/><path d="M200 432 L200 528" stroke="${pha(quan, -0.25)}" stroke-width="4"/>`
+  // Chân có khớp (chủ trang 16/10/2026: nhân vật như ma-nơ-canh, không ngồi / quỳ / đạp xe được): mỗi chân một nhóm
+  // <id>-chan-trai / -phai xoay quanh hông (174 / 226, 470), trong đó ống chân + giày <id>-ong-trai / -phai xoay quanh đầu
+  // gối (174 / 226, 512). Đùi và ống chân bo tròn trọn đầu, tâm đầu bo trùng khớp gối nên gập không hở.
+  const ben = (nhom, cx, giayD) => {
+    const mauDui = vay ? da : quan
+    const mauOng = vay || quanNgan ? da : quan
+    const w = vay ? 30 : quanNgan ? 32 : 44
+    return `<g id="${id}-chan-${nhom}"><rect x="${cx - w / 2}" y="${vay ? 466 : 456}" width="${w}" height="${512 + w / 2 - (vay ? 466 : 456)}" rx="${w / 2}" fill="${mauDui}" ${vien(vay ? 5 : 6)}/>
+      <g id="${id}-ong-${nhom}"><rect x="${cx - w / 2}" y="${512 - w / 2}" width="${w}" height="${564 - 512 + w / 2}" rx="${w / 2}" fill="${mauOng}" ${vien(vay || quanNgan ? 5 : 6)}/>
+      ${vay || quanNgan ? '' : `<path d="M${cx} ${520} L${cx} 556" stroke="${pha(quan, -0.25)}" stroke-width="3" opacity="0.7"/>`}${giayD}</g></g>`
+  }
+  const giayTrai = `<path d="M140 572 Q140 552 170 552 Q198 552 200 572 Z" fill="${giay}" ${vien(5)}/><path d="M150 560 Q160 554 172 556" stroke="#ffffff55" stroke-width="4" fill="none" stroke-linecap="round"/>`
+  const giayPhai = `<path d="M200 572 Q202 552 230 552 Q260 552 260 572 Z" fill="${giay}" ${vien(5)}/><path d="M212 556 Q224 554 236 558" stroke="#ffffff55" stroke-width="4" fill="none" stroke-linecap="round"/>`
+  const chan = ben('trai', 174, giayTrai) + ben('phai', 226, giayPhai) + (vay
+    ? `<path d="M140 428 L260 428 L280 522 Q200 538 120 522 Z" fill="${quan}" ${vien(6)}/><path d="M200 432 L200 528" stroke="${pha(quan, -0.25)}" stroke-width="4"/>`
     : quanNgan
-      ? `<rect x="158" y="500" width="32" height="68" rx="12" fill="${da}" ${vien(5)}/><rect x="210" y="500" width="32" height="68" rx="12" fill="${da}" ${vien(5)}/>
-         <path d="M148 456 L252 456 L256 518 L206 518 L200 488 L194 518 L144 518 Z" fill="${quan}" ${vien(6)}/>`
-      : `<rect x="152" y="460" width="44" height="104" rx="16" fill="${quan}" ${vien(6)}/><rect x="204" y="460" width="44" height="104" rx="16" fill="${quan}" ${vien(6)}/>
-         <path d="M174 470 L174 556 M226 470 L226 556" stroke="${pha(quan, -0.25)}" stroke-width="3" opacity="0.7"/>`
-  const giayVe = `<path d="M140 572 Q140 552 170 552 Q198 552 200 572 Z" fill="${giay}" ${vien(5)}/><path d="M200 572 Q202 552 230 552 Q260 552 260 572 Z" fill="${giay}" ${vien(5)}/>
-    <path d="M150 560 Q160 554 172 556 M212 556 Q224 554 236 558" stroke="#ffffff55" stroke-width="4" fill="none" stroke-linecap="round"/>`
+      ? `<path d="M148 456 L252 456 L256 518 L206 518 L200 488 L194 518 L144 518 Z" fill="${quan}" ${vien(6)}/>`
+      : '')
+  const giayVe = ''
   const ban = (x) =>
     `<circle cx="${x}" cy="456" r="20" fill="${da}" ${vien(5)}/><ellipse cx="${x + (x < 200 ? 15 : -15)}" cy="448" rx="7" ry="10" fill="${da}" ${vien(4)}/>`
+  // Tay có khớp khuỷu: cánh tay trên trong nhóm <id>-tay-…, cẳng tay + bàn tay + đồ cầm trong <id>-cang-… xoay quanh
+  // khuỷu (x + 22, 372); đầu bo hai khúc cùng tâm ở khuỷu nên gập không lộ đường nối
   const canhTay = (x, them, nhom) =>
-    `<g id="${id}-${nhom}"><rect x="${x}" y="300" width="44" height="140" rx="22" fill="${tay}" ${vien(6)}/><rect x="${x + 3}" y="424" width="38" height="12" rx="6" fill="${pha(tay, -0.2)}"/>${ban(x + 22)}<g id="${id}-cam-${nhom}">${them}</g></g>`
+    `<g id="${id}-${nhom}"><rect x="${x}" y="300" width="44" height="94" rx="22" fill="${tay}" ${vien(6)}/><g id="${id}-cang-${nhom.slice(4)}"><rect x="${x}" y="350" width="44" height="90" rx="22" fill="${tay}" ${vien(6)}/><rect x="${x + 3}" y="424" width="38" height="12" rx="6" fill="${pha(tay, -0.2)}"/>${ban(x + 22)}<g id="${id}-cam-${nhom}">${them}</g></g></g>`
   const coAo =
     co === 'so_mi'
       ? `<path d="M172 290 L200 322 L228 290 L222 282 L200 300 L178 282 Z" fill="#f8fafc" ${vien(4)}/>`

@@ -2786,6 +2786,20 @@ const KIEU_CHUYEN = ['truot', 'phong', 'quet', 'mo', 'xuyen']
 // Bối cảnh tươi sáng: gặp câu bi kịch thì phải tối, mất màu (xem vòng nền theo câu)
 const VUI_TUOI = new Set(['truong_quay', 'van_phong', 'cua_hang', 'phong_khach', 'truong_hoc', 'san_khau', 'bai_bien', 'san_van_dong', 'nha_hang', 'cho', 'pho_florida', 'phong_hop', 'san_chung_khoan', 'thanh_pho_dem'])
 const chuyenCanh = [] // { i: câu đầu cảnh mới, t: lúc đổi, kieu } (để chèn tiếng vút)
+// Tên dành riêng của máy dựng cho lớp bọc nền (bc<k>, bc<k>-dong chứa cả ảnh nền, bc<k>-anh): phần tử vẽ trong cảnh / lớp
+// sự sống mà trùng tên thì lệnh chuyển động của nó đánh luôn vào cả nền (phim Messi 16/10/2026: vệt sáng bảng giờ bay tên
+// "bc7-dong" nhảy bậc → cả ảnh nền giật lên xuống suốt cảnh). Tự đổi tên phần tử vẽ + lệnh của nó, không để lọt.
+function tachTenRieng(k, o) {
+  let { svg, tw: twCanh } = o
+  for (const ten of [`bc${k}`, `bc${k}-dong`, `bc${k}-anh`]) {
+    if (!svg.includes(`id="${ten}"`)) continue
+    console.error(`Cảnh bc${k}: phần tử vẽ trùng tên lớp nền "${ten}" → đổi thành "${ten}-ve"`)
+    svg = svg.split(`id="${ten}"`).join(`id="${ten}-ve"`)
+    const cu = twCanh
+    twCanh = (...a) => cu(...a).map((x) => x.split(`"#${ten}"`).join(`"#${ten}-ve"`).split(`"#${ten},`).join(`"#${ten}-ve,`))
+  }
+  return { ...o, svg, tw: twCanh }
+}
 const nenCanh = doanCanh.map((dc, k) => {
   // Kiểu chuyển cảnh AI chọn theo cảm xúc (chuyen_canh ở câu đầu của cảnh mới); không có thì lần lượt từng kiểu
   const chon = loi[dc.tu].chuyen_canh
@@ -2795,10 +2809,10 @@ const nenCanh = doanCanh.map((dc, k) => {
   const dutTieng = k ? batDau[dc.tu - 1] + doDai[dc.tu - 1] - 0.25 : 0
   const t0 = k ? Math.max(dutTieng, batDau[dc.tu] - 0.75) : 0
   const het = dc.het === loi.length - 1 ? TONG : batDau[dc.het + 1]
-  const bc = BOI_CANH[dc.ten](`bc${k}`)
+  const bc = tachTenRieng(k, BOI_CANH[dc.ten](`bc${k}`))
   tw.push(...bc.tw(t0, het - t0))
   // Lớp sự sống + chiều sâu (người đi đường, chim, nắng xiên, bụi, mù xa, viền tối) — lopSong.mjs
-  const song = lopSong(dc.ten, `bc${k}`, { f, lap, NGANG })
+  const song = tachTenRieng(k, lopSong(dc.ten, `bc${k}`, { f, lap, NGANG }))
   tw.push(...song.tw(t0, het - t0))
   if (k) {
     chuyenCanh.push({ i: dc.tu, t: t0, kieu })
@@ -3888,6 +3902,7 @@ const banTay = []
 // rồi bùm. Cách nhau ít nhất 35 giây; không chen vào câu đang phủ ảnh tư liệu toàn khung.
 const LUC_DON_DAP = []
 const donDap = []
+const CAT_NHANH = [] // đoạn chớp nhanh cố ý [từ, đến] → artifacts/cat_nhanh.json (soi_giat.py của máy nhà bỏ qua)
 {
   // Chỉ ảnh tư liệu thật: tranh nền địa điểm (không người) nháy giữa chuỗi trông như hình bị lỗi (Oppenheimer 7:00)
   const anhPhan = [...new Set(loi.map((l) => l.anh_wiki?.tep).filter((t) => t && existsSync(join(GOC, 'hyperframes/assets', t))))]
@@ -3910,6 +3925,7 @@ const donDap = []
     LUC_DON_DAP.push(t)
     const soHinh = nhan_vat_chinh ? 4 : 6
     const nhip = nhan_vat_chinh ? 0.4 : 0.13
+    CAT_NHANH.push([+t.toFixed(2), +(t + soHinh * nhip).toFixed(2)])
     const hinh = Array.from({ length: soHinh }, (_, j) => {
       const k = i + j
       if (anhGan.length >= 3) return `<div id="${id}-${j}" class="dd-hinh"><img src="assets/${esc(anhGan[k % anhGan.length])}" style="transform:scale(${1.05 + (j % 3) * 0.08}) rotate(${(j % 2 ? 1 : -1) * 2}deg)"/></div>`
@@ -4183,6 +4199,18 @@ const CSS_NGANG = `
       .mk-o0 { left: 70px; } .mk-o1 { right: 70px; }
       .mk-phu { margin-top: 44px; font-size: 32px; font-weight: 500; color: #e2e8f0; text-shadow: 0 0 8px #000; }`
 
+// Hai cú cắt máy quay (lệnh ≤ 0,1 giây) cách nhau dưới 1,6 giây → cú sau thành lia mượt 0,6 giây: cảnh nào cũng giữ đủ lâu
+// cho mắt kịp nhìn (phim Messi 16/10/2026: cắt Mèo → Bit → cảnh rộng trong 1 giây, khán giả thấy màn hình giật). Lưới an toàn
+// chung cho mọi luật cắt, kể cả luật thêm sau này.
+{
+  const ds = MAY.nv.map((m, k) => [m, MAY.nen[k]]).sort((a, b) => a[0].t - b[0].t)
+  let catTruoc = -9
+  for (const [m, n] of ds) {
+    if (m.giay > 0.1) continue
+    if (m.t - catTruoc < 1.6) for (const x of [m, n]) Object.assign(x, { t: Math.max(0, x.t - 0.25), giay: 0.6, ease: 'sine.inOut' })
+    else catTruoc = m.t
+  }
+}
 xuatMayQuay('#camera-nv', MAY.nv, { scale: 1, x: 0, y: 0, rotation: 0 })
 xuatMayQuay('#camera-nen', MAY.nen, { scale: 1.03, x: 0, y: 0, rotation: 0 })
 
@@ -4381,4 +4409,14 @@ ${NGANG ? bang.join('') : ''}
 </html>
 `
 writeFileSync(join(GOC, 'hyperframes/index.html'), trang)
+writeFileSync(join(GOC, 'artifacts/cat_nhanh.json'), JSON.stringify(CAT_NHANH))
+// Rà trùng id: một id vừa ở thẻ khung (div / img…) vừa ở chỗ khác → lệnh chuyển động đánh vào cả hai. Bản soi gương của
+// nền (trong svg) trùng id có chủ ý nên chỉ xét id có mặt ở thẻ ngoài svg.
+{
+  const dem = {}
+  for (const m of trang.matchAll(/<([a-zA-Z]+)\b[^>]*?\sid="([^"]+)"/g)) (dem[m[2]] ??= []).push(m[1].toLowerCase())
+  const trung = Object.entries(dem).filter(([, the]) => the.length > 1 && the.some((x) => ['div', 'img', 'span', 'video', 'audio', 'p'].includes(x))).map(([id]) => id)
+  if (trung.length) console.error(`CẢNH BÁO trùng id (lệnh chuyển động đánh nhầm phần tử): ${trung.slice(0, 20).join(', ')}`)
+  writeFileSync(join(GOC, 'artifacts/trung_id.json'), JSON.stringify(trung))
+}
 console.log(`Đã sinh ${loi.length} câu thoại, dài ${f(TONG)} giây`)

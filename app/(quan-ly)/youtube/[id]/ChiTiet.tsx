@@ -250,6 +250,7 @@ function KiemTra({ kt }: { kt: KiemTraVideo }) {
         )}
         <li>Đoạn im lặng lâu: {kt.im_lang.length ? kt.im_lang.map(([t, d]) => `${phutGiay(t)} (${d.toFixed(1)} giây)`).join(', ') : 'không có'}</li>
         <li>Khung hình đen: {kt.man_den.length ? kt.man_den.map(([t, d]) => `${phutGiay(t)} (${d.toFixed(1)} giây)`).join(', ') : 'không có'}</li>
+        {kt.giat && <li>Hình giật: {kt.giat.length ? kt.giat.slice(0, 12).map(([t, d]) => `${phutGiay(t)} (${d.toFixed(1)} giây)`).join(', ') : 'không có'}</li>}
         {kt.ghi_chu.map((g, i) => (
           <li key={i} className="font-semibold">
             → {g}

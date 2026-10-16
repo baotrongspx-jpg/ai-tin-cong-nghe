@@ -27,6 +27,7 @@ import requests
 from vieneu import Vieneu
 
 from kiem_tra_video import kiem_tra_video
+from soi_giat import soi_giat
 import ai_may_nha
 
 REPO = Path(__file__).resolve().parent.parent
@@ -851,10 +852,19 @@ def dung_youtube(may, ds_giong, yc):
                 shutil.move(str(tm / 'video.mp4'), str(tep))
                 if (tm / 'artifacts' / 'phu_de.json').exists():
                     shutil.copy(tm / 'artifacts' / 'phu_de.json', tep.with_suffix('.phu-de.json'))
+                # Soi giật ngay sau khi dựng (soi_giat.py): chỗ hình nảy liên tục ngoài đoạn chớp nhanh cố ý + id trùng
+                try:
+                    td.bao(96, 'Soi hình giật', ep=True)
+                    a = tm / 'artifacts'
+                    cn = json.loads((a / 'cat_nhanh.json').read_text(encoding='utf-8')) if (a / 'cat_nhanh.json').exists() else []
+                    tid = json.loads((a / 'trung_id.json').read_text(encoding='utf-8')) if (a / 'trung_id.json').exists() else []
+                    tep.with_suffix('.giat.json').write_text(json.dumps({'giat': soi_giat(tep, cn), 'trung_id': tid}), encoding='utf-8')
+                except Exception:
+                    traceback.print_exc()
             finally:
                 shutil.rmtree(tm, ignore_errors=True)
         for cu in thu_muc.glob(f'phan-{k:02d}-*'):
-            if cu != tep and cu != tep.with_suffix('.phu-de.json'):
+            if cu not in (tep, tep.with_suffix('.phu-de.json'), tep.with_suffix('.giat.json')):
                 cu.unlink(missing_ok=True)
         gui(f'{goc}/phan-{k}.json', json.dumps({'xong': True, 'ma': ds_ma[k - 1], 'luc': int(time.time() * 1000)}), 'application/json')
         cac_phan = [thu_muc / f'phan-{j + 1:02d}-{m}.mp4' for j, m in enumerate(ds_ma)]
@@ -900,12 +910,26 @@ def dung_youtube(may, ds_giong, yc):
                             'ghi_chu': [f'Máy nhà chưa tự kiểm tra được: {str(e)[:150]}']}
             anh_bia = tao_anh_bia(thu_muc, goc, yc['anh_bia']) if yc.get('anh_bia') else 0
             moc_chuong, cac_cau, lech = [], [], 0.0
+            giat, trung_id = [], set()
             for ph in cac_phan:
                 moc_chuong.append(round(lech, 2))
+                gj = ph.with_suffix('.giat.json')
+                if gj.exists():
+                    try:
+                        o = json.loads(gj.read_text(encoding='utf-8'))
+                        giat += [[round(a + lech, 1), round(b - a, 1)] for a, b, _ in o.get('giat', [])]
+                        trung_id |= set(o.get('trung_id', []))
+                    except Exception:
+                        traceback.print_exc()
                 pd = ph.with_suffix('.phu-de.json')
                 if pd.exists():
                     cac_cau += [{**c, 'bd': c['bd'] + lech, 'kt': c['kt'] + lech} for c in json.loads(pd.read_text(encoding='utf-8'))]
                 lech += do_dai_video(ph) or 0
+            kiem_tra['giat'] = giat
+            if giat:
+                kiem_tra['ghi_chu'].append(f'Có {len(giat)} chỗ hình giật (màn hình nảy liên tục): xem các mốc ở trên rồi báo Claude sửa máy dựng')
+            if trung_id:
+                kiem_tra['ghi_chu'].append(f'Máy dựng có phần tử trùng tên ({", ".join(sorted(trung_id)[:5])}): báo Claude sửa')
             phu_de = False
             if cac_cau:
                 try:
@@ -916,7 +940,7 @@ def dung_youtube(may, ds_giong, yc):
                 except Exception:
                     traceback.print_exc()
             # Dọn các bản phần cũ không còn dùng (mã khác mã hiện tại), vd bản cũ gom từ thư mục trước khi đổi tiêu đề
-            dung = {p.name for p in cac_phan} | {p.with_suffix('.phu-de.json').name for p in cac_phan}
+            dung = {p.name for p in cac_phan} | {p.with_suffix(x).name for p in cac_phan for x in ('.phu-de.json', '.giat.json')}
             for cu in thu_muc.glob('phan-*'):
                 if cu.name not in dung:
                     cu.unlink(missing_ok=True)
@@ -989,8 +1013,8 @@ def dung_hoat_hinh(may, ds_giong, yc, td):
 
 
 # Phiên bản máy nhà (gửi kèm tín hiệu sống): trang web biết máy nhà đã khởi động lại sau lần cập nhật chưa
-# (lib/youtube.ts: BAN_MAY_NHA phải bằng số này). 2: báo việc đang làm (hien-tai.json), Pixabay chặn thì nghỉ; 3: báo lại mỗi 20 giây; 4: tự khởi động lại khi code đổi; 6: âm lượng nhạc nền riêng từng chương (am_luong_phan)
-BAN_MAY_NHA = 6
+# (lib/youtube.ts: BAN_MAY_NHA phải bằng số này). 2: báo việc đang làm (hien-tai.json), Pixabay chặn thì nghỉ; 3: báo lại mỗi 20 giây; 4: tự khởi động lại khi code đổi; 6: âm lượng nhạc nền riêng từng chương (am_luong_phan); 7: soi hình giật sau khi dựng (soi_giat.py)
+BAN_MAY_NHA = 7
 
 
 def bao_song():

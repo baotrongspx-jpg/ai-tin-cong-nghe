@@ -13,6 +13,7 @@ import { bienTapDat, hoiDongDat, khauChuaDat, SO_LAN_LAM_LAI } from '@/lib/datCh
 import NenPhim from './NenPhim'
 import HanhDongPhim from './HanhDongPhim'
 import BangNhanVat from './BangNhanVat'
+import DaiMauPhim from './DaiMauPhim'
 
 const NGUOI: Record<string, string> = {
   nguoi_ke: '🎙 Người kể',
@@ -862,6 +863,7 @@ export default function ChiTiet({ dau, ttDau }: { dau: DuAnYT; ttDau: TrangThaiD
 
       {d.loai === 'tieu_su' && <HoSoPhim d={d} chay={(buoc) => void chayLaiBuoc(buoc)} dangChay={!!dangChay} />}
       {d.loai === 'tieu_su' && <NenPhim d={d} onDuAn={setD} />}
+      <DaiMauPhim d={d} />
       <HanhDongPhim d={d} onDuAn={setD} />
 
       {/* Các phần */}

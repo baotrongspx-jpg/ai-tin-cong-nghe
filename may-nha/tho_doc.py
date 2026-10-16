@@ -442,6 +442,42 @@ def tai_nen_phim(v, tai_san):
     return ten
 
 
+def can_mau(tep):
+    # Chỉnh màu đồng đều cả phim (chủ trang 16/10/2026, quy trình hậu kỳ "color grading"): ảnh nền đến từ nhiều nguồn
+    # (chủ trang tải lên, AI vẽ, Pixabay) mỗi ảnh một độ sáng / tông / độ tương phản / độ rực → kéo MỘT PHẦN về cùng một
+    # chuẩn trước khi dựng (cân trắng kiểu "thế giới xám", độ sáng trung bình, độ tương phản, độ rực), có giới hạn để giữ
+    # chất riêng của ảnh. Màu cảm xúc từng câu (ấm, lạnh, căng thẳng…) vẫn do lớp ánh sáng của máy dựng phủ lên sau.
+    try:
+        anh = Image.open(tep).convert('RGB')
+        a = np.asarray(anh, dtype=np.float32) / 255.0
+        nho = np.asarray(anh.resize((160, max(1, round(160 * anh.height / anh.width)))), dtype=np.float32) / 255.0
+        tb = nho.reshape(-1, 3).mean(0)
+        # Ám màu nhẹ (lệch < 12%) thường là lỗi cân trắng của máy chụp → sửa một nửa; ám mạnh (đêm xanh, hoàng hôn cam)
+        # là chủ ý của cảnh → giữ nguyên
+        lech = float(np.abs(tb / max(float(tb.mean()), 1e-3) - 1).max())
+        loi_trang = np.clip(np.sqrt(tb.mean() / np.maximum(tb, 1e-3)), 0.9, 1.1) if lech < 0.12 else np.ones(3, dtype=np.float32)
+        a = np.clip(a * loi_trang, 0, 1)
+        nho = np.clip(nho * loi_trang, 0, 1)
+        y = nho @ np.array([0.299, 0.587, 0.114], dtype=np.float32)
+        ytb = float(np.clip(y.mean(), 0.05, 0.95))
+        # Sáng trung bình kéo một phần về ~0,47; cảnh tối (đêm, phòng tối) chỉ kéo rất nhẹ để giữ không khí
+        g = float(np.clip(np.power(np.log(0.47) / np.log(ytb), 0.2 if ytb < 0.28 else 0.35), 0.86, 1.16))
+        a = np.power(a, g)
+        y2 = np.power(nho, g) @ np.array([0.299, 0.587, 0.114], dtype=np.float32)
+        tuong_phan = float(np.clip(np.sqrt(0.21 / max(float(y2.std()), 0.04)), 0.88, 1.18))
+        ytb2 = float(y2.mean())
+        a = np.clip((a - ytb2) * tuong_phan + ytb2, 0, 1)
+        ro = float((nho.max(2) - nho.min(2)).mean())
+        bao_hoa = float(np.clip(np.sqrt(0.30 / max(ro, 0.03)), 0.85, 1.2))
+        xam = (a @ np.array([0.299, 0.587, 0.114], dtype=np.float32))[..., None]
+        a = np.clip(xam + (a - xam) * bao_hoa, 0, 1)
+        Image.fromarray((a * 255 + 0.5).astype(np.uint8)).save(tep, 'JPEG', quality=92)
+        return True
+    except Exception:
+        traceback.print_exc()
+        return False
+
+
 def tai_anh_nen(loi, tai_san, lech=0, td=None, nen_phim=None):
     # Mỗi cảnh (các câu liền nhau cùng boi_canh, như tao_video.mjs) một tranh nền → assets/px-<mã>.jpg, ghi tên tệp vào
     # anh_nen_tep của câu đầu cảnh. Không lặp tranh trong một phần; lech (số phần) để các phần chọn tranh khác nhau.
@@ -577,7 +613,7 @@ def xem_nhanh(tm, goc, k, ma, td):
         gui(f'{goc}/xem-truoc-{k}.json', json.dumps({'ma': ma, 'anh': ten, 'luc': int(time.time() * 1000)}), 'application/json')
 
 
-def dung_video(may, ds_giong, lt, tm, td, fps=30, gioi_han=1500, anh_nen=None, xem_truoc=None):
+def dung_video(may, ds_giong, lt, tm, td, fps=30, gioi_han=1500, anh_nen=None, xem_truoc=None, chinh_mau=False):
     # Đọc từng câu thoại bằng giọng của nhân vật nói câu đó, sinh trang HyperFrames rồi dựng ra tm/video.mp4.
     # Trả độ dài (giây) từng câu. Tiến độ: đọc giọng 10-30%, dựng hình 30-95%.
     shutil.rmtree(tm, ignore_errors=True)
@@ -594,6 +630,9 @@ def dung_video(may, ds_giong, lt, tm, td, fps=30, gioi_han=1500, anh_nen=None, x
     tai_anh_wiki(lt['loi'], tai_san, td)
     if anh_nen is not None:  # video YouTube: ảnh nền Pixabay theo cảnh (anh_nen = số phần, để các phần chọn ảnh khác nhau)
         tai_anh_nen(lt['loi'], tai_san, anh_nen, td, lt.get('nen_phim'))
+        if chinh_mau:
+            for ten in {l['anh_nen_tep'] for l in lt['loi'] if l.get('anh_nen_tep')}:
+                can_mau(tai_san / ten)
     # Gom các câu cùng giọng đọc một lần (nhanh hơn nhiều so với từng câu, nhất là trên card NVIDIA)
     theo_giong = {}
     for i, l in enumerate(lt['loi']):
@@ -796,7 +835,13 @@ def dung_youtube(may, ds_giong, yc):
             try:
                 # Phần dài vài phút: 24 khung hình/giây cho nhanh, cho dựng tới ~40 giây mỗi giây video
                 uoc = sum(len(l['chu']) for l in yc['loi_thoai']['loi']) / 14
-                dung_video(may, ds_giong, yc['loi_thoai'], tm, td, fps=24, gioi_han=max(1800, int(uoc * 40)), anh_nen=k, xem_truoc=(goc, k, ds_ma[k - 1]))
+                # Chỉnh màu đồng đều: chỉ khi cả phim cùng chỉnh — phim đã có phần dựng trước khi có bước này (không dấu
+                # can-mau.txt) giữ như cũ cho các phần khỏi lệch tông nhau
+                da_co = [p for j, m in enumerate(ds_ma) if (p := thu_muc / f'phan-{j + 1:02d}-{m}.mp4').exists()]
+                chinh_mau = (thu_muc / 'can-mau.txt').exists() or not da_co
+                if chinh_mau:
+                    (thu_muc / 'can-mau.txt').write_text('1', encoding='utf-8')
+                dung_video(may, ds_giong, yc['loi_thoai'], tm, td, fps=24, gioi_han=max(1800, int(uoc * 40)), anh_nen=k, xem_truoc=(goc, k, ds_ma[k - 1]), chinh_mau=chinh_mau)
                 shutil.move(str(tm / 'video.mp4'), str(tep))
                 if (tm / 'artifacts' / 'phu_de.json').exists():
                     shutil.copy(tm / 'artifacts' / 'phu_de.json', tep.with_suffix('.phu-de.json'))

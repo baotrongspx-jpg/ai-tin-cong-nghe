@@ -7,7 +7,7 @@ import { join, resolve } from 'node:path'
 import { execFile } from 'node:child_process'
 import { HINH_MIENG } from './mieng.mjs'
 import { BOI_CANH } from './boiCanh.mjs'
-import { NHAN_VAT_PHU, nguoiKeSvg, nhanVatChinhSvg } from './nhanVatPhu.mjs'
+import { NHAN_VAT_PHU, nguoiKeSvg, nhanVatChinhSvg, GOC_NHIN, TAM_GOC, chonGoc } from './nhanVatPhu.mjs'
 import { meoSvg, robotSvg } from './nhanVatChinh.mjs'
 import { DAO_CU } from './daoCu.mjs'
 import { logoTrongCau } from './logoThuongHieu.mjs'
@@ -1781,6 +1781,38 @@ const nvPhu = doanPhu.map((dp, k) => {
     gioiThieu.add(dp.tu)
   }
   if (dp.lech < 0) tw.push(`gsap.set("#${id} svg", { scaleX: -1 });`)
+  // Góc nhìn (chủ trang 16/10/2026: nhân vật nhìn từ nhiều góc): quay nghiêng theo hướng đi khi bước vào, đổi chỗ, đi bộ /
+  // chạy, rời đi; quay ¾ khi buồn (ngoảnh đi) hay suy nghĩ (nhìn sang bên). Góc gốc của hình nhìn về bên trái svg; svg
+  // người đứng bên trái đã lật sẵn → góc gốc nhìn sang phải màn hình. Nhìn ngược lại: lật lớp #<id>-quay qua 0 (thấy như
+  // xoay người), không lật tức thì
+  const svgPhu = NHAN_VAT_PHU[dp.ten].svg(id)
+  const coGoc = svgPhu.includes(`${id}-goc-mat"`)
+  const coMatXa = svgPhu.includes('goc-mat-xa')
+  const huongGoc = dp.lech < 0 ? 1 : -1
+  let latQuay = 1
+  const quay = (goc, t, huong = huongGoc, dur = 0.22) => {
+    if (!coGoc) return
+    const lat = goc === 'thang' || goc === 'sau' ? latQuay : huong === huongGoc ? 1 : -1
+    if (lat !== latQuay) {
+      tw.push(dur ? `tl.fromTo("#${id}-quay", { scaleX: ${latQuay} }, { scaleX: ${lat}, duration: ${f(Math.max(0.12, dur * 0.7))}, ease: "sine.inOut", immediateRender: false }, ${f(t)});` : `tl.set("#${id}-quay", { scaleX: ${lat} }, ${f(t)});`)
+      latQuay = lat
+    }
+    for (const [bp, v] of Object.entries(GOC_NHIN[goc])) {
+      if (bp === 'goc-mat-xa' && !coMatXa) continue
+      const gt = Object.entries(v).map(([k, x]) => `${k}: ${x}`).join(', ')
+      tw.push(dur ? `tl.to("${chonGoc(id, bp)}", { ${gt}, duration: ${f(dur)}, ease: "sine.inOut" }, ${f(t)});` : `tl.set("${chonGoc(id, bp)}", { ${gt} }, ${f(t)});`)
+    }
+  }
+  // Quay về chính diện, rồi trả lớp lật về như cũ (đồ cầm tay về đúng tay)
+  const veThang = (t, dur = 0.22) => {
+    if (!coGoc) return
+    quay('thang', t, huongGoc, dur)
+    if (latQuay !== 1) {
+      tw.push(`tl.fromTo("#${id}-quay", { scaleX: -1 }, { scaleX: 1, duration: 0.16, ease: "sine.inOut", immediateRender: false }, ${f(t + dur)});`)
+      latQuay = 1
+    }
+  }
+  if (coGoc) for (const [bp, tam] of Object.entries(TAM_GOC)) tw.push(`gsap.set("${chonGoc(id, bp)}", { svgOrigin: "${tam}" });`)
   tw.push(`gsap.set("#${id}-dau", { svgOrigin: "200 250" }); gsap.set("#${id}-tay-phai", { svgOrigin: "270 300" }); gsap.set("#${id}-tay-trai", { svgOrigin: "130 300" }); gsap.set("#${id}-mieng-mo", { svgOrigin: "200 226" });`)
   // Đi bộ vào từ mép gần chỗ họ đứng (người bên trái vào từ trái), xong bước trước khi câu của họ bắt đầu; không sớm
   // hơn lúc câu trước dứt tiếng. Bước đi: nhún người + đánh hai tay, số bước lẻ để kết thúc đúng tư thế
@@ -1790,12 +1822,17 @@ const nvPhu = doanPhu.map((dp, k) => {
   const vao = Math.max(raTruoc, dp.tu ? batDau[dp.tu - 1] + doDai[dp.tu - 1] - 0.3 : 0, t0 - 0.85)
   const diVao = Math.max(0.4, Math.min(0.8, t0 + 0.3 - vao))
   tw.push(`tl.fromTo("#${id}", { opacity: 0, x: ${ben * 620}, y: 0, scale: 1 }, { opacity: 1, x: 0, duration: ${f(diVao)}, ease: "power1.out" }, ${f(vao)});`)
+  quay('nghieng', vao, -ben, 0)
+  veThang(vao + diVao - 0.12)
   tw.push(`tl.fromTo("#${id} svg", { y: 0 }, { y: -14, duration: ${f(diVao / 6)}, yoyo: true, repeat: 5, ease: "sine.inOut" }, ${f(vao)});`)
   tw.push(`tl.fromTo(["#${id}-tay-trai", "#${id}-tay-phai"], { rotation: (i) => (i ? -22 : 22) }, { rotation: (i) => (i ? 22 : -22), duration: ${f(diVao / 3)}, yoyo: true, repeat: 2, ease: "sine.inOut" }, ${f(vao)});`)
   tw.push(`tl.to(["#${id}-tay-trai", "#${id}-tay-phai"], { rotation: 0, duration: 0.2 }, ${f(vao + diVao)});`)
-  tw.push(`tl.to("#${id}-tay-phai", { rotation: -140, duration: 0.3, ease: "back.out(2)" }, ${f(t0 + 0.5)});`)
-  tw.push(`tl.to("#${id}-tay-phai", { rotation: -115, duration: 0.18, yoyo: true, repeat: 5, ease: "sine.inOut" }, ${f(t0 + 0.8)});`)
-  tw.push(`tl.to("#${id}-tay-phai", { rotation: 0, duration: 0.3 }, ${f(t0 + 1.9)});`)
+  // Vẫy chào khi mới xuất hiện — trừ khi câu đầu của họ đã có hành động (vẫy tay đè lên động tác đi bộ, mở cửa…)
+  if (!LUC_DONG_TAC[dp.tu]) {
+    tw.push(`tl.to("#${id}-tay-phai", { rotation: -140, duration: 0.3, ease: "back.out(2)" }, ${f(t0 + 0.5)});`)
+    tw.push(`tl.to("#${id}-tay-phai", { rotation: -115, duration: 0.18, yoyo: true, repeat: 5, ease: "sine.inOut" }, ${f(t0 + 0.8)});`)
+    tw.push(`tl.to("#${id}-tay-phai", { rotation: 0, duration: 0.3 }, ${f(t0 + 1.9)});`)
+  }
   // Đứng trên sân khấu (Character Acting Engine, cấp 1 – idle): thở (thân phồng nhẹ), dồn trọng tâm trái – phải rất chậm,
   // chớp mắt ở mốc cố định. Không gật đầu liên tục cho có: gật / nhìn người nói làm theo từng câu (xem phần câu thoại)
   // ── Di chuyển trên sân khấu theo từng câu (chủ trang 15/10/2026: "hành động quá sơ sài, toàn đứng, không có chuyển
@@ -1842,6 +1879,10 @@ const nvPhu = doanPhu.map((dp, k) => {
           const nhip = 0.16
           const lan = Math.max(1, Math.round(giay / nhip / 2)) * 2 - 1
           const huong = den > viTri ? 1 : -1
+          if (!SAN.has(dt) && !DI.has(dt) && giay >= 0.5) {
+            quay('nghieng', t, huong, 0.18)
+            veThang(t + giay - 0.1, 0.2)
+          }
           tw.push(`tl.fromTo("#${id}-nhun", { y: 0 }, { y: -9, duration: ${nhip}, yoyo: true, repeat: ${lan}, ease: "sine.inOut", immediateRender: false }, ${f(t)});`)
           tw.push(`tl.fromTo("#${id}-nhun", { rotation: ${-3 + huong * 2} }, { rotation: ${3 + huong * 2}, duration: ${nhip}, yoyo: true, repeat: ${lan}, ease: "sine.inOut", immediateRender: false }, ${f(t)});`)
           tw.push(`tl.to("#${id}-nhun", { rotation: 0, duration: 0.15 }, ${f(t + giay)});`)
@@ -1849,6 +1890,14 @@ const nvPhu = doanPhu.map((dp, k) => {
         if (l.cam_xuc === 'vui' && !dt) tw.push(`tl.fromTo("#${id}-nhun", { y: 0 }, { y: -30, duration: 0.18, yoyo: true, repeat: 1, ease: "sine.out", immediateRender: false }, ${f(t + giay + 0.05)});`)
         viTri = den
         gan = ganDen
+      }
+      if (['di_bo', 'chay', 'xach_vali', 'ganh_vac'].includes(dt)) {
+        const bd = LUC_DONG_TAC[i][1]
+        quay('nghieng', bd, 1, 0.18)
+        veThang(bd + Math.max(0.6, Math.min(dt === 'chay' ? 2 : 2.4, batDau[i] + d - bd)), 0.2)
+      } else if (!dt && d > 2 && (l.cam_xuc === 'buon' || l.cam_xuc === 'suy_nghi')) {
+        quay('ba_tu', t + 0.35, l.cam_xuc === 'buon' ? ben : -ben, 0.35)
+        veThang(t + d - 0.5, 0.3)
       }
       // Làm việc sát sàn: khom người trong lúc làm, đứng thẳng lại cuối câu
       if (SAN.has(dt)) {
@@ -1867,12 +1916,13 @@ const nvPhu = doanPhu.map((dp, k) => {
   }
   // Rời sân khấu: quay lưng đi ra phía mép đã vào
   // Hết nhiệm vụ: rời nhanh (0,35 giây) ngay cuối câu cuối của mình, nhường chỗ cho người kế tiếp
+  quay('nghieng', het - 0.32, ben, 0.12)
   tw.push(`tl.to("#${id}", { x: ${ben * 420}, opacity: 0, duration: 0.35, ease: "power2.in" }, ${f(het - 0.3)});`)
   tw.push(`tl.to("#${id} svg", { y: -12, duration: 0.1, yoyo: true, repeat: 3, ease: "sine.inOut" }, ${f(het - 0.3)});`)
   // Không ghi tên trên đầu (trang phục tự nói lên họ là ai); hai nhân vật chính dạt sang hai bên chừa chỗ cho nhân vật phụ
   // Mèo / Bit dạt ra bao xa: tính chung cho mọi người trên sân khấu theo thời gian (sanKhau, xem dưới)
   sanKhau.push({ vao, ra: het - 0.3, lech: dp.lech })
-  return `<div id="${id}" class="nv-phu" data-ten="${dp.ten}" style="left:${354 + dp.lech}px"><div id="${id}-buoc" class="nv-buoc"><div id="${id}-nhun" class="nv-buoc"><svg viewBox="${NHAN_VAT_PHU[dp.ten].viewBox ?? '0 0 400 600'}" width="372" height="558" class="nv">${ganVat(NHAN_VAT_PHU[dp.ten].svg(id), id, dp)}</svg></div></div>${DAU_HIEU[id] ?? ''}</div>`
+  return `<div id="${id}" class="nv-phu" data-ten="${dp.ten}" style="left:${354 + dp.lech}px"><div id="${id}-buoc" class="nv-buoc"><div id="${id}-nhun" class="nv-buoc"><div id="${id}-quay" class="nv-buoc"><svg viewBox="${NHAN_VAT_PHU[dp.ten].viewBox ?? '0 0 400 600'}" width="372" height="558" class="nv">${ganVat(svgPhu, id, dp)}</svg></div></div></div>${DAU_HIEU[id] ?? ''}</div>`
 })
 // Mèo / Bit dạt sang hai bên chừa chỗ cho nhân vật phụ. Tính theo thời gian, mỗi lúc có người vào / ra: ai đang đứng trên
 // sân khấu, đứng ở đâu → độ dạt cần thiết (có người đứng lệch trái / phải hoặc hai người cùng đứng: dạt xa 300; một người

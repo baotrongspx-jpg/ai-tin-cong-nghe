@@ -12,6 +12,7 @@ import HoSoPhim, { KhoiDuLieu } from './HoSoPhim'
 import { bienTapDat, hoiDongDat, khauChuaDat, SO_LAN_LAM_LAI } from '@/lib/datChuan'
 import NenPhim from './NenPhim'
 import HanhDongPhim from './HanhDongPhim'
+import BangNhanVat from './BangNhanVat'
 
 const NGUOI: Record<string, string> = {
   nguoi_ke: '🎙 Người kể',
@@ -799,6 +800,7 @@ export default function ChiTiet({ dau, ttDau }: { dau: DuAnYT; ttDau: TrangThaiD
               </li>
             ))}
           </ul>
+          <BangNhanVat th={d.phim.tao_hinh} />
         </section>
       )}
 

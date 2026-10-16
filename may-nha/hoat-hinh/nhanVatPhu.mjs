@@ -23,7 +23,7 @@ function matMacDinh(mauMat = '#3b2416', nu = false) {
   const mi = nu
     ? `<path d="M156 180 l-7 -5 M160 175 l-4 -7 M244 180 l7 -5 M240 175 l4 -7" ${vien(3)}/>`
     : ''
-  return mot(170) + mot(230) + mi
+  return `<g class="goc-mat-xa">${mot(170)}</g>` + mot(230) + mi
 }
 
 // Khung người chung, đã chau chuốt: tai, lông mày, mũi, bàn tay, giày, cổ áo, đổ bóng. Tuỳ chọn:
@@ -33,7 +33,7 @@ function matMacDinh(mauMat = '#3b2416', nu = false) {
 function nguoi(id, o) {
   const {
     da = '#fcd9b8', ao, tay = ao, quan = '#334155', giay = '#1f2937', vay = false, quanNgan = false, co = 'tron',
-    tocSau = '', tocTruoc = '', may = '#3f2a1d', mat = '', nu = false, gia = false, sau = '', than = '', tayPhai = '', tayTrai = '',
+    tocSau = '', tocTruoc = '', may = '#3f2a1d', mat = '', nu = false, gia = false, sau = '', than = '', tayPhai = '', tayTrai = '', rau = '', mauToc = may,
   } = o
   const daToi = pha(da, -0.18)
   const chan = vay
@@ -64,19 +64,27 @@ function nguoi(id, o) {
   ${chan}
   ${giayVe}
   ${canhTay(98, tayTrai, 'tay-trai')}
+  <g id="${id}-goc-than">
   <path d="M128 336 Q128 292 172 288 L228 288 Q272 292 272 336 L266 476 Q200 490 134 476 Z" fill="${ao}" ${vien(7)}/>
   <path d="M244 300 Q268 312 266 350 L262 470 Q250 476 238 476 Z" fill="#00000018"/>
-  ${coAo}
-  ${than}
+  <g id="${id}-goc-ao">${coAo}
+  ${than}</g></g>
   ${canhTay(258, tayPhai, 'tay-phai')}
   <g id="${id}-dau">
     ${tocSau}
     <rect x="182" y="236" width="36" height="52" rx="8" fill="${da}" ${vien(6)}/><rect x="184" y="262" width="32" height="12" fill="${daToi}" opacity="0.6"/>
-    <ellipse cx="119" cy="192" rx="15" ry="20" fill="${da}" ${vien(5)}/><ellipse cx="281" cy="192" rx="15" ry="20" fill="${da}" ${vien(5)}/>
+    <g id="${id}-goc-tai-xa"><ellipse cx="119" cy="192" rx="15" ry="20" fill="${da}" ${vien(5)}/></g><g id="${id}-goc-tai-gan"><ellipse cx="281" cy="192" rx="15" ry="20" fill="${da}" ${vien(5)}/></g>
     <ellipse cx="200" cy="180" rx="80" ry="84" fill="${da}" ${vien(7)}/>
+    <!-- Mũi nhìn nghiêng (hiện ở góc nghiêng) và gáy tóc (hiện ở góc sau lưng) -->
+    <g id="${id}-goc-mui" opacity="0"><path d="M126 176 Q100 198 108 206 Q116 212 128 206" fill="${da}" ${vien(5)}/></g>
+    <g id="${id}-goc-gay" opacity="0"><ellipse cx="200" cy="176" rx="83" ry="88" fill="${mauToc}" ${vien(7)}/><path d="M150 120 Q200 100 250 120 M140 160 Q200 140 260 160" fill="none" stroke="${pha(mauToc, 0.25)}" stroke-width="5" stroke-linecap="round"/></g>
+    <g id="${id}-goc-gay-nua" opacity="0"><path d="M196 96 C258 92 298 138 284 214 Q278 236 260 244 Q276 168 196 96 Z" fill="${mauToc}" ${vien(6)}/></g>
+    <g id="${id}-goc-mat">
     <ellipse cx="152" cy="212" rx="15" ry="9" fill="#fb718566"/><ellipse cx="248" cy="212" rx="15" ry="9" fill="#fb718566"/>
     ${gia ? `<path d="M158 150 Q172 144 186 150 M214 150 Q228 144 242 150 M150 208 Q156 216 152 226 M250 208 Q244 216 248 226" fill="none" stroke="${daToi}" stroke-width="3.5" stroke-linecap="round"/>` : ''}
-    ${tocTruoc}
+    </g>
+    <g id="${id}-goc-toc">${tocTruoc}</g>
+    <g id="${id}-goc-mat2">
     <g id="${id}-may-trai"><path d="M154 167 Q170 158 186 165" fill="none" stroke="${may}" stroke-width="6" stroke-linecap="round"/></g><g id="${id}-may-phai"><path d="M214 165 Q230 158 246 167" fill="none" stroke="${may}" stroke-width="6" stroke-linecap="round"/></g>
     <g id="${id}-mat">${mat || matMacDinh(undefined, nu)}</g>
     <path d="M196 200 Q201 211 207 204" fill="none" stroke="${daToi}" stroke-width="4" stroke-linecap="round"/>
@@ -88,7 +96,34 @@ function nguoi(id, o) {
     <g id="${id}-mieng-dong"><path d="M182 222 Q200 236 218 222" fill="none" stroke="${nu ? '#be185d' : VIEN}" stroke-width="6" stroke-linecap="round"/></g>
     <g id="${id}-mieng-mo" opacity="0"><ellipse cx="200" cy="226" rx="16" ry="14" fill="#7f1d1d" stroke="${nu ? '#be185d' : VIEN}" stroke-width="4"/><ellipse cx="200" cy="233" rx="9" ry="5" fill="#fb7185"/></g>
     ${boMieng(id, { cx: 200, cy: 227, w: 18, vien: nu ? '#be185d' : VIEN, net: 4 })}
+    ${rau}
+    </g>
   </g>`
+}
+
+// ── Góc nhìn (chủ trang 16/10/2026: "nhân vật nhìn từ nhiều góc — trước, ¾, nghiêng, sau"). Kiểu xoay đầu của hoạt hình
+// cắt giấy: mặt (mắt, mày, mũi, miệng, má) dịch về phía nhìn và co lại, tai phía xa khuất, thân co hẹp, tay phía xa
+// lùi vào sau thân; nghiêng: mắt xa khuất, hiện mũi nhìn nghiêng; sau lưng: mặt khuất, hiện gáy tóc. Góc gốc nhìn về
+// bên TRÁI hình; nhìn sang phải = lật ngang (lớp #<id>-quay, tao_video.mjs). Mỗi bộ phận: { x, scaleX, opacity }.
+const GOC_GOC = { 'goc-mat': { x: 0, scaleX: 1, opacity: 1 }, 'goc-mat2': { x: 0, scaleX: 1, opacity: 1 }, 'goc-toc': { x: 0 }, 'goc-tai-xa': { x: 0, opacity: 1 }, 'goc-tai-gan': { x: 0 }, 'goc-than': { scaleX: 1 }, 'goc-ao': { x: 0, opacity: 1 }, 'goc-mui': { opacity: 0 }, 'goc-gay': { opacity: 0 }, 'goc-gay-nua': { opacity: 0 }, 'goc-mat-xa': { opacity: 1 }, 'tay-trai': { x: 0 }, 'tay-phai': { x: 0 } }
+export const GOC_NHIN = {
+  thang: GOC_GOC,
+  ba_tu: { ...GOC_GOC, 'goc-mat': { x: -26, scaleX: 0.88, opacity: 1 }, 'goc-mat2': { x: -26, scaleX: 0.88, opacity: 1 }, 'goc-toc': { x: -10 }, 'goc-tai-xa': { x: 0, opacity: 0 }, 'goc-tai-gan': { x: -10 }, 'goc-than': { scaleX: 0.9 }, 'goc-ao': { x: -14, opacity: 1 }, 'tay-trai': { x: 20 }, 'tay-phai': { x: -10 } },
+  nghieng: { ...GOC_GOC, 'goc-mat': { x: -52, scaleX: 0.72, opacity: 1 }, 'goc-mat2': { x: -52, scaleX: 0.72, opacity: 1 }, 'goc-toc': { x: -18 }, 'goc-tai-xa': { x: 0, opacity: 0 }, 'goc-tai-gan': { x: -22 }, 'goc-than': { scaleX: 0.78 }, 'goc-ao': { x: -30, opacity: 1 }, 'goc-mui': { opacity: 1 }, 'goc-gay-nua': { opacity: 1 }, 'goc-mat-xa': { opacity: 0 }, 'tay-trai': { x: 46 }, 'tay-phai': { x: -30 } },
+  sau: { ...GOC_GOC, 'goc-mat': { x: 0, scaleX: 1, opacity: 0 }, 'goc-mat2': { x: 0, scaleX: 1, opacity: 0 }, 'goc-ao': { x: 0, opacity: 0 }, 'goc-gay': { opacity: 1 } },
+}
+// Tâm co giãn của từng bộ phận (toạ độ viewBox 400×600)
+export const TAM_GOC = { 'goc-mat': '200 190', 'goc-mat2': '200 190', 'goc-than': '200 400', 'goc-ao': '200 380' }
+// Bộ chọn của bộ phận: mắt xa là lớp (class) trong nhóm mắt, còn lại là id
+export const chonGoc = (id, bp) => (bp === 'goc-mat-xa' ? `#${id}-mat .goc-mat-xa` : `#${id}-${bp}`)
+// CSS đặt sẵn một góc nhìn (bảng nhân vật trên web vẽ tĩnh, không cần GSAP)
+export function cssGocNhin(id, goc) {
+  return Object.entries(GOC_NHIN[goc] ?? GOC_GOC)
+    .map(([bp, v]) => {
+      const tam = (TAM_GOC[bp] ?? '200 300').split(' ')
+      return `${chonGoc(id, bp)}{transform-box:view-box;transform-origin:${tam[0]}px ${tam[1]}px;transform:translateX(${v.x ?? 0}px) scaleX(${v.scaleX ?? 1});${v.opacity === undefined ? '' : `opacity:${v.opacity};`}}`
+    })
+    .join('')
 }
 
 // ── Đồ nghề, phụ kiện dùng chung ──
@@ -272,7 +307,9 @@ export function nhanVatChinhSvg(h) {
     may: mt,
     sau: (tocVe.sauLung ?? '') + (kieu.sau ?? ''),
     tocSau: tocVe.sau ?? '',
-    tocTruoc: (coMu ? '' : tocVe.truoc) + rau + mu,
+    tocTruoc: (coMu ? '' : tocVe.truoc) + mu,
+    rau,
+    mauToc: mt,
     mat: matMacDinh(undefined, nu) + (h.phu_kien === 'kinh_ram' ? kinhRam : h.kinh ? kinh(gia ? '#78350f' : VIEN) : ''),
     than: kieu.than + phuKien,
     tayPhai,

@@ -211,7 +211,7 @@ export default function HanhDongPhim({ d, onDuAn }: { d: DuAnYT; onDuAn: (d: DuA
             </div>
           )}
 
-          <BocTachPhim d={d} pt={pt} />
+          <BocTachPhim d={d} pt={pt} onDuAn={onDuAn} />
 
           <div className="grid gap-2">
             {pt.chuong.map((c) => (

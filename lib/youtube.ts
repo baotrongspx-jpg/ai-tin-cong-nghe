@@ -579,7 +579,7 @@ export async function duyetKichBan(id: string) {
 // sách"): lượt 1 KHÔNG thấy thư viện — chỉ đọc lời, ghi việc thật sự xảy ra trên hình và đạo cụ cần; lượt 2 đem từng việc
 // đó so với thư viện: có hành động làm đúng việc đó chưa, đạo cụ nào hành động đó chưa có.
 const HinhCanSchema = z.object({ loai: z.string(), ten: z.string(), emoji: z.string(), mau: z.string(), chu: z.string(), ma: z.string() })
-const ViecSchema = z.object({ cau: z.array(z.object({ i: z.number().int(), nguoi: z.string(), can: z.boolean(), viec: z.string(), do_vat_can: z.array(z.string()), hinh_can: z.array(HinhCanSchema) })) })
+const ViecSchema = z.object({ cau: z.array(z.object({ i: z.number().int(), nguoi: z.string(), can: z.boolean(), viec: z.string(), y_nghia: z.string().catch(''), do_vat_can: z.array(z.string()), hinh_can: z.array(HinhCanSchema) })) })
 const KhopSchema = z.object({ cau: z.array(z.object({ i: z.number().int(), hanh_dong: z.string(), ten_moi: z.string() })) })
 const schemaMang = (thuocTinh: Record<string, unknown>) => ({
   type: 'object',
@@ -665,12 +665,12 @@ export async function hanhDongChuong(d: DuAnYT, k: number): Promise<CauHanhDong[
   const viec = await goiJson({
     system: `You are the animation director of a Vietnamese 2D cartoon documentary. For EVERY numbered line write what the viewer should SEE a character DO while it is spoken, so characters act the words with real objects instead of standing and talking. ${ten}
 Who acts: on a narrator line (ai = nguoi_ke) the person the narrator describes (nhan_vat_phu, or the main character); on a dialogue line the speaker. Mèo Mun (meo) and Robot Bit (robot) are the mascot hosts.
-For each line return: i (the line number), nguoi (who acts, in Vietnamese: name or role, "Mèo Mun", "Robot Bit"), can (true when the line tells an event or a concrete visible activity of a person — being born, moving, studying, working, cleaning, founding a company, signing, launching, travelling, fighting, building, crying, hugging, eating, being arrested, receiving an award… In a biography most narrator lines that tell what happened are true; false only for commentary, questions, reactions, explanations and lessons; mascot lines are false), viec (in Vietnamese, at most 12 words: the core activity the LINE itself tells, in plain words — verb + object, e.g. "em bé sơ sinh khóc", "lau nhà vệ sinh bằng giẻ", "ôm chầm cha mẹ", "ký hợp đồng"; never invent staging the line does not say; a line that only states a fact, a time, a place or a feeling has can false; for can false: the gesture while talking), do_vat_can (EVERY object the person acts with, each as "emoji + Vietnamese name": ["🧹 cái chổi"], ["🥣 cái chén", "🧽 miếng rửa"], ["🖊️ cây bút", "📜 tờ hợp đồng"]; the closest single emoji, or only the Vietnamese name when no emoji fits; [] when no object), hinh_can (EVERY visual element the viewer should see for this line so the picture matches the words, one object each: loai = "logo" (a company, product, app, school or organisation named in the line — Facebook, Harvard, Nvidia, iPhone…: ten = its name, mau = its brand colour as #hex, chu = 1 to 4 characters for a simple badge such as "f", "H", "NV"), "do_vat" (an object the line talks about: emoji + ten), "anh_that" (a real archival photo the line calls for: a real person at that moment, a real building, a real document or product), "nhan_vat" (a person who must appear: ten = who; ma = "nhan_vat_chinh" when it is the protagonist the main on-stage figure represents — ${d.phim?.ten ?? ""}, and for a film about a company or organisation its founder / leader the story follows; otherwise the extra character type that fits the person best: ${NHAN_VAT_PHU.filter((x) => x !== "khong").join(", ")}), "dia_diem" (only a SPECIFIC REAL PLACE that can be painted as one backdrop — a street, a building, a room, a station, a stadium; never a whole country, continent or region, a time of day, a weather, a feeling or a metaphor: ten = the place; ma = the code of the film-bible location it is (${dsNoi || "none"}), or "" when none of them is that place), "so_lieu" (a number, statistic, date or chart worth showing: ten = the figure); emoji = closest single emoji or ""; mau and chu "" when not a logo; ma "" when not a dia_diem or nhan_vat; [] when nothing beyond the characters talking). Metaphors ("lửa thử vàng", "cuộc chiến sinh tồn") are not physical activities.`,
+For each line return: i (the line number), nguoi (who acts, in Vietnamese: name or role, "Mèo Mun", "Robot Bit"), can (true when the line tells an event or a concrete visible activity of a person — being born, moving, studying, working, cleaning, founding a company, signing, launching, travelling, fighting, building, crying, hugging, eating, being arrested, receiving an award… In a biography most narrator lines that tell what happened are true; false only for commentary, questions, reactions, explanations and lessons; mascot lines are false), viec (in Vietnamese, at most 12 words: the core activity the LINE itself tells, in plain words — verb + object, e.g. "em bé sơ sinh khóc", "lau nhà vệ sinh bằng giẻ", "ôm chầm cha mẹ", "ký hợp đồng"; never invent staging the line does not say; a line that only states a fact, a time, a place or a feeling has can false; for can false: the gesture while talking), y_nghia (in Vietnamese, at most 25 words: what the line MEANS and what the viewer must SEE to understand it exactly — the event itself when the line tells one; for a feeling or a thought: the facial expression, posture, gaze or a clear symbol that shows it, never a new event the line does not tell; for a fact or figure: the figure or object shown), do_vat_can (EVERY object the person acts with, each as "emoji + Vietnamese name": ["🧹 cái chổi"], ["🥣 cái chén", "🧽 miếng rửa"], ["🖊️ cây bút", "📜 tờ hợp đồng"]; the closest single emoji, or only the Vietnamese name when no emoji fits; [] when no object), hinh_can (EVERY visual element the viewer should see for this line so the picture matches the words, one object each: loai = "logo" (a company, product, app, school or organisation named in the line — Facebook, Harvard, Nvidia, iPhone…: ten = its name, mau = its brand colour as #hex, chu = 1 to 4 characters for a simple badge such as "f", "H", "NV"), "do_vat" (an object the line talks about: emoji + ten), "anh_that" (a real archival photo the line calls for: a real person at that moment, a real building, a real document or product), "nhan_vat" (a person who must appear: ten = who; ma = "nhan_vat_chinh" when it is the protagonist the main on-stage figure represents — ${d.phim?.ten ?? ""}, and for a film about a company or organisation its founder / leader the story follows; otherwise the extra character type that fits the person best: ${NHAN_VAT_PHU.filter((x) => x !== "khong").join(", ")}), "dia_diem" (only a SPECIFIC REAL PLACE that can be painted as one backdrop — a street, a building, a room, a station, a stadium; never a whole country, continent or region, a time of day, a weather, a feeling or a metaphor: ten = the place; ma = the code of the film-bible location it is (${dsNoi || "none"}), or "" when none of them is that place), "so_lieu" (a number, statistic, date or chart worth showing: ten = the figure); emoji = closest single emoji or ""; mau and chu "" when not a logo; ma "" when not a dia_diem or nhan_vat; [] when nothing beyond the characters talking). Metaphors ("lửa thử vàng", "cuộc chiến sinh tồn") are not physical activities.`,
     noiDung: loi.map((l, i) => `${i}. [${l.ai}${l.nhan_vat_phu && l.nhan_vat_phu !== 'khong' ? ` / ${l.nhan_vat_phu}` : ''}] ${l.chu}`).join('\n'),
     effort: 'medium',
     kiemTra: ViecSchema,
     schema: schemaMang({
-      i: { type: 'integer' }, nguoi: CHUOI, can: { type: 'boolean' }, viec: CHUOI, do_vat_can: MANG_CHUOI,
+      i: { type: 'integer' }, nguoi: CHUOI, can: { type: 'boolean' }, viec: CHUOI, y_nghia: CHUOI, do_vat_can: MANG_CHUOI,
       hinh_can: { type: 'array', items: { type: 'object', properties: { loai: CHUOI, ten: CHUOI, emoji: CHUOI, mau: CHUOI, chu: CHUOI, ma: CHUOI }, required: ['loai', 'ten', 'emoji', 'mau', 'chu', 'ma'], additionalProperties: false } },
     }),
   })
@@ -715,6 +715,7 @@ For each numbered activity (who: activity | props needed) return: i, hanh_dong (
       can: !!x?.can,
       hanh_dong,
       viec: x?.viec ?? '',
+      y_nghia: x?.y_nghia ?? '',
       ten_moi: hanh_dong === 'moi' ? boDauMa(y?.ten_moi && y.ten_moi !== 'hanh_dong_moi' ? y.ten_moi : 'chua_dat_ten') : '',
       do_vat: '',
       do_vat_can: canVat,
@@ -736,7 +737,7 @@ Nhân vật cầm chổi bằng hai tay, một tay nắm phần giữa cán ch�
 Nhân vật bắt đầu đưa chổi từ bên trái sang bên phải, sau đó kéo chổi ngược lại một cách tự nhiên. Hai cánh tay phối hợp nhịp nhàng, thân người hơi nghiêng và di chuyển theo hướng quét. Hai chân bước từng bước nhỏ để tiến dần về phía trước, liên tục gom bụi và rác vụn thành một đống nhỏ.
 Khi quét đến góc nhà, nhân vật xoay nhẹ người, cúi thấp hơn và đưa đầu chổi sát chân tường để gom sạch bụi. Kết thúc hành động, nhân vật dừng quét, đứng thẳng người, nhìn xuống sàn kiểm tra kết quả và mỉm cười hài lòng.
 Yêu cầu chuyển động: chuyển động tự nhiên, liên tục, có trọng lượng; tay, vai, thân, đầu và chân phối hợp đồng bộ. Đầu chổi luôn chạm sàn; chổi không xuyên sàn, cán không biến dạng; nhân vật không trượt chân, không đứng bất động khi đang quét."
-For an ACTIVITY line (given): title line "HÀNH ĐỘNG: …" in capitals, then paragraphs covering — how each hand holds or uses each prop (grip points); starting posture and where the eyes look; the main motion cycle step by step with both arms, shoulders, torso and head; footwork, weight shift and travel direction; one natural variation in the middle; how it ends (final pose, glance, facial expression matching the emotion of the line); and "Yêu cầu chuyển động:" with prop contact rules (what must touch what, nothing passes through anything, props keep their shape, no sliding feet, never frozen). 90 to 160 words, faithful to the line, era-correct, nothing the line does not support.
+For an ACTIVITY line (given): title line "HÀNH ĐỘNG: …" in capitals, then paragraphs covering — how each hand holds or uses each prop (grip points); starting posture and where the eyes look; the main motion cycle step by step with both arms, shoulders, torso and head; footwork, weight shift and travel direction; one natural variation in the middle; how it ends (final pose, glance, facial expression matching the emotion of the line); and "Yêu cầu chuyển động:" with prop contact rules (what must touch what, nothing passes through anything, props keep their shape, no sliding feet, never frozen). 90 to 160 words, faithful to the line, era-correct, nothing the line does not support. Continuity: lines are consecutive — when the same person keeps acting, start from the pose the previous line ended in; when the line moves on to another event, end the previous activity instead of carrying it on; props never appear or vanish without a reason.
 For a TALKING line (no activity): 2 to 3 sentences — the gesture, where the eyes look (at whom), facial expression and one small body movement, timed to the key word.`,
         noiDung: ds
           .map((i) => {
@@ -753,6 +754,17 @@ For a TALKING line (no activity): 2 to 3 sentences — the gesture, where the ey
   )
   for (const kq of chiTiet) for (const c of kq?.cau ?? []) if (ketQua[c.i]) ketQua[c.i].chi_tiet = c.chi_tiet.trim()
   return ketQua
+}
+// Chủ trang xem video rồi chấm cảnh từng câu (quy trình đạo diễn theo lời kể, 16/10/2026: "không đánh dấu hoàn thành nếu
+// cảnh chưa được kiểm tra") — đạt / lỗi + ghi chú lỗi; kq rỗng = bỏ chấm (về "chưa xác minh")
+export async function duyetCanh(id: string, k: number, i: number, kq: 'dat' | 'loi' | '', ghi_chu: string) {
+  const d = await docDuAn(id)
+  const x = d?.hanh_dong?.chuong.find((c) => c.k === k)?.cau[i]
+  if (!d || !x) throw new Error('Không tìm thấy câu này — bấm Chuẩn bị lại')
+  if (kq) x.duyet = { kq, ghi_chu: ghi_chu.trim().slice(0, 300), luc: new Date().toISOString() }
+  else delete x.duyet
+  await luuDuAn(d)
+  return d
 }
 // Thêm một địa điểm vào hồ sơ phim (chủ trang 15/10/2026: bước chuẩn bị báo "nơi chưa có trong hồ sơ" mà không có cách
 // thêm). AI soạn đủ mô tả như các địa điểm khác của phim (thời kỳ, kiến trúc, ánh sáng…) để tải ảnh / AI vẽ ảnh nền.
@@ -794,6 +806,14 @@ export async function chuanBiHanhDong(id: string) {
   const chuong = await Promise.all(d.phan.map(async (_, j) => ({ k: j + 1, cau: await hanhDongChuong(d, j + 1) })))
   const moi = await docDuAn(id)
   if (!moi) throw new Error('Không tìm thấy video')
+  // Giữ kết quả chấm cảnh của chủ trang cho câu không đổi lời
+  for (const c of chuong) {
+    const cu = moi.hanh_dong?.chuong.find((x) => x.k === c.k)
+    for (const x of c.cau) {
+      const y = cu?.cau[x.i]
+      if (y?.duyet && y.chu === x.chu) x.duyet = y.duyet
+    }
+  }
   moi.hanh_dong = { luc: new Date().toISOString(), chuong }
   await luuDuAn(moi)
   return moi

@@ -78,12 +78,14 @@ export type CauHanhDong = {
   can: boolean // câu có nói tới một việc nhìn thấy được, cần diễn (không chỉ đứng nói)
   hanh_dong: string // mã trong THU_VIEN_HANH_DONG | 'moi' (máy chưa có) | 'khong'
   viec: string // nhân vật làm gì trên hình
+  y_nghia?: string // ý nghĩa câu + khán giả cần nhìn thấy gì để hiểu đúng câu (mục tiêu hình ảnh)
   ten_moi: string // mã đặt cho hành động mới (khi hanh_dong = 'moi')
   do_vat: string // (bản cũ) đồ vật cần (emoji)
   do_vat_can?: string[] // đạo cụ câu này cần ("🧹 cái chổi")
   hinh_can?: HinhCan[] // mọi hình câu này cần có trên màn hình (logo, đồ vật, ảnh thật, nhân vật, địa điểm, số liệu) + đã có chưa
   chi_tiet?: string // kịch bản diễn chi tiết (cầm đạo cụ, tư thế, ánh mắt, chu trình động tác, bước chân, kết thúc, yêu cầu chuyển động)
   do_vat_thieu?: string[] // trong đó: hành động đã chọn chưa có sẵn → gắn thêm (có emoji) hoặc phải vẽ (không có emoji)
+  duyet?: { kq: 'dat' | 'loi'; ghi_chu: string; luc: string } // chủ trang xem video rồi chấm cảnh của câu này (chưa có = chưa xác minh)
 }
 // Một hình câu thoại cần có trên màn hình (chủ trang 15/10/2026: "phân tích từng câu thoại, cần gì thì báo để chuẩn bị —
 // câu có Facebook thì có biểu tượng Facebook")

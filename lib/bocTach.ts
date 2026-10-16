@@ -29,9 +29,21 @@ function diChuyen(hanhDong: string, camXuc: string) {
   return ds.join(', ')
 }
 
+const TEN_CHUYEN: Record<string, string> = { truot: 'trượt ngang', quet: 'lia nhanh', phong: 'phóng vào chi tiết', mo: 'mờ qua đen (thời gian trôi)', xuyen: 'xuyên vào thế giới mới', tu_dong: 'máy tự chọn' }
+
 export type DongBocTach = {
   k: number
   i: number
+  id_cau: string // C01-05: chương 1, câu 5
+  id_canh: string // C01-S02: cảnh thứ 2 của chương 1 (đổi cảnh khi đổi địa điểm / bối cảnh)
+  y_nghia: string
+  thoi_luong: number // giây, ước tính theo độ dài câu (máy dựng theo giọng đọc thật)
+  dau_canh: string
+  cuoi_canh: string
+  chuyen_tiep: string
+  tieu_chi: string[]
+  san_xuat: string
+  kiem_duyet: { kq: 'dat' | 'loi' | 'chua'; ghi_chu: string }
   ai: string
   chu: string
   tren_hinh: string
@@ -53,6 +65,11 @@ export function bocTach(d: DuAnYT, pt: PhanTichHanhDong): DongBocTach[] {
   const diaDiem = new Map((d.phim?.ho_so?.dia_diem ?? []).map((x) => [x.ma, x.ten]))
   return pt.chuong.flatMap((c) => {
     const loi = d.phan[c.k - 1]?.loi ?? []
+    const hai = (n: number) => String(n).padStart(2, '0')
+    // Cảnh = chuỗi câu liền nhau cùng nơi (phim tiểu sử: mã địa điểm; video thường: bối cảnh)
+    const noiCua = (j: number) => (d.loai === 'tieu_su' ? (loi[j]?.dia_diem ?? '') : (loi[j]?.boi_canh ?? ''))
+    let soCanh = 0
+    const canhCua = loi.map((_, j) => (j === 0 || noiCua(j) !== noiCua(j - 1) ? ++soCanh : soCanh))
     return c.cau.map((x: CauHanhDong) => {
       const l = loi[x.i]
       const tv = THU_VIEN_HANH_DONG[x.hanh_dong]
@@ -68,9 +85,53 @@ export function bocTach(d: DuAnYT, pt: PhanTichHanhDong): DongBocTach[] {
         ...(!nen_co ? [`Ảnh nền địa điểm: ${diaDiem.get(ma) ?? ma}`] : []),
       ]
       const ai = l ? (TEN_NGUOI[l.ai] ?? l.ai) : ''
+      const truoc = c.cau[x.i - 1]
+      const sau = c.cau[x.i + 1]
+      const cungCanhTruoc = !!truoc && canhCua[x.i - 1] === canhCua[x.i]
+      const cungCanhSau = !!sau && canhCua[x.i + 1] === canhCua[x.i]
+      const tenNoi = (j: number) => (d.loai === 'tieu_su' ? (diaDiem.get(noiCua(j)) ?? noiCua(j)) : noiCua(j)) || 'nền chung'
+      const vat = (x.do_vat_can ?? []).join(', ')
+      const dau_canh = DI.has(x.hanh_dong)
+        ? 'đứng mép trái khung hình, sẵn sàng đi'
+        : cungCanhTruoc && truoc.nguoi && truoc.nguoi === x.nguoi
+          ? `cùng người, nối tiếp ngay sau câu trước (vừa xong: ${truoc.viec || 'đứng nói'})`
+          : cungCanhTruoc
+            ? 'đứng giữa sân khấu, tư thế nghỉ, nhìn về phía máy quay'
+            : `vừa vào cảnh mới (${tenNoi(x.i)}), đứng giữa sân khấu`
+      const cuoi_canh = [
+        DI.has(x.hanh_dong) ? 'đã đi tới bên phải khung hình' : SAN.has(x.hanh_dong) ? 'đứng thẳng lại sau khi khom' : x.can ? 'xong việc, về tư thế đứng' : 'dứt cử chỉ, về tư thế nghỉ',
+        vat ? `đạo cụ (${vat}) cất đi khi hết câu` : '',
+      ].filter(Boolean).join('; ')
+      const chuyen_tiep = !sau
+        ? 'hết chương — sang thẻ chương sau'
+        : !cungCanhSau
+          ? `chuyển cảnh sang ${tenNoi(x.i + 1)} — ${TEN_CHUYEN[loi[x.i + 1]?.chuyen_canh ?? ''] ?? 'máy tự chọn'}`
+          : sau.nguoi && x.nguoi && sau.nguoi !== x.nguoi
+            ? `giữ cảnh, đổi người diễn: ${sau.nguoi}`
+            : 'giữ cảnh, nối tiếp liền mạch'
+      const tieu_chi = [
+        x.can ? `Thấy rõ: ${x.viec}` : `Cử chỉ khớp lời: ${x.viec || 'đứng nói'}`,
+        x.nguoi ? `Đúng người diễn: ${x.nguoi}` : '',
+        ...(x.do_vat_can ?? []).map((v) => `Đạo cụ hiện, cầm đúng tay: ${v}`),
+        ...(x.hinh_can ?? []).filter((h) => h.loai !== 'nhan_vat' && h.loai !== 'dia_diem').map((h) => `Có trên hình: ${h.ten}`),
+        `Đúng bối cảnh: ${tenNoi(x.i)}`,
+        'Không chồng chéo chữ / đạo cụ, không giật',
+        'Hết câu thì dừng hành động, không kéo sang câu sau',
+      ].filter(Boolean)
+      const thieuGi = can_chuan_bi.length
       return {
         k: c.k,
         i: x.i,
+        id_cau: `C${hai(c.k)}-${hai(x.i + 1)}`,
+        id_canh: `C${hai(c.k)}-S${hai(canhCua[x.i] ?? 1)}`,
+        y_nghia: x.y_nghia ?? '',
+        thoi_luong: Math.max(2, Math.round(((l?.chu ?? x.chu).length / 14) * 10) / 10),
+        dau_canh,
+        cuoi_canh,
+        chuyen_tiep,
+        tieu_chi,
+        san_xuat: thieuGi ? `Cần chuẩn bị ${thieuGi} mục` : 'Sẵn sàng dựng',
+        kiem_duyet: { kq: x.duyet?.kq ?? 'chua', ghi_chu: x.duyet?.ghi_chu ?? '' },
         ai: l?.ai === 'nguoi_ke' && l.nhan_vat_phu && l.nhan_vat_phu !== 'khong' ? `${ai} (trên hình: ${x.nguoi || l.nhan_vat_phu})` : ai,
         chu: l?.chu ?? x.chu,
         tren_hinh: `${x.nguoi ? `${x.nguoi}: ` : ''}${x.viec}`,
@@ -94,14 +155,15 @@ export function bocTach(d: DuAnYT, pt: PhanTichHanhDong): DongBocTach[] {
 // Bảng tính (CSV, mở bằng Excel): có BOM để Excel đọc đúng tiếng Việt
 export function bocTachCsv(ds: DongBocTach[]) {
   const o = (v: string) => `"${String(v).replace(/"/g, '""')}"`
-  const dau = ['Chương', 'Câu', 'Ai nói', 'Lời thoại', 'Trên hình', 'Hành động', 'Di chuyển', 'Đạo cụ', 'Hình cần có', 'Bối cảnh', 'Ảnh nền', 'Ánh sáng', 'Máy quay', 'Nét mặt', 'Âm thanh', 'Cần chuẩn bị', 'Kịch bản diễn']
+  const dau = ['ID câu', 'ID cảnh', 'Ai nói', 'Lời kể nguyên văn', 'Ý nghĩa / khán giả cần thấy', 'Thời lượng (giây, ước tính)', 'Trên hình', 'Hành động', 'Di chuyển', 'Trạng thái đầu', 'Trạng thái cuối', 'Chuyển tiếp', 'Đạo cụ', 'Hình cần có', 'Bối cảnh', 'Ảnh nền', 'Ánh sáng', 'Máy quay', 'Nét mặt', 'Âm thanh', 'Cần chuẩn bị', 'Kịch bản diễn', 'Tiêu chí kiểm tra', 'Sản xuất', 'Kiểm duyệt']
+  const kd = (x: DongBocTach) => (x.kiem_duyet.kq === 'dat' ? 'Đạt' : x.kiem_duyet.kq === 'loi' ? `Lỗi: ${x.kiem_duyet.ghi_chu}` : 'Chưa xác minh')
   const dong = ds.map((x) =>
     [
-      String(x.k), String(x.i + 1), x.ai, x.chu, x.tren_hinh, x.hanh_dong, x.di_chuyen,
+      x.id_cau, x.id_canh, x.ai, x.chu, x.y_nghia, String(x.thoi_luong), x.tren_hinh, x.hanh_dong, x.di_chuyen, x.dau_canh, x.cuoi_canh, x.chuyen_tiep,
       x.dao_cu.map((v) => `${v.ten}${v.co ? '' : ' (thiếu)'}`).join('; '),
       x.hinh.map((h) => `${h.ten}${h.co ? '' : ' (thiếu)'}`).join('; '),
       x.boi_canh, x.nen_co ? 'có' : 'THIẾU', x.anh_sang, x.may_quay, x.cam_xuc, x.am_thanh,
-      x.can_chuan_bi.join('; ') || 'đủ', x.chi_tiet,
+      x.can_chuan_bi.join('; ') || 'đủ', x.chi_tiet, x.tieu_chi.join('; '), x.san_xuat, kd(x),
     ].map(o).join(','),
   )
   return '﻿' + [dau.map(o).join(','), ...dong].join('\r\n')

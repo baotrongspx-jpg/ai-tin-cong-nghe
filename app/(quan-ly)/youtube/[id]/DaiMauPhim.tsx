@@ -7,6 +7,7 @@
 import { useMemo } from 'react'
 import type { DuAnYT } from '@/lib/youtube'
 import { TEN_DEN, TEN_CAM_XUC } from '@/lib/bocTach'
+import { anhSangMuot, SANG, TOI } from '@/may-nha/hoat-hinh/anhSang.mjs'
 
 const MAU_DEN: Record<string, string> = {
   binh_thuong: '#94a3b8', am_ap: '#fb923c', lanh: '#3b82f6', cang_thang: '#1e1b4b', tuoi_sang: '#fde047',
@@ -16,8 +17,6 @@ const MAU_CAM: Record<string, string> = {
   to_mo: '#38bdf8', giai_thich: '#94a3b8', khang_dinh: '#2563eb', vui: '#facc15', buon: '#475569',
   bat_ngo: '#f472b6', lo_lang: '#a855f7', tuc_gian: '#ef4444', suy_nghi: '#14b8a6',
 }
-const SANG = new Set(['tuoi_sang', 'am_ap', 'loe_sang'])
-const TOI = new Set(['cang_thang', 'bi_an', 'canh_bao'])
 const NGUOC: Record<string, Set<string>> = { buon: SANG, vui: TOI, tuc_gian: new Set(['tuoi_sang', 'mo_mong']) }
 
 export default function DaiMauPhim({ d }: { d: DuAnYT }) {
@@ -25,10 +24,13 @@ export default function DaiMauPhim({ d }: { d: DuAnYT }) {
     () =>
       d.phan.map((p, j) => {
         const loi = p.loi ?? []
-        const noi = (i: number) => (d.loai === 'tieu_su' ? (loi[i]?.dia_diem ?? '') : (loi[i]?.boi_canh ?? ''))
+        const noi = (i: number) => `${loi[i]?.dia_diem ?? ''}|${loi[i]?.boi_canh ?? ''}`
+        // Màu thật sự lên phim: máy dựng làm mượt theo cảnh (anhSang.mjs) — câu bị kéo về tông cảnh có dấu chấm
+        const muot: string[] = anhSangMuot(loi)
         const o = loi.map((l, i) => ({
           i,
-          den: MAU_DEN[l.anh_sang ?? ''] ? (l.anh_sang as string) : 'binh_thuong',
+          den: MAU_DEN[muot[i]] ? muot[i] : 'binh_thuong',
+          sua: muot[i] !== (MAU_DEN[l.anh_sang ?? ''] ? l.anh_sang : 'binh_thuong'),
           cam: l.cam_xuc ?? '',
           giay: Math.max(2, l.chu.length / 14),
           canhMoi: i > 0 && noi(i) !== noi(i - 1),
@@ -62,7 +64,7 @@ export default function DaiMauPhim({ d }: { d: DuAnYT }) {
         </span>
       </summary>
       <p className="mt-1 text-xs text-slate-600">
-        Mỗi ô là một câu, màu là ánh sáng máy dựng sẽ phủ lên cảnh, rộng theo độ dài câu; vạch trắng là chỗ đổi cảnh; dải mảnh bên dưới là cảm xúc. Rê chuột lên ô để xem câu.
+        Mỗi ô là một câu, màu là ánh sáng máy dựng sẽ phủ lên cảnh, rộng theo độ dài câu; vạch trắng là chỗ đổi cảnh; dải mảnh bên dưới là cảm xúc. Máy tự giữ một tông chủ đạo cho mỗi cảnh — ô có chấm trắng là câu AI chọn màu nhảy sáng ↔ tối, máy đã kéo về tông của cảnh. Rê chuột lên ô để xem câu.
       </p>
       <div className="mt-3 grid gap-3">
         {chuong.map((c) =>
@@ -75,11 +77,13 @@ export default function DaiMauPhim({ d }: { d: DuAnYT }) {
                 {c.o.map((x) => (
                   <div
                     key={x.i}
-                    title={`Câu ${x.i + 1} — ${TEN_DEN[x.den] ?? x.den}, ${TEN_CAM_XUC[x.cam] ?? x.cam}\n${x.chu}`}
+                    title={`Câu ${x.i + 1} — ${TEN_DEN[x.den] ?? x.den}${x.sua ? ' (máy đã kéo về tông của cảnh)' : ''}, ${TEN_CAM_XUC[x.cam] ?? x.cam}\n${x.chu}`}
                     className={`flex flex-col ${x.canhMoi ? 'border-l-2 border-white' : ''}`}
                     style={{ flexGrow: x.giay, flexBasis: 0 }}
                   >
-                    <div className="flex-1" style={{ background: MAU_DEN[x.den] }} />
+                    <div className="flex flex-1 items-center justify-center" style={{ background: MAU_DEN[x.den] }}>
+                      {x.sua && <span className="h-1.5 w-1.5 rounded-full bg-white ring-1 ring-slate-500" />}
+                    </div>
                     <div className="h-2" style={{ background: MAU_CAM[x.cam] ?? '#e2e8f0' }} />
                   </div>
                 ))}

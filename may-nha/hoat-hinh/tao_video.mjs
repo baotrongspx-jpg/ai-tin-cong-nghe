@@ -7,6 +7,7 @@ import { join, resolve } from 'node:path'
 import { execFile } from 'node:child_process'
 import { HINH_MIENG } from './mieng.mjs'
 import { BOI_CANH } from './boiCanh.mjs'
+import { anhSangMuot } from './anhSang.mjs'
 import { NHAN_VAT_PHU, nguoiKeSvg, nhanVatChinhSvg, GOC_NHIN, TAM_GOC, chonGoc } from './nhanVatPhu.mjs'
 import { meoSvg, robotSvg } from './nhanVatChinh.mjs'
 import { DAO_CU } from './daoCu.mjs'
@@ -1873,7 +1874,7 @@ const nvPhu = doanPhu.map((dp, k) => {
       } else {
         const quang = Math.abs(den - viTri)
         const giay = giatLui ? 0.28 : Math.min(1.1, Math.max(0.55, 0.45 + quang * 0.3 + (l.cam_xuc === 'buon' ? 0.3 : 0)))
-        tw.push(`tl.to("#${id}-buoc", { x: ${den * BUOC}, scale: ${ganDen}, y: ${f((ganDen - 1) * 300)}, duration: ${f(giay)}, ease: "${giatLui ? 'power3.out' : 'sine.inOut'}" }, ${f(t)});`)
+        tw.push(`tl.to("#${id}-buoc", { x: ${den < 0 && !NGANG ? Math.round(den * BUOC * 0.6) : den * BUOC}, scale: ${ganDen}, y: ${f((ganDen - 1) * 300)}, duration: ${f(giay)}, ease: "${giatLui ? 'power3.out' : 'sine.inOut'}" }, ${f(t)});`)
         if (quang > 0) {
           // Dáng bước: nhún theo nhịp chân, lắc người nghiêng về hướng đi
           const nhip = 0.16
@@ -2266,7 +2267,7 @@ let khungKeHtml = ''
     else dot.push({ tu: i, het: i })
   })
   if (dot.length) {
-    khungKeHtml = `<div id="khung-ke"><div class="ke-vong"></div><div class="ke-tron"><div class="ke-den"></div><svg viewBox="100 70 400 400" width="340" height="340">${nguoiKeSvg('nguoi_ke')}</svg></div><div class="ke-mic">🎙</div></div>`
+    khungKeHtml = `<div id="khung-ke"><div class="ke-thu"><div class="ke-vong"></div><div class="ke-tron"><div class="ke-den"></div><svg viewBox="100 70 400 400" width="340" height="340">${nguoiKeSvg('nguoi_ke')}</svg></div><div class="ke-mic">🎙</div></div></div>`
     tw.push('gsap.set("#nguoi_ke-dau", { svgOrigin: "300 440" }); gsap.set("#nguoi_ke-mieng-mo", { svgOrigin: "300 340" }); gsap.set("#nguoi_ke-mat-trai", { svgOrigin: "238 268" }); gsap.set("#nguoi_ke-mat-phai", { svgOrigin: "362 268" });')
     // Chỉ hiện ở lượt kể đầu tiên của phần (giới thiệu giọng kể); các lượt sau chỉ còn giọng, màn hình gọn
     for (const c of dot.slice(0, 1)) {
@@ -2402,7 +2403,10 @@ loi.forEach((l, i) => {
   const trai = Math.min(Math.max(dau.x - 240, 10 - LECH_X), RONG - LECH_X - 490)
   // Khung ngang: đặt cố định ở giữa phía trên khung hình (chỗ bảng tin), không phóng theo máy quay nên không bị cắt mép
   if (NGANG) minhHoaKhung.push(`<div id="${id}" class="mh" style="left:${(RONG - 480) / 2}px;top:112px">${mh.html}</div>`)
-  else minhHoa.push(`<div id="${id}" class="mh" style="left:${trai}px;top:${dau.dinh - 345}px">${mh.html}</div>`)
+  // Khung dọc cũng đặt ở lớp khung hình ngay dưới tên kênh, thu nhỏ một chút (thẻ trong lớp nhân vật bị máy quay đẩy
+  // vào kéo lên đè tên kênh / đè đầu người đang bước lại gần)
+  else minhHoaKhung.push(`<div id="${id}" class="mh" style="left:${(RONG - 480) / 2}px;top:128px"><div class="mh-thu">${mh.html}</div></div>`)
+  void trai
   // Bảng tin của câu tạm ẩn trong lúc thẻ minh hoạ hiện
   if (bangCuaCau[i] !== null) {
     tw.push(`tl.to("#bang${bangCuaCau[i]}", { opacity: 0, duration: 0.1 }, ${f(bd - 0.05)});`)
@@ -2494,8 +2498,9 @@ tw.push(`gsap.set("#camera-nv", { "--vien": "${VIEN.binh_thuong}" });`)
   tw.push(`tl.fromTo("#hat-phim", { backgroundPosition: "0px 0px" }, { backgroundPosition: "${buoc * 73}px ${buoc * 47}px", duration: ${f(TONG)}, ease: "steps(${buoc})", immediateRender: true }, 0);`)
 }
 let anhTruoc = 'binh_thuong'
+const ANH_MUOT = anhSangMuot(loi) // một tông chủ đạo mỗi cảnh, không nhảy sáng ↔ tối giữa cảnh (anhSang.mjs)
 loi.forEach((l, i) => {
-  const ten = ANH_SANG[l.anh_sang] ? l.anh_sang : 'binh_thuong'
+  const ten = ANH_SANG[ANH_MUOT[i]] ? ANH_MUOT[i] : 'binh_thuong'
   const t0 = batDau[i]
   const d = doDai[i]
   if (ten !== anhTruoc) {
@@ -2957,7 +2962,10 @@ const trang = `<!doctype html>
       .dao-cu.nguoi_ke { left: ${NGANG ? 1220 : 445}px; top: ${NGANG ? 560 : 380}px; }
       .pd-dong { font-size: 48px; font-weight: 700; line-height: 1.2; white-space: nowrap; text-shadow: 0 0 5px #000, 0 3px 0 #000, 2.5px 2.5px 0 #000, -2.5px 2.5px 0 #000, 2.5px -2.5px 0 #000, -2.5px -2.5px 0 #000; }
       .pd-tu { display: inline-block; color: #fff; }
-      #khung-ke { position: absolute; left: 30px; top: ${CAO - (NGANG ? 560 : 940)}px; width: 360px; height: 360px; opacity: 0; filter: drop-shadow(0 22px 40px #000b); }
+      /* Khung người kể nhỏ lại, nép sát mép trái (chủ trang 16/10/2026: khung che tay, đạo cụ của nhân vật trên sân khấu) */
+      #khung-ke { position: absolute; left: 14px; top: ${CAO - (NGANG ? 500 : 880)}px; width: 280px; height: 280px; opacity: 0; filter: drop-shadow(0 22px 40px #000b); }
+      .ke-thu { position: absolute; left: 0; top: 0; width: 360px; height: 360px; transform: scale(0.78); transform-origin: 0 0; }
+      .mh-thu { transform: scale(0.86); transform-origin: 50% 0; }
       .ke-vong { position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(#fbbf24, #f97316, #fde68a, #fbbf24, #f97316, #fde68a, #fbbf24); }
       .ke-tron { position: absolute; inset: 10px; border-radius: 50%; overflow: hidden; background: radial-gradient(circle at 50% 28%, #93c5fd 0%, #3b5b8c 38%, #1e293b 70%, #0f172a); box-shadow: inset 0 0 0 5px #0f172a; }
       .ke-den { position: absolute; inset: 0; background: radial-gradient(circle at 78% 18%, #fde68a55, transparent 40%), radial-gradient(circle at 15% 85%, #f9731633, transparent 45%); }

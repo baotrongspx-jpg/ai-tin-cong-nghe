@@ -550,6 +550,9 @@ const DONG_TAC = {
 // hình nhân vật (nvPhu).
 // Đồ vật không có emoji: vẽ sẵn (khung 100×100), dùng như emoji trong VAT (chuỗi bắt đầu bằng "<svg")
 const VE_VAT = {
+  // Bộ 9 (phim Nikola Tesla 16/10/2026): gậy chống gỗ, cửa sổ khách sạn
+  gay_chong: '<svg viewBox="0 0 100 100"><path d="M50 98 L50 14 Q50 2 38 2 Q27 2 27 12" fill="none" stroke="#451a03" stroke-width="9" stroke-linecap="round"/><path d="M50 98 L50 14 Q50 2 38 2 Q27 2 27 12" fill="none" stroke="#92400e" stroke-width="5.5" stroke-linecap="round"/><rect x="45.5" y="92" width="9" height="7" rx="2" fill="#1f2937"/><path d="M51.5 20 V88" stroke="#b45309" stroke-width="1.2" opacity="0.7"/></svg>',
+  cua_so: '<svg viewBox="0 0 100 100"><rect x="14" y="6" width="72" height="80" fill="#1e293b" stroke="#78350f" stroke-width="5"/><rect x="18" y="10" width="64" height="72" fill="#1e3a8a"/><g fill="#fde68a" opacity="0.85"><rect x="24" y="52" width="6" height="30"/><rect x="34" y="40" width="8" height="42"/><rect x="46" y="58" width="7" height="24"/><rect x="58" y="34" width="9" height="48"/><rect x="70" y="48" width="7" height="34"/></g><circle cx="70" cy="20" r="5" fill="#f8fafc" opacity="0.9"/><path d="M50 10 V82 M18 46 H82" stroke="#78350f" stroke-width="3"/><path d="M8 4 Q20 40 12 92 L22 92 Q30 46 22 4 Z" fill="#991b1b" stroke="#450a0a" stroke-width="2"/><path d="M92 4 Q80 40 88 92 L78 92 Q70 46 78 4 Z" fill="#991b1b" stroke="#450a0a" stroke-width="2"/><rect x="4" y="0" width="92" height="5" rx="2" fill="#78350f"/><rect x="10" y="86" width="80" height="5" fill="#a16207"/></svg>',
   // Bộ 8 (phim Nikola Tesla 16/10/2026): giường, giường bệnh có cậu bé, sương, lan can tàu, bờ biển Mỹ, bản vẽ, người nhận
   giuong: '<svg viewBox="0 0 100 100"><rect x="4" y="30" width="10" height="70" rx="3" fill="#7c2d12" stroke="#431407" stroke-width="2"/><rect x="86" y="54" width="8" height="46" rx="3" fill="#7c2d12" stroke="#431407" stroke-width="2"/><rect x="12" y="62" width="80" height="20" rx="4" fill="#f1f5f9" stroke="#475569" stroke-width="2.5"/><rect x="12" y="58" width="80" height="10" rx="4" fill="#cbd5e1" stroke="#475569" stroke-width="2"/><path d="M34 60 L92 60 L92 80 L34 80 Z" fill="#64748b" stroke="#334155" stroke-width="2"/><ellipse cx="24" cy="57" rx="10" ry="6" fill="#fff" stroke="#94a3b8" stroke-width="2"/><rect x="10" y="82" width="84" height="6" fill="#7c2d12"/><rect x="12" y="88" width="5" height="12" fill="#431407"/><rect x="88" y="88" width="5" height="12" fill="#431407"/></svg>',
   giuong_benh: '<svg viewBox="0 0 100 100"><rect x="80" y="34" width="10" height="66" rx="3" fill="#a16207" stroke="#422006" stroke-width="2"/><rect x="6" y="56" width="8" height="44" rx="3" fill="#a16207" stroke="#422006" stroke-width="2"/><rect x="8" y="66" width="80" height="16" rx="4" fill="#f8fafc" stroke="#475569" stroke-width="2.5"/><ellipse cx="74" cy="60" rx="11" ry="6" fill="#fff" stroke="#94a3b8" stroke-width="2"/><circle cx="72" cy="54" r="8" fill="#fcd9b8" stroke="#1f2937" stroke-width="2"/><path d="M64 50 Q72 42 80 50" fill="#3f2a1d"/><path d="M68 55 q2 2 4 0" stroke="#1f2937" stroke-width="1.5" fill="none"/><rect x="70" y="58" width="3" height="3" fill="#fb7185" opacity="0.7"/><path d="M10 62 Q40 56 66 60 L66 72 L10 72 Z" fill="#93c5fd" stroke="#1e3a8a" stroke-width="2"/><path d="M20 62 L20 72 M34 60 L34 72 M48 60 L48 72" stroke="#60a5fa" stroke-width="2"/><ellipse cx="26" cy="60" rx="5" ry="3.5" fill="#fcd9b8" stroke="#1f2937" stroke-width="1.5"/><path d="M50 66 Q58 62 62 66" stroke="#fcd9b8" stroke-width="0"/><rect x="6" y="82" width="84" height="5" fill="#a16207"/><circle cx="80" cy="44" r="3" fill="#ef4444" opacity="0.6"/></svg>',
@@ -609,6 +612,7 @@ const VAT = {
   gang_p: ['🥊', 'phai'], gang_t: ['🥊', 'trai'], no: ['💥', 'va_cham'], no_t: ['💥', 'va_cham_t'], bao_cat: [VE_VAT.bao_cat, 'canh_cao'], day_dai: [VE_VAT.day, 'day'],
   gio_do: ['🧺', 'truoc'], cong: [VE_VAT.cong, 'truoc'], can_sk: [VE_VAT.can, 'canh'], dai: [VE_VAT.dai, 'eo'], ly: ['🍸', 'phai'],
   ban_bai: [VE_VAT.ban_bai, 'ban_ngoi'], bai_tay: ['🃏', 'bai_nguc'], la_danh: ['🃏', 'tren_ban'],
+  gay_chong: [VE_VAT.gay_chong, 'phai_gay'], cua_so: [VE_VAT.cua_so, 'canh_cao'],
   ghe_go: [VE_VAT.ghe_go, 'ghe'], giuong: [VE_VAT.giuong, 'giuong'], giuong_benh: [VE_VAT.giuong_benh, 'giuong_gan'], suong: [VE_VAT.suong, 'suong'],
   lan_can: [VE_VAT.lan_can, 'lan_can'], bo_bien: [VE_VAT.bo_bien, 'xa_bo'], ban_ve: [VE_VAT.ban_ve, 'trai'], ban_ve_p: [VE_VAT.ban_ve, 'phai'],
   nguoi_nhan: [VE_VAT.nguoi_nhan, 'nguoi_ben'], ban_ve_nhan: [VE_VAT.ban_ve, 'tay_nhan'], cuon_len: ['🧶', 'long'], kim_dan: [VE_VAT.kim_dan, 'phai'], dung_cu: ['🔧', 'phai'],
@@ -641,6 +645,7 @@ const VAT_DUNG_BOI = {
   doi_dau: ['gang_p', 'gang_t', 'no', 'no_t'], dam_boc: ['gang_p', 'gang_t', 'no', 'no_t'], dam_moc: ['gang_p', 'gang_t', 'no'], ha_guc: ['gang_p', 'gang_t', 'no_t'],
   dung_cho_dem: ['gang_p', 'gang_t'], buoc_vao_dai: ['gang_p', 'gang_t', 'day_dai'], dam_bao_cat: ['gang_p', 'gang_t', 'no', 'bao_cat'],
   can_tai: ['gang_p', 'gang_t', 'tuc'], ganh_vac: ['gio_do'], bat_giu: ['cong'], kham_suc_khoe: ['can_sk'], nhan_dai: ['dai'],
+  chong_gay: ['gay_chong', 'cua_so'],
   ngoi_lang_le: ['ghe_go', 'giuong'], buoc_qua_suong: ['suong'], nam_tay: ['giuong_benh'], nhin_bien: ['lan_can', 'bo_bien'],
   vo_vai: ['nguoi_nhan', 'ban_ve', 'ban_ve_p', 'ban_ve_nhan'],
   dan_lat: ['ghe_go', 'cuon_len', 'kim_dan', 'dung_cu'], dao_dat: ['xeng', 'dat_bay', 'dong_dat'], cho_chim_an: ['chim_1', 'chim_2', 'tui_hat', 'hat'],
@@ -1008,6 +1013,43 @@ const TRUYEN = {
   // ── Bộ 8 (phim Nikola Tesla 16/10/2026) ──
   // Ngồi lặng lẽ: ghế dựa cạnh giường khách sạn, ngồi (gối hơi mở), hai tay buông trên gối, vai rụt, đầu cúi nhìn sàn, ngực
   // phập phồng theo nhịp thở; giữa chừng ngẩng nhẹ, chớp mắt rồi rủ xuống; cuối nhìn xa xăm về góc phòng, mặt buồn
+  // ── Bộ 9 (phim Nikola Tesla 16/10/2026) ──
+  // Chống gậy: già yếu lê bước trong khách sạn — gậy gỗ trong tay phải, mũi gậy chạm sàn và chống xuống theo từng bước;
+  // vai gù, đầu cúi, bước chậm (máy dựng lo dáng nghiêng); giữa chừng dừng lại tựa gậy thở dốc rồi lê bước tiếp; cuối dừng
+  // hẳn, chống gậy đứng vững, ngoảnh nhìn sang cửa sổ phòng khách sạn
+  chong_gay: (p, t, dd) => {
+    const nghi = dd > 3 ? t + dd * 0.42 : 0
+    const ket = t + Math.max(1.4, dd - 0.9)
+    const nhip = 0.55
+    const doan = (a, b, x0, x1) => (b - a < 0.5 ? [] : [
+      `tl.fromTo("#${p} svg", { x: ${x0} }, { x: ${x1}, duration: ${f(b - a)}, ease: "none", immediateRender: false }, ${f(a)});`,
+      ...buocChan(p, a, b - a, nhip),
+      // gậy nhấc lên, chống xuống theo nhịp bước
+      `tl.fromTo("#${p}-tay-phai", { rotation: 6 }, { rotation: -6, duration: ${f(nhip)}, yoyo: true, repeat: ${solan(b - a, nhip)}, ease: "sine.inOut", immediateRender: false }, ${f(a)});`,
+      `tl.fromTo("#${p} svg", { y: 6 }, { y: 10, duration: ${f(nhip)}, yoyo: true, repeat: ${solan(b - a, nhip)}, ease: "sine.inOut", immediateRender: false }, ${f(a)});`,
+    ])
+    const giuaX = nghi ? -70 + 150 * ((nghi - t) / (ket - t)) : 80
+    return [
+      ...vatHien(p, 'gay_chong', t, dd), ...vatHien(p, 'cua_so', t - 0.1, dd + 0.2),
+      `tl.to("#${p}-dau", { rotation: 10, duration: 0.4 }, ${f(t)});`,
+      `tl.to("#${p}-cang-phai", { rotation: 10, duration: 0.3 }, ${f(t)});`,
+      ...doan(t + 0.15, nghi || ket, -70, nghi ? giuaX : 80),
+      ...(nghi ? [
+        // tựa gậy thở dốc
+        `tl.to("#${p} svg", { y: 14, duration: 0.3 }, ${f(nghi)});`,
+        `tl.to("#${p} svg", { scaleY: 1.03, duration: 0.3, yoyo: true, repeat: 3, ease: "sine.inOut" }, ${f(nghi + 0.1)});`,
+        `tl.to("#${p}-dau", { rotation: 16, duration: 0.3, yoyo: true, repeat: 1 }, ${f(nghi + 0.1)});`,
+        ...doan(nghi + 1.1, ket, giuaX, 80),
+      ] : []),
+      // dừng hẳn, chống gậy, nhìn sang cửa sổ
+      `tl.to("#${p} svg", { y: 6, duration: 0.3 }, ${f(ket)});`,
+      `tl.to("#${p}-dau", { rotation: -8, duration: 0.6, ease: "sine.inOut" }, ${f(ket + 0.1)});`,
+      `tl.to("#${p}-mat", { x: 7, duration: 0.5 }, ${f(ket + 0.1)});`,
+      `tl.to("#${p}-mat", { x: 0, duration: 0.3 }, ${f(t + Math.max(1.6, dd) + 0.05)});`,
+      `tl.to(["#${p}-dau", "#${p}-tay-phai", "#${p}-cang-phai"], { rotation: 0, duration: 0.4 }, ${f(t + Math.max(1.6, dd) + 0.05)});`,
+      `tl.to("#${p} svg", { x: 0, y: 0, duration: 0.5, ease: "power1.inOut" }, ${f(t + Math.max(1.6, dd) + 0.05)});`,
+    ]
+  },
   ngoi_lang_le: (p, t, dd) => {
     const giua = t + dd * 0.45
     const ket = t + Math.max(1.2, dd - 1)
@@ -1543,6 +1585,7 @@ function chuoiDam(p, t, giay, vaoBao = false) {
 }
 // Từ trong lời kể → hành động kể chuyện (thứ tự = ưu tiên). Ẩn dụ ("bài kiểm tra sinh tồn") không tính
 const TU_TRUYEN = [
+  ['chong_gay', /chống gậy|cây gậy|lê bước|chậm chạp bước|già yếu/],
   ['ngoi_lang_le', /ngồi lặng lẽ|ngồi một mình|cô độc trong (căn )?phòng|phòng khách sạn/],
   ['buoc_qua_suong', /quay về (nơi|ngày|thời)|ngược dòng thời gian|trở về quá khứ/],
   ['nam_tay', /nắm (lấy )?tay|bên giường bệnh|cơn bạo bệnh|thập tử nhất sinh/],
@@ -2148,7 +2191,7 @@ const ganVat = (svg, id, dp, toaDo) => {
       continue
     }
     if (toaDo && !toaDo[cho]) continue
-    const [x, y, co] = toaDo?.[cho] ?? { phai: [280, 496, 96], trai: [120, 496, 96], truoc: [200, 452, 128], dau: [300, 110, 70], nguc: [200, 372, 130], vai: [296, 318, 74], xe: [200, 470, 290], mat: [200, 192, 118], day: [200, 420, 380], eo: [200, 402, 150], dem: [200, 522, 300], ban_ngoi: [200, 470, 380], bai_nguc: [214, 386, 96], tren_ban: [150, 432, 64], long: [214, 470, 92], lan_can: [200, 500, 400], phai_xeng: [278, 452, 270], giay: [200, 388, 140], nen_tay: [210, 356, 92], nen_quang: [210, 330, 190] }[cho]
+    const [x, y, co] = toaDo?.[cho] ?? { phai: [280, 496, 96], trai: [120, 496, 96], truoc: [200, 452, 128], dau: [300, 110, 70], nguc: [200, 372, 130], vai: [296, 318, 74], xe: [200, 470, 290], mat: [200, 192, 118], day: [200, 420, 380], eo: [200, 402, 150], dem: [200, 522, 300], ban_ngoi: [200, 470, 380], bai_nguc: [214, 386, 96], tren_ban: [150, 432, 64], long: [214, 470, 92], lan_can: [200, 500, 400], phai_gay: [292, 519, 150], phai_xeng: [278, 452, 270], giay: [200, 388, 140], nen_tay: [210, 356, 92], nen_quang: [210, 330, 190] }[cho]
     // Đồ vẽ sẵn (VE_VAT, khung 100×100): nhóm ngoài đặt chỗ + cỡ, nhóm trong mang id để GSAP chạy (không đè transform)
     const el = bt.startsWith('<')
       ? `<g transform="translate(${bt.includes(CAN_CO) ? `${x - 10.5 * (co / 100)} ${y - 95 * (co / 100)}` : `${x - co / 2} ${y - co / 2}`}) scale(${co / 100})"><g id="${id}-vat-${ten}" opacity="0">${bt.replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, '')}</g></g>`
@@ -2257,7 +2300,7 @@ const nvPhu = doanPhu.map((dp, k) => {
   {
     const BUOC = NGANG ? 180 : 140
     const CANH = new Set(['mo_cua', 'nam_noi', 'gong_chuong', 'rung_chuong', 'bam_nut', 'dam_bao_cat', 'kham_suc_khoe', 'ngoi_thien', 'buoc_vao_dai', 'doi_dau', 'dam_boc', 'dam_moc', 'ha_guc', 'can_tai', 'dung_cho_dem', 'nhan_dai', 'treo_bien', 'can_hang', 'cat_bang', 'choi_bai', 'dan_lat', 'dao_dat', 'cho_chim_an', 'thap_nen', 'ngoi_lang_le', 'nam_tay', 'nhin_bien', 'vo_vai'])
-    const DI = new Set(['xach_vali', 'di_bo', 'chay', 'lai_xe', 'ganh_vac', 'di_may_bay', 'dap_xe', 'buoc_qua_suong'])
+    const DI = new Set(['xach_vali', 'di_bo', 'chay', 'lai_xe', 'ganh_vac', 'di_may_bay', 'dap_xe', 'buoc_qua_suong', 'chong_gay'])
     const SAN = new Set(['rua_bat', 'lap_rap', 'nam_noi', 'dong_may_tinh', 'an_com', 'dem_tien'])
     const VONG = [1, 0, -1, 0]
     let viTri = 0
@@ -2303,12 +2346,12 @@ const nvPhu = doanPhu.map((dp, k) => {
         viTri = den
         gan = ganDen
       }
-      if (['di_bo', 'chay', 'xach_vali', 'ganh_vac', 'dap_xe', 'buoc_qua_suong'].includes(dt)) {
+      if (['di_bo', 'chay', 'xach_vali', 'ganh_vac', 'dap_xe', 'buoc_qua_suong', 'chong_gay'].includes(dt)) {
         const bd = Math.max(LUC_DONG_TAC[i][1], i === dp.tu ? vao + diVao + 0.12 : 0)
-        const di = Math.max(0.6, Math.min(dt === 'chay' ? 2 : 2.4, batDau[i] + d - bd))
+        const di = dt === 'chong_gay' ? Math.max(0.6, batDau[i] + d - bd - 0.7) : Math.max(0.6, Math.min(dt === 'chay' ? 2 : 2.4, batDau[i] + d - bd))
         quay('nghieng', bd, 1, 0.18)
         veThang(bd + di, 0.2)
-        tw.push(...buocChan(id, bd, di, dt === 'chay' ? 0.2 : 0.32, dt === 'chay'))
+        if (dt !== 'chong_gay') tw.push(...buocChan(id, bd, di, dt === 'chay' ? 0.2 : 0.32, dt === 'chay'))
       } else if (!dt && d > 2 && (l.cam_xuc === 'buon' || l.cam_xuc === 'suy_nghi')) {
         quay('ba_tu', t + 0.35, l.cam_xuc === 'buon' ? ben : -ben, 0.35)
         veThang(t + d - 0.5, 0.3)

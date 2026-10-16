@@ -2141,7 +2141,7 @@ const nenCanh = doanCanh.map((dc, k) => {
   if (tepAnh && existsSync(join(GOC, 'hyperframes/assets', tepAnh))) {
     const [x, y, w, h] = NGANG ? [-560, 160, 2200, 1040] : [-60, -60, 1200, 1260]
     anh = `<img id="bc${k}-anh" class="anh-nen-canh${tepAnh.startsWith('nen-') ? ' tu-lam' : ''}" src="assets/${esc(tepAnh)}" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px"/>`
-    tw.push(`tl.fromTo("#bc${k}-anh", { scale: 1 }, { scale: 1.06, duration: ${f(Math.max(1, het - t0))}, ease: "none", immediateRender: false }, ${f(t0)});`)
+    // ảnh nền đứng yên (không phóng to dần: chuyển động quá chậm thành nhích từng nấc)
   }
   // Nền chuyển động THEO TỪNG CÂU (lớp #bc<k>-dong, riêng với hiệu ứng đổi cảnh và phóng tranh): cả cảnh trôi MỘT chiều
   // đều đặn như máy quay thật (chủ trang 16/10/2026: "background đôi khi bị giật" — trước đây mỗi câu đổi chiều, tăng tốc
@@ -2152,7 +2152,7 @@ const nenCanh = doanCanh.map((dc, k) => {
   let s0 = 1
   const bienX = NGANG ? 30 : 20
   const xLuc = (tt) => (k % 2 ? 1 : -1) * (-bienX + 2 * bienX * Math.min(1, Math.max(0, (tt - t0) / Math.max(1, het - t0))))
-  let x0 = xLuc(t0)
+  let x0 = 0
   for (let i = dc.tu; i <= dc.het; i++) {
     const l = loi[i]
     const tu = i === dc.tu ? t0 : batDau[i] - 0.15
@@ -2161,14 +2161,13 @@ const nenCanh = doanCanh.map((dc, k) => {
     let s1 = s0 + (TIEN[l.cam_xuc] ?? 0.01) * (l.lang ? 1.4 : 1)
     if (s1 > 1.1 || s1 < 1) s1 = s0 - (s1 - s0) // chạm giới hạn thì đi ngược lại
     s1 = Math.min(1.1, Math.max(1, s1))
-    const x1 = xLuc(den)
+    void xLuc
     const nhanh = l.lang || l.cam_xuc === 'bat_ngo' || l.anh_sang === 'loe_sang'
-    if (nhanh && den - tu > 0.9) {
-      // dồn nền tới nhanh một nhịp rồi trôi tiếp đều (không đứng khựng tới hết câu)
-      const xg = x0 + (x1 - x0) * (0.55 / (den - tu))
-      tw.push(`tl.fromTo("#bc${k}-dong", { scale: ${f(s0)}, x: ${f(x0)} }, { scale: ${f(s1)}, x: ${f(xg)}, duration: 0.55, ease: "power3.out", immediateRender: false }, ${f(tu)});`)
-      tw.push(`tl.fromTo("#bc${k}-dong", { scale: ${f(s1)}, x: ${f(xg)} }, { scale: ${f(s1)}, x: ${f(x1)}, duration: ${f(den - tu - 0.55)}, ease: "none", immediateRender: false }, ${f(tu + 0.55)});`)
-    } else tw.push(`tl.fromTo("#bc${k}-dong", { scale: ${f(s0)}, x: ${f(x0)} }, { scale: ${f(s1)}, x: ${f(x1)}, duration: ${f(den - tu)}, ease: "none", immediateRender: false }, ${f(tu)});`)
+    // Nền đứng yên (chuyển động quá chậm thành nhích từng nấc, xem ghi chú ở phần rung trôi); chỉ câu bất ngờ / khoảng lặng
+    // / loé sáng dồn nền tới một nhịp nhanh rồi giữ nguyên độ gần đó
+    if (!nhanh) s1 = s0
+    const x1 = x0
+    if (nhanh && s1 !== s0) tw.push(`tl.fromTo("#bc${k}-dong", { scale: ${f(s0)}, x: ${f(x0)} }, { scale: ${f(s1)}, x: ${f(x1)}, duration: ${f(Math.min(0.55, den - tu))}, ease: "power3.out", immediateRender: false }, ${f(tu)});`)
     // Câu bi kịch trên nền vui tươi (văn phòng, cửa hàng, phố nắng…: video Oppenheimer dùng văn phòng xanh có biểu đồ đi lên
     // cho Hiroshima) → nền tối, mất màu suốt câu; câu sau hết bi kịch thì trả màu
     const toi = biKich(i) && VUI_TUOI.has(dc.ten)
@@ -2195,6 +2194,7 @@ const HA_PHU = NGANG ? 100 - PHU_XUONG : 0
 // → cắt trong 1 khung hình. Khung na ná nhau thì vẫn lia mượt (cắt giữa hai khung giống nhau trông như giật).
 let CAT_DAU = null
 let camScale = 1
+let camCuoi = { scale: 1, x: 0, y: 0 }
 const lia = (t, scale, ox, oy, giay, ease = 'power2.inOut', xoay = 0) => {
   // Chỉ cắt thẳng khi khung đổi hẳn (độ phóng lệch từ 0,3): cắt giữa hai khung chỉ chặt hơn 10–25% là "jump cut", nền và
   // người gần như đứng nguyên chỗ nên trông như giật (chủ trang 16/10/2026: "background đôi khi bị giật"). Khung lệch vừa
@@ -2209,6 +2209,11 @@ const lia = (t, scale, ox, oy, giay, ease = 'power2.inOut', xoay = 0) => {
     giay = Math.max(giay, 0.55)
     ease = 'sine.inOut'
   }
+  // Nhích dần chậm (lâu hơn 1,2 giây mà chỉ đổi rất ít: phóng < 6%, dịch < 60 điểm ảnh) → bỏ, máy đứng yên giữ khung
+  const xThu = scale === 1 ? 0 : -(ox - GIUA_X) * scale
+  const yThu = scale === 1 ? 0 : -(oy - GIUA_Y) * scale
+  if (giay >= 1.2 && Math.abs(scale - camCuoi.scale) < 0.06 && Math.hypot(xThu - camCuoi.x, yThu - camCuoi.y) < 60) return
+  camCuoi = { scale, x: xThu, y: yThu }
   camScale = scale
   // đưa điểm (ox, oy) về giữa khung với độ phóng `scale` (gốc biến đổi ở điểm giữa khung GIUA_X, GIUA_Y), nghiêng `xoay` độ
   const x = scale === 1 ? 0 : -(ox - GIUA_X) * scale
@@ -3123,9 +3128,10 @@ tw.push(`gsap.set("#camera-nv", { "--vien": "${VIEN.binh_thuong}" });`)
     const lan = Math.max(1, Math.floor(TONG / chuKy))
     tw.push(`tl.fromTo(".troi", { ${thuoc}: ${-bien} }, { ${thuoc}: ${bien}, duration: ${f(chuKy)}, yoyo: true, repeat: ${lan - 1}, ease: "sine.inOut", immediateRender: true }, 0);`)
   }
-  song('x', 5, 3.7)
-  song('y', 4, 2.9)
-  song('rotation', 0.12, 5.3)
+  // (chủ trang 16/10/2026 "background bị giật giật"): đo trên video thật, mọi chuyển động nền RẤT CHẬM (dưới ~2 điểm ảnh mỗi
+  // khung) bị máy chụp làm tròn về điểm ảnh nguyên → nền nhích từng nấc "đứng – nhích – đứng" (chỉ số giật 0,75; chụp 4K chỉ
+  // đỡ còn 0,62 mà dựng chậm 5,5 lần). Nên nền ĐỨNG YÊN như phim hoạt hình chuyên nghiệp, chỉ di chuyển khi có chủ đích và đủ nhanh
+  void song
   const buoc = Math.max(1, Math.round(TONG * 8))
   tw.push(`tl.fromTo("#hat-phim", { backgroundPosition: "0px 0px" }, { backgroundPosition: "${buoc * 73}px ${buoc * 47}px", duration: ${f(TONG)}, ease: "steps(${buoc})", immediateRender: true }, 0);`)
 }

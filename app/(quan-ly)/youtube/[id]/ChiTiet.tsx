@@ -14,6 +14,7 @@ import NenPhim from './NenPhim'
 import HanhDongPhim from './HanhDongPhim'
 import BangNhanVat from './BangNhanVat'
 import DaiMauPhim from './DaiMauPhim'
+import { lenhAnhBia } from '@/lib/lenhAnhBia'
 
 const NGUOI: Record<string, string> = {
   nguoi_ke: '🎙 Người kể',
@@ -1065,7 +1066,7 @@ function AnhBia({ d, tt, khoa, setD, capNhatTt }: { d: DuAnYT; tt: TrangThaiDuAn
         {tt.ve_bia && <span className="chip bg-violet-100 text-violet-800">Máy nhà đang vẽ…</span>}
       </div>
       <p className="text-xs text-slate-500">
-        Ảnh bìa tốt: MỘT tình huống gây tò mò, nhân vật to rõ mặt, chữ 2-5 từ đọc được trên điện thoại. Bấm một gợi ý hoặc tự gõ, rồi bấm Vẽ ảnh bìa.
+        Ảnh bìa tốt: MỘT tình huống gây tò mò, nhân vật to rõ mặt, chữ 2-5 từ đọc được trên điện thoại. Bấm một gợi ý hoặc tự gõ chữ, rồi chép lệnh sang ChatGPT / Gemini (khung xanh bên dưới) — hoặc bấm Vẽ ảnh bìa để máy nhà tự vẽ.
       </p>
       {goiY.length > 0 && (
         <div className="flex flex-wrap gap-2">
@@ -1083,6 +1084,34 @@ function AnhBia({ d, tt, khoa, setD, capNhatTt }: { d: DuAnYT; tt: TrangThaiDuAn
         </button>
       </div>
       {soTu > 5 && <p className="text-xs text-amber-700">Chữ dài {soTu} từ: ảnh bìa chỉ lấy 5 từ đầu. Nên rút gọn còn 2-5 từ.</p>}
+      {/* Câu lệnh chép sang ChatGPT / Gemini tạo ảnh bìa (chủ trang 16/10/2026) — kiểu 1 theo chữ đang đặt ở ô trên */}
+      <div className="grid gap-2 rounded-xl bg-emerald-50 p-3 ring-1 ring-emerald-200">
+        <p className="text-sm font-bold text-emerald-900">📋 Tạo ảnh bìa bằng ChatGPT / Gemini</p>
+        <p className="text-xs text-emerald-900">
+          Bấm <b>Chép lệnh</b>, dán vào ChatGPT (chế độ tạo ảnh) hoặc Gemini, tạo xong tải ảnh về. Mỗi kiểu một ý khác nhau: tạo cả 3 rồi vào YouTube Studio → Hình thu nhỏ →{' '}
+          <b>Thử nghiệm và so sánh</b> để YouTube tự chọn ảnh được bấm nhiều nhất. Kiểu 1 dùng chữ ở ô bên trên.
+        </p>
+        {lenhAnhBia(d, chu).map((x) => (
+          <div key={x.ten} className="grid gap-1 rounded-lg bg-white p-2 ring-1 ring-emerald-100">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="text-sm">
+                <b>{x.ten}</b> — chữ: <span className="font-semibold text-red-700">{x.chu}</span>
+              </span>
+              <button
+                type="button"
+                className="btn btn-sm btn-phu"
+                onClick={() => void navigator.clipboard.writeText(x.lenh).then(() => thongBao('ok', `Đã chép lệnh ảnh bìa ${x.ten.toLowerCase()} — dán vào ChatGPT hoặc Gemini`))}
+              >
+                📋 Chép lệnh
+              </button>
+            </div>
+            <details>
+              <summary className="cursor-pointer text-xs text-slate-500">Xem câu lệnh</summary>
+              <p className="mt-1 whitespace-pre-wrap rounded bg-slate-50 p-2 text-xs leading-relaxed text-slate-700">{x.lenh}</p>
+            </details>
+          </div>
+        ))}
+      </div>
       {loi && <p className="text-xs text-red-600">Lỗi: {loi}</p>}
       {ds.length > 0 && (
         <div className="grid gap-3 sm:grid-cols-2">

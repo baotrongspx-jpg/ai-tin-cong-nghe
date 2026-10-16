@@ -177,7 +177,7 @@ export default function HanhDongPhim({ d, onDuAn }: { d: DuAnYT; onDuAn: (d: DuA
                 </div>
               </div>
               <p className="text-xs text-orange-900">
-                Nút <b>Gắn</b> tự sửa: câu đang dùng sai địa điểm (chuyển sang đúng nơi có ảnh nền), đạo cụ có emoji (người diễn cầm thêm), logo, hành động máy đã có.
+                Nút <b>Gắn</b> tự sửa: câu đang dùng sai địa điểm (chuyển sang đúng nơi có ảnh nền), đạo cụ có emoji (người diễn cầm thêm), logo, thẻ số liệu, hành động máy đã có.
                 Bạn phải tự làm: ảnh nền cho địa điểm chưa có ảnh (khung &quot;Ảnh nền phim này cần&quot;), nơi chưa có trong hồ sơ, đồ vật / hành động phải vẽ (chép yêu cầu cho Claude Code).
               </p>
               <ul className="grid gap-1 text-sm text-orange-950">

@@ -856,6 +856,24 @@ export async function apDungHanhDong(id: string) {
           h.ghi_chu = 'đã có'
         }
       }
+      // Số liệu / mốc thời gian câu nói tới mà câu chưa có thẻ minh hoạ → thẻ số liệu bật lên đúng lúc giọng đọc tới con số
+      // (chủ trang 16/10/2026: danh sách báo "nên có thẻ số liệu" mà Gắn không tự làm)
+      const soLieu = (x.hinh_can ?? []).find((h) => h.loai === 'so_lieu' && !h.co)
+      if (soLieu && (!l.minh_hoa?.kieu || l.minh_hoa.kieu === 'khong') && (l.anh ?? -1) < 0) {
+        const thang = soLieu.ten.match(/tháng\s*(\d{1,2})\s*(?:năm|,)?\s*(\d{4})/i)
+        const conSo = soLieu.ten.match(/\d[\d.,]*/g)?.at(-1) ?? ''
+        const phu = (x.y_nghia || x.viec || '').trim()
+        l.minh_hoa = {
+          kieu: 'so_lieu',
+          tu_khoa: conSo && l.chu.includes(conSo) ? conSo : '',
+          chu_chinh: thang ? `${thang[1]}/${thang[2]}` : soLieu.ten.trim().slice(0, 14),
+          chu_phu: phu.length > 40 ? `${phu.slice(0, 40).replace(/\s+\S*$/, '')}…` : phu,
+          bieu_tuong: soLieu.emoji || '📅',
+        }
+        soLieu.co = true
+        soLieu.ghi_chu = 'đã có'
+        so++
+      }
       // Logo thương hiệu câu nhắc tới → huy hiệu bật lên (máy dựng tự nhận thương hiệu quen; đây thêm cả thương hiệu lạ)
       const logo = (x.hinh_can ?? []).filter((h) => h.loai === 'logo').slice(0, 2).map((h) => ({ ten: h.ten, mau: h.mau, chu: h.chu || h.ten.slice(0, 2) }))
       if (JSON.stringify(logo) !== JSON.stringify(l.logo ?? [])) {

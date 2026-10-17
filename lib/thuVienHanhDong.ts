@@ -49,6 +49,10 @@ export const THU_VIEN_HANH_DONG: Record<string, { ten: string; loai: LoaiHanhDon
   ra_mat_phim: { ten: 'Phim ra mắt', loai: 'ke_chuyen', mo_ta: 'hai tay giơ poster phim tự hào, hạ xuống rồi giơ tấm vé xem phim ngang tầm mắt, bước sang bên, thu vé về ngực: phim công chiếu', do_vat: ['🎞️ poster phim (vẽ sẵn)', '🎟️ vé xem phim'] },
   bieu_tuong_quoc_te: { ten: 'Thành biểu tượng quốc tế', loai: 'ke_chuyen', mo_ta: 'cầm bút chỉ trên bản đồ thế giới treo tường từ châu Á sang châu Mỹ, châu Âu, gõ nhẹ từng điểm, cuối đứng thẳng kiêu hãnh: nổi tiếng toàn cầu', do_vat: ['🌍 bản đồ thế giới (vẽ sẵn)', '🖊️ cây bút'] },
   luyen_tap_phau_thuat: { ten: 'Luyện tập, cắt tuyến mồ hôi', loai: 'ke_chuyen', mo_ta: 'tay trái nâng hạ quả tạ, tay phải cầm dao mổ từng nhát sát nách, mồ hôi rơi, cuối lau mồ hôi trán thở dốc: khổ luyện, tự phẫu thuật', do_vat: ['🏋️‍♂️ tạ (vẽ sẵn)', '🔪 dao mổ (vẽ sẵn)'] },
+  dot_giay: { ten: 'Tẩy chay, đốt giày', loai: 'ke_chuyen', mo_ta: 'đống lửa cháy dưới sàn, tay trái giơ cao đôi giày Nike phẫn nộ, vung tay ném vào lửa, lửa bùng lên, lùi lại hai tay chắn ngực, cuối đứng nhìn lửa hả hê: tẩy chay, đốt sản phẩm phản đối', do_vat: ['👟 đôi giày Nike', '🔥 đống lửa'] },
+  ban_hang_chung: { ten: 'Trưng bày đôi giày cũ được bán', loai: 'ke_chuyen', mo_ta: 'hai tay nâng đôi giày cũ nát đế bánh quế ngang ngực trang trọng, xoay cho thấy hai mặt, tới giá bán nâng cao hơn nhướng mày, rồi hạ xuống cúi nhìn suy tư: món đồ lịch sử được bán đấu giá', do_vat: ['👟 đôi giày cũ nát (vẽ sẵn: đế bánh quế)'] },
+  mang_giay: { ten: 'Xỏ thử đôi giày', loai: 'ke_chuyen', mo_ta: 'ngồi ghế thấp, xỏ từng chiếc giày đế bánh quế vào chân, đứng dậy nhún nhẹ thử, cúi nhìn chân nhíu mày lắc đầu nhún vai: thử giày, chê giày chật, mẫu thử không vừa', do_vat: ['👟 đôi giày đế bánh quế (vẽ sẵn)', '🪑 ghế (vẽ sẵn)'] },
+  xe_man: { ten: 'Xé toạc bức màn', loai: 'ke_chuyen', mo_ta: 'hai tay nắm hai mép tấm màn đỏ che trước người, kéo mạnh sang hai bên, màn rách toang lộ guồng máy sản xuất phía sau, cuối hạ tay ưỡn ngực cười: phơi bày sự thật bị che giấu', do_vat: ['tấm màn (vẽ sẵn)', '⚙️ guồng máy (vẽ sẵn)'] },
   lam_phim_hanh_dong: { ten: 'Làm phim hành động', loai: 'ke_chuyen', mo_ta: 'tay trái giữ máy quay phim cổ (cuộn phim quay), tay phải đập bảng clapper, nhìn sang, bước sang bên, cuối cười kiêu hãnh: làm phim, đạo diễn, tái định nghĩa phim', do_vat: ['🎞️ máy quay phim (vẽ sẵn)', '🎬 clapperboard (vẽ sẵn)'] },
   mua_con: { ten: 'Múa côn nhị khúc', loai: 'ke_chuyen', mo_ta: 'đứng tấn, vung côn nhị khúc xoay số tám, quất ra sau vai rồi thu về, cuối kẹp côn dưới nách trái, mày cau: võ thuật, cảnh đánh trong phim', do_vat: ['🥢 côn nhị khúc (vẽ sẵn)'] },
   uong_thuoc: { ten: 'Uống thuốc rồi chìm vào giấc ngủ', loai: 'ke_chuyen', mo_ta: 'ngồi ghế, đưa viên thuốc lên miệng nuốt, hạ tay, nhắm mắt ngả đầu, thở chậm dần, mặt nhợt nhạt: uống thuốc giảm đau, ngủ thiếp đi, ra đi', do_vat: ['💊 viên thuốc', '🪑 ghế (vẽ sẵn)'] },
@@ -236,6 +240,14 @@ export function doVatThieu(pt: PhanTichHanhDong) {
   return [...nhom.values()].sort((a, b) => b.vi_du.length - a.vi_du.length)
 }
 // Emoji đầu tiên trong chuỗi đạo cụ ("🧹 cái chổi" → "🧹")
+// Đồ vật không có emoji đã vẽ sẵn ở máy dựng (may-nha/hoat-hinh/tao_video.mjs: VE_VAT): nhận theo tên đồ vật, gắn vào câu
+// dạng ⟦mã⟧ để người diễn cầm (vat_them)
+export const DO_VE_SAN: [RegExp, string][] = [
+  [/swoosh|logo nike|biểu tượng nike/i, 'swoosh'],
+  [/^\W*(칠판\s*)?bảng\s*$|bảng (đen|trắng|phấn|viết)|칠판|whiteboard|blackboard/i, 'bang_phan'],
+  [/tấm màn|bức màn|curtain/i, 'tam_man'],
+]
+export const veSanCua = (x: string) => DO_VE_SAN.find(([re]) => re.test(x))?.[1] ?? ''
 export const emojiCua = (x: string) => x.match(/\p{Regional_Indicator}{2}|\p{Extended_Pictographic}\uFE0F?(\u200D\p{Extended_Pictographic}\uFE0F?)*/u)?.[0] ?? ''
 // Emoji bỏ dấu biến thể (🖊️ và 🖊 là một) để so đạo cụ có sẵn / còn thiếu
 export const emojiGoc = (x: string) => emojiCua(x).replace(/️/g, '')

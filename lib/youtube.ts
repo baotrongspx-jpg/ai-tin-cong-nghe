@@ -16,7 +16,7 @@ import { bienTapDat, hoiDongDat, khauChuaDat, loiBienTap } from './datChuan'
 import { apBienTap, deBaiBienTap, type DaBienTap, type KetQuaBienTap } from './bienTap'
 import { batNhacNen, dsNhac } from './nhacNen'
 import { veAnhGemini } from './veAnhNen'
-import { THU_VIEN_HANH_DONG, emojiCua, emojiGoc, type CauHanhDong, type HinhCan, type PhanTichHanhDong } from './thuVienHanhDong'
+import { THU_VIEN_HANH_DONG, emojiCua, emojiGoc, veSanCua, type CauHanhDong, type HinhCan, type PhanTichHanhDong } from './thuVienHanhDong'
 
 // Video YouTube dài (trang /youtube): hoạt hình Mèo Mun & Robot Bit, khung ngang 16:9, dài tới ~20 phút.
 // Mỗi dự án là một tệp youtube/<id>/du-an.json trong kho (không cần thêm bảng). AI viết dàn ý chia phần (~3 phút
@@ -708,7 +708,7 @@ function hinhCanCau(d: DuAnYT, l: CauYT, ds: z.infer<typeof HinhCanSchema>[], ng
       const co =
         chiNhacToi ? true
         : h.loai === 'logo' ? true
-        : h.loai === 'do_vat' ? !!emojiCua(h.emoji)
+        : h.loai === 'do_vat' ? !!emojiCua(h.emoji) || !!veSanCua(h.ten)
         : h.loai === 'anh_that' ? typeof l.anh === 'number' && l.anh >= 0
         // Nhân vật: Mèo / Bit / người kể luôn có; nhân vật chính (AI chỉ ra, kể cả người sáng lập trong phim về công ty)
         // đứng trên sân khấu sẵn; người khác cần đúng nhân vật phụ (AI chỉ ra loại) đứng trên sân khấu ở câu đó
@@ -1024,7 +1024,7 @@ export async function apDungHanhDong(id: string) {
         so++
       }
       // Đạo cụ còn thiếu có emoji → người diễn cầm thêm (tối đa 2); không có emoji thì phải vẽ (Claude Code)
-      const them = (x.do_vat_thieu ?? []).map(emojiCua).filter(Boolean).slice(0, 2)
+      const them = (x.do_vat_thieu ?? []).map((v) => emojiCua(v) || (veSanCua(v) ? `⟦${veSanCua(v)}⟧` : '')).filter(Boolean).slice(0, 2)
       if (JSON.stringify(them) !== JSON.stringify(l.vat_them ?? [])) {
         if (them.length) l.vat_them = them
         else delete l.vat_them

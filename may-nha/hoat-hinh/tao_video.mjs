@@ -555,6 +555,18 @@ const DONG_TAC = {
 // hình nhân vật (nvPhu).
 // Đồ vật không có emoji: vẽ sẵn (khung 100×100), dùng như emoji trong VAT (chuỗi bắt đầu bằng "<svg")
 const VE_VAT = {
+  // Bộ 18 (phim Nike 17/10/2026, đợt 2): giày nhẹ, Moon Shoe, đế bánh quế (nhìn từ dưới), đuôi xe Plymouth (.nap cốp), hộp
+  // giày (.nap), máy nướng bánh quế, khuôn bánh (.day cao su đầy dần), bình rót, dòng cao su chảy, bảng tên NIKE
+  giay_nhe: '<svg viewBox="0 0 100 100"><path d="M8 66 Q8 52 22 48 L42 42 Q48 30 58 28 L78 26 Q90 26 92 38 L94 62 Q94 70 86 70 L14 72 Q8 72 8 66 Z" fill="#e0f2fe" stroke="#44403c" stroke-width="3"/><path d="M8 70 L94 68 L94 80 Q94 86 86 86 L14 86 Q8 86 8 80 Z" fill="#f8fafc" stroke="#44403c" stroke-width="3"/><g fill="#57534e"><rect x="14" y="81" width="5" height="5" rx="1"/><rect x="22" y="81" width="5" height="5" rx="1"/><rect x="30" y="81" width="5" height="5" rx="1"/><rect x="38" y="81" width="5" height="5" rx="1"/><rect x="46" y="81" width="5" height="5" rx="1"/><rect x="54" y="81" width="5" height="5" rx="1"/><rect x="62" y="81" width="5" height="5" rx="1"/><rect x="70" y="81" width="5" height="5" rx="1"/><rect x="78" y="81" width="5" height="5" rx="1"/></g><path d="M26 62 Q54 62 88 40 Q64 68 32 68 Q22 68 26 62 Z" fill="#1d4ed8"/><path d="M50 38 L58 48 M56 35 L64 45 M62 33 L70 43" stroke="#78716c" stroke-width="2.5"/></svg>',
+  giay_moon: '<svg viewBox="0 0 100 100"><path d="M8 66 Q8 52 22 48 L42 42 Q48 30 58 28 L78 26 Q90 26 92 38 L94 62 Q94 70 86 70 L14 72 Q8 72 8 66 Z" fill="#e5e7eb" stroke="#44403c" stroke-width="3"/><path d="M8 70 L94 68 L94 80 Q94 86 86 86 L14 86 Q8 86 8 80 Z" fill="#f5f5f4" stroke="#44403c" stroke-width="3"/><g fill="#57534e"><rect x="14" y="81" width="5" height="5" rx="1"/><rect x="22" y="81" width="5" height="5" rx="1"/><rect x="30" y="81" width="5" height="5" rx="1"/><rect x="38" y="81" width="5" height="5" rx="1"/><rect x="46" y="81" width="5" height="5" rx="1"/><rect x="54" y="81" width="5" height="5" rx="1"/><rect x="62" y="81" width="5" height="5" rx="1"/><rect x="70" y="81" width="5" height="5" rx="1"/><rect x="78" y="81" width="5" height="5" rx="1"/></g><path d="M26 62 Q54 62 88 40 Q64 68 32 68 Q22 68 26 62 Z" fill="#2563eb"/><path d="M50 38 L58 48 M56 35 L64 45 M62 33 L70 43" stroke="#78716c" stroke-width="2.5"/></svg>',
+  de_waffle: '<svg viewBox="0 0 100 100"><path d="M30 6 Q50 0 70 6 Q80 20 76 42 Q74 56 70 70 Q66 94 50 96 Q34 94 30 70 Q26 56 24 42 Q20 20 30 6 Z" fill="#e7e5e4" stroke="#44403c" stroke-width="3"/><g fill="#78716c"><rect x="31" y="10" width="5" height="5" rx="1"/><rect x="31" y="17" width="5" height="5" rx="1"/><rect x="31" y="24" width="5" height="5" rx="1"/><rect x="31" y="31" width="5" height="5" rx="1"/><rect x="31" y="38" width="5" height="5" rx="1"/><rect x="31" y="45" width="5" height="5" rx="1"/><rect x="38" y="10" width="5" height="5" rx="1"/><rect x="38" y="17" width="5" height="5" rx="1"/><rect x="38" y="24" width="5" height="5" rx="1"/><rect x="38" y="31" width="5" height="5" rx="1"/><rect x="38" y="38" width="5" height="5" rx="1"/><rect x="38" y="45" width="5" height="5" rx="1"/><rect x="45" y="10" width="5" height="5" rx="1"/><rect x="45" y="17" width="5" height="5" rx="1"/><rect x="45" y="24" width="5" height="5" rx="1"/><rect x="45" y="31" width="5" height="5" rx="1"/><rect x="45" y="38" width="5" height="5" rx="1"/><rect x="45" y="45" width="5" height="5" rx="1"/><rect x="52" y="10" width="5" height="5" rx="1"/><rect x="52" y="17" width="5" height="5" rx="1"/><rect x="52" y="24" width="5" height="5" rx="1"/><rect x="52" y="31" width="5" height="5" rx="1"/><rect x="52" y="38" width="5" height="5" rx="1"/><rect x="52" y="45" width="5" height="5" rx="1"/><rect x="59" y="10" width="5" height="5" rx="1"/><rect x="59" y="17" width="5" height="5" rx="1"/><rect x="59" y="24" width="5" height="5" rx="1"/><rect x="59" y="31" width="5" height="5" rx="1"/><rect x="59" y="38" width="5" height="5" rx="1"/><rect x="59" y="45" width="5" height="5" rx="1"/><rect x="66" y="10" width="5" height="5" rx="1"/><rect x="66" y="17" width="5" height="5" rx="1"/><rect x="66" y="24" width="5" height="5" rx="1"/><rect x="66" y="31" width="5" height="5" rx="1"/><rect x="66" y="38" width="5" height="5" rx="1"/><rect x="66" y="45" width="5" height="5" rx="1"/><rect x="34" y="58" width="5" height="5" rx="1"/><rect x="34" y="65" width="5" height="5" rx="1"/><rect x="34" y="72" width="5" height="5" rx="1"/><rect x="34" y="79" width="5" height="5" rx="1"/><rect x="34" y="86" width="5" height="5" rx="1"/><rect x="41" y="58" width="5" height="5" rx="1"/><rect x="41" y="65" width="5" height="5" rx="1"/><rect x="41" y="72" width="5" height="5" rx="1"/><rect x="41" y="79" width="5" height="5" rx="1"/><rect x="41" y="86" width="5" height="5" rx="1"/><rect x="48" y="58" width="5" height="5" rx="1"/><rect x="48" y="65" width="5" height="5" rx="1"/><rect x="48" y="72" width="5" height="5" rx="1"/><rect x="48" y="79" width="5" height="5" rx="1"/><rect x="48" y="86" width="5" height="5" rx="1"/><rect x="55" y="58" width="5" height="5" rx="1"/><rect x="55" y="65" width="5" height="5" rx="1"/><rect x="55" y="72" width="5" height="5" rx="1"/><rect x="55" y="79" width="5" height="5" rx="1"/><rect x="55" y="86" width="5" height="5" rx="1"/><rect x="62" y="58" width="5" height="5" rx="1"/><rect x="62" y="65" width="5" height="5" rx="1"/><rect x="62" y="72" width="5" height="5" rx="1"/><rect x="62" y="79" width="5" height="5" rx="1"/><rect x="62" y="86" width="5" height="5" rx="1"/></g></svg>',
+  xe_sau: '<svg viewBox="0 0 100 100"><circle cx="20" cy="88" r="9" fill="#111827"/><circle cx="80" cy="88" r="9" fill="#111827"/><path d="M6 50 Q8 40 18 38 L82 38 Q92 40 94 50 L96 82 Q96 86 92 86 L8 86 Q4 86 4 82 Z" fill="#2563eb" stroke="#1e3a8a" stroke-width="2.5"/><path d="M22 38 L30 18 Q32 14 38 14 L62 14 Q68 14 70 18 L78 38 Z" fill="#1d4ed8" stroke="#1e3a8a" stroke-width="2.5"/><path d="M28 36 L34 20 L66 20 L72 36 Z" fill="#bfdbfe" stroke="#1e3a8a" stroke-width="1.5"/><rect x="10" y="44" width="80" height="16" rx="2" fill="#7c2d12"/><g fill="#f97316" stroke="#7c2d12" stroke-width="1"><rect x="14" y="46" width="16" height="12"/><rect x="33" y="46" width="16" height="12"/><rect x="52" y="46" width="16" height="12"/><rect x="71" y="46" width="15" height="12"/></g><g class="nap"><rect x="8" y="42" width="84" height="20" rx="3" fill="#3b82f6" stroke="#1e3a8a" stroke-width="2.5"/><rect x="44" y="54" width="12" height="4" rx="1" fill="#cbd5e1"/></g><rect x="6" y="64" width="12" height="7" rx="2" fill="#dc2626"/><rect x="82" y="64" width="12" height="7" rx="2" fill="#dc2626"/><rect x="2" y="74" width="96" height="8" rx="3" fill="#d1d5db" stroke="#6b7280" stroke-width="1.5"/></svg>',
+  hop_giay: '<svg viewBox="0 0 100 100"><rect x="10" y="44" width="80" height="48" fill="#f97316" stroke="#7c2d12" stroke-width="3"/><text x="50" y="76" text-anchor="middle" font-family="Arial Black, Arial" font-weight="900" font-size="13" fill="#fff7ed">SHOES</text><g class="nap"><rect x="6" y="34" width="88" height="14" rx="2" fill="#fb923c" stroke="#7c2d12" stroke-width="3"/></g></svg>',
+  may_banh: '<svg viewBox="0 0 100 100"><rect x="80" y="62" width="18" height="6" rx="3" fill="#1f2937"/><g class="nap"><ellipse cx="44" cy="40" rx="34" ry="16" fill="#6b7280" stroke="#1f2937" stroke-width="3"/><g fill="#9ca3af"><rect x="22" y="31" width="5" height="5" rx="1"/><rect x="22" y="38" width="5" height="5" rx="1"/><rect x="22" y="45" width="5" height="5" rx="1"/><rect x="29" y="31" width="5" height="5" rx="1"/><rect x="29" y="38" width="5" height="5" rx="1"/><rect x="29" y="45" width="5" height="5" rx="1"/><rect x="36" y="31" width="5" height="5" rx="1"/><rect x="36" y="38" width="5" height="5" rx="1"/><rect x="36" y="45" width="5" height="5" rx="1"/><rect x="43" y="31" width="5" height="5" rx="1"/><rect x="43" y="38" width="5" height="5" rx="1"/><rect x="43" y="45" width="5" height="5" rx="1"/><rect x="50" y="31" width="5" height="5" rx="1"/><rect x="50" y="38" width="5" height="5" rx="1"/><rect x="50" y="45" width="5" height="5" rx="1"/><rect x="57" y="31" width="5" height="5" rx="1"/><rect x="57" y="38" width="5" height="5" rx="1"/><rect x="57" y="45" width="5" height="5" rx="1"/><rect x="64" y="31" width="5" height="5" rx="1"/><rect x="64" y="38" width="5" height="5" rx="1"/><rect x="64" y="45" width="5" height="5" rx="1"/></g></g><ellipse cx="44" cy="72" rx="38" ry="18" fill="#4b5563" stroke="#1f2937" stroke-width="3"/><g fill="#d1d5db"><rect x="19" y="60" width="4.5" height="4.5" rx="1"/><rect x="19" y="66.5" width="4.5" height="4.5" rx="1"/><rect x="19" y="73" width="4.5" height="4.5" rx="1"/><rect x="19" y="79.5" width="4.5" height="4.5" rx="1"/><rect x="25.5" y="60" width="4.5" height="4.5" rx="1"/><rect x="25.5" y="66.5" width="4.5" height="4.5" rx="1"/><rect x="25.5" y="73" width="4.5" height="4.5" rx="1"/><rect x="25.5" y="79.5" width="4.5" height="4.5" rx="1"/><rect x="32" y="60" width="4.5" height="4.5" rx="1"/><rect x="32" y="66.5" width="4.5" height="4.5" rx="1"/><rect x="32" y="73" width="4.5" height="4.5" rx="1"/><rect x="32" y="79.5" width="4.5" height="4.5" rx="1"/><rect x="38.5" y="60" width="4.5" height="4.5" rx="1"/><rect x="38.5" y="66.5" width="4.5" height="4.5" rx="1"/><rect x="38.5" y="73" width="4.5" height="4.5" rx="1"/><rect x="38.5" y="79.5" width="4.5" height="4.5" rx="1"/><rect x="45" y="60" width="4.5" height="4.5" rx="1"/><rect x="45" y="66.5" width="4.5" height="4.5" rx="1"/><rect x="45" y="73" width="4.5" height="4.5" rx="1"/><rect x="45" y="79.5" width="4.5" height="4.5" rx="1"/><rect x="51.5" y="60" width="4.5" height="4.5" rx="1"/><rect x="51.5" y="66.5" width="4.5" height="4.5" rx="1"/><rect x="51.5" y="73" width="4.5" height="4.5" rx="1"/><rect x="51.5" y="79.5" width="4.5" height="4.5" rx="1"/><rect x="58" y="60" width="4.5" height="4.5" rx="1"/><rect x="58" y="66.5" width="4.5" height="4.5" rx="1"/><rect x="58" y="73" width="4.5" height="4.5" rx="1"/><rect x="58" y="79.5" width="4.5" height="4.5" rx="1"/><rect x="64.5" y="60" width="4.5" height="4.5" rx="1"/><rect x="64.5" y="66.5" width="4.5" height="4.5" rx="1"/><rect x="64.5" y="73" width="4.5" height="4.5" rx="1"/><rect x="64.5" y="79.5" width="4.5" height="4.5" rx="1"/></g><rect x="14" y="84" width="60" height="8" rx="3" fill="#374151"/></svg>',
+  khuon_banh: '<svg viewBox="0 0 100 100"><rect x="82" y="58" width="16" height="7" rx="3" fill="#1f2937"/><ellipse cx="46" cy="66" rx="40" ry="22" fill="#4b5563" stroke="#1f2937" stroke-width="3"/><g fill="#d1d5db"><rect x="18" y="52" width="4.5" height="4.5" rx="1"/><rect x="18" y="58.5" width="4.5" height="4.5" rx="1"/><rect x="18" y="65" width="4.5" height="4.5" rx="1"/><rect x="18" y="71.5" width="4.5" height="4.5" rx="1"/><rect x="24.5" y="52" width="4.5" height="4.5" rx="1"/><rect x="24.5" y="58.5" width="4.5" height="4.5" rx="1"/><rect x="24.5" y="65" width="4.5" height="4.5" rx="1"/><rect x="24.5" y="71.5" width="4.5" height="4.5" rx="1"/><rect x="31" y="52" width="4.5" height="4.5" rx="1"/><rect x="31" y="58.5" width="4.5" height="4.5" rx="1"/><rect x="31" y="65" width="4.5" height="4.5" rx="1"/><rect x="31" y="71.5" width="4.5" height="4.5" rx="1"/><rect x="37.5" y="52" width="4.5" height="4.5" rx="1"/><rect x="37.5" y="58.5" width="4.5" height="4.5" rx="1"/><rect x="37.5" y="65" width="4.5" height="4.5" rx="1"/><rect x="37.5" y="71.5" width="4.5" height="4.5" rx="1"/><rect x="44" y="52" width="4.5" height="4.5" rx="1"/><rect x="44" y="58.5" width="4.5" height="4.5" rx="1"/><rect x="44" y="65" width="4.5" height="4.5" rx="1"/><rect x="44" y="71.5" width="4.5" height="4.5" rx="1"/><rect x="50.5" y="52" width="4.5" height="4.5" rx="1"/><rect x="50.5" y="58.5" width="4.5" height="4.5" rx="1"/><rect x="50.5" y="65" width="4.5" height="4.5" rx="1"/><rect x="50.5" y="71.5" width="4.5" height="4.5" rx="1"/><rect x="57" y="52" width="4.5" height="4.5" rx="1"/><rect x="57" y="58.5" width="4.5" height="4.5" rx="1"/><rect x="57" y="65" width="4.5" height="4.5" rx="1"/><rect x="57" y="71.5" width="4.5" height="4.5" rx="1"/><rect x="63.5" y="52" width="4.5" height="4.5" rx="1"/><rect x="63.5" y="58.5" width="4.5" height="4.5" rx="1"/><rect x="63.5" y="65" width="4.5" height="4.5" rx="1"/><rect x="63.5" y="71.5" width="4.5" height="4.5" rx="1"/><rect x="70" y="52" width="4.5" height="4.5" rx="1"/><rect x="70" y="58.5" width="4.5" height="4.5" rx="1"/><rect x="70" y="65" width="4.5" height="4.5" rx="1"/><rect x="70" y="71.5" width="4.5" height="4.5" rx="1"/></g><g class="day" opacity="0"><ellipse cx="46" cy="66" rx="34" ry="17" fill="#292524"/><g fill="#57534e"><rect x="20" y="54" width="4" height="4" rx="1"/><rect x="20" y="60.5" width="4" height="4" rx="1"/><rect x="20" y="67" width="4" height="4" rx="1"/><rect x="20" y="73.5" width="4" height="4" rx="1"/><rect x="26.5" y="54" width="4" height="4" rx="1"/><rect x="26.5" y="60.5" width="4" height="4" rx="1"/><rect x="26.5" y="67" width="4" height="4" rx="1"/><rect x="26.5" y="73.5" width="4" height="4" rx="1"/><rect x="33" y="54" width="4" height="4" rx="1"/><rect x="33" y="60.5" width="4" height="4" rx="1"/><rect x="33" y="67" width="4" height="4" rx="1"/><rect x="33" y="73.5" width="4" height="4" rx="1"/><rect x="39.5" y="54" width="4" height="4" rx="1"/><rect x="39.5" y="60.5" width="4" height="4" rx="1"/><rect x="39.5" y="67" width="4" height="4" rx="1"/><rect x="39.5" y="73.5" width="4" height="4" rx="1"/><rect x="46" y="54" width="4" height="4" rx="1"/><rect x="46" y="60.5" width="4" height="4" rx="1"/><rect x="46" y="67" width="4" height="4" rx="1"/><rect x="46" y="73.5" width="4" height="4" rx="1"/><rect x="52.5" y="54" width="4" height="4" rx="1"/><rect x="52.5" y="60.5" width="4" height="4" rx="1"/><rect x="52.5" y="67" width="4" height="4" rx="1"/><rect x="52.5" y="73.5" width="4" height="4" rx="1"/><rect x="59" y="54" width="4" height="4" rx="1"/><rect x="59" y="60.5" width="4" height="4" rx="1"/><rect x="59" y="67" width="4" height="4" rx="1"/><rect x="59" y="73.5" width="4" height="4" rx="1"/><rect x="65.5" y="54" width="4" height="4" rx="1"/><rect x="65.5" y="60.5" width="4" height="4" rx="1"/><rect x="65.5" y="67" width="4" height="4" rx="1"/><rect x="65.5" y="73.5" width="4" height="4" rx="1"/></g></g><rect x="12" y="84" width="68" height="8" rx="3" fill="#374151"/></svg>',
+  binh_rot: '<svg viewBox="0 0 100 100"><path d="M28 30 L72 30 L76 88 Q76 94 70 94 L30 94 Q24 94 24 88 Z" fill="#9ca3af" stroke="#374151" stroke-width="3"/><path d="M28 30 L14 18 L30 22 Z" fill="#9ca3af" stroke="#374151" stroke-width="2.5"/><path d="M72 40 Q92 44 90 62 Q88 76 74 74" fill="none" stroke="#374151" stroke-width="6"/><rect x="28" y="30" width="44" height="10" fill="#292524"/></svg>',
+  dong_chay: '<svg viewBox="0 0 100 100"><path d="M46 0 Q52 30 48 60 Q46 82 50 100" stroke="#292524" stroke-width="9" fill="none" stroke-linecap="round"/></svg>',
+  bang_ten_nike: '<svg viewBox="0 0 100 100"><rect x="46" y="58" width="8" height="40" rx="3" fill="#78350f"/><rect x="6" y="14" width="88" height="50" rx="5" fill="#f8fafc" stroke="#1f2937" stroke-width="4"/><text x="50" y="50" text-anchor="middle" font-family="Arial Black, Arial" font-weight="900" font-size="26" fill="#f97316">NIKE</text></svg>',
   // Bộ 17 (phim Nike 17/10/2026): giày Nike, đống lửa (.ngon bập bùng), giày cũ đế bánh quế, giày đế bánh quế, giày trên bàn
   // chân (nhìn trước), logo Swoosh, bảng "LET'S → JUST DO IT", tấm màn hai mảnh (.man-trai / .man-phai), guồng máy (.banh quay)
   giay_nike: '<svg viewBox="0 0 100 100"><path d="M8 66 Q8 52 22 48 L42 42 Q48 30 58 28 L78 26 Q90 26 92 38 L94 62 Q94 70 86 70 L14 72 Q8 72 8 66 Z" fill="#f8fafc" stroke="#1f2937" stroke-width="3"/><path d="M8 70 L94 68 L94 78 Q94 84 86 84 L14 84 Q8 84 8 78 Z" fill="#e5e7eb" stroke="#1f2937" stroke-width="3"/><path d="M26 62 Q54 62 88 40 Q64 68 32 68 Q22 68 26 62 Z" fill="#f97316"/><path d="M50 38 L58 48 M56 35 L64 45 M62 33 L70 43" stroke="#94a3b8" stroke-width="2.5"/></svg>',
@@ -707,6 +719,11 @@ const VAT = {
   nen: ['🕯️', 'nen_tay'], quang_nen: [VE_VAT.quang_nen, 'nen_quang'], nen_dat: [VE_VAT.nen_dat, 'nen_san'],
   bien: [VE_VAT.bien, 'nguc'], can_dia: ['⚖️', 'canh_cao'], gao: ['🌾', 'phai'], ca_kho: ['🐟', 'trai'], bang_do: [VE_VAT.bang_do, 'day'], keo: ['✂️', 'phai'],
   xe_dap: ['🚲', 'xe'], nha_que: ['🏡', 'canh_xa'],
+  ban_dung: [VE_VAT.ban_go, 'ban_dung'], giay_nhe: [VE_VAT.giay_nhe, 'giay'], xe_sau: [VE_VAT.xe_sau, 'xe_sau'], ban_phai: [VE_VAT.ban_go, 'ban_phai'],
+  hop_phai: [VE_VAT.hop_giay, 'hop_phai'], thung_xe: [VE_VAT.hop_giay, 'thung_xe'], may_banh: [VE_VAT.may_banh, 'tren_ban_giua'], bong_den: ['💡', 'dau'],
+  khuon_banh: [VE_VAT.khuon_banh, 'tren_ban_giua'], binh_rot: [VE_VAT.binh_rot, 'phai_binh'], binh_ban: [VE_VAT.binh_rot, 'binh_ban'],
+  dong_chay: [VE_VAT.dong_chay, 'dong_chay'], dong_chay2: [VE_VAT.dong_chay, 'dong_chay'], bang_ten_nike: [VE_VAT.bang_ten_nike, 'phai_lon'],
+  giay_moon: [VE_VAT.giay_moon, 'giay'], de_waffle: [VE_VAT.de_waffle, 'giay'],
   giay_nike: [VE_VAT.giay_nike, 'trai'], giay_bay: [VE_VAT.giay_nike, 'giay_bay'], lua_dong: [VE_VAT.lua_dong, 'lua_trai'], giay_cu: [VE_VAT.giay_cu, 'giay'],
   giay_waffle: [VE_VAT.giay_waffle, 'phai'], giay_waffle_t: [VE_VAT.giay_waffle, 'trai'], giay_chan_p: [VE_VAT.giay_chan, 'ong_phai'], giay_chan_t: [VE_VAT.giay_chan, 'ong_trai'],
   tam_man: [VE_VAT.tam_man, 'man_truoc'], guong_may: [VE_VAT.guong_may, 'xa_may'],
@@ -745,6 +762,8 @@ const VAT_DUNG_BOI = {
   cam_hoa_don: ['ghe_go', 'ban_go', 'hoa_don', 'tien_giay'], tiem_thuoc: ['ghe_go', 'xi_lanh'], re_bong: ['bong', 'hinh_nom'], tap_luyen: ['bong', 'tuong_tap'],
   buoc_vao_phong: ['buc_hop_bao'], mac_ao_dau: ['ao_psg_cam', 'ao_psg'], dung_nghe: ['san_den', 'la_o'], buoc_ra_san: ['san_den'],
   sut_bong: ['bong', 'khung_thanh'], choi_bong: ['bong', 'ao_hong'],
+  dat_vat_xuong: ['ban_dung', 'giay_nhe'], mo_cop_xe: ['xe_sau', 'ban_phai', 'hop_phai', 'thung_xe'], nhin_cham_cham: ['ban_dung', 'may_banh', 'bong_den'],
+  do_chat_long: ['ban_dung', 'khuon_banh', 'binh_rot', 'binh_ban', 'dong_chay', 'dong_chay2'], gat_dau_dong_y: ['bang_ten_nike'], mang_vat_di: ['giay_moon', 'de_waffle'], siet_tay: [],
   dot_giay: ['lua_dong', 'giay_nike', 'giay_bay'], ban_hang_chung: ['giay_cu'], mang_giay: ['ghe_go', 'giay_waffle', 'giay_waffle_t', 'giay_chan_p', 'giay_chan_t'], xe_man: ['tam_man', 'guong_may'],
   em_be_khoc: ['em_be', 'oa_oa'], dua_tap_kich_ban: ['tap_kich_ban'], da_tren_ap_phich: ['ap_phich'], ra_mat_phim: ['poster_tay', 've_phim'],
   bieu_tuong_quoc_te: ['ban_do_tg', 'but_chi'], luyen_tap_phau_thuat: ['ta_tay', 'dao_mo'], lam_phim_hanh_dong: ['may_quay_phim', 'bang_clap'],
@@ -1145,6 +1164,242 @@ const TRUYEN = {
   // Gắn bảng tên lên tường: bảng vàng chữ FERRARI áp trên tường cạnh người, tay phải cầm búa vung lên giáng xuống đóng đinh
   // theo nhịp đều (bảng rung nhẹ mỗi nhát), chùng gối, người nhún theo nhát búa; giữa chừng dừng kiểm tra bảng rồi bồi vài
   // nhát nhẹ; cuối hạ búa, lùi nửa bước, ngước nhìn bảng tự hào
+  // ── Bộ 18 (phim Nike 17/10/2026, đợt 2) ──
+  // Đưa đôi giày nhẹ ra bàn: đứng sau bàn làm việc, hai tay nâng đôi giày siêu nhẹ ra trước, mắt nhìn giày đầy kỳ vọng; bước
+  // nhỏ tới, đặt giày nằm ngay ngắn lên mặt bàn rồi buông tay từ từ; rút tay về, đứng thẳng chống hông, cười thuyết phục
+  dat_vat_xuong: (p, t, dd) => {
+    const dat = t + Math.max(0.9, Math.min(1.6, dd * 0.35))
+    const ket = t + Math.max(dat - t + 0.9, dd - 0.8)
+    const het = t + Math.max(ket - t + 0.7, dd) + 0.05
+    return [
+      ...vatHien(p, 'ban_dung', t - 0.1, het - t + 0.1), ...vatHien(p, 'giay_nhe', t, het - t),
+      `tl.set("#${p}-vat-giay_nhe", { y: -48 }, ${f(t)});`,
+      `tl.to(["#${p}-tay-phai", "#${p}-tay-trai"], { rotation: (i) => (i ? -40 : 46), duration: 0.4 }, ${f(t)});`,
+      `tl.to(["#${p}-cang-phai", "#${p}-cang-trai"], { rotation: (i) => (i ? -84 : 92), duration: 0.4 }, ${f(t)});`,
+      `tl.to("#${p}-dau", { rotation: 8, y: 4, duration: 0.4 }, ${f(t)});`,
+      `tl.to(["#${p}-may-trai", "#${p}-may-phai"], { y: -4, duration: 0.3 }, ${f(t + 0.2)});`,
+      // bước nhỏ tới, đặt giày lên mặt bàn, buông tay từ từ
+      `tl.to("#${p} svg", { scale: 1.03, transformOrigin: "50% 100%", duration: 0.4, ease: "sine.inOut" }, ${f(dat - 0.45)});`,
+      `tl.to("#${p}-vat-giay_nhe", { y: 0, duration: 0.45, ease: "sine.inOut" }, ${f(dat - 0.35)});`,
+      ...omNguc(p, dat - 0.35, 0.45),
+      `tl.to(["#${p}-tay-phai", "#${p}-tay-trai"], { rotation: (i) => (i ? -12 : 14), duration: 0.5, ease: "sine.out" }, ${f(dat + 0.2)});`,
+      `tl.to(["#${p}-cang-phai", "#${p}-cang-trai"], { rotation: (i) => (i ? -20 : 22), duration: 0.5, ease: "sine.out" }, ${f(dat + 0.2)});`,
+      // đứng thẳng, chống hông, cười thuyết phục nhìn người đối diện
+      `tl.to("#${p} svg", { scale: 1, duration: 0.4 }, ${f(dat + 0.6)});`,
+      ...chongNanh(p, dat + 0.75),
+      `tl.to("#${p}-dau", { rotation: -6, y: 0, duration: 0.35 }, ${f(dat + 0.75)});`,
+      `tl.to(["#${p}-may-trai", "#${p}-may-phai"], { y: 0, duration: 0.3 }, ${f(dat + 0.75)});`,
+      `tl.to("#${p}-ma-hong", { opacity: 1, duration: 0.3 }, ${f(dat + 0.8)});`,
+      `tl.to(["#${p}-tay-phai", "#${p}-tay-trai", "#${p}-cang-phai", "#${p}-cang-trai", "#${p}-dau"], { rotation: 0, duration: 0.35 }, ${f(het)});`,
+    ]
+  },
+  // Mở cốp xe bán giày dạo: đuôi chiếc Plymouth xanh bên tay trái, tay trái nắm mép nắp cốp nhấc lên mở hẳn, lộ các thùng
+  // giày; cúi người hai tay ôm một thùng giày, nhấc ra, xoay người bước sang đặt lên bàn nhỏ bên phải; dừng lau mồ hôi trán;
+  // mở nắp thêm một thùng; cuối chống nạnh cạnh đống thùng, cười tươi nhìn quanh
+  mo_cop_xe: (p, t, dd) => {
+    const k = Math.min(1, Math.max(0.6, (dd - 0.4) / 3.3))
+    const mo = t + 0.25 * k
+    const om = mo + 0.7 * k
+    const dat = om + 0.75 * k
+    const lau = dat + 0.55 * k
+    const mo2 = lau + 0.8 * k
+    const ket = t + Math.max(mo2 - t + 0.6, dd - 0.6)
+    const het = t + Math.max(ket - t + 0.6, dd) + 0.05
+    return [
+      ...vatHien(p, 'xe_sau', t - 0.1, het - t + 0.1), ...vatHien(p, 'ban_phai', t - 0.1, het - t + 0.1), ...vatHien(p, 'hop_phai', t - 0.1, het - t + 0.1),
+      ...vatHien(p, 'thung_xe', om - 0.05, het - om + 0.05),
+      // tay trái nắm mép nắp cốp, nhấc mở hẳn
+      `tl.to("#${p}-tay-trai", { rotation: 58, duration: 0.3 }, ${f(t)});`,
+      `tl.to("#${p}-cang-trai", { rotation: 10, duration: 0.3 }, ${f(t)});`,
+      `tl.to("#${p}-dau", { rotation: 8, duration: 0.3 }, ${f(t)});`,
+      `tl.to("#${p}-tay-trai", { rotation: 112, duration: 0.45, ease: "power2.inOut" }, ${f(mo)});`,
+      `tl.to("#${p}-vat-xe_sau .nap", { y: -30, scaleY: 0.35, transformOrigin: "50% 0%", duration: 0.45, ease: "power2.inOut" }, ${f(mo)});`,
+      // cúi người, hai tay ôm thùng trong cốp
+      `tl.to(["#${p}-tay-phai", "#${p}-tay-trai"], { rotation: (i) => (i ? 46 : 62), duration: 0.35 }, ${f(om - 0.2)});`,
+      `tl.to(["#${p}-cang-phai", "#${p}-cang-trai"], { rotation: (i) => (i ? 0 : 10), duration: 0.35 }, ${f(om - 0.2)});`,
+      `tl.to("#${p} svg", { rotation: -6, y: 8, transformOrigin: "50% 100%", duration: 0.35 }, ${f(om - 0.2)});`,
+      // nhấc ra ôm trước ngực, xoay người bước sang phải, đặt lên bàn nhỏ
+      `tl.to("#${p}-vat-thung_xe", { x: 240, y: -20, duration: 0.45, ease: "sine.inOut" }, ${f(om + 0.15)});`,
+      ...omNguc(p, om + 0.15, 0.45),
+      `tl.to("#${p} svg", { rotation: 0, y: 0, x: 40, duration: 0.5, ease: "sine.inOut" }, ${f(om + 0.15)});`,
+      `tl.to("#${p}-dau", { rotation: -4, duration: 0.35 }, ${f(om + 0.2)});`,
+      `tl.to("#${p}-vat-thung_xe", { x: 330, y: 48, duration: 0.35, ease: "sine.in" }, ${f(dat)});`,
+      `tl.to(["#${p}-tay-phai", "#${p}-tay-trai"], { rotation: (i) => (i ? -10 : -20), duration: 0.35 }, ${f(dat)});`,
+      `tl.to(["#${p}-cang-phai", "#${p}-cang-trai"], { rotation: (i) => (i ? -20 : -30), duration: 0.35 }, ${f(dat)});`,
+      // dừng lau mồ hôi trán bằng mu bàn tay
+      `tl.to("#${p}-mo-hoi", { opacity: 1, duration: 0.25 }, ${f(lau - 0.1)});`,
+      `tl.to("#${p}-tay-phai", { rotation: -150, duration: 0.3 }, ${f(lau)});`,
+      `tl.to("#${p}-cang-phai", { rotation: -105, duration: 0.3 }, ${f(lau)});`,
+      `tl.to("#${p}-tay-trai", { rotation: 0, duration: 0.3 }, ${f(lau)});`,
+      `tl.to("#${p}-cang-trai", { rotation: 0, duration: 0.3 }, ${f(lau)});`,
+      `tl.to("#${p}-mo-hoi", { opacity: 0, duration: 0.3 }, ${f(lau + 0.55)});`,
+      // mở nắp thêm một thùng
+      `tl.to("#${p}-tay-phai", { rotation: -50, duration: 0.3 }, ${f(mo2 - 0.25)});`,
+      `tl.to("#${p}-cang-phai", { rotation: -10, duration: 0.3 }, ${f(mo2 - 0.25)});`,
+      `tl.to("#${p}-vat-hop_phai .nap", { y: -16, rotation: -24, transformOrigin: "0% 100%", duration: 0.3 }, ${f(mo2)});`,
+      // chống nạnh, cười tươi nhìn quanh
+      ...chongNanh(p, ket),
+      `tl.to("#${p}-ma-hong", { opacity: 1, duration: 0.3 }, ${f(ket)});`,
+      `tl.fromTo("#${p}-dau", { rotation: -8 }, { rotation: 8, duration: 0.45, yoyo: true, repeat: 1, ease: "sine.inOut", immediateRender: false }, ${f(ket + 0.1)});`,
+      `tl.to(["#${p}-tay-phai", "#${p}-tay-trai", "#${p}-cang-phai", "#${p}-cang-trai", "#${p}-dau"], { rotation: 0, duration: 0.35 }, ${f(het)});`,
+      `tl.to("#${p} svg", { x: 0, duration: 0.4 }, ${f(het)});`,
+    ]
+  },
+  // Nhìn chằm chằm máy nướng bánh: đứng trước bàn bếp, hai tay chống hông, mắt mở lớn nhìn chiếc máy làm bánh quế kim loại
+  // trên bàn; đứng yên, đầu hơi nghiêng, mày nhíu suy tư; chợt chớp mắt, chồm sát tới xem từng ô vuông; cuối mắt vẫn tập
+  // trung, mặt lóe lên ý tưởng (bóng đèn bật sáng)
+  nhin_cham_cham: (p, t, dd) => {
+    const chom = t + Math.max(1, dd * 0.4)
+    const loe = t + Math.max(chom - t + 0.9, dd - 1.1)
+    const het = t + Math.max(loe - t + 0.9, dd) + 0.05
+    return [
+      ...vatHien(p, 'ban_dung', t - 0.1, het - t + 0.1), ...vatHien(p, 'may_banh', t - 0.1, het - t + 0.1), ...vatHien(p, 'bong_den', loe, het - loe),
+      ...chongNanh(p, t),
+      `tl.to("#${p}-mat", { scale: 1.15, transformOrigin: "50% 50%", duration: 0.3 }, ${f(t + 0.1)});`,
+      `tl.to("#${p}-dau", { rotation: 8, y: 6, duration: 0.4 }, ${f(t)});`,
+      `tl.to(["#${p}-may-trai", "#${p}-may-phai"], { rotation: (i) => (i ? 8 : -8), svgOrigin: "200 150", duration: 0.4 }, ${f(t + 0.2)});`,
+      // chớp mắt, chồm sát tới
+      `tl.to("#${p}-mat", { scaleY: 0.1, duration: 0.07, yoyo: true, repeat: 1 }, ${f(chom - 0.2)});`,
+      `tl.to("#${p} svg", { scale: 1.05, y: 10, transformOrigin: "50% 100%", duration: 0.45, ease: "sine.inOut" }, ${f(chom)});`,
+      `tl.to("#${p}-dau", { rotation: 4, y: 16, duration: 0.45 }, ${f(chom)});`,
+      // lóe lên ý tưởng: mày nhướng, mắt sáng
+      `tl.to(["#${p}-may-trai", "#${p}-may-phai"], { rotation: 0, y: -7, duration: 0.25 }, ${f(loe)});`,
+      `tl.to("#${p}-ma-hong", { opacity: 1, duration: 0.3 }, ${f(loe)});`,
+      `tl.to("#${p}-dau", { rotation: -3, y: 8, duration: 0.3 }, ${f(loe)});`,
+      `tl.to("#${p} svg", { scale: 1, y: 0, duration: 0.4 }, ${f(het)});`,
+      `tl.to("#${p}-mat", { scale: 1, duration: 0.3 }, ${f(het)});`,
+      `tl.to(["#${p}-tay-phai", "#${p}-tay-trai", "#${p}-cang-phai", "#${p}-cang-trai", "#${p}-dau", "#${p}-may-trai", "#${p}-may-phai"], { rotation: 0, y: 0, duration: 0.35 }, ${f(het)});`,
+    ]
+  },
+  // Đổ cao su vào khuôn bánh: khuôn bánh quế trên bàn, tay trái giữ mép khuôn, tay phải cầm bình cao su; cúi nhìn lòng khuôn,
+  // nghiêng bình rót dòng cao su đều vào các ô (tay phải đưa qua lại ziczac, khuôn đầy dần); giữa chừng khựng lại chỉnh góc rót
+  // rồi rót tiếp; cuối đặt bình xuống bàn, đứng thẳng chống nạnh, mỉm cười đắc ý nhìn khuôn
+  do_chat_long: (p, t, dd) => {
+    const rot = t + 0.6
+    const dung = t + Math.max(1.6, dd * 0.45)
+    const xong = t + Math.max(dung - t + 1, dd - 1.2)
+    const het = t + Math.max(xong - t + 1, dd) + 0.05
+    return [
+      ...vatHien(p, 'ban_dung', t - 0.1, het - t + 0.1), ...vatHien(p, 'khuon_banh', t - 0.1, het - t + 0.1),
+      ...vatHien(p, 'binh_rot', t, xong - t + 0.25), ...vatHien(p, 'binh_ban', xong + 0.05, het - xong - 0.05),
+      ...vatHien(p, 'dong_chay', rot + 0.3, dung - rot - 0.3 + 0.1), ...vatHien(p, 'dong_chay2', dung + 0.25, xong - dung - 0.25),
+      // tay trái giữ mép khuôn, tay phải cầm bình đưa tới trên khuôn, cúi nhìn
+      `tl.to("#${p}-tay-trai", { rotation: -5, duration: 0.35 }, ${f(t)});`,
+      `tl.to("#${p}-cang-trai", { rotation: -35, duration: 0.35 }, ${f(t)});`,
+      `tl.to("#${p}-tay-phai", { rotation: -30, duration: 0.4 }, ${f(t)});`,
+      `tl.to("#${p}-cang-phai", { rotation: 125, duration: 0.4 }, ${f(t)});`,
+      `tl.to("#${p}-dau", { rotation: 10, y: 10, duration: 0.4 }, ${f(t)});`,
+      `tl.to("#${p} svg", { scaleY: 0.98, transformOrigin: "50% 100%", duration: 0.4 }, ${f(t)});`,
+      // nghiêng bình rót, tay đưa ziczac, khuôn đầy dần
+      `tl.to("#${p}-vat-binh_rot", { rotation: -55, transformOrigin: "50% 60%", duration: 0.35 }, ${f(rot)});`,
+      `tl.fromTo("#${p}-tay-phai", { rotation: -30 }, { rotation: -22, duration: 0.3, yoyo: true, repeat: ${solan(Math.max(0.6, xong - rot - 0.5), 0.3)}, ease: "sine.inOut", immediateRender: false }, ${f(rot + 0.35)});`,
+      `tl.to("#${p}-vat-khuon_banh .day", { opacity: 1, duration: ${f(Math.max(0.8, xong - rot - 0.3))}, ease: "none" }, ${f(rot + 0.3)});`,
+      // khựng lại chỉnh góc rót
+      `tl.to("#${p}-vat-binh_rot", { rotation: -30, duration: 0.18 }, ${f(dung)});`,
+      `tl.to("#${p}-vat-binh_rot", { rotation: -55, duration: 0.2 }, ${f(dung + 0.22)});`,
+      // đặt bình xuống bàn, đứng thẳng chống nạnh, cười đắc ý
+      `tl.to("#${p}-vat-binh_rot", { rotation: 0, duration: 0.2 }, ${f(xong - 0.1)});`,
+      `tl.to("#${p} svg", { scaleY: 1, duration: 0.35 }, ${f(xong + 0.1)});`,
+      ...chongNanh(p, xong + 0.15),
+      `tl.to("#${p}-dau", { rotation: 6, y: 4, duration: 0.35 }, ${f(xong + 0.15)});`,
+      `tl.to("#${p}-ma-hong", { opacity: 1, duration: 0.3 }, ${f(xong + 0.2)});`,
+      `tl.to(["#${p}-tay-phai", "#${p}-tay-trai", "#${p}-cang-phai", "#${p}-cang-trai", "#${p}-dau"], { rotation: 0, y: 0, duration: 0.35 }, ${f(het)});`,
+    ]
+  },
+  // Gật đầu đồng ý tên Nike: tay phải cầm bảng tên NIKE, tay trái đặt nhẹ lên ngực, nhìn thẳng người đối diện vui vẻ; gật
+  // đầu ba nhịp rõ, người hơi cúi chào, bảng tên đưa lên xuống theo nhịp; bước nhỏ tới; giữa chừng cười rộng, mắt híp; cuối
+  // đứng nghiêm lại, tay phải giơ bảng tên về phía trước, ánh mắt tin tưởng
+  gat_dau_dong_y: (p, t, dd) => {
+    const gat = t + 0.4
+    const cuoi = gat + 1.1
+    const gio = t + Math.max(cuoi - t + 0.7, dd - 1)
+    const het = t + Math.max(gio - t + 0.8, dd) + 0.05
+    return [
+      ...vatHien(p, 'bang_ten_nike', t, het - t),
+      `tl.to("#${p}-vat-bang_ten_nike", { rotation: -38, duration: 0.35 }, ${f(t)});`,
+      `tl.fromTo("#${p}-vat-bang_ten_nike", { rotation: -38 }, { rotation: -46, duration: 0.18, yoyo: true, repeat: 5, ease: "sine.inOut", immediateRender: false }, ${f(gat)});`,
+      `tl.to("#${p}-tay-phai", { rotation: 14, duration: 0.35 }, ${f(t)});`,
+      `tl.to("#${p}-cang-phai", { rotation: 24, duration: 0.35 }, ${f(t)});`,
+      `tl.to("#${p}-tay-trai", { rotation: -30, duration: 0.35 }, ${f(t)});`,
+      `tl.to("#${p}-cang-trai", { rotation: -96, duration: 0.35 }, ${f(t)});`,
+      // gật đầu ba nhịp, người cúi chào nhẹ, bảng lên xuống theo nhịp
+      `tl.fromTo("#${p}-dau", { rotation: 0, y: 0 }, { rotation: 4, y: 9, duration: 0.18, yoyo: true, repeat: 5, ease: "sine.inOut", immediateRender: false }, ${f(gat)});`,
+      `tl.fromTo("#${p} svg", { scaleY: 1, transformOrigin: "50% 100%" }, { scaleY: 0.98, duration: 0.18, yoyo: true, repeat: 5, ease: "sine.inOut", immediateRender: false }, ${f(gat)});`,
+      `tl.fromTo("#${p}-cang-phai", { rotation: 24 }, { rotation: 32, duration: 0.18, yoyo: true, repeat: 5, ease: "sine.inOut", immediateRender: false }, ${f(gat)});`,
+      // bước nhỏ tới, cười rộng, mắt híp
+      `tl.to("#${p} svg", { scale: 1.03, duration: 0.35, ease: "sine.inOut" }, ${f(gat + 0.5)});`,
+      `tl.to("#${p}-ma-hong", { opacity: 1, duration: 0.3 }, ${f(cuoi)});`,
+      `tl.to("#${p}-mat", { scaleY: 0.55, transformOrigin: "50% 50%", duration: 0.25 }, ${f(cuoi)});`,
+      `tl.to("#${p}-mat", { scaleY: 1, duration: 0.25 }, ${f(gio - 0.2)});`,
+      // đứng nghiêm, giơ bảng tên về phía trước
+      `tl.to("#${p}-tay-phai", { rotation: 58, duration: 0.4, ease: "back.out(1.4)" }, ${f(gio)});`,
+      `tl.to("#${p}-cang-phai", { rotation: 70, duration: 0.4 }, ${f(gio)});`,
+      `tl.to("#${p}-vat-bang_ten_nike", { scale: 1.15, rotation: -128, transformOrigin: "50% 50%", duration: 0.4, ease: "back.out(1.4)" }, ${f(gio)});`,
+      `tl.to("#${p}-dau", { rotation: -3, y: 0, duration: 0.3 }, ${f(gio)});`,
+      `tl.to(["#${p}-tay-phai", "#${p}-tay-trai", "#${p}-cang-phai", "#${p}-cang-trai", "#${p}-dau"], { rotation: 0, y: 0, duration: 0.35 }, ${f(het)});`,
+      `tl.to("#${p} svg", { scale: 1, duration: 0.35 }, ${f(het)});`,
+    ]
+  },
+  // Đưa giày Moon Shoe ra thi đấu: hai tay nâng chiếc Moon Shoe ngang ngực giới thiệu, nhìn thẳng tự hào; bước lên, hạ tay
+  // đưa giày ra trước như trao cho vận động viên; giữa chừng xoay cổ tay khoe đế bánh quế; cuối giày rời tay đi ra đường
+  // chạy, thu tay về sát người, mắt dõi theo
+  mang_vat_di: (p, t, dd) => {
+    const dua = t + Math.max(0.9, dd * 0.25)
+    const khoe = dua + 0.6
+    const trao = t + Math.max(khoe - t + 1, dd * 0.7)
+    const het = t + Math.max(trao - t + 1.1, dd) + 0.05
+    return [
+      ...vatHien(p, 'giay_moon', t, khoe - t + 0.25), ...vatHien(p, 'de_waffle', khoe, trao - khoe + 0.6),
+      ...omNguc(p, t, 0.4),
+      `tl.to("#${p}-ma-hong", { opacity: 1, duration: 0.3 }, ${f(t + 0.3)});`,
+      `tl.to("#${p}-dau", { rotation: -4, duration: 0.3 }, ${f(t + 0.2)});`,
+      // bước lên, hạ tay đưa giày ra trước
+      `tl.to("#${p} svg", { scale: 1.04, transformOrigin: "50% 100%", duration: 0.45, ease: "sine.inOut" }, ${f(dua)});`,
+      `tl.to(["#${p}-tay-phai", "#${p}-tay-trai"], { rotation: (i) => (i ? -14 : 16), duration: 0.45 }, ${f(dua)});`,
+      `tl.to(["#${p}-cang-phai", "#${p}-cang-trai"], { rotation: (i) => (i ? -56 : 60), duration: 0.45 }, ${f(dua)});`,
+      `tl.to(["#${p}-vat-giay_moon", "#${p}-vat-de_waffle"], { y: 34, scale: 1.12, duration: 0.45 }, ${f(dua)});`,
+      // xoay cổ tay khoe đế bánh quế
+      `tl.fromTo("#${p}-vat-de_waffle", { rotation: -60, transformOrigin: "50% 50%" }, { rotation: -90, duration: 0.4, immediateRender: false }, ${f(khoe)});`,
+      `tl.to("#${p}-dau", { rotation: 8, duration: 0.3 }, ${f(khoe)});`,
+      // trao giày: giày rời tay đi ra đường chạy, thu tay về, mắt dõi theo
+      `tl.to("#${p}-vat-de_waffle", { x: 180, y: -10, scale: 0.5, rotation: -90, duration: 0.7, ease: "power1.in" }, ${f(trao)});`,
+      `tl.to(["#${p}-tay-phai", "#${p}-tay-trai", "#${p}-cang-phai", "#${p}-cang-trai"], { rotation: 0, duration: 0.4 }, ${f(trao + 0.2)});`,
+      `tl.to("#${p} svg", { scale: 1, duration: 0.4 }, ${f(trao + 0.2)});`,
+      `tl.to("#${p}-dau", { rotation: -10, duration: 0.5 }, ${f(trao + 0.2)});`,
+      `tl.to("#${p}-dau", { rotation: 0, duration: 0.35 }, ${f(het)});`,
+    ]
+  },
+  // Siết chặt tay quyết tâm: đứng trụ vững, chân dang rộng bằng vai; hai tay đưa lên ngang ngực siết thành nắm đấm, tay phải
+  // đè lên tay trái, gồng nhẹ; ngẩng đầu, mày nhíu, nhìn thẳng kiên định; người ngả ra sau rồi chồm tới; giữa chừng hít sâu
+  // ngực phồng, tay siết thêm một nhịp; cuối giữ nắm đấm trước ngực, mặt nghiêm nghị
+  siet_tay: (p, t, dd) => {
+    const hit = t + Math.max(1, dd * 0.45)
+    const het = t + Math.max(hit - t + 1.2, dd) + 0.05
+    const ra = [
+      `tl.to("#${p}-tay-phai", { rotation: 10, duration: 0.45, ease: "power2.out" }, ${f(t)});`,
+      `tl.to("#${p}-cang-phai", { rotation: 78, duration: 0.45, ease: "power2.out" }, ${f(t)});`,
+      `tl.to("#${p}-tay-trai", { rotation: -8, duration: 0.45, ease: "power2.out" }, ${f(t)});`,
+      `tl.to("#${p}-cang-trai", { rotation: -74, duration: 0.45, ease: "power2.out" }, ${f(t)});`,
+      `tl.to(["#${p}-may-trai", "#${p}-may-phai"], { rotation: (i) => (i ? 12 : -12), svgOrigin: "200 150", duration: 0.3 }, ${f(t + 0.2)});`,
+      `tl.to("#${p}-dau", { rotation: -3, y: -5, duration: 0.4 }, ${f(t + 0.2)});`,
+      // gồng nhẹ (hai tay rung rất nhẹ)
+      `tl.fromTo(["#${p}-cang-phai", "#${p}-cang-trai"], { rotation: (i) => (i ? -74 : 78) }, { rotation: (i) => (i ? -77 : 81), duration: 0.09, yoyo: true, repeat: 5, immediateRender: false }, ${f(t + 0.5)});`,
+      // ngả ra sau rồi chồm tới
+      `tl.to("#${p} svg", { scaleY: 1.025, y: -4, transformOrigin: "50% 100%", duration: 0.3, ease: "sine.out" }, ${f(t + 0.55)});`,
+      `tl.to("#${p} svg", { scale: 1.04, scaleY: 1.04, y: 0, duration: 0.3, ease: "power2.out" }, ${f(t + 0.9)});`,
+      // hít sâu ngực phồng, siết thêm một nhịp
+      `tl.fromTo("#${p}-goc-than", { scaleY: 1, transformOrigin: "50% 100%" }, { scaleY: 1.04, duration: 0.45, yoyo: true, repeat: 1, ease: "sine.inOut", immediateRender: false }, ${f(hit)});`,
+      `tl.to(["#${p}-cang-phai", "#${p}-cang-trai"], { rotation: (i) => (i ? -80 : 84), duration: 0.15, yoyo: true, repeat: 1 }, ${f(hit + 0.5)});`,
+      // giữ nắm đấm, về dáng thường cuối câu
+      `tl.to(["#${p}-tay-phai", "#${p}-tay-trai", "#${p}-cang-phai", "#${p}-cang-trai", "#${p}-dau", "#${p}-may-trai", "#${p}-may-phai"], { rotation: 0, y: 0, duration: 0.35 }, ${f(het)});`,
+      `tl.to("#${p} svg", { scale: 1, y: 0, duration: 0.35 }, ${f(het)});`,
+    ]
+    if (coKhop(p)) ra.push(
+      `tl.to(["#${p}-chan-phai", "#${p}-chan-trai"], { rotation: (i) => (i ? 7 : -7), duration: 0.3 }, ${f(t)});`,
+      `tl.to(["#${p}-chan-phai", "#${p}-chan-trai"], { rotation: 0, duration: 0.35 }, ${f(het)});`,
+    )
+    return ra
+  },
   // ── Bộ 17 (phim Nike 17/10/2026) ──
   // Tẩy chay, đốt giày: đống lửa cháy dưới sàn cạnh tay trái; tay trái giơ cao đôi giày Nike, mày cau phẫn nộ nhìn lửa; vung
   // tay ném mạnh, người chồm theo đà — giày bay vòng cung rơi đúng vào lửa; lửa bùng cao, lùi một bước, hai tay chắn trước
@@ -3177,6 +3432,13 @@ function chuoiDam(p, t, giay, vaoBao = false) {
 }
 // Từ trong lời kể → hành động kể chuyện (thứ tự = ưu tiên). Ẩn dụ ("bài kiểm tra sinh tồn") không tính
 const TU_TRUYEN = [
+  ['dat_vat_xuong', /đặt .{0,25}lên (mặt )?bàn|giày (siêu )?nhẹ/],
+  ['mo_cop_xe', /cốp xe|thùng xe|bán giày (dạo|rong)|chất đầy giày/],
+  ['nhin_cham_cham', /nhìn chằm chằm|chăm chú nhìn|máy (nướng|làm) bánh/],
+  ['do_chat_long', /đổ (cao su|nhựa|chất lỏng)|rót .{0,15}vào khuôn|khuôn bánh/],
+  ['gat_dau_dong_y', /gật đầu|đề xuất cái tên|đồng ý (với )?cái tên/],
+  ['mang_vat_di', /Moon Shoe|đưa .{0,25}ra (thi đấu|sân|đường chạy)/],
+  ['siet_tay', /siết (chặt )?(tay|nắm)|nắm chặt tay|cuộc chiến .{0,20}bắt đầu/],
   ['dot_giay', /đốt (sạch |hết )?(tất cả )?(những )?(đôi )?giày|đốt giày|tẩy chay|bão lửa|ném .{0,20}vào (đống )?lửa/],
   ['ban_hang_chung', /đôi giày (cũ|đã qua sử dụng)|giày .{0,30}(được bán|đấu giá)/],
   ['mang_giay', /xỏ (thử )?(đôi |chiếc )?giày|đi thử (đôi )?giày|mang thử|quá chật/],
@@ -3893,7 +4155,7 @@ const ganVat = (svg, id, dp, toaDo) => {
       continue
     }
     if (toaDo && !toaDo[cho]) continue
-    const [x, y, co] = toaDo?.[cho] ?? { phai: [280, 496, 96], trai: [120, 496, 96], truoc: [200, 452, 128], dau: [300, 110, 70], nguc: [200, 372, 130], vai: [296, 318, 74], xe: [200, 470, 290], mat: [200, 192, 118], day: [200, 420, 380], eo: [200, 402, 150], dem: [200, 522, 300], ban_ngoi: [200, 470, 380], bai_nguc: [214, 386, 96], tren_ban: [150, 432, 64], long: [214, 470, 92], lan_can: [200, 500, 400], phai_gay: [292, 519, 150], xe_may: [147, 470, 380], giay_ban: [214, 432, 96], mat_trai: [146, 192, 88], bong_chan: [132, 560, 62], than_ao: [200, 300, 400], buc_truoc: [200, 470, 300], chop_mat: [118, 170, 110], khoi_xe: [300, 548, 80], ghe_day: [322, 478, 230], so_tay: [196, 446, 110], dau_so: [190, 438, 40], phai_xeng: [278, 452, 270], giay: [200, 388, 140], nen_tay: [210, 356, 92], nen_quang: [210, 330, 190], may_nguc: [200, 384, 104], phai_roi: [300, 440, 240], dan: [196, 420, 300], nguc_tren: [200, 270, 80], phai_mu: [292, 472, 120], dau_mu: [200, 96, 210], guong: [200, 380, 170], trai_xap: [120, 490, 100], phai_con: [292, 450, 200], nach_trai: [134, 380, 190], phai_nho: [282, 486, 48], oa: [96, 290, 130], poster: [200, 372, 210], trai_lon: [124, 474, 140], phai_lon: [284, 474, 120], may_truoc: [150, 392, 150], lua_trai: [58, 520, 150], giay_bay: [58, 470, 84], ong_trai: [170, 545, 76], ong_phai: [230, 545, 76], man_truoc: [200, 432, 236] }[cho]
+    const [x, y, co] = toaDo?.[cho] ?? { phai: [280, 496, 96], trai: [120, 496, 96], truoc: [200, 452, 128], dau: [300, 110, 70], nguc: [200, 372, 130], vai: [296, 318, 74], xe: [200, 470, 290], mat: [200, 192, 118], day: [200, 420, 380], eo: [200, 402, 150], dem: [200, 522, 300], ban_ngoi: [200, 470, 380], bai_nguc: [214, 386, 96], tren_ban: [150, 432, 64], long: [214, 470, 92], lan_can: [200, 500, 400], phai_gay: [292, 519, 150], xe_may: [147, 470, 380], giay_ban: [214, 432, 96], mat_trai: [146, 192, 88], bong_chan: [132, 560, 62], than_ao: [200, 300, 400], buc_truoc: [200, 470, 300], chop_mat: [118, 170, 110], khoi_xe: [300, 548, 80], ghe_day: [322, 478, 230], so_tay: [196, 446, 110], dau_so: [190, 438, 40], phai_xeng: [278, 452, 270], giay: [200, 388, 140], nen_tay: [210, 356, 92], nen_quang: [210, 330, 190], may_nguc: [200, 384, 104], phai_roi: [300, 440, 240], dan: [196, 420, 300], nguc_tren: [200, 270, 80], phai_mu: [292, 472, 120], dau_mu: [200, 96, 210], guong: [200, 380, 170], trai_xap: [120, 490, 100], phai_con: [292, 450, 200], nach_trai: [134, 380, 190], phai_nho: [282, 486, 48], oa: [96, 290, 130], poster: [200, 372, 210], trai_lon: [124, 474, 140], phai_lon: [284, 474, 120], may_truoc: [150, 392, 150], lua_trai: [58, 520, 150], giay_bay: [58, 470, 84], ong_trai: [170, 545, 76], ong_phai: [230, 545, 76], man_truoc: [200, 432, 236], ban_dung: [200, 470, 300], xe_sau: [-40, 470, 270], thung_xe: [-40, 405, 72], ban_phai: [330, 500, 170], hop_phai: [362, 452, 72], tren_ban_giua: [200, 396, 120], phai_binh: [282, 470, 92], binh_ban: [304, 404, 72], dong_chay: [186, 378, 56] }[cho]
     // Đồ vẽ sẵn (VE_VAT, khung 100×100): nhóm ngoài đặt chỗ + cỡ, nhóm trong mang id để GSAP chạy (không đè transform)
     const el = bt.startsWith('<')
       ? `<g transform="translate(${bt.includes(CAN_CO) ? `${x - 10.5 * (co / 100)} ${y - 95 * (co / 100)}` : `${x - co / 2} ${y - co / 2}`}) scale(${co / 100})"><g id="${id}-vat-${ten}" opacity="0">${bt.replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, '')}</g></g>`
@@ -4008,7 +4270,7 @@ const nvPhu = doanPhu.map((dp, k) => {
   //    giật lùi; buồn lùi xa, chậm; vui nảy lên khi tới nơi
   {
     const BUOC = NGANG ? 180 : 140
-    const CANH = new Set(['mo_cua', 'nam_noi', 'gong_chuong', 'rung_chuong', 'bam_nut', 'dam_bao_cat', 'kham_suc_khoe', 'ngoi_thien', 'buoc_vao_dai', 'doi_dau', 'dam_boc', 'dam_moc', 'ha_guc', 'can_tai', 'dung_cho_dem', 'nhan_dai', 'treo_bien', 'can_hang', 'cat_bang', 'choi_bai', 'dan_lat', 'dao_dat', 'cho_chim_an', 'thap_nen', 'ngoi_lang_le', 'nam_tay', 'nhin_bien', 'vo_vai', 'nhuong_vi_tri', 'noi_chuyen', 'ngoi_doi_dien', 'hop_dong_tren_ban', 'ban_hang', 'to_chuc_giai_dua', 'dai_dien', 'che_giau', 'chien_tranh_bung_no', 'ra_doi_xe', 'gan_bien', 'cam_but_run', 'cam_hoa_don', 'tiem_thuoc', 'dung_nghe', 'bang_bo', 'in_bao', 'nhay_mua', 'dung_duoi_den', 'uong_thuoc', 'da_tren_ap_phich', 'bieu_tuong_quoc_te', 'dot_giay', 'mang_giay', 'xe_man'])
+    const CANH = new Set(['mo_cua', 'nam_noi', 'gong_chuong', 'rung_chuong', 'bam_nut', 'dam_bao_cat', 'kham_suc_khoe', 'ngoi_thien', 'buoc_vao_dai', 'doi_dau', 'dam_boc', 'dam_moc', 'ha_guc', 'can_tai', 'dung_cho_dem', 'nhan_dai', 'treo_bien', 'can_hang', 'cat_bang', 'choi_bai', 'dan_lat', 'dao_dat', 'cho_chim_an', 'thap_nen', 'ngoi_lang_le', 'nam_tay', 'nhin_bien', 'vo_vai', 'nhuong_vi_tri', 'noi_chuyen', 'ngoi_doi_dien', 'hop_dong_tren_ban', 'ban_hang', 'to_chuc_giai_dua', 'dai_dien', 'che_giau', 'chien_tranh_bung_no', 'ra_doi_xe', 'gan_bien', 'cam_but_run', 'cam_hoa_don', 'tiem_thuoc', 'dung_nghe', 'bang_bo', 'in_bao', 'nhay_mua', 'dung_duoi_den', 'uong_thuoc', 'da_tren_ap_phich', 'bieu_tuong_quoc_te', 'dot_giay', 'mang_giay', 'xe_man', 'dat_vat_xuong', 'mo_cop_xe', 'nhin_cham_cham', 'do_chat_long'])
     const DI = new Set(['xach_vali', 'di_bo', 'chay', 'lai_xe', 'ganh_vac', 'di_may_bay', 'dap_xe', 'buoc_qua_suong', 'chong_gay', 'buoc_vao', 'lai_xe_may', 'da_bong', 'ghi_ban', 're_bong', 'tap_luyen', 'sut_bong', 'choi_bong', 'buoc_vao_phong', 'buoc_ra_san'])
     const SAN = new Set(['rua_bat', 'lap_rap', 'nam_noi', 'dong_may_tinh', 'an_com', 'dem_tien'])
     const VONG = [1, 0, -1, 0]

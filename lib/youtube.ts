@@ -16,7 +16,7 @@ import { bienTapDat, hoiDongDat, khauChuaDat, loiBienTap } from './datChuan'
 import { apBienTap, deBaiBienTap, type DaBienTap, type KetQuaBienTap } from './bienTap'
 import { batNhacNen, dsNhac } from './nhacNen'
 import { veAnhGemini } from './veAnhNen'
-import { THU_VIEN_HANH_DONG, emojiCua, emojiGoc, veSanCua, type CauHanhDong, type HinhCan, type PhanTichHanhDong } from './thuVienHanhDong'
+import { THU_VIEN_HANH_DONG, emojiCua, emojiGoc, giaiMaHtml, veSanCua, type CauHanhDong, type HinhCan, type PhanTichHanhDong } from './thuVienHanhDong'
 
 // Video YouTube dài (trang /youtube): hoạt hình Mèo Mun & Robot Bit, khung ngang 16:9, dài tới ~20 phút.
 // Mỗi dự án là một tệp youtube/<id>/du-an.json trong kho (không cần thêm bảng). AI viết dàn ý chia phần (~3 phút
@@ -797,6 +797,11 @@ For each line return: i (the line number), nguoi (who acts, in Vietnamese: name 
     }),
   })
   if (!viec) throw new Error(`AI chưa đọc được chương ${k}, thử lại`)
+  // Emoji / tên đồ vật AI ghi dạng thực thể HTML (&#128293;) → giải mã để nhận đúng đạo cụ đã có / còn thiếu
+  for (const c of viec.cau) {
+    c.do_vat_can = c.do_vat_can.map(giaiMaHtml)
+    for (const h of c.hinh_can) ((h.emoji = giaiMaHtml(h.emoji)), (h.ten = giaiMaHtml(h.ten)))
+  }
   const theoViec = new Map(viec.cau.map((x) => [x.i, x]))
   const thuVien = Object.entries(THU_VIEN_HANH_DONG)
     .map(([ma, v]) => `${ma} (${v.loai === 'ke_chuyen' ? 'story action' : 'gesture'}): ${v.mo_ta}${v.do_vat ? ` [props it already has: ${v.do_vat.join(', ')}]` : ' [no props]'}`)

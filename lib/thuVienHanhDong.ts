@@ -43,6 +43,8 @@ export const THU_VIEN_HANH_DONG: Record<string, { ten: string; loai: LoaiHanhDon
   lai_xe: { ten: 'Lái xe', loai: 'ke_chuyen', mo_ta: 'ngồi sau xe hơi, hai tay trên vô lăng, xe chạy rồi dừng', do_vat: ['🚗 xe hơi'] },
   gong_chuong: { ten: 'Gõ chuông', loai: 'ke_chuyen', mo_ta: 'gõ búa vào chuông: niêm yết, IPO, khai mạc phiên giao dịch', do_vat: ['🔔 cái chuông', '🔨 búa'] },
   trao_nhan: { ten: 'Trao nhẫn', loai: 'ke_chuyen', mo_ta: 'trao nhẫn cưới: kết hôn, cầu hôn; tim bay lên', do_vat: ['💍 nhẫn cưới', '💖 trái tim'] },
+  mua_con: { ten: 'Múa côn nhị khúc', loai: 'ke_chuyen', mo_ta: 'đứng tấn, vung côn nhị khúc xoay số tám, quất ra sau vai rồi thu về, cuối kẹp côn dưới nách trái, mày cau: võ thuật, cảnh đánh trong phim', do_vat: ['🥢 côn nhị khúc (vẽ sẵn)'] },
+  uong_thuoc: { ten: 'Uống thuốc rồi chìm vào giấc ngủ', loai: 'ke_chuyen', mo_ta: 'ngồi ghế, đưa viên thuốc lên miệng nuốt, hạ tay, nhắm mắt ngả đầu, thở chậm dần, mặt nhợt nhạt: uống thuốc giảm đau, ngủ thiếp đi, ra đi', do_vat: ['💊 viên thuốc', '🪑 ghế (vẽ sẵn)'] },
   chup_anh: { ten: 'Đứng chụp ảnh nhóm', loai: 'ke_chuyen', mo_ta: 'hai tay giữ máy ảnh trước ngực, ưỡn ngực ngẩng đầu tạo dáng, chớp mắt cười nhẹ, đèn chớp loé: chụp ảnh nhóm, truyền thông săn ảnh', do_vat: ['📷 máy ảnh', '📸 máy ảnh (đèn chớp vẽ sẵn)'] },
   vut_roi: { ten: 'Cầm roi da vụt', loai: 'ke_chuyen', mo_ta: 'tay phải nắm đốc roi, vung qua đầu quật chéo xuống, thu về rồi quật ngang, đứng khựng ngực phập phồng trừng mắt: đòn roi, người cha nghiêm khắc', do_vat: ['🪵 cây roi da (vẽ sẵn)'] },
   choi_dan: { ten: 'Ôm cây đàn guitar', loai: 'ke_chuyen', mo_ta: 'ôm đàn guitar áp ngực, tay trái nắm cần, tay phải chạm dây, thân đung đưa, cúi nhìn đàn buồn, ngẩng nhìn xa: âm nhạc an ủi', do_vat: ['🎸 cây đàn guitar (vẽ sẵn)'] },

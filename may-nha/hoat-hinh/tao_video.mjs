@@ -26,6 +26,11 @@ for (const l of loi) if (l.anh_wiki?.tep) l.khung_hinh = 'toan_canh'
 if (nhan_vat_chinh?.hinh) {
   const v = nhanVatChinhSvg(nhan_vat_chinh.hinh)
   NHAN_VAT_PHU.nhan_vat_chinh = { mau: '#fde68a', bieu_tuong: '⭐', ten: nhan_vat_chinh.ten ?? 'Nhân vật chính', svg: v.svg, viewBox: v.viewBox }
+  // Câu kể thời thơ ấu: cùng nhân vật ở dáng trẻ con (lib/youtube.ts: loiThoaiGui, hinh_nho)
+  if (nhan_vat_chinh.hinh_nho) {
+    const n = nhanVatChinhSvg(nhan_vat_chinh.hinh_nho)
+    NHAN_VAT_PHU.nhan_vat_chinh_nho = { mau: '#fde68a', bieu_tuong: '⭐', ten: nhan_vat_chinh.ten ?? 'Nhân vật chính', svg: n.svg, viewBox: n.viewBox }
+  }
 }
 // kho "ngang" (YouTube 1920x1080): "thế giới" (nền, nhân vật, đạo cụ) vẫn vẽ theo toạ độ dọc 1080x1920, chỉ đặt lệch
 // để khung hình thấy vùng x -420..1500, y 300..1380; nền nối dài hai bên bằng bản soi gương; hai nhân vật đứng giãn ra.

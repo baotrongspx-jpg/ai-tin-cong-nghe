@@ -290,10 +290,33 @@ function loiThoaiGui(d: DuAnYT, k: number) {
       } else cachThe++
     }
   }
+  // Kể thời thơ ấu (dưới 13 tuổi theo năm đang kể) mà chương đang dùng hình người lớn: nhân vật chính hiện dáng trẻ con;
+  // lúc mới sinh (0-1 tuổi) người mẹ đứng diễn (phim Lý Tiểu Long 17/10/2026: kể chuyện chào đời và "diễn viên nhí" mà vẽ
+  // Lý Tiểu Long người lớn, còn đứng cạnh mẹ đang bế chính mình lúc sơ sinh)
+  const namSinh = Number(phim.nghien_cuu?.ho_so?.ngay_sinh?.match(/\b(1[5-9]\d\d|20[0-4]\d)\b/)?.[1] ?? 0) || doi?.tu || 0
+  let coNho = false
+  if (namSinh && hinh.tuoi !== 'tre_em') {
+    const tim = (s: string) => [...s.matchAll(/\b(1[5-9]\d\d|20[0-4]\d)\b/g)].map((m) => Number(m[1])).at(-1) ?? null
+    let nam: number | null = null
+    for (const p of d.phan.slice(0, k - 1)) for (const l of p.loi ?? []) nam = tim(`${l.the_moc ?? ''} ${l.chu}`) ?? nam
+    for (const l of loi) {
+      nam = tim(`${l.the_moc ?? ''} ${String(l.chu ?? '')}`) ?? nam
+      const tuoi = nam === null ? -1 : nam - namSinh
+      if (l.gioi_thieu || l.la_chuong || tuoi < 0 || tuoi >= 13) continue
+      if (tuoi <= 1 && l.ai === 'nguoi_ke' && l.nhan_vat_phu === 'nhan_vat_chinh') {
+        l.nhan_vat_phu = 'nguoi_phu_nu'
+        continue
+      }
+      if (l.nhan_vat_phu === 'nhan_vat_chinh') l.nhan_vat_phu = 'nhan_vat_chinh_nho'
+      if (l.ai === 'nhan_vat_chinh') l.ai = 'nhan_vat_chinh_nho'
+      coNho = coNho || l.nhan_vat_phu === 'nhan_vat_chinh_nho' || l.ai === 'nhan_vat_chinh_nho'
+    }
+  }
+  const hinhNho = coNho ? { ...hinh, tuoi: 'tre_em' as const, ao: 'so_mi' as const, rau: 'khong' as const, kinh: false, mu: 'khong' as const, phu_kien: 'khong' as const, vat_dung: 'khong' as const, so_ao: 0 } : null
   return {
     ...goc,
-    nhan_vat: { ...NHAN_VAT, nhan_vat_chinh: { ten: phim.ten, giong: GIONG_CHINH[hinh.gioi] } },
-    nhan_vat_chinh: { ten: phim.ten, hinh },
+    nhan_vat: { ...NHAN_VAT, nhan_vat_chinh: { ten: phim.ten, giong: GIONG_CHINH[hinh.gioi] }, ...(hinhNho ? { nhan_vat_chinh_nho: { ten: phim.ten, giong: GIONG_CHINH[hinh.gioi] } } : {}) },
+    nhan_vat_chinh: { ten: phim.ten, hinh, ...(hinhNho ? { hinh_nho: hinhNho } : {}) },
     dong_thoi_gian: doi,
     loi,
   }
@@ -368,9 +391,13 @@ export async function vietLoiPhan(id: string, k: number) {
   // Nối mạch: 6 câu cuối chương trước (đã bỏ câu chào / hẹn chương sau) để chương này viết tiếp liền mạch
   const noiTiep = locLoiChao(truoc, false).loi.slice(-6).map((l) => `${l.ai}: ${l.chu}`)
   const phim = d.loai === 'tieu_su' && d.phim?.nghien_cuu && d.phim.cau_chuyen ? d.phim : null
+  // Các chương trước đã kể gì (lời người kể + nhân vật chính, rút gọn ~6000 ký tự) để chương này không kể lại sự kiện cũ
+  const daKeDu = d.phan.slice(0, k - 1).flatMap((p, j) => (p.loi ?? []).filter((l) => ['nguoi_ke', 'nhan_vat_chinh'].includes(l.ai)).map((l) => `[chương ${j + 1}] ${l.chu.slice(0, 110)}`))
+  const buocKe = Math.max(1, Math.ceil(daKeDu.join('\n').length / 6000))
+  const daKe = daKeDu.filter((_, i) => i % buocKe === 0)
   const viet = (): Promise<{ loi: CauYT[]; moc: { chu: string; bieu_tuong: string } } | null> =>
     phim
-      ? vietPhanPhim({ ten: phim.ten, nghienCuu: phim.nghien_cuu!, cauChuyen: phim.cau_chuyen!, k, soCau: Math.round(giay / 5.5), noiTiep, anh: phim.anh ?? [] })
+      ? vietPhanPhim({ ten: phim.ten, nghienCuu: phim.nghien_cuu!, cauChuyen: phim.cau_chuyen!, k, soCau: Math.round(giay / 5.5), noiTiep, daKe, anh: phim.anh ?? [] })
       : vietPhanYouTube({ nguon: d.nguon_chu, danY: d, k, soCau: Math.round(giay / 4.5), noiTiep })
   // Hội đồng phản biện chấm kịch bản chương; chưa đạt thì bắt buộc sửa đúng những câu bị chê theo góp ý rồi chấm lại
   const batDau = Date.now()
@@ -524,8 +551,31 @@ const capTu = (s: string) => {
   return w.slice(1).map((x, i) => `${w[i]} ${x}`)
 }
 const CUM_THUONG = new Set(['công ty', 'của ông', 'của bà', 'của họ', 'chúng ta', 'chúng tôi', 'thế giới', 'không thể', 'một người', 'những người', 'trong khi', 'là một', 'đã trở', 'trở thành', 'của mình', 'cho đến', 'vào năm', 'năm đó', 'có thể', 'không phải', 'đó là', 'và rồi', 'rằng ông', 'mọi người', 'cuộc đời', 'câu chuyện', 'công nghệ', 'nhân vật'])
-function kiemDinhDu(d: DuAnYT, k: number, loiVao: CauYT[]) {
-  const kq = kiemDinh(loiVao, { loai: d.loai, laCuoi: k === d.phan.length, coDai: laCoDai(d) })
+// Phim thời hiện đại (từ 1850) mà AI chọn nhân vật cổ trang (phim Lý Tiểu Long 17/10/2026: "cộng đồng võ thuật truyền thống"
+// thập niên 1960 vẽ thành hiệp sĩ mặc giáp, mã tuong_quan) → đổi sang nhân vật hiện đại gần nghĩa nhất, máy tự đổi
+const VO = /võ|sư phụ|môn phái|quyền|đấu|võ lâm/i
+function doiCoTrang(ma: string | undefined, chu: string) {
+  switch (ma) {
+    case 'vua': case 'quan_lai': return 'chinh_khach'
+    case 'hoang_hau': case 'phu_nu_xua': return 'nguoi_phu_nu'
+    case 'tuong_quan': return VO.test(chu) ? 'ong_lao' : 'chinh_khach'
+    case 'chien_binh': return VO.test(chu) ? 'van_dong_vien' : 'canh_sat'
+    case 'nong_dan_xua': return 'cong_nhan'
+    default: return ma
+  }
+}
+function kiemDinhDu(d: DuAnYT, k: number, loiVao0: CauYT[]) {
+  const hienDai = !laCoDai(d)
+  let soDoi = 0
+  const loiVao = !hienDai ? loiVao0 : loiVao0.map((l) => {
+    const ai = doiCoTrang(l.ai, l.chu) as CauYT['ai']
+    const phu = doiCoTrang(l.nhan_vat_phu, l.chu) as CauYT['nhan_vat_phu']
+    if (ai === l.ai && phu === l.nhan_vat_phu) return l
+    soDoi++
+    return { ...l, ai, nhan_vat_phu: phu }
+  })
+  const kq0 = kiemDinh(loiVao, { loai: d.loai, laCuoi: k === d.phan.length, coDai: laCoDai(d) })
+  const kq = soDoi ? { ...kq0, da_sua: [...kq0.da_sua, `Đổi nhân vật cổ trang sang nhân vật thời hiện đại (${soDoi})`] } : kq0
   const them: { muc: 'loi' | 'nhac'; chu: string }[] = []
   const nc = d.phim?.nghien_cuu
   if (d.loai === 'tieu_su' && nc) {
@@ -548,6 +598,26 @@ function kiemDinhDu(d: DuAnYT, k: number, loiVao: CauYT[]) {
     if (c.length < 6) continue
     const giong = khac.find((x) => c.filter((y) => x.c.has(y)).length / c.length >= 0.6)
     if (giong) them.push({ muc: 'loi', chu: `Câu "${l.chu.slice(0, 70)}…" lặp gần nguyên văn một câu ở chương ${giong.j}: viết lại bằng ý / chi tiết mới` })
+  }
+  // Một sự kiện chỉ kể một lần (phim Lý Tiểu Long 17/10/2026: cái chết kể trọn ở chương 2 rồi kể lại ở chương 3, chương 3
+  // còn cho ông nói sau khi đã mất). Chương 1 bỏ qua: đoạn mở đầu được phép hé trước khoảnh khắc cao trào.
+  if (d.loai === 'tieu_su' && k >= 2) {
+    const CHET = /qua đời|tạ thế|từ trần|trút hơi thở|không bao giờ tỉnh lại|không bao giờ tỉnh dậy|ra đi mãi mãi|ra đi đột ngột|sự ra đi|khám nghiệm|tang lễ|đám tang|giấc ngủ vĩnh|cái chết (của ông|của bà|đột ngột)/i
+    const soChet = (ds: CauYT[]) => ds.filter((l) => l.ai !== 'meo' && l.ai !== 'robot' && CHET.test(l.chu)).length
+    const chetNay = soChet(kq.loi)
+    const chetTruoc = d.phan.slice(1, k - 1).findIndex((p) => soChet(p.loi ?? []) >= 3)
+    if (chetTruoc >= 0) {
+      if (chetNay >= 2) them.push({ muc: 'loi', chu: `Cái chết của nhân vật chính đã kể ở chương ${chetTruoc + 2}: chương này không kể lại (chỉ một câu nhắc ngắn rồi sang chuyện khác — di sản, ảnh hưởng, bài học)` })
+      const noiSau = kq.loi.filter((l) => l.ai === 'nhan_vat_chinh').length
+      if (noiSau) them.push({ muc: 'loi', chu: `Nhân vật chính đã qua đời ở chương ${chetTruoc + 2} nhưng còn nói ${noiSau} câu ở chương này: chuyển các câu đó cho người kể hoặc nhân vật phụ` })
+    }
+    const chetSau = d.phan.slice(k).findIndex((p) => soChet(p.loi ?? []) >= 3)
+    if (chetNay >= 3 && chetSau >= 0) them.push({ muc: 'loi', chu: `Cái chết được kể cả ở chương này lẫn chương ${k + 1 + chetSau}: chỉ kể ở chương mà dàn ý dành cho nó` })
+    const ngay = (s: string) => [...s.matchAll(/ngày\s+(\d{1,2})\s+tháng\s+(\d{1,2})(?:\s+năm\s+(\d{4}))?|\b(\d{1,2})\/(\d{1,2})\/(\d{4})\b/gi)].map((m) => `${Number(m[1] ?? m[4])}/${Number(m[2] ?? m[5])}/${m[3] ?? m[6] ?? ''}`)
+    const ngayKhac = new Map<string, number>()
+    d.phan.forEach((p, j) => { if (j >= 1 && j !== k - 1) for (const l of p.loi ?? []) for (const x of ngay(`${l.chu} ${l.the_moc ?? ''}`)) ngayKhac.set(x, j + 1) })
+    const trungNgay = [...new Set(kq.loi.flatMap((l) => ngay(`${l.chu} ${l.the_moc ?? ''}`)))].filter((x) => ngayKhac.has(x))
+    for (const x of trungNgay) them.push({ muc: 'nhac', chu: `Ngày ${x.replace(/\/$/, '')} đã kể ở chương ${ngayKhac.get(x)}: kiểm tra chương này có kể lại sự kiện đó không` })
   }
   const dem: Record<string, number> = {}
   for (const p of d.phan.map((x, j) => (j === k - 1 ? kq.loi : x.loi ?? []))) for (const l of p) for (const c of new Set(capTu(l.chu))) if (!CUM_THUONG.has(c)) dem[c] = (dem[c] ?? 0) + 1
@@ -670,7 +740,33 @@ function hopHanhDong(ma: string, l: CauYT, nam: number | null) {
   if (HANH_DONG_VUI.has(ma) && (l.cam_xuc === 'buon' || CAU_BI_KICH.test(l.chu))) return 'khong'
   if (tv.tu_nam && nam && nam < tv.tu_nam) return 'khong'
   if (ma === 'be_em_be' && !/em bé|đứa bé|con nhỏ|sơ sinh|bế|đứa trẻ mới|con gái|con trai|con đầu lòng/i.test(l.chu)) return 'khong'
+  // Hành động gắn đạo cụ cụ thể chỉ dùng khi câu thật sự nói tới đồ vật / việc đó (phim Lý Tiểu Long 17/10/2026: ôm đàn
+  // guitar ở câu "Họ đánh cắp ý tưởng của tôi")
+  const can = PHAI_NHAC[ma]
+  if (can && !can.test(`${l.chu} ${l.the_moc ?? ''}`)) return 'khong'
   return ma
+}
+const PHAI_NHAC: Record<string, RegExp> = {
+  choi_dan: /đàn|guitar|nhạc|hát|ca khúc|bài hát|biểu diễn|ban nhạc/i,
+  phat_hanh_album: /album|đĩa|ca khúc|bài hát|phát hành|bản thu/i,
+  cam_cup: /cúp|giải|vô địch|danh hiệu|huy chương|chiến thắng|vinh danh/i,
+  chup_anh: /ảnh|chụp|máy ảnh|phóng viên|nhiếp ảnh|báo chí|họp báo/i,
+  in_bao: /báo|tin tức|truyền thông|nhà báo|tạp chí|tít/i,
+  mua_con: /côn|nhị khúc|võ|đấu|luyện|đòn|đánh/i,
+  vut_roi: /roi|đánh đập|đòn|trừng phạt/i,
+  uong_thuoc: /thuốc|viên|uống/i,
+  tiem_thuoc: /tiêm|thuốc|kim|chữa/i,
+  lai_xe_may: /xe máy|mô tô|xe gắn máy/i,
+  nhin_bien: /tàu|biển|cảng|di cư|nhập cư|vượt đại dương/i,
+  dan_lat: /đan|len|chỉ|may vá|khâu/i,
+  trao_nhan: /cưới|nhẫn|cầu hôn|kết hôn|hôn lễ/i,
+  gong_chuong: /chuông|niêm yết|sàn chứng khoán|khai trương/i,
+  chong_gay: /gậy|già|yếu|ốm|bệnh|tuổi cao/i,
+  da_bong: /bóng|sân|cầu thủ|bàn thắng|đội|trận/i,
+  ghi_ban: /bóng|bàn thắng|ghi bàn|lưới|trận/i,
+  sut_bong: /bóng|sút|bàn thắng|lưới|trận/i,
+  re_bong: /bóng|rê|qua người|trận/i,
+  choi_bong: /bóng|sân|cầu thủ|trận|đội/i,
 }
 export async function hanhDongChuong(d: DuAnYT, k: number, truoc?: Promise<unknown>): Promise<CauHanhDong[]> {
   const loi = d.phan[k - 1]?.loi ?? []

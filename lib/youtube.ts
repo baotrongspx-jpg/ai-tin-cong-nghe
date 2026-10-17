@@ -293,7 +293,11 @@ function loiThoaiGui(d: DuAnYT, k: number) {
   // Kể thời thơ ấu (dưới 13 tuổi theo năm đang kể) mà chương đang dùng hình người lớn: nhân vật chính hiện dáng trẻ con;
   // lúc mới sinh (0-1 tuổi) người mẹ đứng diễn (phim Lý Tiểu Long 17/10/2026: kể chuyện chào đời và "diễn viên nhí" mà vẽ
   // Lý Tiểu Long người lớn, còn đứng cạnh mẹ đang bế chính mình lúc sơ sinh)
-  const namSinh = Number(phim.nghien_cuu?.ho_so?.ngay_sinh?.match(/\b(1[5-9]\d\d|20[0-4]\d)\b/)?.[1] ?? 0) || doi?.tu || 0
+  // Chỉ phim về MỘT CON NGƯỜI: phim về công ty / tổ chức thì "ngày sinh" là ngày thành lập (phim Nike 17/10/2026: năm 1964
+  // thành lập → Phil Knight bị vẽ thành cậu bé ở mọi câu 1964–1977)
+  const hs = phim.nghien_cuu?.ho_so
+  const laToChuc = /\b(inc|corp|corporation|ltd|llc|group|company)\b|công ty|tập đoàn|hãng|thương hiệu|tổ chức/i.test(`${phim.ten} ${hs?.ten ?? ''}`) || /^(được )?(sáng lập|thành lập|founded)/i.test(hs?.gia_dinh?.trim() ?? '')
+  const namSinh = laToChuc ? 0 : Number(hs?.ngay_sinh?.match(/\b(1[5-9]\d\d|20[0-4]\d)\b/)?.[1] ?? 0) || doi?.tu || 0
   let coNho = false
   if (namSinh && hinh.tuoi !== 'tre_em') {
     const tim = (s: string) => [...s.matchAll(/\b(1[5-9]\d\d|20[0-4]\d)\b/g)].map((m) => Number(m[1])).at(-1) ?? null

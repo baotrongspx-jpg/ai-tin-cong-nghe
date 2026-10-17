@@ -4350,7 +4350,10 @@ const nvPhu = doanPhu.map((dp, k) => {
   // Hết nhiệm vụ: rời nhanh (0,35 giây) ngay cuối câu cuối của mình, nhường chỗ cho người kế tiếp
   quay('nghieng', het - 0.32, ben, 0.12)
   tw.push(...buocChan(id, het - 0.3, 0.35, 0.17))
-  tw.push(`tl.to("#${id}", { x: ${ben * 420}, opacity: 0, duration: 0.35, ease: "power2.in" }, ${f(het - 0.3)});`)
+  // Máy quay thường còn đang cận mặt người nói lúc họ rời đi: trượt xa 420 thì nửa người lướt qua mép khung (phim Nike
+  // 17/10/2026: nhân vật bị cắt ở mép phải khung hình) → chỉ nhích một bước, mờ hẳn trong 0,2 giây đầu
+  tw.push(`tl.to("#${id}", { x: ${ben * 90}, duration: 0.35, ease: "power1.in" }, ${f(het - 0.3)});`)
+  tw.push(`tl.to("#${id}", { opacity: 0, duration: 0.2, ease: "power1.in" }, ${f(het - 0.3)});`)
   tw.push(`tl.to("#${id} svg", { y: -12, duration: 0.1, yoyo: true, repeat: 3, ease: "sine.inOut" }, ${f(het - 0.3)});`)
   // Không ghi tên trên đầu (trang phục tự nói lên họ là ai); hai nhân vật chính dạt sang hai bên chừa chỗ cho nhân vật phụ
   // Mèo / Bit dạt ra bao xa: tính chung cho mọi người trên sân khấu theo thời gian (sanKhau, xem dưới)
@@ -4483,8 +4486,9 @@ loi.forEach((l, i) => {
   } else if (chiDan) {
     canCanhChiDan = quayChiDan(l, i, t0, conLai)
   } else if (laPhu(l.ai)) {
-    // Nhân vật phụ đang nói: cận vừa vào họ (đứng giữa, phía sau), đẩy vào nhẹ
-    const xPhu = viTriPhu[phuCuaCau[i]] ?? 540
+    // Nhân vật phụ đang nói: cận vừa vào họ (đứng giữa, phía sau), đẩy vào nhẹ. Cộng cả bước dịch trên sân khấu của câu này
+    // (phim Nike 17/10/2026: người nói bước sang bên, máy vẫn cận chỗ cũ → người bị cắt ở mép khung)
+    const xPhu = (viTriPhu[phuCuaCau[i]] ?? 540) + (X_BUOC[i] ?? 0)
     lia(Math.max(0, t0 - 0.2), 1.42, xPhu, 720 - HA_PHU, 0.6)
     lia(t0 + 0.4, 1.47, xPhu + (i % 2 ? 15 : -15), 715 - HA_PHU, conLai, 'sine.inOut')
   } else if (gioiThieu.has(i)) {
@@ -4560,7 +4564,11 @@ loi.forEach((l, i) => {
   // cảnh rộng — hai cú cắt trong 1 giây, khán giả thấy màn hình giật)
   // chính, giữ tới hết câu (câu sau máy quay tự về người nói mới). Không cắt khi đang cận một người (người nghe đã lùi ra
   // ngoài khung), khi có thẻ trên cao, hay khi sắp đổi cảnh (đã lùi về cảnh rộng)
-  const pu = nguoiPhanUng(i)[0]
+  // Người phản ứng phải đang đứng trong khung: Mèo / Bit đã dạt ra mép (có nhân vật phụ trên sân khấu) thì không cắt sang họ —
+  // máy cắt vào chỗ trống, người đang nói bị đẩy ra mép khung (phim Nike 17/10/2026)
+  const dangDat = (t) => { let v = 0; for (const m of datMoc) if (m.t <= t + 0.3) v = m.dat; return v }
+  const pu0 = nguoiPhanUng(i)[0]
+  const pu = pu0 && (pu0 === 'meo' || pu0 === 'robot') && dangDat(t0 + d - 1.6) > 0 ? null : pu0
   const CAT_PU = 1.6
   if (pu && !canCanh && !chuaDau && !lui && d > 4.5 && PHAN_UNG_MANH.has(l.cam_xuc)) {
     const vt = pu.startsWith('phu') ? { x: viTriPhu[pu] ?? 540, y: 720 - HA_PHU } : tamLuc(pu, t0 + d - 1)

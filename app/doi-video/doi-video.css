@@ -1,0 +1,99 @@
+/* Phong cách bảng clapper: nền than chì, đèn ghi hình đỏ, chữ phấn trắng */
+.dv {
+  --nen: #16191f;
+  --mat: #1f232b;
+  --vien: #333944;
+  --chu: #eef0f3;
+  --mo: #9aa3b0;
+  --do: #ff4d3d;
+  --vang: #f2c14e;
+  --xanh: #4fc58b;
+  background: var(--nen);
+  color: var(--chu);
+  min-height: 100vh;
+}
+.dv-trong {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding-block: 48px 72px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid;
+  gap: 48px;
+}
+.dv h1, .dv h2 { text-wrap: balance; text-transform: uppercase; letter-spacing: 0.02em; }
+.dv h1 { font-size: clamp(2rem, 6vw, 3.6rem); line-height: 1.05; margin: 8px 0 12px; }
+.dv-nhan-nho { font-size: 0.75rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--mo); }
+.dv-mo-ta { max-width: 62ch; color: var(--mo); font-size: 1.05rem; line-height: 1.6; }
+
+.dv-dau {
+  border-top: 14px solid transparent;
+  border-image: repeating-linear-gradient(-45deg, var(--chu) 0 18px, var(--nen) 18px 36px) 14;
+  padding-top: 20px;
+}
+.dv-so { display: flex; flex-wrap: wrap; gap: 8px 24px; margin-top: 20px; color: var(--mo); font-variant-numeric: tabular-nums; }
+.dv-so b { color: var(--chu); font-size: 1.4rem; margin-right: 4px; }
+
+.dv-truong {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 20px;
+  background: var(--mat);
+  border: 1px solid var(--do);
+  border-radius: 6px;
+  padding: 24px;
+}
+.dv-truong h2 { font-size: 1.6rem; margin: 4px 0 10px; }
+.dv-truong p { line-height: 1.6; max-width: 65ch; }
+.dv-truong ul { margin-top: 14px; display: grid; gap: 6px; padding-left: 18px; list-style: square; }
+.dv-truong li::marker { color: var(--do); }
+.dv-den {
+  width: 14px; height: 14px; border-radius: 50%; margin-top: 4px;
+  background: var(--do); box-shadow: 0 0 0 4px color-mix(in srgb, var(--do) 25%, transparent);
+  animation: dv-nhap 1.6s ease-in-out infinite;
+}
+@keyframes dv-nhap { 50% { opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) { .dv-den { animation: none; } }
+
+.dv-muc { font-size: 1.3rem; margin-bottom: 16px; color: var(--chu); }
+.dv-luoi { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.dv-the {
+  min-width: 0;
+  display: grid; align-content: start; gap: 8px;
+  background: var(--mat); border: 1px solid var(--vien); border-radius: 6px; padding: 16px;
+}
+.dv-the-dau { display: flex; justify-content: space-between; align-items: start; gap: 8px; }
+.dv-the h3 { font-weight: 700; font-size: 1rem; }
+.dv-the code { font-family: ui-monospace, Consolas, monospace; font-size: 0.8rem; color: var(--mo); }
+.dv-the p { font-size: 0.92rem; line-height: 1.55; }
+.dv-nguon { color: var(--mo); font-size: 0.8rem !important; overflow-wrap: anywhere; }
+.dv-nguon a { color: var(--chu); text-decoration: underline; text-underline-offset: 3px; }
+.dv-nguon a:focus-visible { outline: 2px solid var(--vang); outline-offset: 2px; }
+
+.dv-chip {
+  flex-shrink: 0; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.04em;
+  padding: 3px 8px; border-radius: 4px; border: 1px solid currentColor; white-space: nowrap;
+}
+.dv-da-tuyen { color: var(--xanh); }
+.dv-dang-soan { color: var(--vang); }
+.dv-can-cai { color: var(--do); }
+
+.dv-quy-trinh { display: grid; gap: 0; list-style: none; padding: 0; border-left: 2px dashed var(--vien); margin-left: 6px; }
+.dv-quy-trinh li { display: grid; grid-template-columns: 84px 1fr; gap: 16px; padding: 12px 0 12px 20px; position: relative; }
+.dv-quy-trinh li::before {
+  content: ""; position: absolute; left: -7px; top: 18px; width: 12px; height: 12px;
+  border-radius: 50%; background: var(--nen); border: 2px solid var(--mo);
+}
+.dv-quy-trinh li.dv-quyet::before { background: var(--do); border-color: var(--do); }
+.dv-canh { color: var(--mo); text-transform: uppercase; font-size: 0.9rem; padding-top: 2px; }
+.dv-quy-trinh h3 { font-weight: 700; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.dv-quy-trinh em { font-style: normal; font-size: 0.7rem; color: var(--do); border: 1px solid var(--do); border-radius: 4px; padding: 1px 6px; }
+.dv-ai { color: var(--vang); font-size: 0.85rem; margin: 2px 0 4px; }
+.dv-quy-trinh p { line-height: 1.55; max-width: 65ch; }
+
+.dv-con-lai ul { display: grid; gap: 8px; padding-left: 18px; list-style: square; color: var(--mo); line-height: 1.6; }
+
+@media (max-width: 520px) {
+  .dv-truong { grid-template-columns: 1fr; }
+  .dv-quy-trinh li { grid-template-columns: 1fr; gap: 4px; }
+}

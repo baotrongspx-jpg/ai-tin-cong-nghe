@@ -32,7 +32,7 @@ export const THANH_VIEN: ThanhVien[] = [
   {
     vai: 'Biên kịch · Câu lệnh video AI',
     ten: 'bien-kich',
-    viec: 'Viết kịch bản chia thành từng đoạn 10 giây. Mỗi đoạn có một bộ câu lệnh tiếng Anh để dán vào Kling, Hailuo, Runway hoặc Veo. Mọi đoạn chép chung một bảng gốc để nhân vật, sản phẩm và màu sắc giống nhau.',
+    viec: 'Viết kịch bản chia thành từng đoạn 10 giây. Mỗi đoạn có một bộ câu lệnh tiếng Anh để dán vào Gemini, kèm ảnh sản phẩm thật làm ảnh đầu. Mọi đoạn chép chung một bảng gốc để nhân vật, sản phẩm và màu sắc giống nhau. Có kỹ năng giữ đồng nhất DirectorSKILL (MIT).',
     nguon: 'Kỹ năng ad-creative, copywriting, marketing-psychology',
     linkNguon: 'https://github.com/coreyhaines31/marketingskills',
     giayPhep: 'MIT',
@@ -41,7 +41,7 @@ export const THANH_VIEN: ThanhVien[] = [
   {
     vai: 'Lồng tiếng tiếng Việt',
     ten: 'long-tieng',
-    viec: 'Đọc lời thoại của từng đoạn thành file giọng nói, đo thời lượng để vừa 10 giây. Giọng HoaiMy (nữ) và NamMinh (nam).',
+    viec: 'Đọc lời thoại của từng đoạn thành file giọng nói, đo thời lượng để vừa 10 giây. Giọng này thay cho tiếng gốc của Gemini. Giọng HoaiMy (nữ) và NamMinh (nam).',
     nguon: 'Do agent tuyển dụng tìm về: kỹ năng ai-voiceover-edge-tts, 73/100 điểm',
     linkNguon: 'https://github.com/xianyu110/ecommerce-video-skills',
     giayPhep: 'MIT',
@@ -50,7 +50,7 @@ export const THANH_VIEN: ThanhVien[] = [
   {
     vai: 'Dựng phim',
     ten: 'dung-phim',
-    viec: 'Ghép các đoạn 10 giây chủ tải về, nối chuyển cảnh, chèn lồng tiếng, nhạc, chữ và logo, xuất bản dọc 9:16 cho TikTok và Reels. Kiêm chỉ chủ chụp ảnh sản phẩm làm ảnh tham chiếu.',
+    viec: 'Ghép các đoạn 10 giây chủ tải về từ Gemini, tắt tiếng gốc, nối chuyển cảnh, chèn lồng tiếng, nhạc nền miễn phí bản quyền (Pixabay), chữ và logo, xuất bản dọc 9:16 cho TikTok và Reels. Kiêm chỉ chủ chụp ảnh sản phẩm làm ảnh tham chiếu.',
     nguon: 'Kỹ năng ffmpeg-skill và video-shotcraft, chạy trên máy',
     linkNguon: 'https://github.com/kajisho5/ffmpeg-skill',
     giayPhep: 'MIT · Apache-2.0',
@@ -75,18 +75,17 @@ export const THANH_VIEN: ThanhVien[] = [
 ]
 
 export const QUY_TRINH = [
-  { buoc: 'Nhận đơn', ai: 'Đội trưởng', chiTiet: 'Chủ cho biết sản phẩm, nơi đăng, số đoạn 10 giây và gửi ảnh sản phẩm nếu có.', quyetDinh: false },
+  { buoc: 'Nhận đơn', ai: 'Đội trưởng', chiTiet: 'Chủ cho biết sản phẩm, nơi đăng, số đoạn 10 giây và gửi ảnh sản phẩm thật, nên chụp dọc.', quyetDinh: false },
   { buoc: 'Chốt thông điệp', ai: 'Đội trưởng', chiTiet: 'Chọn một điều duy nhất video phải nói được.', quyetDinh: true },
   { buoc: 'Viết câu lệnh', ai: 'Biên kịch', chiTiet: 'Kịch bản chia đoạn 10 giây, mỗi đoạn một bộ câu lệnh, chung một bảng gốc.', quyetDinh: false },
   { buoc: 'Soát', ai: 'Kiểm duyệt chung', chiTiet: 'Công cụ soát chạy trước. Có lỗi thì trả về biên kịch, tối đa một lần.', quyetDinh: false },
   { buoc: 'Duyệt câu lệnh', ai: 'Đội trưởng', chiTiet: 'Giao bộ câu lệnh và hướng dẫn bấm từng bước cho chủ.', quyetDinh: true },
-  { buoc: 'Tạo video', ai: 'Chủ', chiTiet: 'Dán câu lệnh vào dịch vụ AI trả phí, tải từng đoạn 10 giây về thư mục của dự án.', quyetDinh: false },
+  { buoc: 'Tạo video', ai: 'Chủ', chiTiet: 'Mở Gemini, tải ảnh sản phẩm lên, dán câu lệnh, tạo từng đoạn 10 giây rồi tải về thư mục của dự án.', quyetDinh: false },
   { buoc: 'Lồng tiếng và ghép', ai: 'Lồng tiếng · Dựng phim', chiTiet: 'Đọc lời thoại, ghép các đoạn, chèn chữ, nhạc, logo, xuất bản dọc 9:16.', quyetDinh: false },
   { buoc: 'Duyệt cuối', ai: 'Đội trưởng', chiTiet: 'Giao video hoàn chỉnh cho chủ tự đăng.', quyetDinh: true },
 ]
 
 export const VIEC_CON_LAI = [
-  'Duyệt kỹ năng giữ đồng nhất câu lệnh cho biên kịch. Ứng viên hạng 1 là DirectorSKILL (MIT, 86 điểm), chưa cài.',
-  'Chọn ngôn ngữ câu lệnh cho Kling (tiếng Anh hay tiếng Trung), và cách dùng Veo vì Veo chỉ tạo tối đa 8 giây.',
-  'Làm thử video đầu tiên với một sản phẩm thật.',
+  'Làm thử video đầu tiên với một sản phẩm thật: gửi ảnh sản phẩm chụp dọc, đội viết câu lệnh, chủ tạo các đoạn trên Gemini.',
+  'Chạy thử kiểm duyệt chung trên dự án thật đầu tiên.',
 ]

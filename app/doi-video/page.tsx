@@ -8,7 +8,7 @@ const tieuDe = Oswald({ subsets: ['latin', 'vietnamese'], weight: ['500', '600',
 
 export const metadata: Metadata = {
   title: 'Đội Làm Video Quảng Cáo',
-  description: 'Đội 6 agent AI viết câu lệnh cho dịch vụ tạo video trả phí, lồng tiếng và ghép video quảng cáo sản phẩm.',
+  description: 'Đội 6 agent AI viết câu lệnh cho Gemini tạo video, lồng tiếng và ghép video quảng cáo sản phẩm.',
   robots: { index: false, follow: false },
 }
 
@@ -27,7 +27,7 @@ export default function DoiVideo() {
           <p className="dv-nhan-nho">Bảng phân vai · Đoàn làm phim AI</p>
           <h1 className={tieuDe.className}>Đội làm video quảng cáo sản phẩm</h1>
           <p className="dv-mo-ta">
-            {THANH_VIEN.length} thành viên và một đội trưởng ra quyết định. Đội viết câu lệnh cho dịch vụ AI tạo video, mỗi đoạn tối đa 10 giây,
+            {THANH_VIEN.length} thành viên và một đội trưởng ra quyết định. Đội viết câu lệnh để chủ tạo video trên Gemini, mỗi đoạn 10 giây,
             rồi lồng tiếng và ghép các đoạn thành video hoàn chỉnh. Tay nghề của mọi thành viên được tuyển từ các kho mã nguồn mở trên GitHub.
           </p>
           <div className="dv-so">

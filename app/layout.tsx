@@ -9,8 +9,8 @@ const font = Be_Vietnam_Pro({
 })
 
 export const metadata: Metadata = {
-  title: 'Duyệt bài tin công nghệ',
-  description: 'AI tổng hợp tin công nghệ, soạn bài và ảnh để đăng Facebook',
+  title: 'CV Nông Bảo Trọng',
+  description: 'CV trực tuyến',
   robots: { index: false, follow: false },
 }
 

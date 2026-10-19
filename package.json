@@ -1,25 +1,21 @@
 {
-  "name": "ai-tin-cong-nghe",
+  "name": "cv-nong-bao-trong",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
-    "token-fb": "node scripts/lay-token-fb.mjs"
+    "lint": "eslint"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.129.0",
     "@react-pdf/renderer": "^4.9.0",
     "@supabase/supabase-js": "^2.117.2",
-    "entities": "^8.1.0",
-    "ffmpeg-static": "^5.3.0",
     "next": "16.3.6",
     "qrcode": "^1.5.4",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "rss-parser": "^3.13.0",
     "server-only": "^0.0.1",
     "sharp": "^0.35.5",
     "zod": "^4.6.5"
@@ -34,8 +30,5 @@
     "eslint-config-next": "16.3.6",
     "tailwindcss": "^4",
     "typescript": "^5"
-  },
-  "allowScripts": {
-    "ffmpeg-static@5.3.0": true
   }
 }

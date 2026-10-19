@@ -26,13 +26,13 @@ export default function DoiVideo() {
           <p className="dv-nhan-nho">Bảng phân vai · Đoàn làm phim AI</p>
           <h1 className={tieuDe.className}>Đội làm video quảng cáo sản phẩm</h1>
           <p className="dv-mo-ta">
-            {THANH_VIEN.length} thành viên chuyên môn và một trưởng nhóm ra quyết định. Tay nghề của
+            {THANH_VIEN.length} tổ chuyên môn và một trưởng nhóm ra quyết định. Mỗi tổ có trưởng tổ, thành viên và kiểm duyệt riêng. Tay nghề của
             mọi thành viên được tuyển từ các kho mã nguồn mở trên GitHub.
           </p>
           <div className="dv-so">
             <span><b>{daTuyen}</b> đã tuyển</span>
             <span><b>{THANH_VIEN.length - daTuyen}</b> chờ cài công cụ</span>
-            <span><b>1</b> trưởng nhóm</span>
+            <span><b>{THANH_VIEN.length * 3 + 1}</b> agent</span>
           </div>
         </header>
 
@@ -49,7 +49,8 @@ export default function DoiVideo() {
         </section>
 
         <section aria-labelledby="thanh-vien">
-          <h2 id="thanh-vien" className={`dv-muc ${tieuDe.className}`}>Thành viên</h2>
+          <h2 id="thanh-vien" className={`dv-muc ${tieuDe.className}`}>Các tổ</h2>
+          <p className="dv-giai">Trưởng tổ viết phiếu giao việc. Thành viên làm. Kiểm duyệt của tổ soát theo đúng chuyên môn. Trưởng tổ quyết định duyệt, trả về sửa, hay báo lên trưởng nhóm.</p>
           <div className="dv-luoi">
             {THANH_VIEN.map((t) => (
               <article key={t.ten} className="dv-the">
@@ -58,6 +59,7 @@ export default function DoiVideo() {
                   <span className={`dv-chip dv-${t.trangThai}`}>{NHAN[t.trangThai]}</span>
                 </div>
                 <code>{t.ten}</code>
+                <p className="dv-to">Tổ: <span>truong-{t.ten}</span> · <span>kd-{t.ten}</span></p>
                 <p>{t.viec}</p>
                 <p className="dv-nguon">
                   {t.linkNguon ? (

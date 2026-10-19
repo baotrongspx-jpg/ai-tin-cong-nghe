@@ -19,7 +19,8 @@ export const TRUONG_NHOM = {
   viec:
     'Không đi theo quy trình cố định. Với mỗi đơn hàng, trưởng nhóm tự chia việc, tự ghép người có chức năng khớp với từng việc, và gọi tuyển dụng khi đội thiếu người. Mọi quyết định đều ghi lý do vào sổ.',
   quyen: [
-    'Tự lập kế hoạch và giao việc cho từng đơn hàng',
+    'Tự lập kế hoạch và giao việc cho từng tổ',
+    'Quyết định khi trưởng tổ báo lên',
     'Chọn ứng viên do tuyển dụng tìm về, thay người làm kém hai lần',
     'Chốt thông điệp chính sau khi đọc báo cáo nghiên cứu',
     'Chọn 1 trong 3 phương án kịch bản',

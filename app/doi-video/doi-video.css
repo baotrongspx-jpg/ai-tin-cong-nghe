@@ -97,3 +97,6 @@
   .dv-truong { grid-template-columns: 1fr; }
   .dv-quy-trinh li { grid-template-columns: 1fr; gap: 4px; }
 }
+.dv-to { font-size: 0.78rem !important; color: var(--mo); }
+.dv-to span { font-family: ui-monospace, Consolas, monospace; color: var(--vang); }
+.dv-giai { color: var(--mo); max-width: 65ch; line-height: 1.6; margin: -6px 0 16px; }

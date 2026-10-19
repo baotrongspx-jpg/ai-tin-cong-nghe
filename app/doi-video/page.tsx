@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { Oswald } from 'next/font/google'
 import { QUY_TRINH, THANH_VIEN, TRUONG_NHOM, VIEC_CON_LAI, type TrangThai } from './duLieu'
 import './doi-video.css'
@@ -34,6 +35,9 @@ export default function DoiVideo() {
             <span><b>{THANH_VIEN.length - daTuyen}</b> chờ cài công cụ</span>
             <span><b>{THANH_VIEN.length * 3 + 1}</b> agent</span>
           </div>
+          <p className="dv-nhan-nho dv-td-sang-tien-do">
+            <Link href="/doi-video/tien-do" className="dv-td-lien-ket">Xem tiến độ đội đang làm →</Link>
+          </p>
         </header>
 
         <section className="dv-truong" aria-labelledby="truong-nhom">

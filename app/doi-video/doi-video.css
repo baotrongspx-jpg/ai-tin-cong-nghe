@@ -100,3 +100,67 @@
 .dv-to { font-size: 0.78rem !important; color: var(--mo); }
 .dv-to span { font-family: ui-monospace, Consolas, monospace; color: var(--vang); }
 .dv-giai { color: var(--mo); max-width: 65ch; line-height: 1.6; margin: -6px 0 16px; }
+
+/* Trang tiến độ /doi-video/tien-do */
+.dv-td-lien-ket { color: var(--chu); text-decoration: underline; text-underline-offset: 3px; letter-spacing: 0.08em; }
+.dv-td-lien-ket:hover { color: var(--vang); }
+.dv-td-lien-ket:focus-visible, .dv-td-chon select:focus-visible { outline: 2px solid var(--vang); outline-offset: 2px; }
+
+.dv-td-thanh-tren { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 20px; margin-bottom: -24px; }
+.dv-td-chon { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-width: 0; max-width: 100%; }
+.dv-td-chon label { font-size: 0.75rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--mo); }
+.dv-td-chon select {
+  max-width: 100%; min-width: 0; font: inherit; font-family: ui-monospace, Consolas, monospace; font-size: 0.9rem;
+  background-color: var(--mat); color: var(--chu); border: 1px solid var(--vien); border-radius: 4px; padding: 8px 10px;
+  touch-action: manipulation; transition: border-color 0.15s;
+}
+.dv-td-chon select:hover { border-color: var(--mo); }
+.dv-td-mat { color: var(--vang); font-size: 0.85rem; }
+.dv-td-mat:empty { display: none; }
+
+.dv-td-so { color: var(--mo); font-variant-numeric: tabular-nums; margin-bottom: 10px; }
+.dv-td-so b { color: var(--chu); font-size: 1.6rem; margin-right: 4px; }
+.dv-td-thanh { height: 12px; background: var(--mat); border: 1px solid var(--vien); border-radius: 6px; overflow: hidden; }
+.dv-td-thanh span { display: block; height: 100%; background: var(--xanh); }
+
+.dv-td-ds { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 12px; }
+.dv-td-viec {
+  min-width: 0; display: grid; align-content: start; gap: 8px;
+  background: var(--mat); border: 1px solid var(--vien); border-radius: 6px; padding: 16px;
+}
+.dv-td-viec h3 { font-weight: 700; font-size: 1rem; min-width: 0; overflow-wrap: anywhere; }
+.dv-td-viec .dv-to { overflow-wrap: anywhere; }
+.dv-td-ket { border: 2px solid var(--do); background: color-mix(in srgb, var(--do) 10%, var(--mat)); }
+.dv-td-tt-cho { color: var(--mo); }
+.dv-td-tt-dang-lam { color: var(--vang); }
+.dv-td-tt-cho-duyet { color: var(--chu); }
+.dv-td-tt-tra-ve { color: var(--vang); }
+.dv-td-tt-xong { color: var(--xanh); }
+.dv-td-tt-ket { color: var(--do); }
+
+.dv-td-vong { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; font-size: 0.78rem; }
+.dv-td-buoc { color: var(--mo); border: 1px dashed var(--vien); border-radius: 4px; padding: 2px 8px; }
+.dv-td-buoc + .dv-td-buoc::before { content: "→ "; color: var(--vien); }
+.dv-td-hien-tai { color: var(--chu); border-style: solid; border-color: var(--vang); font-weight: 700; }
+.dv-td-hien-tai em { font-style: normal; font-weight: 400; color: var(--vang); }
+.dv-td-ghi-chu { font-size: 0.9rem; line-height: 1.55; overflow-wrap: anywhere; white-space: pre-line; }
+.dv-td-gio { color: var(--mo); font-size: 0.78rem; font-variant-numeric: tabular-nums; }
+
+.dv-td-nhat-ky { list-style: none; padding: 0; border-top: 1px solid var(--vien); }
+.dv-td-dong {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; min-width: 0;
+  padding: 10px 8px; border-bottom: 1px solid var(--vien); font-size: 0.88rem;
+}
+.dv-td-dong.dv-td-ket { border-width: 0 0 1px 4px; border-style: solid; border-color: var(--vien) var(--vien) var(--vien) var(--do); }
+.dv-td-nguoi { font-family: ui-monospace, Consolas, monospace; color: var(--vang); overflow-wrap: anywhere; min-width: 0; }
+.dv-td-ten-viec { font-weight: 700; overflow-wrap: anywhere; min-width: 0; }
+.dv-td-nhan { font-size: 0.75rem; font-weight: 700; border: 1px solid currentColor; border-radius: 4px; padding: 1px 6px; }
+.dv-td-dong .dv-td-ghi-chu { flex-basis: 100%; color: var(--mo); }
+
+.dv-td-rong { background: var(--mat); border: 1px dashed var(--vien); border-radius: 6px; padding: 24px; display: grid; gap: 12px; min-width: 0; }
+.dv-td-rong p { line-height: 1.6; max-width: 65ch; }
+.dv-td-rong code { font-family: ui-monospace, Consolas, monospace; font-size: 0.85rem; color: var(--vang); overflow-wrap: anywhere; }
+.dv-td-lenh { background: var(--nen); border: 1px solid var(--vien); border-radius: 4px; padding: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.dv-td-lenh code { color: var(--chu); }
+@media (max-width: 520px) { .dv-td-rong { padding: 16px; } }
+.dv-td-sang-tien-do { margin-top: 16px; }

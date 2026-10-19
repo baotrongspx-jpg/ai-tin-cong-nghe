@@ -36,7 +36,8 @@ export default function DoiVideo() {
             <span><b>{THANH_VIEN.length + 1}</b> agent</span>
           </div>
           <p className="dv-nhan-nho dv-td-sang-tien-do">
-            <Link href="/doi-video/tien-do" className="dv-td-lien-ket">Xem tiến độ đội đang làm →</Link>
+            <Link href="/doi-video/tien-do" className="dv-td-lien-ket">Xem tiến độ đội đang làm →</Link>{" · "}
+            <Link href="/doi-video/gui-anh" className="dv-td-lien-ket">Gửi ảnh sản phẩm cho đội →</Link>
           </p>
         </header>
 

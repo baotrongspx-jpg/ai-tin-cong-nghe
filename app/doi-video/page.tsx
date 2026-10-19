@@ -73,7 +73,7 @@ export default function DoiVideo() {
         </section>
 
         <section aria-labelledby="quy-trinh">
-          <h2 id="quy-trinh" className={`dv-muc ${tieuDe.className}`}>Quy trình một video</h2>
+          <h2 id="quy-trinh" className={`dv-muc ${tieuDe.className}`}>Một video thường đi qua</h2>
           <ol className="dv-quy-trinh">
             {QUY_TRINH.map((b, i) => (
               <li key={b.buoc} className={b.quyetDinh ? 'dv-quyet' : undefined}>

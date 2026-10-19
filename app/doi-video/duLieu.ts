@@ -17,8 +17,10 @@ export const TRUONG_NHOM = {
   vai: 'Trưởng nhóm · Đạo diễn sản xuất',
   ten: 'truong-nhom',
   viec:
-    'Nhận đơn hàng, chia việc cho từng thành viên, chọn kịch bản tốt nhất, quyết định quay hay làm đồ họa, duyệt bản cuối. Mọi quyết định đều ghi lý do vào sổ quyết định của dự án.',
+    'Không đi theo quy trình cố định. Với mỗi đơn hàng, trưởng nhóm tự chia việc, tự ghép người có chức năng khớp với từng việc, và gọi tuyển dụng khi đội thiếu người. Mọi quyết định đều ghi lý do vào sổ.',
   quyen: [
+    'Tự lập kế hoạch và giao việc cho từng đơn hàng',
+    'Chọn ứng viên do tuyển dụng tìm về, thay người làm kém hai lần',
     'Chốt thông điệp chính sau khi đọc báo cáo nghiên cứu',
     'Chọn 1 trong 3 phương án kịch bản',
     'Chọn đường làm: quay thật hay đồ họa chuyển động',
@@ -28,6 +30,13 @@ export const TRUONG_NHOM = {
 }
 
 export const THANH_VIEN: ThanhVien[] = [
+  {
+    vai: 'Tuyển dụng',
+    ten: 'tuyen-dung',
+    viec: 'Lên GitHub tìm agent và kỹ năng đúng chức năng, chấm điểm, soát an toàn, nộp 3 ứng viên cho trưởng nhóm chọn, rồi cài.',
+    nguon: 'Viết cho đội. Tìm trong VoltAgent, wshobson/agents, marketingskills, anthropics/skills và GitHub.',
+    trangThai: 'da-tuyen',
+  },
   {
     vai: 'Nghiên cứu thị trường',
     ten: 'market-researcher',
@@ -92,6 +101,15 @@ export const THANH_VIEN: ThanhVien[] = [
     trangThai: 'da-tuyen',
   },
   {
+    vai: 'Lồng tiếng tiếng Việt',
+    ten: 'long-tieng',
+    viec: 'Đọc lời thoại thành từng file giọng nói, đo thời lượng từng câu để khớp hình. Giọng HoaiMy (nữ) và NamMinh (nam).',
+    nguon: 'Do agent tuyển dụng tìm về: kỹ năng ai-voiceover-edge-tts, 73/100 điểm',
+    linkNguon: 'https://github.com/xianyu110/ecommerce-video-skills',
+    giayPhep: 'MIT',
+    trangThai: 'can-cai',
+  },
+  {
     vai: 'Dựng phim',
     ten: 'dung-phim',
     viec: 'Cắt ghép cảnh quay, chèn phụ đề, nhạc, logo, xuất bản dọc 9:16 cho TikTok và Reels.',
@@ -122,16 +140,17 @@ export const THANH_VIEN: ThanhVien[] = [
 
 export const QUY_TRINH = [
   { buoc: 'Nhận đơn', ai: 'Trưởng nhóm', chiTiet: 'Bạn cho biết sản phẩm, nơi đăng, độ dài, đã có cảnh quay hay chỉ có ảnh.', quyetDinh: false },
+  { buoc: 'Lập kế hoạch', ai: 'Trưởng nhóm', chiTiet: 'Chia đơn hàng thành việc nhỏ. Việc nào chưa có người làm thì gọi tuyển dụng.', quyetDinh: true },
   { buoc: 'Nghiên cứu', ai: 'Nghiên cứu · Đối thủ · Xu hướng', chiTiet: 'Ba agent làm cùng lúc rồi nộp báo cáo.', quyetDinh: false },
   { buoc: 'Chốt thông điệp', ai: 'Trưởng nhóm', chiTiet: 'Chọn một điều duy nhất video phải nói được.', quyetDinh: true },
   { buoc: 'Viết kịch bản', ai: 'Biên kịch · Lời bán hàng', chiTiet: 'Ba phương án. Trưởng nhóm chọn một, bạn duyệt.', quyetDinh: true },
   { buoc: 'Lên cảnh quay', ai: 'Đạo diễn hình ảnh', chiTiet: 'Danh sách cảnh để bạn tự quay bằng điện thoại. Nếu chỉ có ảnh thì chuyển sang đồ họa.', quyetDinh: true },
-  { buoc: 'Dựng', ai: 'Dựng phim · Đồ họa', chiTiet: 'Ra bản dựng có phụ đề, nhạc, đúng khung hình nơi đăng.', quyetDinh: false },
+  { buoc: 'Dựng', ai: 'Lồng tiếng · Dựng phim · Đồ họa', chiTiet: 'Ra bản dựng có giọng đọc, phụ đề, nhạc, đúng khung hình nơi đăng.', quyetDinh: false },
   { buoc: 'Kiểm duyệt', ai: 'Kiểm duyệt', chiTiet: 'Báo lỗi. Có lỗi thì trưởng nhóm trả về bước dựng.', quyetDinh: false },
   { buoc: 'Duyệt cuối', ai: 'Trưởng nhóm', chiTiet: 'Giao video và chú thích bài đăng cho bạn.', quyetDinh: true },
 ]
 
 export const VIEC_CON_LAI = [
-  'Cài FFmpeg và Python 3 trên máy để thành viên dựng phim chạy được. Bước cài đang chờ bạn đồng ý.',
+  'Cài FFmpeg và Python 3 trên máy. Hai người dựng phim và lồng tiếng cần công cụ này. Bước cài đang chờ bạn đồng ý.',
   'Làm thử video đầu tiên: mở thư mục doi-video-quang-cao trong VS Code và gõ đơn hàng cho trưởng nhóm.',
 ]

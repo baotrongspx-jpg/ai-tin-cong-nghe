@@ -26,12 +26,12 @@ export default function DoiVideo() {
           <p className="dv-nhan-nho">Bảng phân vai · Đoàn làm phim AI</p>
           <h1 className={tieuDe.className}>Đội làm video quảng cáo sản phẩm</h1>
           <p className="dv-mo-ta">
-            {THANH_VIEN.length} thành viên chuyên môn và một trưởng nhóm ra quyết định. Phần lớn
-            tay nghề được tuyển từ các kho mã nguồn mở trên GitHub.
+            {THANH_VIEN.length} thành viên chuyên môn và một trưởng nhóm ra quyết định. Tay nghề của
+            mọi thành viên được tuyển từ các kho mã nguồn mở trên GitHub.
           </p>
           <div className="dv-so">
             <span><b>{daTuyen}</b> đã tuyển</span>
-            <span><b>{THANH_VIEN.length - daTuyen}</b> đang chuẩn bị</span>
+            <span><b>{THANH_VIEN.length - daTuyen}</b> chờ cài công cụ</span>
             <span><b>1</b> trưởng nhóm</span>
           </div>
         </header>

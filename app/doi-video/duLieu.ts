@@ -77,15 +77,19 @@ export const THANH_VIEN: ThanhVien[] = [
     vai: 'Biên kịch quảng cáo',
     ten: 'bien-kich',
     viec: 'Viết 3 phương án kịch bản: 3 giây đầu, lời thoại, chữ trên hình, kêu gọi mua.',
-    nguon: 'Soạn mới cho đội. GitHub chưa có agent biên kịch video tốt.',
-    trangThai: 'dang-soan',
+    nguon: 'Kỹ năng ad-creative, copywriting, marketing-psychology',
+    linkNguon: 'https://github.com/coreyhaines31/marketingskills',
+    giayPhep: 'MIT',
+    trangThai: 'da-tuyen',
   },
   {
     vai: 'Đạo diễn hình ảnh',
     ten: 'dao-dien-quay',
     viec: 'Lên bảng phân cảnh và danh sách cảnh quay bằng điện thoại: góc máy, ánh sáng, đạo cụ.',
-    nguon: 'Soạn mới cho đội. GitHub chưa có agent quay phim.',
-    trangThai: 'dang-soan',
+    nguon: 'Kỹ năng video, social',
+    linkNguon: 'https://github.com/coreyhaines31/marketingskills',
+    giayPhep: 'MIT',
+    trangThai: 'da-tuyen',
   },
   {
     vai: 'Dựng phim',
@@ -103,14 +107,16 @@ export const THANH_VIEN: ThanhVien[] = [
     nguon: 'Kỹ năng video-shotcraft · 124 mẫu cảnh quay',
     linkNguon: 'https://github.com/Vincentwei1021/video-shotcraft',
     giayPhep: 'Apache-2.0',
-    trangThai: 'dang-soan',
+    trangThai: 'da-tuyen',
   },
   {
     vai: 'Kiểm duyệt quảng cáo',
     ten: 'kiem-duyet',
     viec: 'Soát lỗi chính tả, câu chữ quá đà, quy định quảng cáo Việt Nam và luật của Facebook, TikTok.',
-    nguon: 'Soạn mới cho đội.',
-    trangThai: 'dang-soan',
+    nguon: 'Kỹ năng copy-editing, kèm luật quảng cáo Việt Nam',
+    linkNguon: 'https://github.com/coreyhaines31/marketingskills',
+    giayPhep: 'MIT',
+    trangThai: 'da-tuyen',
   },
 ]
 
@@ -126,7 +132,6 @@ export const QUY_TRINH = [
 ]
 
 export const VIEC_CON_LAI = [
-  'Cài FFmpeg và Python 3 trên máy để agent dựng phim chạy được. Bước cài đã bị dừng, chờ bạn đồng ý.',
-  'Soạn xong 4 agent mới: biên kịch, đạo diễn hình ảnh, kiểm duyệt, đồ họa.',
-  'Viết luật cho trưởng nhóm và sổ quyết định cho từng dự án.',
+  'Cài FFmpeg và Python 3 trên máy để thành viên dựng phim chạy được. Bước cài đang chờ bạn đồng ý.',
+  'Làm thử video đầu tiên: mở thư mục doi-video-quang-cao trong VS Code và gõ đơn hàng cho trưởng nhóm.',
 ]

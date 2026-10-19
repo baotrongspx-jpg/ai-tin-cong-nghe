@@ -8,7 +8,7 @@ const tieuDe = Oswald({ subsets: ['latin', 'vietnamese'], weight: ['500', '600',
 
 export const metadata: Metadata = {
   title: 'Đội Làm Video Quảng Cáo',
-  description: 'Đội agent AI quay dựng video quảng cáo sản phẩm, có trưởng nhóm ra quyết định.',
+  description: 'Đội 6 agent AI viết câu lệnh cho dịch vụ tạo video trả phí, lồng tiếng và ghép video quảng cáo sản phẩm.',
   robots: { index: false, follow: false },
 }
 
@@ -27,13 +27,13 @@ export default function DoiVideo() {
           <p className="dv-nhan-nho">Bảng phân vai · Đoàn làm phim AI</p>
           <h1 className={tieuDe.className}>Đội làm video quảng cáo sản phẩm</h1>
           <p className="dv-mo-ta">
-            {THANH_VIEN.length} tổ chuyên môn và một trưởng nhóm ra quyết định. Mỗi tổ có trưởng tổ, thành viên và kiểm duyệt riêng. Tay nghề của
-            mọi thành viên được tuyển từ các kho mã nguồn mở trên GitHub.
+            {THANH_VIEN.length} thành viên và một đội trưởng ra quyết định. Đội viết câu lệnh cho dịch vụ AI tạo video, mỗi đoạn tối đa 10 giây,
+            rồi lồng tiếng và ghép các đoạn thành video hoàn chỉnh. Tay nghề của mọi thành viên được tuyển từ các kho mã nguồn mở trên GitHub.
           </p>
           <div className="dv-so">
             <span><b>{daTuyen}</b> đã tuyển</span>
-            <span><b>{THANH_VIEN.length - daTuyen}</b> chờ cài công cụ</span>
-            <span><b>{THANH_VIEN.length * 3 + 1}</b> agent</span>
+            {THANH_VIEN.length > daTuyen && <span><b>{THANH_VIEN.length - daTuyen}</b> chờ cài công cụ</span>}
+            <span><b>{THANH_VIEN.length + 1}</b> agent</span>
           </div>
           <p className="dv-nhan-nho dv-td-sang-tien-do">
             <Link href="/doi-video/tien-do" className="dv-td-lien-ket">Xem tiến độ đội đang làm →</Link>
@@ -53,8 +53,8 @@ export default function DoiVideo() {
         </section>
 
         <section aria-labelledby="thanh-vien">
-          <h2 id="thanh-vien" className={`dv-muc ${tieuDe.className}`}>Các tổ</h2>
-          <p className="dv-giai">Trưởng tổ viết phiếu giao việc. Thành viên làm. Kiểm duyệt của tổ soát theo đúng chuyên môn. Trưởng tổ quyết định duyệt, trả về sửa, hay báo lên trưởng nhóm.</p>
+          <h2 id="thanh-vien" className={`dv-muc ${tieuDe.className}`}>Thành viên</h2>
+          <p className="dv-giai">Đội trưởng giao việc thẳng cho từng thành viên. Kiểm duyệt chung soát mọi bài bằng công cụ trên máy trước. Mỗi bài bị trả về tối đa một lần.</p>
           <div className="dv-luoi">
             {THANH_VIEN.map((t) => (
               <article key={t.ten} className="dv-the">
@@ -63,7 +63,6 @@ export default function DoiVideo() {
                   <span className={`dv-chip dv-${t.trangThai}`}>{NHAN[t.trangThai]}</span>
                 </div>
                 <code>{t.ten}</code>
-                <p className="dv-to">Tổ: <span>truong-{t.ten}</span> · <span>kd-{t.ten}</span></p>
                 <p>{t.viec}</p>
                 <p className="dv-nguon">
                   {t.linkNguon ? (
@@ -87,7 +86,7 @@ export default function DoiVideo() {
                 <div>
                   <h3>
                     {b.buoc}
-                    {b.quyetDinh && <em>Trưởng nhóm quyết</em>}
+                    {b.quyetDinh && <em>Đội trưởng quyết</em>}
                   </h3>
                   <p className="dv-ai">{b.ai}</p>
                   <p>{b.chiTiet}</p>

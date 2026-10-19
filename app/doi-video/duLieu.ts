@@ -1,5 +1,6 @@
 // Dữ liệu đội agent làm video quảng cáo sản phẩm.
 // Thư mục làm việc của đội trên máy: Desktop/doi-video-quang-cao
+// Cơ cấu từ 19/10/2026: 6 agent (đội trưởng + 5 thành viên). Video tạo bằng dịch vụ AI trả phí, mỗi đoạn tối đa 10 giây.
 
 export type TrangThai = 'da-tuyen' | 'dang-soan' | 'can-cai'
 
@@ -14,89 +15,25 @@ export type ThanhVien = {
 }
 
 export const TRUONG_NHOM = {
-  vai: 'Trưởng nhóm · Đạo diễn sản xuất',
-  ten: 'truong-nhom',
+  vai: 'Đội trưởng · Đạo diễn sản xuất',
+  ten: 'doi-truong',
   viec:
-    'Không đi theo quy trình cố định. Với mỗi đơn hàng, trưởng nhóm tự chia việc, tự ghép người có chức năng khớp với từng việc, và gọi tuyển dụng khi đội thiếu người. Mọi quyết định đều ghi lý do vào sổ.',
+    'Nhận lệnh của chủ, tự chia việc và giao thẳng cho từng thành viên, không qua tổ trưởng. Mọi quyết định đều ghi lý do vào sổ và báo tiến độ lên trang trực tiếp.',
   quyen: [
-    'Tự lập kế hoạch và giao việc cho từng tổ',
-    'Quyết định khi trưởng tổ báo lên',
-    'Chọn ứng viên do tuyển dụng tìm về, thay người làm kém hai lần',
-    'Chốt thông điệp chính sau khi đọc báo cáo nghiên cứu',
-    'Chọn 1 trong 3 phương án kịch bản',
-    'Chọn đường làm: quay thật hay đồ họa chuyển động',
-    'Trả bản dựng về sửa nếu kiểm duyệt báo lỗi',
-    'Duyệt bản cuối trước khi giao cho bạn',
+    'Tự lập kế hoạch và giao việc cho từng thành viên',
+    'Chốt thông điệp chính và chọn phương án kịch bản',
+    'Chọn ứng viên do tuyển dụng tìm về, trình chủ duyệt trước khi cài',
+    'Trả bài về sửa khi kiểm duyệt báo lỗi, mỗi bài tối đa một lần',
+    'Duyệt bộ câu lệnh và video ghép cuối trước khi giao cho chủ',
   ],
 }
 
 export const THANH_VIEN: ThanhVien[] = [
   {
-    vai: 'Tuyển dụng',
-    ten: 'tuyen-dung',
-    viec: 'Lên GitHub tìm agent và kỹ năng đúng chức năng, chấm điểm, soát an toàn, nộp 3 ứng viên cho trưởng nhóm chọn, rồi cài.',
-    nguon: 'Viết cho đội. Tìm trong VoltAgent, wshobson/agents, marketingskills, anthropics/skills và GitHub.',
-    trangThai: 'da-tuyen',
-  },
-  {
-    vai: 'Nghiên cứu thị trường',
-    ten: 'market-researcher',
-    viec: 'Tìm hiểu khách hàng mục tiêu, nỗi đau và lý do họ mua sản phẩm.',
-    nguon: 'VoltAgent/awesome-claude-code-subagents',
-    linkNguon: 'https://github.com/VoltAgent/awesome-claude-code-subagents',
-    giayPhep: 'MIT',
-    trangThai: 'da-tuyen',
-  },
-  {
-    vai: 'Phân tích đối thủ',
-    ten: 'competitive-analyst',
-    viec: 'Xem đối thủ đang quảng cáo thế nào, chỗ nào mình làm khác được.',
-    nguon: 'VoltAgent/awesome-claude-code-subagents',
-    linkNguon: 'https://github.com/VoltAgent/awesome-claude-code-subagents',
-    giayPhep: 'MIT',
-    trangThai: 'da-tuyen',
-  },
-  {
-    vai: 'Bắt xu hướng',
-    ten: 'trend-analyst',
-    viec: 'Tìm kiểu video, nhạc và cách mở đầu đang được xem nhiều trên TikTok, Reels.',
-    nguon: 'VoltAgent/awesome-claude-code-subagents',
-    linkNguon: 'https://github.com/VoltAgent/awesome-claude-code-subagents',
-    giayPhep: 'MIT',
-    trangThai: 'da-tuyen',
-  },
-  {
-    vai: 'Chuyên gia nội dung',
-    ten: 'content-marketer',
-    viec: 'Viết chú thích bài đăng, hashtag và kế hoạch đăng video.',
-    nguon: 'VoltAgent/awesome-claude-code-subagents',
-    linkNguon: 'https://github.com/VoltAgent/awesome-claude-code-subagents',
-    giayPhep: 'MIT',
-    trangThai: 'da-tuyen',
-  },
-  {
-    vai: 'Người viết lời bán hàng',
-    ten: 'landing-page-copywriter',
-    viec: 'Viết câu mở đầu giữ chân người xem và lời kêu gọi mua hàng.',
-    nguon: 'VoltAgent/awesome-claude-code-subagents',
-    linkNguon: 'https://github.com/VoltAgent/awesome-claude-code-subagents',
-    giayPhep: 'MIT',
-    trangThai: 'da-tuyen',
-  },
-  {
-    vai: 'Biên kịch quảng cáo',
+    vai: 'Biên kịch · Câu lệnh video AI',
     ten: 'bien-kich',
-    viec: 'Viết 3 phương án kịch bản: 3 giây đầu, lời thoại, chữ trên hình, kêu gọi mua.',
+    viec: 'Viết kịch bản chia thành từng đoạn 10 giây. Mỗi đoạn có một bộ câu lệnh tiếng Anh để dán vào Kling, Hailuo, Runway hoặc Veo. Mọi đoạn chép chung một bảng gốc để nhân vật, sản phẩm và màu sắc giống nhau.',
     nguon: 'Kỹ năng ad-creative, copywriting, marketing-psychology',
-    linkNguon: 'https://github.com/coreyhaines31/marketingskills',
-    giayPhep: 'MIT',
-    trangThai: 'da-tuyen',
-  },
-  {
-    vai: 'Đạo diễn hình ảnh',
-    ten: 'dao-dien-quay',
-    viec: 'Lên bảng phân cảnh và danh sách cảnh quay bằng điện thoại: góc máy, ánh sáng, đạo cụ.',
-    nguon: 'Kỹ năng video, social',
     linkNguon: 'https://github.com/coreyhaines31/marketingskills',
     giayPhep: 'MIT',
     trangThai: 'da-tuyen',
@@ -104,54 +41,52 @@ export const THANH_VIEN: ThanhVien[] = [
   {
     vai: 'Lồng tiếng tiếng Việt',
     ten: 'long-tieng',
-    viec: 'Đọc lời thoại thành từng file giọng nói, đo thời lượng từng câu để khớp hình. Giọng HoaiMy (nữ) và NamMinh (nam).',
+    viec: 'Đọc lời thoại của từng đoạn thành file giọng nói, đo thời lượng để vừa 10 giây. Giọng HoaiMy (nữ) và NamMinh (nam).',
     nguon: 'Do agent tuyển dụng tìm về: kỹ năng ai-voiceover-edge-tts, 73/100 điểm',
     linkNguon: 'https://github.com/xianyu110/ecommerce-video-skills',
     giayPhep: 'MIT',
-    trangThai: 'can-cai',
+    trangThai: 'da-tuyen',
   },
   {
     vai: 'Dựng phim',
     ten: 'dung-phim',
-    viec: 'Cắt ghép cảnh quay, chèn phụ đề, nhạc, logo, xuất bản dọc 9:16 cho TikTok và Reels.',
-    nguon: 'Kỹ năng ffmpeg-skill · 42 công cụ dựng chạy trên máy',
+    viec: 'Ghép các đoạn 10 giây chủ tải về, nối chuyển cảnh, chèn lồng tiếng, nhạc, chữ và logo, xuất bản dọc 9:16 cho TikTok và Reels. Kiêm chỉ chủ chụp ảnh sản phẩm làm ảnh tham chiếu.',
+    nguon: 'Kỹ năng ffmpeg-skill và video-shotcraft, chạy trên máy',
     linkNguon: 'https://github.com/kajisho5/ffmpeg-skill',
-    giayPhep: 'MIT',
-    trangThai: 'can-cai',
-  },
-  {
-    vai: 'Đồ họa chuyển động',
-    ten: 'dong-hoa',
-    viec: 'Làm video sản phẩm từ ảnh có sẵn: chuyển động máy quay, chữ chạy, nhạc theo nhịp.',
-    nguon: 'Kỹ năng video-shotcraft · 124 mẫu cảnh quay',
-    linkNguon: 'https://github.com/Vincentwei1021/video-shotcraft',
-    giayPhep: 'Apache-2.0',
+    giayPhep: 'MIT · Apache-2.0',
     trangThai: 'da-tuyen',
   },
   {
-    vai: 'Kiểm duyệt quảng cáo',
+    vai: 'Tuyển dụng',
+    ten: 'tuyen-dung',
+    viec: 'Lên GitHub tìm agent và kỹ năng đúng chức năng khi đội cần, chấm điểm, soát an toàn, kiểm giấy phép, rồi trình chủ duyệt trước khi cài.',
+    nguon: 'Viết cho đội. Tìm trong VoltAgent, wshobson/agents, marketingskills, anthropics/skills và GitHub.',
+    trangThai: 'da-tuyen',
+  },
+  {
+    vai: 'Kiểm duyệt chung',
     ten: 'kiem-duyet',
-    viec: 'Soát lỗi chính tả, câu chữ quá đà, quy định quảng cáo Việt Nam và luật của Facebook, TikTok.',
-    nguon: 'Kỹ năng copy-editing, kèm luật quảng cáo Việt Nam',
-    linkNguon: 'https://github.com/coreyhaines31/marketingskills',
+    viec: 'Một người soát cho cả đội. Chạy công cụ soát trên máy trước, không tốn token: từ cấm, số liệu ngoài đơn, tốc độ thoại, số chữ trên màn hình, bảng gốc chép đúng. Chỉ dùng Claude cho phần cần hiểu nghĩa.',
+    nguon: 'Công cụ soat-cau-lenh và Vale (MIT), kèm luật quảng cáo Việt Nam',
+    linkNguon: 'https://github.com/errata-ai/vale',
     giayPhep: 'MIT',
     trangThai: 'da-tuyen',
   },
 ]
 
 export const QUY_TRINH = [
-  { buoc: 'Nhận đơn', ai: 'Trưởng nhóm', chiTiet: 'Bạn cho biết sản phẩm, nơi đăng, độ dài, đã có cảnh quay hay chỉ có ảnh.', quyetDinh: false },
-  { buoc: 'Lập kế hoạch', ai: 'Trưởng nhóm', chiTiet: 'Chia đơn hàng thành việc nhỏ. Việc nào chưa có người làm thì gọi tuyển dụng.', quyetDinh: true },
-  { buoc: 'Nghiên cứu', ai: 'Nghiên cứu · Đối thủ · Xu hướng', chiTiet: 'Ba agent làm cùng lúc rồi nộp báo cáo.', quyetDinh: false },
-  { buoc: 'Chốt thông điệp', ai: 'Trưởng nhóm', chiTiet: 'Chọn một điều duy nhất video phải nói được.', quyetDinh: true },
-  { buoc: 'Viết kịch bản', ai: 'Biên kịch · Lời bán hàng', chiTiet: 'Ba phương án. Trưởng nhóm chọn một, bạn duyệt.', quyetDinh: true },
-  { buoc: 'Lên cảnh quay', ai: 'Đạo diễn hình ảnh', chiTiet: 'Danh sách cảnh để bạn tự quay bằng điện thoại. Nếu chỉ có ảnh thì chuyển sang đồ họa.', quyetDinh: true },
-  { buoc: 'Dựng', ai: 'Lồng tiếng · Dựng phim · Đồ họa', chiTiet: 'Ra bản dựng có giọng đọc, phụ đề, nhạc, đúng khung hình nơi đăng.', quyetDinh: false },
-  { buoc: 'Kiểm duyệt', ai: 'Kiểm duyệt', chiTiet: 'Báo lỗi. Có lỗi thì trưởng nhóm trả về bước dựng.', quyetDinh: false },
-  { buoc: 'Duyệt cuối', ai: 'Trưởng nhóm', chiTiet: 'Giao video và chú thích bài đăng cho bạn.', quyetDinh: true },
+  { buoc: 'Nhận đơn', ai: 'Đội trưởng', chiTiet: 'Chủ cho biết sản phẩm, nơi đăng, số đoạn 10 giây và gửi ảnh sản phẩm nếu có.', quyetDinh: false },
+  { buoc: 'Chốt thông điệp', ai: 'Đội trưởng', chiTiet: 'Chọn một điều duy nhất video phải nói được.', quyetDinh: true },
+  { buoc: 'Viết câu lệnh', ai: 'Biên kịch', chiTiet: 'Kịch bản chia đoạn 10 giây, mỗi đoạn một bộ câu lệnh, chung một bảng gốc.', quyetDinh: false },
+  { buoc: 'Soát', ai: 'Kiểm duyệt chung', chiTiet: 'Công cụ soát chạy trước. Có lỗi thì trả về biên kịch, tối đa một lần.', quyetDinh: false },
+  { buoc: 'Duyệt câu lệnh', ai: 'Đội trưởng', chiTiet: 'Giao bộ câu lệnh và hướng dẫn bấm từng bước cho chủ.', quyetDinh: true },
+  { buoc: 'Tạo video', ai: 'Chủ', chiTiet: 'Dán câu lệnh vào dịch vụ AI trả phí, tải từng đoạn 10 giây về thư mục của dự án.', quyetDinh: false },
+  { buoc: 'Lồng tiếng và ghép', ai: 'Lồng tiếng · Dựng phim', chiTiet: 'Đọc lời thoại, ghép các đoạn, chèn chữ, nhạc, logo, xuất bản dọc 9:16.', quyetDinh: false },
+  { buoc: 'Duyệt cuối', ai: 'Đội trưởng', chiTiet: 'Giao video hoàn chỉnh cho chủ tự đăng.', quyetDinh: true },
 ]
 
 export const VIEC_CON_LAI = [
-  'Cài FFmpeg và Python 3 trên máy. Hai người dựng phim và lồng tiếng cần công cụ này. Bước cài đang chờ bạn đồng ý.',
-  'Làm thử video đầu tiên: mở thư mục doi-video-quang-cao trong VS Code và gõ đơn hàng cho trưởng nhóm.',
+  'Duyệt kỹ năng giữ đồng nhất câu lệnh cho biên kịch. Ứng viên hạng 1 là DirectorSKILL (MIT, 86 điểm), chưa cài.',
+  'Chọn ngôn ngữ câu lệnh cho Kling (tiếng Anh hay tiếng Trung), và cách dùng Veo vì Veo chỉ tạo tối đa 8 giây.',
+  'Làm thử video đầu tiên với một sản phẩm thật.',
 ]

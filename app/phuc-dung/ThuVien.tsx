@@ -27,7 +27,7 @@ async function docMuc(thu: FileSystemDirectoryHandle): Promise<MucVideo> {
     let soDoan = 0
     let byte = 0
     for await (const h of (thu as unknown as { values(): AsyncIterable<FileSystemHandle> }).values())
-      if (h.kind === 'file' && /^doan_\d+\.js$/.test(h.name)) {
+      if (h.kind === 'file' && /^doan_\d+\.m?js$/.test(h.name)) {
         soDoan++
         byte += (await (h as FileSystemFileHandle).getFile()).size
       }

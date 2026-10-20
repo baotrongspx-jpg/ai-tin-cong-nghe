@@ -142,7 +142,7 @@ export default function MaHoaJs({ thuMuc, onDoiThuMuc, onDaGhi, onXong }: {
     // Kiểu TypeScript chưa có keys() của thư mục
     const tenCu: string[] = []
     for await (const t of (thuMuc as unknown as { keys(): AsyncIterable<string> }).keys()) tenCu.push(t)
-    const soCu = tenCu.filter((t) => /^doan_\d+\.js$/.test(t)).map((t) => Number(t.slice(5, 8))).sort((a, b) => a - b)
+    const soCu = tenCu.filter((t) => /^doan_\d+\.m?js$/.test(t)).map((t) => Number(t.slice(5, 8))).sort((a, b) => a - b)
     // Lần trước dừng giữa chừng (chưa có danh_sach.js, hoặc có nhưng ghi "chua_xong") → hỏi làm tiếp
     let xongCu = false
     if (tenCu.includes('danh_sach.js')) {
@@ -156,7 +156,7 @@ export default function MaHoaJs({ thuMuc, onDoiThuMuc, onDaGhi, onXong }: {
       !xongCu &&
       confirm(`Thư mục "${ten}" đã có ${soDaCo} đoạn từ lần trước (dừng giữa chừng).\n\nOK = làm tiếp từ đoạn ${soDaCo + 1}\nHủy = làm lại từ đầu`)
     const batDauDoan = lamTiep ? soDaCo : 0
-    for (const t of tenCu) if (/^doan_\d+\.js$/.test(t) && Number(t.slice(5, 8)) > batDauDoan) await thuMuc.removeEntry(t)
+    for (const t of tenCu) if (/^doan_\d+\.m?js$/.test(t) && Number(t.slice(5, 8)) > batDauDoan) await thuMuc.removeEntry(t)
 
     setTienDo('Đang tách âm thanh (video dài sẽ mất chút thời gian)…')
     let am: AudioBuffer | null = null
@@ -225,12 +225,28 @@ export default function MaHoaJs({ thuMuc, onDoiThuMuc, onDaGhi, onXong }: {
         const phan = [`VIDEO_CODE.add(${dau.slice(0, -1)}, "frames": [`]
         frames.forEach((b, i) => phan.push(`${i ? ', ' : ''}"${b}"`))
         phan.push(']});\n')
-        await ghiTep(thuMuc, ten, phan)
+        // Edge/Chrome đôi khi chặn ghi tệp .js lớn ("security policy") → thử lại, vẫn bị chặn thì lưu đuôi .mjs
+        const biChan = (e: unknown) => /security/i.test(String((e as Error)?.message ?? e))
+        let tenTep = ten
+        try {
+          await ghiTep(thuMuc, ten, phan)
+        } catch (e) {
+          if (!biChan(e)) throw e
+          try {
+            await ghiTep(thuMuc, ten, phan)
+          } catch (e2) {
+            if (!biChan(e2)) throw e2
+            await thuMuc.removeEntry(ten).catch(() => {})
+            tenTep = ten.replace(/\.js$/, '.mjs')
+            await ghiTep(thuMuc, tenTep, phan)
+            ghiNhatKy(`Trình duyệt chặn tệp ${ten} → đã lưu thành ${tenTep} (vẫn là code JS, đọc bình thường)`)
+          }
+        }
         const mb = phan.reduce((s, p) => s + p.length, 0) / 1_048_576
         tongMB += mb
-        daGhi.push({ file: ten, segment: so, start_sec: +bd.toFixed(4), end_sec: +kt.toFixed(4), frame_count: frames.length, size_mb: +mb.toFixed(2) })
+        daGhi.push({ file: tenTep, segment: so, start_sec: +bd.toFixed(4), end_sec: +kt.toFixed(4), frame_count: frames.length, size_mb: +mb.toFixed(2) })
         khungDau += frames.length
-        ghiNhatKy(`${ten}  ${mmss(bd)} → ${mmss(kt)}  ${frames.length} khung hình  ${mb.toFixed(1)} MB  (${so}/${tong})`)
+        ghiNhatKy(`${tenTep}  ${mmss(bd)} → ${mmss(kt)}  ${frames.length} khung hình  ${mb.toFixed(1)} MB  (${so}/${tong})`)
       }).catch((e) => {
         // Ghi lỗi (đầy ổ, mất quyền…) → dừng ngay và báo, không chạy tiếp vô ích
         loiGhi = new Error(`Không ghi được đoạn ${so}: ${(e as Error).message}`)
@@ -321,7 +337,8 @@ export default function MaHoaJs({ thuMuc, onDoiThuMuc, onDaGhi, onXong }: {
     for (let so = 1; so <= batDauDoan; so++) {
       const bd = (so - 1) * DO_DAI
       const kt = Math.min(so * DO_DAI, v.duration)
-      const tepCu = await (await thuMuc.getFileHandle(`doan_${String(so).padStart(3, '0')}.js`)).getFile()
+      const goc3 = `doan_${String(so).padStart(3, '0')}`
+      const tepCu = await (await thuMuc.getFileHandle(`${goc3}.js`).catch(() => thuMuc.getFileHandle(`${goc3}.mjs`))).getFile()
       const mb = tepCu.size / 1_048_576
       tongMB += mb
       daGhi.push({ file: tepCu.name, segment: so, start_sec: +bd.toFixed(4), end_sec: +kt.toFixed(4), frame_count: Math.round((kt - bd) * fps), size_mb: +mb.toFixed(2) })

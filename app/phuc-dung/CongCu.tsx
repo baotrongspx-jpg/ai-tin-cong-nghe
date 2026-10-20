@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
+import { docAnh, luuAnh } from './khoAnh'
 import MaHoaJs from './MaHoaJs'
 import { type Canh, chuanHoa, type DuAn, DU_AN_TRONG, ghepCauLenh, type Muc, type NhanDang } from './ghep'
 
@@ -150,6 +151,17 @@ function TrangCongCu({ nguonMaHoa }: { nguonMaHoa: NguonJs | null }) {
   const [tuGiay, setTuGiay] = useState(0)
   const [soDoan, setSoDoan] = useState(8)
   const [khung, setKhung] = useState<Khung[]>([])
+  // Ảnh khung hình lưu trong IndexedDB → tải lại trang vẫn còn ảnh mẫu
+  const [daNapAnh, setDaNapAnh] = useState(false)
+  useEffect(() => {
+    docAnh<Khung[]>('khung').then((ds) => {
+      if (ds?.length) setKhung((hien) => (hien.length ? hien : ds))
+      setDaNapAnh(true)
+    })
+  }, [])
+  useEffect(() => {
+    if (daNapAnh) luuAnh('khung', khung)
+  }, [khung, daNapAnh])
   const [tienDo, setTienDo] = useState('')
   const [duAn, setDuAn] = useState<DuAn>(docLuu)
 
@@ -614,6 +626,16 @@ function DanhSachCauLenh({ duAn, anh }: { duAn: DuAn; anh: Record<string, string
   const [daChep, setDaChep] = useState(-1)
   // Khung cuối video Veo của từng cảnh (theo số cảnh) → ảnh bắt đầu cho cảnh kế tiếp
   const [khungCuoi, setKhungCuoi] = useState<Record<number, { url: string; ten: string }>>({})
+  const [daNapKc, setDaNapKc] = useState(false)
+  useEffect(() => {
+    docAnh<Record<number, { url: string; ten: string }>>('khung_cuoi').then((kc) => {
+      if (kc) setKhungCuoi((hien) => ({ ...kc, ...hien }))
+      setDaNapKc(true)
+    })
+  }, [])
+  useEffect(() => {
+    if (daNapKc) luuAnh('khung_cuoi', khungCuoi)
+  }, [khungCuoi, daNapKc])
   const [dangLay, setDangLay] = useState(0)
   if (!ds.length) return <p className="text-sm text-slate-500">Chưa có cảnh nào. Làm bước 2 trước.</p>
 

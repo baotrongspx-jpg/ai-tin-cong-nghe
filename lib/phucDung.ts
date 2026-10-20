@@ -66,6 +66,9 @@ This is a RECONSTRUCTION LOCK. Rules:
   phrases, used as the starting basis of the next shot: character (pose, position, gaze, what is held, visible dirt or
   changes), scene (what changed in the place), props (where each prop is and in what state), action (what was just
   finished / is about to continue), camera (shot size, angle, height, distance), lighting (light and time of day).
+- In khung_dau, khung_cuoi, hanh_dong, dien_bien and trang_thai refer to characters, props and places ONLY by their code
+  (e.g. "A", "X1", "B1") and describe pose, position and action; never repeat their appearance (clothes, colours, hair):
+  that is already in nhan_dang and would only make the prompt longer.
 - Never redesign a character, never change face, hair, clothing or build, never change the setting, time of day,
   light or visual style, never add or remove props, unless the original frames really show such a change.
 - If something cannot be seen clearly, write [UNCERTAIN] for that detail instead of inventing it.

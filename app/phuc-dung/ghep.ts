@@ -46,23 +46,28 @@ export function ghepCauLenh({ nhan_dang: nd, canh }: DuAn): CauLenh[] {
   return canh.map((c, i) => {
     const loi: string[] = []
     const boiCanh = c.boi_canh ? [c.boi_canh] : []
-    const phan = [`STYLE: ${nd.phong_cach.trim()}`]
+    // Mỗi luật chỉ nói MỘT lần, đặt ngay trong khối nó thuộc về (không còn khối LOCK RULES lặp lại)
+    const phan = [`STYLE (keep the same visual style, colour grading, light and time of day throughout): ${nd.phong_cach.trim()}`]
     // 1–2. CHARACTER LOCK / PROP LOCK / SCENE LOCK: chép nguyên văn từ bộ nhận dạng
     if (c.nhan_vat.length)
       phan.push(
-        'CHARACTER LOCK (identical in every shot; never change face, hair, skin, body, clothing, colours, footwear or accessories):\n' +
+        'CHARACTER LOCK (one single identical character throughout: same face, skin, proportions, height, build, hair, ' +
+          'clothing, colours, footwear, accessories and age; no face morphing; no extra people):\n' +
           khoi(nd.nhan_vat, c.nhan_vat, loi, 'nhân vật'),
       )
     if (c.do_vat.length)
-      phan.push('PROP LOCK (identical in every shot; never add or remove props):\n' + khoi(nd.do_vat, c.do_vat, loi, 'đồ vật'))
+      phan.push('PROP LOCK (identical in every shot; never add, remove or swap props):\n' + khoi(nd.do_vat, c.do_vat, loi, 'đồ vật'))
     if (boiCanh.length)
       phan.push(
-        'SCENE LOCK (same place, layout, fixed objects and their positions, light, time of day and weather):\n' +
+        'SCENE LOCK (a fixed space that is never rebuilt: same layout, architecture, fixed objects and their positions, ' +
+          'textures, colours, light, time of day and weather; add or remove nothing):\n' +
           khoi(nd.boi_canh, boiCanh, loi, 'bối cảnh'),
       )
-    // 4. CONTINUITY STATE: trạng thái cuối của cảnh trước là điểm xuất phát của cảnh này
+    // 4. CONTINUITY STATE: trạng thái cuối của cảnh trước. Nhân vật / hành động / bối cảnh lúc đó chính là START của
+    // cảnh này (tả từ ảnh đầu) nên chỉ giữ phần START không nói: đạo cụ, máy quay, ánh sáng
     const tt = i > 0 && c.noi_tiep ? canh[i - 1].trang_thai : undefined
-    const dongTt = KHOA_TRANG_THAI.filter((k) => tt?.[k]?.trim()).map((k) => `- ${k.toUpperCase()}_STATE: ${tt![k]!.trim()}`)
+    const khoaTt = c.khung_dau?.trim() ? (['props', 'camera', 'lighting'] as const) : KHOA_TRANG_THAI
+    const dongTt = khoaTt.filter((k) => tt?.[k]?.trim()).map((k) => `- ${k.toUpperCase()}_STATE: ${tt![k]!.trim()}`)
     if (dongTt.length) phan.push('CONTINUITY STATE (end of the previous shot; this shot starts from it):\n' + dongTt.join('\n'))
     // 3. ACTION LOCK: đầu → diễn biến → cuối. Cảnh tạo sẵn chưa có chữ → tả chung theo 2 ảnh
     const moc = (c.dien_bien ?? []).filter((m) => m.mo_ta.trim())
@@ -97,27 +102,22 @@ export function ghepCauLenh({ nhan_dang: nd, canh }: DuAn): CauLenh[] {
           '5.6–7.2 s complete the action and approach FRAME B; 7.2–8 s settle and match FRAME B exactly (pose, position, ' +
           'hands, feet, props, gaze, composition, camera). Do not end before reaching FRAME B; FRAME B must look like the ' +
           'direct result of the action, not an image pasted on at the end.',
-        'CAMERA LOCK: same lens, focal length, angle and camera position as the two frames; no arbitrary zoom, no rotation, ' +
-          'no switch to another shot, unless a camera move is clearly visible between the two frames or written in CAMERA.',
+        // Góc máy của cảnh và khóa máy quay chung một khối
+        `CAMERA: ${c.may_quay.trim() ? `${c.may_quay.trim().replace(/\.$/, '')}. ` : ''}Keep the same lens, focal length, angle ` +
+          'and camera position as the two frames; no arbitrary zoom, no rotation, no switch to another shot, unless that ' +
+          'camera move is clearly visible between the two frames or written here.',
       )
+    if (c.co_cat_canh && c.may_quay.trim()) phan.push(`CAMERA: ${c.may_quay.trim()}`)
     phan.push(
       'PHYSICS: real gravity, inertia, collisions and weight shifts; clothing and hair react to movement; correct shadows; ' +
         'props react when touched; no clipping, hands never pass through objects, feet never slide, bodies never deform.',
     )
-    if (c.may_quay.trim()) phan.push(`CAMERA: ${c.may_quay.trim()}`)
     if (nd.am_thanh.trim()) phan.push(`AUDIO: ${nd.am_thanh.trim()}`)
-    if (c.noi_tiep && i > 0 && !dongTt.length)
-      phan.push(
-        'CONTINUITY: this shot continues directly from the previous shot - same characters, same clothing, ' +
-          'same objects, same weather, same time of day, same colour grading.',
-      )
+    // Chưa có trạng thái của cảnh trước thì nhắc nối tiếp ngắn gọn (các khóa phía trên đã giữ nhân vật / bối cảnh)
+    if (c.noi_tiep && i > 0 && !dongTt.length) phan.push('CONTINUITY: this shot continues directly from the previous shot.')
     phan.push(
-      'LOCK RULES: one single, identical character throughout (same face, proportions, height, build, hair, clothes, ' +
-        'colours, accessories, age); no face morphing; no extra people beyond the reference. The setting is a fixed space ' +
-        '(architecture, walls, floor, doors, windows, furniture, trees, props, object positions, textures, colours, light) ' +
-        'and is never rebuilt; add or remove nothing; keep the visual style, lighting and time of day; do not invent a ' +
-        'different scene or change the action defined above. If the exact action is unclear, keep character and setting ' +
-        'unchanged and use minimal but plausible motion instead of inventing a big action.',
+      'DO NOT invent a different scene or change the action above. If the exact action is unclear, keep character and ' +
+        'setting unchanged and use minimal but plausible motion instead of inventing a big action.',
     )
     phan.push('No text, no subtitles, no logos, no brand names, no watermarks on screen.')
 

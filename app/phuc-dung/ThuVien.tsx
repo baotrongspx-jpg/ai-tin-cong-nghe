@@ -6,6 +6,16 @@ import { useEffect, useState } from 'react'
 
 type Quyen = { queryPermission(o: { mode: 'readwrite' }): Promise<PermissionState>; requestPermission(o: { mode: 'readwrite' }): Promise<PermissionState> }
 
+// Thư mục còn trên máy không (có thể đã bị xóa / đổi tên trong File Explorer)
+export async function conTonTai(h: FileSystemDirectoryHandle) {
+  try {
+    await (h as unknown as { keys(): AsyncIterator<string> }).keys().next()
+    return true
+  } catch {
+    return false
+  }
+}
+
 // xin = true chỉ được gọi trong lúc người dùng bấm nút (trình duyệt bắt buộc)
 export async function coQuyen(h: FileSystemDirectoryHandle, xin: boolean) {
   const q = h as unknown as Quyen
@@ -75,6 +85,7 @@ export default function ThuVien({ thuMuc, onDoiThuMuc, tenDang, lamMoi, onPhucDu
 }) {
   const [ds, setDs] = useState<MucVideo[] | null>(null)
   const [canQuyen, setCanQuyen] = useState(false)
+  const [mat, setMat] = useState(false) // thư mục lưu đã bị xóa / đổi tên
   const [dangXoa, setDangXoa] = useState('')
   const [loi, setLoi] = useState('')
 
@@ -84,7 +95,10 @@ export default function ThuVien({ thuMuc, onDoiThuMuc, tenDang, lamMoi, onPhucDu
     coQuyen(thuMuc, false).then(async (ok) => {
       if (huy) return
       setCanQuyen(!ok)
-      if (ok) setDs(await quet(thuMuc))
+      if (!ok) return
+      const con = await conTonTai(thuMuc)
+      setMat(!con)
+      if (con) setDs(await quet(thuMuc))
     })
     return () => {
       huy = true
@@ -101,7 +115,9 @@ export default function ThuVien({ thuMuc, onDoiThuMuc, tenDang, lamMoi, onPhucDu
   async function moLai() {
     if (thuMuc && (await coQuyen(thuMuc, true))) {
       setCanQuyen(false)
-      setDs(await quet(thuMuc))
+      const con = await conTonTai(thuMuc)
+      setMat(!con)
+      if (con) setDs(await quet(thuMuc))
     }
   }
 
@@ -148,6 +164,11 @@ export default function ThuVien({ thuMuc, onDoiThuMuc, tenDang, lamMoi, onPhucDu
         </p>
       ) : canQuyen ? (
         <button className="btn btn-fb btn-sm" onClick={moLai}>Mở danh sách video (cho phép trang xem thư mục {thuMuc.name})</button>
+      ) : mat ? (
+        <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
+          Thư mục lưu <b>{thuMuc.name}</b> không còn trên máy (đã bị xóa hoặc đổi tên). Bấm <b>Đổi thư mục lưu</b> và chọn thư mục
+          khác, vd <b>VIDEO_JS</b> ở ổ E.
+        </p>
       ) : !ds ? (
         <p className="text-sm text-slate-500">Đang đọc thư mục…</p>
       ) : ds[0]?.laGoc ? (

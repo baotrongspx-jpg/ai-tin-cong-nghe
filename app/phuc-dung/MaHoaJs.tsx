@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { coQuyen } from './ThuVien'
+import { conTonTai, coQuyen } from './ThuVien'
 
 // Chuyển video thành code JS ngay trên trình duyệt, cùng định dạng với VIDEO_JS_TOOL trên máy:
 // mỗi 8 giây = doan_XXX.js gọi VIDEO_CODE.add({ fps, audio: WAV base64, frames: [JPG base64] }),
@@ -112,6 +112,11 @@ export default function MaHoaJs({ thuMuc, onDoiThuMuc, onDaGhi, onXong }: {
     setKetQua(null)
     // Đã có thư mục lưu thì ghi luôn vào đó, chưa có (hoặc chưa được phép) thì hỏi
     let goc = thuMuc && (await coQuyen(thuMuc, true).catch(() => false)) ? thuMuc : null
+    // Thư mục lưu đã bị xóa / đổi tên ngoài trang → bỏ, hỏi chọn lại
+    if (goc && !(await conTonTai(goc))) {
+      ghiNhatKy(`Thư mục lưu "${goc.name}" không còn trên máy → chọn thư mục lưu mới.`)
+      goc = null
+    }
     if (!goc) {
       try {
         goc = await window.showDirectoryPicker({ mode: 'readwrite', id: 'video-js' })

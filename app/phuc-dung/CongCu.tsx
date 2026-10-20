@@ -184,6 +184,21 @@ function TrangCongCu({ nguonMaHoa }: { nguonMaHoa: NguonJs | null }) {
     }
   }, [nguon, thongTin])
 
+  async function moBangQuyen(e: React.MouseEvent) {
+    if (!window.showDirectoryPicker) return // để input chọn thư mục kiểu cũ tự mở
+    e.preventDefault()
+    try {
+      const h = await window.showDirectoryPicker({ mode: 'read', id: 'video-js' })
+      await h.getFileHandle('danh_sach.js').catch(() => {
+        throw new Error('Thư mục này không có danh_sach.js. Hãy chọn thư mục mang tên video do bước ① tạo ra.')
+      })
+      setTienDo('')
+      setNguonChon(nguonTuThuMuc(h))
+    } catch (e) {
+      if ((e as Error).name !== 'AbortError') setTienDo((e as Error).message)
+    }
+  }
+
   function moThuMucJs(ds: FileList | null) {
     if (!ds?.length) return
     const n = nguonTuDanhSachTep(ds)
@@ -273,12 +288,17 @@ function TrangCongCu({ nguonMaHoa }: { nguonMaHoa: NguonJs | null }) {
             Mã hóa video ở thẻ <b>①</b> xong thì trang tự chuyển sang đây và dùng luôn code đó. Đã có thư mục code JS từ trước thì mở nó ở dưới.
           </p>
         )}
-        <label className="btn btn-phu cursor-pointer">
+        {/* Chrome/Edge: hỏi quyền "xem tệp" (không có chữ "tải lên" gây hiểu nhầm); trình duyệt khác: chọn thư mục kiểu cũ */}
+        <label className="btn btn-phu cursor-pointer" onClick={moBangQuyen}>
           📂 Mở thư mục code JS
           <input type="file" className="hidden" multiple
             ref={(el) => el?.setAttribute('webkitdirectory', '')}
             onChange={(e) => moThuMucJs(e.target.files)} />
         </label>
+        <p className="mt-1 text-xs text-slate-500">
+          Chọn thư mục mang tên video (bên trong có danh_sach.js). Bảng chọn chỉ hiện thư mục, không hiện tệp: cứ bấm nút chọn.
+          Tệp chỉ được đọc trên máy, không gửi lên mạng.
+        </p>
         <details className="mt-3 text-sm text-slate-600">
           <summary className="cursor-pointer">Chưa mã hóa? Lấy khung hình thẳng từ video gốc</summary>
           <input type="file" accept="video/*" onChange={(e) => chonVideo(e.target.files?.[0])}

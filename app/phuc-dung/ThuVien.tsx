@@ -13,27 +13,34 @@ export async function coQuyen(h: FileSystemDirectoryHandle, xin: boolean) {
   return xin ? (await q.requestPermission({ mode: 'readwrite' })) === 'granted' : false
 }
 
-type MucVideo = { ten: string; h: FileSystemDirectoryHandle; video: string; giay: number; soDoan: number; mb: number }
+// laGoc: người dùng chọn thẳng thư mục của một video làm "thư mục lưu"
+type MucVideo = { ten: string; h: FileSystemDirectoryHandle; video: string; giay: number; soDoan: number; mb: number; laGoc?: boolean }
+
+async function docMuc(thu: FileSystemDirectoryHandle): Promise<MucVideo> {
+  const t = await (await (await thu.getFileHandle('danh_sach.js')).getFile()).text()
+  const info = JSON.parse(t.slice(t.indexOf('(') + 1, t.lastIndexOf(')')))
+  return {
+    ten: thu.name,
+    h: thu,
+    video: info.video,
+    giay: info.duration_sec,
+    soDoan: info.segments.length,
+    mb: info.segments.reduce((s: number, x: { size_mb: number }) => s + (x.size_mb || 0), 0),
+  }
+}
 
 const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`
 
 async function quet(goc: FileSystemDirectoryHandle): Promise<MucVideo[]> {
+  // Chọn nhầm thư mục của chính một video → vẫn hiện video đó
+  const chinhNo = await docMuc(goc).catch(() => null)
+  if (chinhNo) return [{ ...chinhNo, laGoc: true }]
   const ds: MucVideo[] = []
   const muc = (goc as unknown as { values(): AsyncIterable<FileSystemHandle> }).values()
   for await (const h of muc) {
     if (h.kind !== 'directory') continue
     try {
-      const thu = h as FileSystemDirectoryHandle
-      const t = await (await (await thu.getFileHandle('danh_sach.js')).getFile()).text()
-      const info = JSON.parse(t.slice(t.indexOf('(') + 1, t.lastIndexOf(')')))
-      ds.push({
-        ten: thu.name,
-        h: thu,
-        video: info.video,
-        giay: info.duration_sec,
-        soDoan: info.segments.length,
-        mb: info.segments.reduce((s: number, x: { size_mb: number }) => s + (x.size_mb || 0), 0),
-      })
+      ds.push(await docMuc(h as FileSystemDirectoryHandle))
     } catch {
       // thư mục không phải code JS của video → bỏ qua
     }
@@ -94,7 +101,14 @@ export default function ThuVien({ thuMuc, onDoiThuMuc, tenDang, lamMoi, onPhucDu
     setDangXoa(m.ten)
     try {
       if (!thuMuc || !(await coQuyen(thuMuc, true))) throw new Error('Chưa được phép sửa thư mục lưu.')
-      await thuMuc.removeEntry(m.ten, { recursive: true })
+      if (m.laGoc) {
+        // Không có thư mục cha để xóa giùm → tự xóa chính nó (Chrome/Edge có hàm remove)
+        const tuXoa = (m.h as unknown as { remove?: (o: { recursive: boolean }) => Promise<void> }).remove
+        if (!tuXoa) throw new Error('trình duyệt này không tự xóa được. Bấm "Đổi thư mục lưu", chọn thư mục cha (VIDEO_JS) rồi xóa.')
+        await tuXoa.call(m.h, { recursive: true })
+      } else {
+        await thuMuc.removeEntry(m.ten, { recursive: true })
+      }
       onDaXoa(m.ten)
       setDs((cu) => cu?.filter((x) => x.ten !== m.ten) ?? null)
     } catch (e) {
@@ -119,31 +133,52 @@ export default function ThuVien({ thuMuc, onDoiThuMuc, tenDang, lamMoi, onPhucDu
         <button className="btn btn-fb btn-sm" onClick={moLai}>Mở danh sách video (cho phép trang xem thư mục {thuMuc.name})</button>
       ) : !ds ? (
         <p className="text-sm text-slate-500">Đang đọc thư mục…</p>
+      ) : ds[0]?.laGoc ? (
+        <div>
+          <p className="mb-2 rounded-lg bg-amber-50 p-2 text-xs text-amber-800">
+            Bạn đang chọn thẳng thư mục của 1 video. Nên bấm <b>Đổi thư mục lưu</b> và chọn thư mục cha (vd <b>VIDEO_JS</b>) để thấy
+            mọi video và lưu video mới vào đó.
+          </p>
+          <DongVideo m={ds[0]} tenDang={tenDang} dangXoa={dangXoa} onPhucDung={onPhucDung} onXoa={xoa} />
+        </div>
       ) : !ds.length ? (
         <p className="text-sm text-slate-500">Thư mục {thuMuc.name} chưa có video nào.</p>
       ) : (
         <ul className="divide-y divide-slate-100">
           {ds.map((m) => (
-            <li key={m.ten} className="flex flex-wrap items-center gap-2 py-2.5">
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold text-slate-800" title={m.video}>
-                  {m.video}
-                  {m.ten === tenDang && <span className="chip ml-2 bg-violet-100 text-violet-800">🎬 Đang phục dựng</span>}
-                </p>
-                <p className="text-xs text-slate-500">
-                  {mmss(m.giay)} · {m.soDoan} tệp .js · {m.mb >= 1024 ? `${(m.mb / 1024).toFixed(1)} GB` : `${m.mb.toFixed(0)} MB`}
-                </p>
-              </div>
-              <button className="btn btn-phu btn-sm" onClick={() => onPhucDung(m.h)}>② Phục dựng video này</button>
-              <button className="btn btn-sm bg-red-50 text-red-700 ring-1 ring-red-200 hover:bg-red-100" disabled={!!dangXoa}
-                onClick={() => xoa(m)}>
-                {dangXoa === m.ten ? 'Đang xóa…' : '🗑 Xóa'}
-              </button>
+            <li key={m.ten}>
+              <DongVideo m={m} tenDang={tenDang} dangXoa={dangXoa} onPhucDung={onPhucDung} onXoa={xoa} />
             </li>
           ))}
         </ul>
       )}
       {loi && <p className="mt-2 text-sm font-medium text-red-600">{loi}</p>}
+    </div>
+  )
+}
+
+function DongVideo({ m, tenDang, dangXoa, onPhucDung, onXoa }: {
+  m: MucVideo
+  tenDang: string | null
+  dangXoa: string
+  onPhucDung: (h: FileSystemDirectoryHandle) => void
+  onXoa: (m: MucVideo) => void
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-2 py-2.5">
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-semibold text-slate-800" title={m.video}>
+          {m.video}
+          {m.ten === tenDang && <span className="chip ml-2 bg-violet-100 text-violet-800">🎬 Đang phục dựng</span>}
+        </p>
+        <p className="text-xs text-slate-500">
+          {mmss(m.giay)} · {m.soDoan} tệp .js · {m.mb >= 1024 ? `${(m.mb / 1024).toFixed(1)} GB` : `${m.mb.toFixed(0)} MB`}
+        </p>
+      </div>
+      <button className="btn btn-phu btn-sm" onClick={() => onPhucDung(m.h)}>② Phục dựng video này</button>
+      <button className="btn btn-sm bg-red-50 text-red-700 ring-1 ring-red-200 hover:bg-red-100" disabled={!!dangXoa} onClick={() => onXoa(m)}>
+        {dangXoa === m.ten ? 'Đang xóa…' : '🗑 Xóa'}
+      </button>
     </div>
   )
 }

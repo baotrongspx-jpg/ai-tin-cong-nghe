@@ -139,8 +139,23 @@ export default function MaHoaJs({ thuMuc, onDoiThuMuc, onDaGhi, onXong }: {
     const ten = slug(f.name)
     const thuMuc = await goc.getDirectoryHandle(ten, { create: true })
     // Kiểu TypeScript chưa có keys() của thư mục
-    const tenCu = (thuMuc as unknown as { keys(): AsyncIterable<string> }).keys()
-    for await (const t of tenCu) if (/^doan_\d+\.js$/.test(t)) await thuMuc.removeEntry(t)
+    const tenCu: string[] = []
+    for await (const t of (thuMuc as unknown as { keys(): AsyncIterable<string> }).keys()) tenCu.push(t)
+    const soCu = tenCu.filter((t) => /^doan_\d+\.js$/.test(t)).map((t) => Number(t.slice(5, 8))).sort((a, b) => a - b)
+    // Lần trước dừng giữa chừng (chưa có danh_sach.js, hoặc có nhưng ghi "chua_xong") → hỏi làm tiếp
+    let xongCu = false
+    if (tenCu.includes('danh_sach.js')) {
+      const t = await (await (await thuMuc.getFileHandle('danh_sach.js')).getFile()).text()
+      xongCu = !t.includes('"chua_xong":true')
+    }
+    let soDaCo = 0
+    while (soDaCo < soCu.length && soCu[soDaCo] === soDaCo + 1) soDaCo++ // các đoạn liền nhau từ 1
+    const lamTiep =
+      soDaCo > 0 &&
+      !xongCu &&
+      confirm(`Thư mục "${ten}" đã có ${soDaCo} đoạn từ lần trước (dừng giữa chừng).\n\nOK = làm tiếp từ đoạn ${soDaCo + 1}\nHủy = làm lại từ đầu`)
+    const batDauDoan = lamTiep ? soDaCo : 0
+    for (const t of tenCu) if (/^doan_\d+\.js$/.test(t) && Number(t.slice(5, 8)) > batDauDoan) await thuMuc.removeEntry(t)
 
     setTienDo('Đang tách âm thanh (video dài sẽ mất chút thời gian)…')
     let am: AudioBuffer | null = null
@@ -173,11 +188,13 @@ export default function MaHoaJs({ thuMuc, onDoiThuMuc, onDaGhi, onXong }: {
     const cho: KhungTho[] = []
     const moc: number[] = []
     let fps = 0
-    let doan = 0
-    let khungDau = 0
+    let doan = batDauDoan
+    let khungDau = -1 // tính khi đã biết fps (làm tiếp thì cộng cả các đoạn cũ)
     let tongMB = 0
     const daGhi: { file: string; segment: number; start_sec: number; end_sec: number; frame_count: number; size_mb: number }[] = []
     let hangGhi = Promise.resolve()
+    let loiGhi: Error | null = null
+    let xongPhat = () => {}
 
     // Tính số khung/giây từ thời điểm thật của các khung đầu tiên
     const doFps = () => {
@@ -191,6 +208,8 @@ export default function MaHoaJs({ thuMuc, onDoiThuMuc, onDaGhi, onXong }: {
       const kt = Math.min(so * DO_DAI, v.duration)
       const soKhung = Math.max(1, Math.round((kt - bd) * fps))
       hangGhi = hangGhi.then(async () => {
+        if (loiGhi) return
+        if (khungDau < 0) khungDau = batDauDoan * Math.round(DO_DAI * fps)
         // Khung bị trình duyệt bỏ qua → lấy khung gần nhất trước đó để giữ đúng nhịp thời gian
         const anh = await Promise.all(ds.map((k) => k.b64))
         const viTri = ds.map((k) => Math.round((k.t - bd) * fps))
@@ -211,6 +230,12 @@ export default function MaHoaJs({ thuMuc, onDoiThuMuc, onDaGhi, onXong }: {
         daGhi.push({ file: ten, segment: so, start_sec: +bd.toFixed(4), end_sec: +kt.toFixed(4), frame_count: frames.length, size_mb: +mb.toFixed(2) })
         khungDau += frames.length
         ghiNhatKy(`${ten}  ${mmss(bd)} → ${mmss(kt)}  ${frames.length} khung hình  ${mb.toFixed(1)} MB  (${so}/${tong})`)
+      }).catch((e) => {
+        // Ghi lỗi (đầy ổ, mất quyền…) → dừng ngay và báo, không chạy tiếp vô ích
+        loiGhi = new Error(`Không ghi được đoạn ${so}: ${(e as Error).message}`)
+        dung.current = true
+        v.pause()
+        xongPhat()
       })
     }
 
@@ -218,8 +243,28 @@ export default function MaHoaJs({ thuMuc, onDoiThuMuc, onDaGhi, onXong }: {
     const anTab = () => (document.hidden ? v.pause() : !dung.current && v.play())
     document.addEventListener('visibilitychange', anTab)
 
+    // Canh chừng: tab đang hiện mà quá 6 giây không có khung mới → đẩy video chạy tiếp; quá 60 giây → báo lỗi
+    let lanCuoi = Date.now()
+    let daDay = 0
+    const canh = setInterval(() => {
+      if (document.hidden || dung.current || v.ended) return void (lanCuoi = Date.now())
+      const im = Date.now() - lanCuoi
+      if (im > 60_000) {
+        loiGhi = new Error(`Video bị đứng ở ${mmss(v.currentTime)} hơn 1 phút (có thể tệp video lỗi ở đoạn này). Bấm Bắt đầu để làm tiếp.`)
+        dung.current = true
+        xongPhat()
+      } else if (im > 6000 && Date.now() - daDay > 6000) {
+        daDay = Date.now()
+        ghiNhatKy(`Video đứng ở ${mmss(v.currentTime)}, đang đẩy chạy tiếp…`)
+        v.currentTime = v.currentTime + 0.05
+        v.play().catch(() => {})
+      }
+    }, 2000)
+
     await new Promise<void>((ok, loi) => {
+      xongPhat = ok
       const moi = (_: number, meta: VideoFrameCallbackMetadata) => {
+        lanCuoi = Date.now()
         g.drawImage(v, 0, 0, rong, cao)
         const t = meta.mediaTime
         if (moc.length < 30) moc.push(t)
@@ -244,25 +289,41 @@ export default function MaHoaJs({ thuMuc, onDoiThuMuc, onDaGhi, onXong }: {
       v.play().catch(loi)
     })
     document.removeEventListener('visibilitychange', anTab)
+    clearInterval(canh)
+    v.pause()
 
     if (!fps) fps = doFps()
     // Các đoạn còn lại (cuối video)
     const conLai = [...new Set(cho.map((k) => Math.floor(k.t / DO_DAI) + 1))].sort((a, b) => a - b)
-    for (const so of conLai) ghiDoan(so, cho.filter((k) => Math.floor(k.t / DO_DAI) + 1 === so))
+    for (const so of conLai) if (so > batDauDoan) ghiDoan(so, cho.filter((k) => Math.floor(k.t / DO_DAI) + 1 === so))
     await hangGhi
+
+    // Các đoạn đã có từ lần trước: điền vào mục lục (số khung tính theo fps như lúc ghi)
+    for (let so = 1; so <= batDauDoan; so++) {
+      const bd = (so - 1) * DO_DAI
+      const kt = Math.min(so * DO_DAI, v.duration)
+      const tepCu = await (await thuMuc.getFileHandle(`doan_${String(so).padStart(3, '0')}.js`)).getFile()
+      const mb = tepCu.size / 1_048_576
+      tongMB += mb
+      daGhi.push({ file: tepCu.name, segment: so, start_sec: +bd.toFixed(4), end_sec: +kt.toFixed(4), frame_count: Math.round((kt - bd) * fps), size_mb: +mb.toFixed(2) })
+    }
+    if (khungDau < 0) khungDau = daGhi.reduce((s, d) => s + d.frame_count, 0)
+    const chuaXong = dung.current || !!loiGhi
 
     daGhi.sort((a, b) => a.segment - b.segment)
     const info = {
       video: f.name, width: rong, height: cao, fps, segment_sec: DO_DAI, total_frames: khungDau,
       duration_sec: +(khungDau / fps).toFixed(3), jpg_quality: Math.round(tuyChon.chatLuong * 100),
       created_at: new Date().toISOString().slice(0, 19), segments: daGhi,
+      ...(chuaXong ? { chua_xong: true } : {}),
     }
     await ghiTep(thuMuc, 'danh_sach.js', [`VIDEO_CODE.setInfo(${JSON.stringify(info)});\n`])
     await ghiTep(thuMuc, 'index.html', [await (await fetch('/video-js/player.html')).text()])
     setKetQua(thuMuc)
     onDaGhi?.()
+    if (loiGhi) throw loiGhi
     setTienDo(
-      `${dung.current ? 'Đã dừng giữa chừng' : 'Xong'}: ${daGhi.length} tệp .js, ${khungDau} khung hình, tổng ${tongMB.toFixed(0)} MB → thư mục "${ten}". ` +
+      `${chuaXong ? 'Đã dừng giữa chừng (bấm Bắt đầu lại với cùng video để làm tiếp)' : 'Xong'}: ${daGhi.length} tệp .js, ${khungDau} khung hình, tổng ${tongMB.toFixed(0)} MB → thư mục "${ten}". ` +
         'Mở index.html trong thư mục đó để xem video phát lại từ code.',
     )
   }

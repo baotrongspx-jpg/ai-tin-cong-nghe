@@ -15,12 +15,14 @@ export type Canh = {
   khung_cuoi?: string // AI tả đúng ảnh cuối
   co_cat_canh?: boolean // đoạn gốc có cắt cảnh: ảnh đầu và ảnh cuối khác góc máy
   trang_thai?: TrangThai // CONTINUITY STATE lúc cuối đoạn → điểm xuất phát của cảnh sau
+  dien_bien?: MocDienBien[] // diễn biến từng 2 giây giữa ảnh đầu và ảnh cuối
   may_quay: string
   noi_tiep: boolean
 }
 export type DuAn = { nhan_dang: NhanDang; canh: Canh[] }
 export const KHOA_TRANG_THAI = ['character', 'scene', 'props', 'action', 'camera', 'lighting'] as const
 export type TrangThai = Partial<Record<(typeof KHOA_TRANG_THAI)[number], string>>
+export type MocDienBien = { tu: number; den: number; mo_ta: string }
 
 export const DU_AN_TRONG: DuAn = {
   nhan_dang: { phong_cach: '', am_thanh: '', nhan_vat: [], boi_canh: [], do_vat: [] },
@@ -63,9 +65,13 @@ export function ghepCauLenh({ nhan_dang: nd, canh }: DuAn): CauLenh[] {
     const dongTt = KHOA_TRANG_THAI.filter((k) => tt?.[k]?.trim()).map((k) => `- ${k.toUpperCase()}_STATE: ${tt![k]!.trim()}`)
     if (dongTt.length) phan.push('CONTINUITY STATE (end of the previous shot; this shot starts from it):\n' + dongTt.join('\n'))
     // 3. ACTION LOCK: đầu → diễn biến → cuối. Cảnh tạo sẵn chưa có chữ → tả chung theo 2 ảnh
+    const moc = (c.dien_bien ?? []).filter((m) => m.mo_ta.trim())
     const hanhDong = [
       c.khung_dau?.trim() && `- START (first frame, 0 s): ${c.khung_dau.trim()}`,
-      `- ACTION: ${c.hanh_dong.trim() || 'Recreate exactly what happens between the provided first frame and last frame, with natural, continuous motion.'}`,
+      // Có diễn biến từng 2 giây thì ghi theo mốc giây; chưa có thì một câu tóm tắt
+      ...(moc.length
+        ? moc.map((m) => `- ${m.tu}–${m.den} s: ${m.mo_ta.trim()}`)
+        : [`- ACTION: ${c.hanh_dong.trim() || 'Recreate exactly what happens between the provided first frame and last frame, with natural, continuous motion.'}`]),
       c.khung_cuoi?.trim() && `- END (last frame, 8 s): ${c.khung_cuoi.trim()}`,
     ].filter(Boolean)
     phan.push('ACTION LOCK (8 seconds, in this exact order):\n' + hanhDong.join('\n'))
@@ -167,6 +173,11 @@ export function chuanHoa(x: unknown): DuAn {
           khung_dau: chuoi(c?.khung_dau),
           khung_cuoi: chuoi(c?.khung_cuoi),
           co_cat_canh: c?.co_cat_canh === true,
+          dien_bien: Array.isArray(c?.dien_bien)
+            ? c.dien_bien
+                .map((m: Record<string, unknown>) => ({ tu: Number(m?.tu) || 0, den: Number(m?.den) || 0, mo_ta: chuoi(m?.mo_ta) }))
+                .filter((m: MocDienBien) => m.mo_ta)
+            : [],
           trang_thai: Object.fromEntries(
             KHOA_TRANG_THAI.map((k) => [k, chuoi((c?.trang_thai as Record<string, unknown> | undefined)?.[k])]).filter(([, v]) => v),
           ) as TrangThai,

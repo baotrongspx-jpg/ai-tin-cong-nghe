@@ -13,7 +13,7 @@ const YeuCau = z.object({
   anh: z
     .array(
       z.object({
-        ten: z.string().regex(/^doan_\d{3}_(dau|giua|cuoi)$/),
+        ten: z.string().regex(/^doan_\d{3}_(dau|g2|giua|g6|cuoi)$/),
         doan: z.number().int().positive(),
         giay: z.number().nonnegative(),
         jpg: z.string().max(200_000),

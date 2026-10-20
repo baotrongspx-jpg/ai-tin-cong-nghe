@@ -63,6 +63,8 @@ function thuNho(url: string, rong: number): Promise<string> {
 
 const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`
 const tenKhung = (doan: number, loai: string) => `doan_${String(doan).padStart(3, '0')}_${loai}`
+// Ảnh lấy ở mỗi đoạn 8 giây: giây 0 (dau), 2, 4 (giua), 6, 8 (cuoi)
+const MOC_KHUNG = ['dau', 'g2', 'giua', 'g6', 'cuoi'] as const
 
 function taiVe(url: string, ten: string) {
   const a = document.createElement('a')
@@ -299,8 +301,10 @@ function TrangCongCu({ dang, nguon, onMoLai, onChonNguon }: {
     for (const [i, s] of chon.entries()) {
       setTienDo(`Đang đọc ${s.file} (${i + 1}/${chon.length})…`)
       const d = docJs<{ fps: number; frames: string[] }>(await ng.doc(s.file))
-      const giua = Math.floor(d.frames.length / 2)
-      for (const [loai, k] of [['dau', 0], ['giua', giua], ['cuoi', d.frames.length - 1]] as const) {
+      // 5 mốc mỗi đoạn: 0, 2, 4, 6, 8 giây → AI tả được diễn biến từng 2 giây
+      const cuoi = d.frames.length - 1
+      const moc = Math.round(2 * d.fps)
+      for (const [loai, k] of MOC_KHUNG.map((l, j) => [l, j === 4 ? cuoi : Math.min(j * moc, cuoi)] as const)) {
         ds.push({ ten: tenKhung(s.segment, loai), doan: s.segment, giay: s.start_sec + k / d.fps, url: `data:image/jpeg;base64,${d.frames[k]}` })
       }
       setKhung([...ds].sort((a, b) => a.doan - b.doan || a.giay - b.giay))
@@ -335,7 +339,7 @@ function TrangCongCu({ dang, nguon, onMoLai, onChonNguon }: {
     for (let i = dauTien; i < cuoiCung; i++) {
       const bd = i * DO_DAI
       const kt = Math.min((i + 1) * DO_DAI, v.duration) - 0.05
-      for (const [loai, giay] of [['dau', bd + 0.05], ['giua', (bd + kt) / 2], ['cuoi', kt]] as const) {
+      for (const [loai, giay] of MOC_KHUNG.map((l, j) => [l, j === 0 ? bd + 0.05 : j === 4 ? kt : Math.min(bd + j * 2, kt)] as const)) {
         await tua(v, giay)
         ds.push({ ten: tenKhung(i + 1, loai), doan: i + 1, giay, url: chup(v, 1280) })
       }
@@ -504,7 +508,7 @@ function LuoiKhung({ khung }: { khung: Khung[] }) {
   return (
     <div className="mt-4 max-h-[28rem] space-y-2 overflow-y-auto pr-1">
       {doan.map((d) => (
-        <div key={d} className="grid grid-cols-[3.5rem_1fr_1fr_1fr] items-center gap-2">
+        <div key={d} className="grid grid-cols-[3.5rem_repeat(5,1fr)] items-center gap-2">
           <span className="text-xs font-bold text-slate-500">Đoạn {d}</span>
           {khung.filter((k) => k.doan === d).map((k) => (
             <button key={k.ten} onClick={() => taiVe(k.url, `${k.ten}.jpg`)} title="Bấm để tải ảnh" className="relative">
@@ -528,7 +532,7 @@ function VietBangAI({ khung, duAn, onXong }: { khung: Khung[]; duAn: DuAn; onXon
   const nd = duAn.nhan_dang
   const coNhanDang = nd.nhan_vat.length + nd.boi_canh.length + nd.do_vat.length > 0
   // Cảnh "đã viết" = có hành động; cảnh tạo sẵn (chưa có chữ) vẫn được gửi cho AI
-  const daViet = new Set(duAn.canh.filter((c) => c.hanh_dong.trim() && c.khung_cuoi?.trim() && Object.keys(c.trang_thai ?? {}).length).flatMap((c) => c.doan_goc))
+  const daViet = new Set(duAn.canh.filter((c) => c.hanh_dong.trim() && c.khung_cuoi?.trim() && Object.keys(c.trang_thai ?? {}).length && c.dien_bien?.length).flatMap((c) => c.doan_goc))
   // Đã có bộ nhận dạng + cảnh đã viết → mặc định làm tiếp: giữ nguyên bộ nhận dạng, chỉ viết đoạn chưa có chữ
   const coKichBan = coNhanDang && daViet.size > 0
   const [lamTiep, setLamTiep] = useState(true)
@@ -538,10 +542,10 @@ function VietBangAI({ khung, duAn, onXong }: { khung: Khung[]; duAn: DuAn; onXon
 
   async function viet() {
     setLoi('')
-    // Chia mỗi đợt 6 đoạn (18 ảnh) cho AI kịp viết trong giới hạn thời gian; đợt sau giữ nguyên bộ nhận dạng của đợt trước
+    // Chia mỗi đợt 4 đoạn (20 ảnh) cho AI kịp viết trong giới hạn thời gian; đợt sau giữ nguyên bộ nhận dạng của đợt trước
     const doanGui = [...new Set(guiDi.map((k) => k.doan))].sort((a, b) => a - b).slice(0, TOI_DA_DOAN)
     const dot: number[][] = []
-    for (let i = 0; i < doanGui.length; i += 6) dot.push(doanGui.slice(i, i + 6))
+    for (let i = 0; i < doanGui.length; i += 4) dot.push(doanGui.slice(i, i + 4))
     let hien: DuAn = noi ? duAn : { nhan_dang: DU_AN_TRONG.nhan_dang, canh: duAn.canh }
     try {
       for (const [i, cac] of dot.entries()) {

@@ -13,7 +13,7 @@ export type AnhDoan = { ten: string; doan: number; giay: number; jpg: string }
 
 const SYSTEM = `You help a Vietnamese video maker rebuild a video with Google Veo 3, one 8-second shot at a time.
 You receive frames from the original video. Each frame is labelled like "doan_003_giua" (segment 3, middle frame) with its time.
-Segments are 8 seconds long; for each segment you get its first (dau), middle (giua) and last (cuoi) frame.
+Segments are 8 seconds long; for each segment you get 5 frames: at 0 s (dau), 2 s (g2), 4 s (giua), 6 s (g6) and 8 s (cuoi).
 
 Write a JSON object with exactly this shape:
 {
@@ -28,7 +28,9 @@ Write a JSON object with exactly this shape:
     { "ten": "short Vietnamese title", "doan_goc": [3], "boi_canh": "B1", "nhan_vat": ["A"], "do_vat": ["X1"],
       "khung_dau": "English: exactly what the FIRST frame (doan_XXX_dau) shows",
       "khung_cuoi": "English: exactly what the LAST frame (doan_XXX_cuoi) shows",
-      "hanh_dong": "English: the motion that turns the first frame into the last frame",
+      "hanh_dong": "English: one-sentence summary of the motion that turns the first frame into the last frame",
+      "dien_bien": [ { "tu": 0, "den": 2, "mo_ta": "English: what happens in this 2-second window" },
+                     { "tu": 2, "den": 4, "mo_ta": "..." }, { "tu": 4, "den": 6, "mo_ta": "..." }, { "tu": 6, "den": 8, "mo_ta": "..." } ],
       "may_quay": "English: shot size, angle and camera movement", "noi_tiep": true, "co_cat_canh": false,
       "trang_thai": { "character": "...", "scene": "...", "props": "...", "action": "...", "camera": "...", "lighting": "..." } }
   ]
@@ -48,6 +50,13 @@ This is a RECONSTRUCTION LOCK. Rules:
 - "phong_cach": visual style, lens look, colour grading, contrast, aspect ratio. "am_thanh": the ambient sound bed.
 - ACTION LOCK per scene: "khung_dau" = start position, pose and gaze direction; "hanh_dong" = body movement in time
   order: what hands / feet do, how props are handled, direction and speed of movement; "khung_cuoi" = the final state.
+- TIMELINE per scene ("dien_bien"): exactly 4 windows 0–2, 2–4, 4–6, 6–8 s. Compare the frame at the start and at the end
+  of each window (0→2 s: dau→g2, 2→4 s: g2→giua, 4→6 s: giua→g6, 6→8 s: g6→cuoi) and describe what changes in between:
+  the character's body, head, gaze, hands and feet, what each hand does with which prop, how props move or change,
+  what moves in the background (fire, smoke, steam, water, wind in grass or leaves, animals, light changes), and how
+  the camera moves (static, pan, tilt, push-in, handheld). Concrete and visual, 1–2 sentences per window. If nothing
+  visible changes in a window, say what small natural movements continue (breathing, flames flickering…). If there is
+  a cut inside the segment, say in which window it happens.
 - CONTINUITY STATE per scene ("trang_thai"): the state at the END of this segment (its last frame), short English
   phrases, used as the starting basis of the next shot: character (pose, position, gaze, what is held, visible dirt or
   changes), scene (what changed in the place), props (where each prop is and in what state), action (what was just
@@ -77,7 +86,13 @@ This is a RECONSTRUCTION LOCK. Rules:
 - Output only the JSON object, no markdown.`
 
 // Nhãn đặt ngay trước mỗi ảnh để AI không lẫn ảnh đầu / cuối giữa các đoạn
-const LOAI: Record<string, string> = { dau: 'FIRST frame', giua: 'MIDDLE frame', cuoi: 'LAST frame' }
+const LOAI: Record<string, string> = {
+  dau: 'FIRST frame (0 s)',
+  g2: 'frame at 2 s',
+  giua: 'MIDDLE frame (4 s)',
+  g6: 'frame at 6 s',
+  cuoi: 'LAST frame (8 s)',
+}
 const nhan = (a: AnhDoan) => `${a.ten} = ${LOAI[a.ten.split('_')[2]] ?? 'frame'} of segment ${a.doan} (t=${a.giay.toFixed(1)}s):`
 
 function noiDungChu(anh: AnhDoan[], ghiChu: string, ndCu: string) {

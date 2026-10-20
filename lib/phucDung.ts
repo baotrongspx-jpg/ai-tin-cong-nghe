@@ -84,7 +84,7 @@ async function hoiGemini(anh: AnhDoan[], chu: string): Promise<string | null> {
         contents: [{ role: 'user', parts: [...parts, { text: chu }] }],
         generationConfig: { responseMimeType: 'application/json' },
       }),
-      signal: AbortSignal.timeout(50_000),
+      signal: AbortSignal.timeout(120_000),
     }).catch(() => null)
     if (!res) continue
     const data = (await res.json().catch(() => ({}))) as {

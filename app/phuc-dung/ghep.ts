@@ -47,7 +47,10 @@ export function ghepCauLenh({ nhan_dang: nd, canh }: DuAn): CauLenh[] {
     if (c.do_vat.length) phan.push('KEY OBJECTS (keep exactly identical in every shot):\n' + khoi(nd.do_vat, c.do_vat, loi, 'đồ vật'))
     if (boiCanh.length)
       phan.push('SETTING (same location, weather and light as the other shots):\n' + khoi(nd.boi_canh, boiCanh, loi, 'bối cảnh'))
-    phan.push(`SHOT (8 seconds): ${c.hanh_dong.trim()}`)
+    // Cảnh tạo sẵn chưa được AI viết hành động → tả chung: làm đúng diễn biến giữa ảnh đầu và ảnh cuối
+    phan.push(
+      `SHOT (8 seconds): ${c.hanh_dong.trim() || 'Recreate exactly what happens between the provided first frame and last frame, with natural, continuous motion.'}`,
+    )
     // Mỗi cảnh làm bằng Frames to Video (ảnh đầu + ảnh cuối của đoạn gốc) → buộc khớp đúng 2 ảnh để các cảnh nối liền
     phan.push(
       'START AND END FRAMES (mandatory): the video must begin exactly on the provided first frame and end exactly on the ' +
@@ -75,6 +78,16 @@ export function ghepCauLenh({ nhan_dang: nd, canh }: DuAn): CauLenh[] {
 
     return { so: i + 1, canh: c, vanBan: phan.join('\n\n'), anhMau, loi }
   })
+}
+
+// Lấy khung hình xong → mỗi đoạn chưa có cảnh được tạo sẵn 1 cảnh (đủ ảnh đầu/cuối để dùng ngay), AI điền chữ sau
+export function themCanhTrong(d: DuAn, doan: number[]): DuAn {
+  const co = new Set(d.canh.flatMap((c) => c.doan_goc))
+  const moi: Canh[] = [...new Set(doan)]
+    .filter((n) => !co.has(n))
+    .map((n) => ({ ten: `Đoạn ${n}`, doan_goc: [n], boi_canh: '', nhan_vat: [], do_vat: [], hanh_dong: '', may_quay: '', noi_tiep: true }))
+  if (!moi.length) return d
+  return { ...d, canh: [...d.canh, ...moi].sort((a, b) => (a.doan_goc[0] ?? 0) - (b.doan_goc[0] ?? 0)) }
 }
 
 // Làm tiếp đợt sau: bộ nhận dạng cũ giữ NGUYÊN (mã nào đã có thì giữ mô tả cũ), chỉ thêm mục mới;

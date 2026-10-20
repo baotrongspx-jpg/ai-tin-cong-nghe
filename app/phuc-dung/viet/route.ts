@@ -4,7 +4,7 @@ import { daDangNhap } from '@/lib/xacThuc'
 import { chuanHoa } from '../ghep'
 
 // AI xem nhiều ảnh nên có thể lâu
-export const maxDuration = 60
+export const maxDuration = 300
 
 const YeuCau = z.object({
   ghiChu: z.string().max(1000).default(''),

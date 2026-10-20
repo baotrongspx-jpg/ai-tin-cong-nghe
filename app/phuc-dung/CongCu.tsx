@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { docAnh, luuAnh } from './khoAnh'
 import MaHoaJs from './MaHoaJs'
 import ThuVien, { coQuyen } from './ThuVien'
-import { type Canh, chuanHoa, type DuAn, DU_AN_TRONG, ghepCauLenh, type Muc, type NhanDang, noiDot } from './ghep'
+import { type Canh, chuanHoa, type DuAn, DU_AN_TRONG, ghepCauLenh, type Muc, type NhanDang, noiDot, themCanhTrong } from './ghep'
 
 const DO_DAI = 8 // giây mỗi đoạn, đúng độ dài một lần tạo của Veo 3
 const TOI_DA_DOAN = 30
@@ -235,6 +235,7 @@ function TrangCongCu({ dang, nguon, onMoLai, onChonNguon }: {
   const thoiLuong = dungCode ? nguon!.info.duration_sec : thoiLuongVideo
   const [tuGiay, setTuGiay] = useState(0)
   const [soDoan, setSoDoan] = useState(8)
+  const [duAn, setDuAn] = useState<DuAn>(() => docLuu(tenVideo))
   const [khung, setKhung] = useState<Khung[]>([])
   // Ảnh khung hình lưu trong IndexedDB theo từng video → tải lại trang vẫn còn ảnh
   const khoaKhung = tenVideo ? `khung:${tenVideo}` : 'khung'
@@ -242,7 +243,10 @@ function TrangCongCu({ dang, nguon, onMoLai, onChonNguon }: {
   useEffect(() => {
     Promise.all([docAnh<Khung[]>(khoaKhung), docAnh<Khung[]>('khung')]).then(([rieng, cu]) => {
       const ds = rieng?.length ? rieng : cu // ảnh lưu kiểu cũ (chưa theo video) → chuyển sang video này
-      if (ds?.length) setKhung((hien) => (hien.length ? hien : ds))
+      if (ds?.length) {
+        setKhung((hien) => (hien.length ? hien : ds))
+        setDuAn((d) => themCanhTrong(d, ds.map((k) => k.doan)))
+      }
       setDaNapAnh(true)
     })
   }, [khoaKhung])
@@ -252,7 +256,6 @@ function TrangCongCu({ dang, nguon, onMoLai, onChonNguon }: {
     if (khoaKhung !== 'khung') luuAnh('khung', [])
   }, [khung, daNapAnh, khoaKhung])
   const [tienDo, setTienDo] = useState('')
-  const [duAn, setDuAn] = useState<DuAn>(() => docLuu(tenVideo))
 
   useEffect(() => {
     try {
@@ -302,6 +305,7 @@ function TrangCongCu({ dang, nguon, onMoLai, onChonNguon }: {
       }
       setKhung([...ds].sort((a, b) => a.doan - b.doan || a.giay - b.giay))
     }
+    setDuAn((d) => themCanhTrong(d, chon.map((s) => s.segment)))
     setTienDo('')
   }
 
@@ -339,6 +343,7 @@ function TrangCongCu({ dang, nguon, onMoLai, onChonNguon }: {
       setKhung([...ds])
     }
     URL.revokeObjectURL(v.src)
+    setDuAn((d) => themCanhTrong(d, ds.map((k) => k.doan)))
     setTienDo('')
   }
 
@@ -521,34 +526,44 @@ function VietBangAI({ khung, duAn, onXong }: { khung: Khung[]; duAn: DuAn; onXon
   const [dang, setDang] = useState('')
   const [loi, setLoi] = useState('')
   const nd = duAn.nhan_dang
-  // Đã có bộ nhận dạng + cảnh → mặc định làm tiếp: giữ nguyên bộ nhận dạng, chỉ viết cảnh cho đoạn chưa có
-  const coKichBan = duAn.canh.length > 0 && nd.nhan_vat.length + nd.boi_canh.length + nd.do_vat.length > 0
+  const coNhanDang = nd.nhan_vat.length + nd.boi_canh.length + nd.do_vat.length > 0
+  // Cảnh "đã viết" = có hành động; cảnh tạo sẵn (chưa có chữ) vẫn được gửi cho AI
+  const daViet = new Set(duAn.canh.filter((c) => c.hanh_dong.trim()).flatMap((c) => c.doan_goc))
+  // Đã có bộ nhận dạng + cảnh đã viết → mặc định làm tiếp: giữ nguyên bộ nhận dạng, chỉ viết đoạn chưa có chữ
+  const coKichBan = coNhanDang && daViet.size > 0
   const [lamTiep, setLamTiep] = useState(true)
   const noi = coKichBan && lamTiep
-  const daCo = new Set(duAn.canh.flatMap((c) => c.doan_goc))
-  const guiDi = noi ? khung.filter((k) => !daCo.has(k.doan)) : khung
+  const guiDi = noi ? khung.filter((k) => !daViet.has(k.doan)) : khung
   const soDoanGui = new Set(guiDi.map((k) => k.doan)).size
 
   async function viet() {
     setLoi('')
-    setDang('Đang thu nhỏ ảnh…')
+    // Chia mỗi đợt 6 đoạn (18 ảnh) cho AI kịp viết trong giới hạn thời gian; đợt sau giữ nguyên bộ nhận dạng của đợt trước
+    const doanGui = [...new Set(guiDi.map((k) => k.doan))].sort((a, b) => a - b).slice(0, TOI_DA_DOAN)
+    const dot: number[][] = []
+    for (let i = 0; i < doanGui.length; i += 6) dot.push(doanGui.slice(i, i + 6))
+    let hien: DuAn = noi ? duAn : { nhan_dang: DU_AN_TRONG.nhan_dang, canh: duAn.canh }
     try {
-      // Mỗi lần gửi tối đa 30 đoạn (90 ảnh)
-      const doanGui = [...new Set(guiDi.map((k) => k.doan))].sort((a, b) => a - b).slice(0, TOI_DA_DOAN)
-      const anh = await Promise.all(
-        guiDi
-          .filter((k) => doanGui.includes(k.doan))
-          .map(async (k) => ({ ten: k.ten, doan: k.doan, giay: k.giay, jpg: await thuNho(k.url, 384) })),
-      )
-      setDang('AI đang xem video và viết (khoảng 20–60 giây)…')
-      const res = await fetch('/phuc-dung/viet', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ anh, ghiChu, nhanDang: noi ? nd : undefined }),
-      })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok || !data.duAn) throw new Error(data.loi ?? 'AI chưa viết được, thử lại.')
-      onXong(noi ? noiDot(duAn, data.duAn) : data.duAn)
+      for (const [i, cac] of dot.entries()) {
+        setDang(`AI đang viết đoạn ${cac[0]}–${cac.at(-1)} (đợt ${i + 1}/${dot.length}, mỗi đợt khoảng 30–60 giây)…`)
+        const anh = await Promise.all(
+          guiDi.filter((k) => cac.includes(k.doan)).map(async (k) => ({ ten: k.ten, doan: k.doan, giay: k.giay, jpg: await thuNho(k.url, 384) })),
+        )
+        const hd = hien.nhan_dang
+        const coNd = hd.nhan_vat.length + hd.boi_canh.length + hd.do_vat.length > 0
+        const res = await fetch('/phuc-dung/viet', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ anh, ghiChu, nhanDang: coNd ? hd : undefined }),
+        })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok || !data.duAn)
+          throw new Error(
+            `Đợt ${i + 1} (đoạn ${cac[0]}–${cac.at(-1)}): ${data.loi ?? `máy chủ báo lỗi ${res.status}`}. Các đợt trước đã lưu, bấm lại để viết tiếp.`,
+          )
+        hien = noiDot(hien, data.duAn)
+        onXong(hien) // lưu ngay sau mỗi đợt, đợt sau lỗi cũng không mất
+      }
     } catch (e) {
       setLoi((e as Error).message)
     }
@@ -565,8 +580,8 @@ function VietBangAI({ khung, duAn, onXong }: { khung: Khung[]; duAn: DuAn; onXon
           <label className="flex items-start gap-2">
             <input type="radio" className="mt-1" checked={lamTiep} onChange={() => setLamTiep(true)} />
             <span>
-              <b>Làm tiếp</b> (nên chọn): giữ nguyên bộ nhận dạng và {duAn.canh.length} cảnh đã có, AI chỉ viết thêm cảnh cho
-              các đoạn mới ({soDoanGui || 0} đoạn).
+              <b>Làm tiếp</b> (nên chọn): giữ nguyên bộ nhận dạng và {daViet.size} cảnh đã viết, AI chỉ viết cho
+              các đoạn chưa có chữ ({soDoanGui || 0} đoạn).
             </span>
           </label>
           <label className="flex items-start gap-2">

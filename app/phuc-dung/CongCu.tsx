@@ -151,7 +151,7 @@ function TrangCongCu({ nguonMaHoa }: { nguonMaHoa: NguonJs | null }) {
   const [tuGiay, setTuGiay] = useState(0)
   const [soDoan, setSoDoan] = useState(8)
   const [khung, setKhung] = useState<Khung[]>([])
-  // Ảnh khung hình lưu trong IndexedDB → tải lại trang vẫn còn ảnh mẫu
+  // Ảnh khung hình lưu trong IndexedDB → tải lại trang vẫn còn ảnh
   const [daNapAnh, setDaNapAnh] = useState(false)
   useEffect(() => {
     docAnh<Khung[]>('khung').then((ds) => {
@@ -371,8 +371,7 @@ function QuyTrinh() {
     ['Mã hóa video thành code JS', 'Ở thẻ ①. Xong bấm "Dùng code này để phục dựng", trang chuyển sang đây.'],
     ['Lấy khung hình từ code', 'Chọn khúc muốn làm, bấm "Lấy khung hình". Trang đọc ảnh đầu, giữa và cuối của từng tệp doan_XXX.js.'],
     ['Viết bộ nhận dạng', 'Bấm "AI xem và viết". AI mô tả CỐ ĐỊNH nhân vật, đồ vật, bối cảnh và viết hành động từng cảnh. Bạn sửa lại nếu cần.'],
-    ['Làm từng cảnh', 'Ở bước 3, mỗi cảnh ghi sẵn kiểu Flow cần chọn và đúng các ảnh cần đưa vào: bấm tải ảnh, chép câu lệnh, dán vào Flow (Veo 3).'],
-    ['Nối cảnh', 'Veo làm xong cảnh nào thì tải video về, chọn video đó ngay trong ô ③ của cảnh. Khung cuối tự hiện ở cảnh kế tiếp để làm ảnh bắt đầu.'],
+    ['Làm từng cảnh', 'Ở bước 3, mỗi cảnh có sẵn ảnh đầu và ảnh cuối lấy từ video gốc. Trong Flow chọn Frames to Video, đặt 2 ảnh vào First frame / Last frame, dán câu lệnh.'],
     ['Ghép', 'Ghép tất cả cảnh theo thứ tự trong CapCut, thêm nhạc, chữ.'],
   ]
   return (
@@ -387,8 +386,8 @@ function QuyTrinh() {
         ))}
       </ol>
       <p className="mt-3 rounded-xl bg-amber-50 p-3 text-xs text-amber-800">
-        Vì sao các cảnh giống nhau: mô tả nhân vật/bối cảnh được chép <b>nguyên văn</b> vào mọi câu lệnh, cùng ảnh mẫu,
-        và ảnh bắt đầu của cảnh sau là khung cuối của cảnh trước. Người thật chỉ được mô tả qua trang phục, không sao chép khuôn mặt.
+        Vì sao các cảnh giống nhau: mô tả nhân vật/bối cảnh được chép <b>nguyên văn</b> vào mọi câu lệnh, và mỗi cảnh
+        dùng ảnh đầu + ảnh cuối lấy từ video gốc: ảnh cuối cảnh này và ảnh đầu cảnh sau là 2 khung liền nhau nên các cảnh nối khớp.
       </p>
     </details>
   )
@@ -601,147 +600,61 @@ function SuaCanh({ ds, nd, onDoi }: { ds: Canh[]; nd: NhanDang; onDoi: (c: Canh[
   )
 }
 
-async function layKhungCuoi(f: File): Promise<string> {
-  const v = await moVideo(f)
-  await tua(v, v.duration - 0.05)
-  const url = chup(v, 4096, 'image/png')
-  URL.revokeObjectURL(v.src)
-  return url
-}
-
-const tenTep = (s: string) =>
-  s
-    .replace(/đ/g, 'd')
-    .replace(/Đ/g, 'D')
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/[^A-Za-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
-    .toLowerCase()
-
 const so2 = (n: number) => String(n).padStart(2, '0')
 
+// Mỗi cảnh: ảnh đầu + ảnh cuối lấy từ đoạn gốc → Flow "Frames to Video" (First frame + Last frame).
+// Ảnh cuối cảnh này và ảnh đầu cảnh sau là 2 khung liền nhau của video gốc nên các cảnh nối khớp.
 function DanhSachCauLenh({ duAn, anh }: { duAn: DuAn; anh: Record<string, string> }) {
   const ds = useMemo(() => ghepCauLenh(duAn), [duAn])
   const [daChep, setDaChep] = useState(-1)
-  // Khung cuối video Veo của từng cảnh (theo số cảnh) → ảnh bắt đầu cho cảnh kế tiếp
-  const [khungCuoi, setKhungCuoi] = useState<Record<number, { url: string; ten: string }>>({})
-  const [daNapKc, setDaNapKc] = useState(false)
-  useEffect(() => {
-    docAnh<Record<number, { url: string; ten: string }>>('khung_cuoi').then((kc) => {
-      if (kc) setKhungCuoi((hien) => ({ ...kc, ...hien }))
-      setDaNapKc(true)
-    })
-  }, [])
-  useEffect(() => {
-    if (daNapKc) luuAnh('khung_cuoi', khungCuoi)
-  }, [khungCuoi, daNapKc])
-  const [dangLay, setDangLay] = useState(0)
   if (!ds.length) return <p className="text-sm text-slate-500">Chưa có cảnh nào. Làm bước 2 trước.</p>
-
-  async function chonVideoCanh(so: number, f: File | undefined) {
-    if (!f) return
-    setDangLay(so)
-    try {
-      const url = await layKhungCuoi(f)
-      setKhungCuoi((k) => ({ ...k, [so]: { url, ten: f.name } }))
-    } catch (e) {
-      alert((e as Error).message)
-    }
-    setDangLay(0)
-  }
 
   return (
     <div className="space-y-4">
       <p className="text-sm text-slate-600">
-        Làm theo thứ tự từ cảnh 1. Mỗi cảnh ghi sẵn <b>kiểu cần chọn trong Flow</b> và <b>đúng những ảnh cần đưa vào</b>.
+        Mỗi cảnh: trong Flow chọn <b>Frames to Video</b>, đặt <b>ảnh đầu</b> vào ô First frame, <b>ảnh cuối</b> vào ô Last frame,
+        rồi dán câu lệnh.
       </p>
-      {ds.map((c, i) => {
-        const truoc = ds[i - 1]
-        // Nhân vật / đồ vật chưa có ở cảnh trước thì khung cuối không chứa họ → phải dùng ảnh mẫu
-        const moi = truoc
-          ? [...c.canh.nhan_vat, ...c.canh.do_vat].filter((m) => ![...truoc.canh.nhan_vat, ...truoc.canh.do_vat].includes(m))
-          : []
-        const dungKhung = !!truoc && c.canh.noi_tiep && moi.length === 0
-        const kc = truoc ? khungCuoi[truoc.so] : undefined
-        // Chưa có video Veo của cảnh trước → tạm dùng khung cuối của đoạn gốc tương ứng (đọc từ code JS)
-        const doanTruoc = truoc?.canh.doan_goc.at(-1)
-        const tam = !kc && doanTruoc ? anh[tenKhung(doanTruoc, 'cuoi')] : undefined
-        const khungDau = kc?.url ?? tam
-        const anhCanh = c.anhMau.filter((m) => anh[m.anh])
-        const thieuAnh = c.anhMau.filter((m) => !anh[m.anh])
-        const tenAnh = (m: { ma: string; ten: string }) => `canh_${so2(c.so)}_${m.ma}_${tenTep(m.ten)}.jpg`
-        const taiHet = () => anhCanh.forEach((m, k) => setTimeout(() => taiVe(anh[m.anh], tenAnh(m)), k * 400))
+      {ds.map((c) => {
+        const doanDau = c.canh.doan_goc[0]
+        const doanCuoi = c.canh.doan_goc.at(-1)
+        const hai = [
+          { nhan: 'Ảnh đầu', o: 'First frame', url: doanDau ? anh[tenKhung(doanDau, 'dau')] : undefined, ten: `canh_${so2(c.so)}_1_anh_dau.jpg` },
+          { nhan: 'Ảnh cuối', o: 'Last frame', url: doanCuoi ? anh[tenKhung(doanCuoi, 'cuoi')] : undefined, ten: `canh_${so2(c.so)}_2_anh_cuoi.jpg` },
+        ]
+        const coDu = hai.every((h) => h.url)
 
         return (
           <div key={c.so} className="rounded-xl ring-1 ring-slate-200 p-4">
             <div className="flex flex-wrap items-center gap-2">
               <b className="text-blue-700">Cảnh {c.so}</b>
               <span className="text-sm font-semibold">{c.canh.ten}</span>
-              <span className={`chip ml-auto ${dungKhung ? 'bg-violet-100 text-violet-800' : 'bg-emerald-100 text-emerald-800'}`}>
-                Flow: {dungKhung ? 'Frames to Video' : 'Ingredients to Video'}
-              </span>
+              <span className="text-xs text-slate-500">đoạn gốc {c.canh.doan_goc.join(', ') || '–'}</span>
+              <span className="chip ml-auto bg-violet-100 text-violet-800">Flow: Frames to Video</span>
             </div>
 
             <div className="mt-3 rounded-lg bg-slate-50 p-3">
               <p className="mb-2 text-sm font-semibold text-slate-700">① Ảnh đưa vào Flow</p>
-              {dungKhung ? (
-                khungDau ? (
-                  <div className="flex flex-wrap items-end gap-3">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={khungDau} alt="Khung đầu" className="h-28 rounded-md" />
-                    <div className="max-w-md text-xs text-slate-600">
-                      <p>Đặt vào ô <b>khung đầu</b> (First frame). Chỉ cần đúng ảnh này, không thêm ảnh mẫu.</p>
-                      <button className="btn btn-fb btn-sm mt-2"
-                        onClick={() => taiVe(khungDau, `canh_${so2(c.so)}_khung_dau${kc ? '.png' : '_tam.jpg'}`)}>
-                        ⬇ Tải khung đầu cảnh {c.so}
-                      </button>
-                      {kc ? (
-                        <p className="mt-1 text-green-700">✓ Khung cuối thật của video Veo cảnh {truoc.so}.</p>
-                      ) : (
-                        <>
-                          <p className="mt-2 text-amber-700">
-                            Đây là ảnh <b>tạm</b> (cuối đoạn gốc {doanTruoc}). Đã làm xong cảnh {truoc.so} trên Veo thì chọn video đó vào đây,
-                            ảnh sẽ đổi thành khung cuối thật để 2 cảnh nối khớp hơn:
-                          </p>
-                          <input type="file" accept="video/*" onChange={(e) => chonVideoCanh(truoc.so, e.target.files?.[0])}
-                            className="mt-1 block w-full text-xs file:mr-2 file:rounded-md file:border-0 file:bg-slate-900 file:px-2 file:py-1 file:text-white" />
-                          {dangLay === truoc.so && <p className="mt-1 text-blue-700">Đang lấy khung cuối…</p>}
-                        </>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-xs text-amber-700">
-                    Cần khung cuối của cảnh {truoc.so}: làm xong cảnh {truoc.so} trên Veo, tải video về rồi chọn video đó ở ô{' '}
-                    <b>③ của cảnh {truoc.so}</b>. Ảnh sẽ tự hiện ở đây.
-                  </p>
-                )
-              ) : anhCanh.length ? (
-                <div>
+              {coDu ? (
+                <>
                   <div className="flex flex-wrap gap-3">
-                    {anhCanh.map((m) => (
-                      <button key={m.ma} className="text-left" title="Bấm để tải ảnh này" onClick={() => taiVe(anh[m.anh], tenAnh(m))}>
+                    {hai.map((h) => (
+                      <button key={h.nhan} className="text-left" title="Bấm để tải ảnh này" onClick={() => taiVe(h.url!, h.ten)}>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={anh[m.anh]} alt={m.ten} className="h-24 rounded-md" />
-                        <span className="mt-1 block max-w-40 text-xs text-slate-600">⬇ {m.ma} · {m.ten}</span>
+                        <img src={h.url} alt={h.nhan} className="h-28 rounded-md" />
+                        <span className="mt-1 block text-xs text-slate-600">⬇ <b>{h.nhan}</b> → ô {h.o}</span>
                       </button>
                     ))}
                   </div>
-                  <button className="btn btn-fb btn-sm mt-2" onClick={taiHet}>
-                    ⬇ Tải cả {anhCanh.length} ảnh của cảnh {c.so}
+                  <button className="btn btn-fb btn-sm mt-2"
+                    onClick={() => hai.forEach((h, k) => setTimeout(() => taiVe(h.url!, h.ten), k * 400))}>
+                    ⬇ Tải cả 2 ảnh cảnh {c.so}
                   </button>
-                  <p className="mt-1 text-xs text-slate-500">Trong Flow bấm dấu + ở ô nhập, thêm đúng {anhCanh.length} ảnh này.</p>
-                </div>
+                </>
               ) : (
-                <p className="text-xs text-slate-500">Cảnh này không có ảnh mẫu, chỉ cần câu lệnh.</p>
-              )}
-              {!dungKhung && moi.length > 0 && (
-                <p className="mt-2 text-xs text-slate-500">Dùng ảnh mẫu vì cảnh này có thêm {moi.join(', ')} chưa xuất hiện ở cảnh trước.</p>
-              )}
-              {!dungKhung && thieuAnh.length > 0 && (
-                <p className="mt-2 text-xs text-amber-700">
-                  Chưa hiện ảnh {thieuAnh.map((m) => m.ma).join(', ')}: bấm &quot;Lấy khung hình&quot; ở bước 1 (đúng khúc đã làm).
+                <p className="text-xs text-amber-700">
+                  Chưa có ảnh của đoạn gốc {c.canh.doan_goc.join(', ') || '(chưa ghi đoạn gốc)'}: bấm &quot;Lấy khung hình&quot; ở bước 1, chọn
+                  đúng khúc có các đoạn này.
                 </p>
               )}
             </div>
@@ -757,20 +670,6 @@ function DanhSachCauLenh({ duAn, anh }: { duAn: DuAn; anh: Record<string, string
               {c.loi.map((l) => <p key={l} className="mt-1 text-xs font-medium text-red-600">{l}</p>)}
               <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap rounded-lg bg-slate-900 p-3 text-xs text-slate-100">{c.vanBan}</pre>
             </div>
-
-            {i < ds.length - 1 && (
-              <div className="mt-3 rounded-lg bg-slate-50 p-3">
-                <p className="text-sm font-semibold text-slate-700">③ Làm xong cảnh {c.so}? Chọn video Veo vừa tải về</p>
-                <input type="file" accept="video/*" onChange={(e) => chonVideoCanh(c.so, e.target.files?.[0])}
-                  className="mt-2 block w-full text-xs file:mr-3 file:rounded-lg file:border-0 file:bg-slate-900 file:px-3 file:py-1.5 file:font-semibold file:text-white" />
-                {dangLay === c.so && <p className="mt-1 text-xs text-blue-700">Đang lấy khung cuối…</p>}
-                {khungCuoi[c.so] && (
-                  <p className="mt-1 text-xs text-green-700">
-                    ✓ Đã lấy khung cuối từ {khungCuoi[c.so].ten}. Ảnh đã chuyển xuống cảnh {c.so + 1}.
-                  </p>
-                )}
-              </div>
-            )}
           </div>
         )
       })}

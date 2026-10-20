@@ -1,0 +1,103 @@
+// Kiểu dữ liệu và cách ghép câu lệnh Veo 3 cho trang /phuc-dung (dùng chung cho trình duyệt và máy chủ).
+// Mô tả nhân vật / đồ vật / bối cảnh viết MỘT lần trong "bộ nhận dạng", rồi được chép NGUYÊN VĂN
+// vào câu lệnh của mọi cảnh → các đoạn 8 giây không bị lệch nhân vật, bối cảnh.
+
+export type Muc = { ma: string; ten: string; mo_ta: string; anh_mau: string }
+export type NhanDang = { phong_cach: string; am_thanh: string; nhan_vat: Muc[]; boi_canh: Muc[]; do_vat: Muc[] }
+export type Canh = {
+  ten: string
+  doan_goc: number[]
+  boi_canh: string
+  nhan_vat: string[]
+  do_vat: string[]
+  hanh_dong: string
+  may_quay: string
+  noi_tiep: boolean
+}
+export type DuAn = { nhan_dang: NhanDang; canh: Canh[] }
+
+export const DU_AN_TRONG: DuAn = {
+  nhan_dang: { phong_cach: '', am_thanh: '', nhan_vat: [], boi_canh: [], do_vat: [] },
+  canh: [],
+}
+
+export type CauLenh = { so: number; canh: Canh; vanBan: string; anhMau: { ma: string; ten: string; anh: string }[]; loi: string[] }
+
+function khoi(ds: Muc[], ma: string[], loi: string[], loai: string) {
+  return ma
+    .map((m) => {
+      const muc = ds.find((x) => x.ma === m)
+      if (!muc) loi.push(`Cảnh dùng mã ${m} nhưng bộ nhận dạng chưa có ${loai} này`)
+      return muc ? `- ${muc.ma}: ${muc.mo_ta.trim()}` : ''
+    })
+    .filter(Boolean)
+    .join('\n')
+}
+
+export function ghepCauLenh({ nhan_dang: nd, canh }: DuAn): CauLenh[] {
+  return canh.map((c, i) => {
+    const loi: string[] = []
+    const boiCanh = c.boi_canh ? [c.boi_canh] : []
+    const phan = [`STYLE: ${nd.phong_cach.trim()}`]
+    if (c.nhan_vat.length)
+      phan.push(
+        'CHARACTERS (keep exactly identical in every shot: same face, hair, body, clothing, colours):\n' +
+          khoi(nd.nhan_vat, c.nhan_vat, loi, 'nhân vật'),
+      )
+    if (c.do_vat.length) phan.push('KEY OBJECTS (keep exactly identical in every shot):\n' + khoi(nd.do_vat, c.do_vat, loi, 'đồ vật'))
+    if (boiCanh.length)
+      phan.push('SETTING (same location, weather and light as the other shots):\n' + khoi(nd.boi_canh, boiCanh, loi, 'bối cảnh'))
+    phan.push(`SHOT (8 seconds): ${c.hanh_dong.trim()}`)
+    if (c.may_quay.trim()) phan.push(`CAMERA: ${c.may_quay.trim()}`)
+    if (nd.am_thanh.trim()) phan.push(`AUDIO: ${nd.am_thanh.trim()}`)
+    if (c.noi_tiep && i > 0)
+      phan.push(
+        'CONTINUITY: this shot continues directly from the previous shot - same characters, same clothing, ' +
+          'same objects, same weather, same time of day, same colour grading.',
+      )
+    phan.push('No text, no subtitles, no logos, no brand names, no watermarks on screen.')
+
+    const anhMau = [
+      ...c.nhan_vat.map((m) => nd.nhan_vat.find((x) => x.ma === m)),
+      ...c.do_vat.map((m) => nd.do_vat.find((x) => x.ma === m)),
+      ...boiCanh.map((m) => nd.boi_canh.find((x) => x.ma === m)),
+    ]
+      .filter((m): m is Muc => !!m?.anh_mau)
+      .map((m) => ({ ma: m.ma, ten: m.ten, anh: m.anh_mau }))
+
+    return { so: i + 1, canh: c, vanBan: phan.join('\n\n'), anhMau, loi }
+  })
+}
+
+// Dữ liệu dán vào / AI trả về có thể thiếu trường → điền mặc định cho đủ
+export function chuanHoa(x: unknown): DuAn {
+  const o = (x ?? {}) as Record<string, unknown>
+  const nd = (o.nhan_dang ?? {}) as Record<string, unknown>
+  const chuoi = (v: unknown) => (typeof v === 'string' ? v : '')
+  const muc = (v: unknown): Muc[] =>
+    Array.isArray(v)
+      ? v.map((m: Record<string, unknown>) => ({ ma: chuoi(m?.ma), ten: chuoi(m?.ten), mo_ta: chuoi(m?.mo_ta), anh_mau: chuoi(m?.anh_mau) }))
+      : []
+  const ds = (v: unknown) => (Array.isArray(v) ? v.map(chuoi).filter(Boolean) : [])
+  return {
+    nhan_dang: {
+      phong_cach: chuoi(nd.phong_cach),
+      am_thanh: chuoi(nd.am_thanh),
+      nhan_vat: muc(nd.nhan_vat),
+      boi_canh: muc(nd.boi_canh),
+      do_vat: muc(nd.do_vat),
+    },
+    canh: Array.isArray(o.canh)
+      ? o.canh.map((c: Record<string, unknown>) => ({
+          ten: chuoi(c?.ten),
+          doan_goc: Array.isArray(c?.doan_goc) ? c.doan_goc.map(Number).filter((n: number) => n > 0) : [],
+          boi_canh: chuoi(c?.boi_canh),
+          nhan_vat: ds(c?.nhan_vat),
+          do_vat: ds(c?.do_vat),
+          hanh_dong: chuoi(c?.hanh_dong),
+          may_quay: chuoi(c?.may_quay),
+          noi_tiep: c?.noi_tiep !== false,
+        }))
+      : [],
+  }
+}

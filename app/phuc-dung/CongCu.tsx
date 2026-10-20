@@ -528,7 +528,7 @@ function VietBangAI({ khung, duAn, onXong }: { khung: Khung[]; duAn: DuAn; onXon
   const nd = duAn.nhan_dang
   const coNhanDang = nd.nhan_vat.length + nd.boi_canh.length + nd.do_vat.length > 0
   // Cảnh "đã viết" = có hành động; cảnh tạo sẵn (chưa có chữ) vẫn được gửi cho AI
-  const daViet = new Set(duAn.canh.filter((c) => c.hanh_dong.trim() && c.khung_cuoi?.trim()).flatMap((c) => c.doan_goc))
+  const daViet = new Set(duAn.canh.filter((c) => c.hanh_dong.trim() && c.khung_cuoi?.trim() && Object.keys(c.trang_thai ?? {}).length).flatMap((c) => c.doan_goc))
   // Đã có bộ nhận dạng + cảnh đã viết → mặc định làm tiếp: giữ nguyên bộ nhận dạng, chỉ viết đoạn chưa có chữ
   const coKichBan = coNhanDang && daViet.size > 0
   const [lamTiep, setLamTiep] = useState(true)

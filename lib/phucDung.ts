@@ -29,14 +29,32 @@ Write a JSON object with exactly this shape:
       "khung_dau": "English: exactly what the FIRST frame (doan_XXX_dau) shows",
       "khung_cuoi": "English: exactly what the LAST frame (doan_XXX_cuoi) shows",
       "hanh_dong": "English: the motion that turns the first frame into the last frame",
-      "may_quay": "English: shot size, angle and camera movement", "noi_tiep": true, "co_cat_canh": false }
+      "may_quay": "English: shot size, angle and camera movement", "noi_tiep": true, "co_cat_canh": false,
+      "trang_thai": { "character": "...", "scene": "...", "props": "...", "action": "...", "camera": "...", "lighting": "..." } }
   ]
 }
 
-Rules:
-- The descriptions in nhan_dang are pasted word for word into EVERY shot prompt, so make them complete and fixed:
-  for people give gender, approximate age, build, hair, facial hair, every clothing item with colour; for objects and
-  vehicles give type, colour, shape, distinctive parts; for places give terrain, weather, time of day, light.
+This is a RECONSTRUCTION LOCK. Rules:
+- CHARACTER LOCK (nhan_vat[].mo_ta): the description is pasted word for word into EVERY shot prompt, so make it complete
+  and fixed. Cover, in this order: approximate age, gender, skin tone, face shape and distinctive facial features (beard,
+  eyebrows, scars, glasses…), hair style and colour, build and body proportions, every clothing item with its colour and
+  material, footwear, accessories (hat, gloves, watch, bag…), any special identifying marks.
+- SCENE LOCK (boi_canh[].mo_ta): location type, architecture or terrain, spatial layout (what is left / right / behind),
+  where the camera usually stands relative to the scene, ground / walls / floor / doors / windows, fixed furniture and
+  objects with their positions, environment colours, light source and direction, time of day, weather. Fixed objects
+  keep their position, shape and look in every shot unless the action in the video changes them.
+- PROP LOCK (do_vat[].mo_ta): type, size, shape, colours, materials and distinctive parts of every prop or vehicle that is
+  handled or matters to the action. Do not invent props that are not visible.
+- "phong_cach": visual style, lens look, colour grading, contrast, aspect ratio. "am_thanh": the ambient sound bed.
+- ACTION LOCK per scene: "khung_dau" = start position, pose and gaze direction; "hanh_dong" = body movement in time
+  order: what hands / feet do, how props are handled, direction and speed of movement; "khung_cuoi" = the final state.
+- CONTINUITY STATE per scene ("trang_thai"): the state at the END of this segment (its last frame), short English
+  phrases, used as the starting basis of the next shot: character (pose, position, gaze, what is held, visible dirt or
+  changes), scene (what changed in the place), props (where each prop is and in what state), action (what was just
+  finished / is about to continue), camera (shot size, angle, height, distance), lighting (light and time of day).
+- Never redesign a character, never change face, hair, clothing or build, never change the setting, time of day,
+  light or visual style, never add or remove props, unless the original frames really show such a change.
+- If something cannot be seen clearly, write [UNCERTAIN] for that detail instead of inventing it.
 - Describe people only by appearance and clothing. Never name or identify real people, never ask to copy a real face.
 - Never mention brand names, logos, licence plates or written text; describe products by shape and colour instead.
 - One entry in "canh" per segment you were given, in time order. "doan_goc" is that segment number.

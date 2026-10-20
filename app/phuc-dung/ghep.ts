@@ -14,10 +14,13 @@ export type Canh = {
   khung_dau?: string // AI tả đúng ảnh đầu
   khung_cuoi?: string // AI tả đúng ảnh cuối
   co_cat_canh?: boolean // đoạn gốc có cắt cảnh: ảnh đầu và ảnh cuối khác góc máy
+  trang_thai?: TrangThai // CONTINUITY STATE lúc cuối đoạn → điểm xuất phát của cảnh sau
   may_quay: string
   noi_tiep: boolean
 }
 export type DuAn = { nhan_dang: NhanDang; canh: Canh[] }
+export const KHOA_TRANG_THAI = ['character', 'scene', 'props', 'action', 'camera', 'lighting'] as const
+export type TrangThai = Partial<Record<(typeof KHOA_TRANG_THAI)[number], string>>
 
 export const DU_AN_TRONG: DuAn = {
   nhan_dang: { phong_cach: '', am_thanh: '', nhan_vat: [], boi_canh: [], do_vat: [] },
@@ -42,18 +45,30 @@ export function ghepCauLenh({ nhan_dang: nd, canh }: DuAn): CauLenh[] {
     const loi: string[] = []
     const boiCanh = c.boi_canh ? [c.boi_canh] : []
     const phan = [`STYLE: ${nd.phong_cach.trim()}`]
+    // 1–2. CHARACTER LOCK / PROP LOCK / SCENE LOCK: chép nguyên văn từ bộ nhận dạng
     if (c.nhan_vat.length)
       phan.push(
-        'CHARACTERS (keep exactly identical in every shot: same face, hair, body, clothing, colours):\n' +
+        'CHARACTER LOCK (identical in every shot; never change face, hair, skin, body, clothing, colours, footwear or accessories):\n' +
           khoi(nd.nhan_vat, c.nhan_vat, loi, 'nhân vật'),
       )
-    if (c.do_vat.length) phan.push('KEY OBJECTS (keep exactly identical in every shot):\n' + khoi(nd.do_vat, c.do_vat, loi, 'đồ vật'))
+    if (c.do_vat.length)
+      phan.push('PROP LOCK (identical in every shot; never add or remove props):\n' + khoi(nd.do_vat, c.do_vat, loi, 'đồ vật'))
     if (boiCanh.length)
-      phan.push('SETTING (same location, weather and light as the other shots):\n' + khoi(nd.boi_canh, boiCanh, loi, 'bối cảnh'))
-    // Cảnh tạo sẵn chưa được AI viết hành động → tả chung: làm đúng diễn biến giữa ảnh đầu và ảnh cuối
-    phan.push(
-      `SHOT (8 seconds): ${c.hanh_dong.trim() || 'Recreate exactly what happens between the provided first frame and last frame, with natural, continuous motion.'}`,
-    )
+      phan.push(
+        'SCENE LOCK (same place, layout, fixed objects and their positions, light, time of day and weather):\n' +
+          khoi(nd.boi_canh, boiCanh, loi, 'bối cảnh'),
+      )
+    // 4. CONTINUITY STATE: trạng thái cuối của cảnh trước là điểm xuất phát của cảnh này
+    const tt = i > 0 && c.noi_tiep ? canh[i - 1].trang_thai : undefined
+    const dongTt = KHOA_TRANG_THAI.filter((k) => tt?.[k]?.trim()).map((k) => `- ${k.toUpperCase()}_STATE: ${tt![k]!.trim()}`)
+    if (dongTt.length) phan.push('CONTINUITY STATE (end of the previous shot; this shot starts from it):\n' + dongTt.join('\n'))
+    // 3. ACTION LOCK: đầu → diễn biến → cuối. Cảnh tạo sẵn chưa có chữ → tả chung theo 2 ảnh
+    const hanhDong = [
+      c.khung_dau?.trim() && `- START (first frame, 0 s): ${c.khung_dau.trim()}`,
+      `- ACTION: ${c.hanh_dong.trim() || 'Recreate exactly what happens between the provided first frame and last frame, with natural, continuous motion.'}`,
+      c.khung_cuoi?.trim() && `- END (last frame, 8 s): ${c.khung_cuoi.trim()}`,
+    ].filter(Boolean)
+    phan.push('ACTION LOCK (8 seconds, in this exact order):\n' + hanhDong.join('\n'))
     // Mỗi cảnh làm bằng Frames to Video (ảnh đầu + ảnh cuối của đoạn gốc) → buộc khớp đúng 2 ảnh để các cảnh nối liền
     phan.push(
       c.co_cat_canh
@@ -68,15 +83,17 @@ export function ghepCauLenh({ nhan_dang: nd, canh }: DuAn): CauLenh[] {
             'last frame. The action moves smoothly and naturally from one to the other, without cuts, morphing or teleporting, ' +
             'so this shot joins seamlessly with the previous and next shots.',
     )
-    if (c.khung_dau?.trim()) phan.push(`FIRST FRAME (0 s) shows: ${c.khung_dau.trim()}`)
-    if (c.khung_cuoi?.trim()) phan.push(`LAST FRAME (8 s) shows: ${c.khung_cuoi.trim()}`)
     if (c.may_quay.trim()) phan.push(`CAMERA: ${c.may_quay.trim()}`)
     if (nd.am_thanh.trim()) phan.push(`AUDIO: ${nd.am_thanh.trim()}`)
-    if (c.noi_tiep && i > 0)
+    if (c.noi_tiep && i > 0 && !dongTt.length)
       phan.push(
         'CONTINUITY: this shot continues directly from the previous shot - same characters, same clothing, ' +
           'same objects, same weather, same time of day, same colour grading.',
       )
+    phan.push(
+      'LOCK RULES: do not redesign the character; do not change face, hair, clothing or build; do not change the setting; ' +
+        'do not add or remove props; do not change time of day, lighting or visual style; do not change the action defined above.',
+    )
     phan.push('No text, no subtitles, no logos, no brand names, no watermarks on screen.')
 
     const anhMau = [
@@ -150,6 +167,9 @@ export function chuanHoa(x: unknown): DuAn {
           khung_dau: chuoi(c?.khung_dau),
           khung_cuoi: chuoi(c?.khung_cuoi),
           co_cat_canh: c?.co_cat_canh === true,
+          trang_thai: Object.fromEntries(
+            KHOA_TRANG_THAI.map((k) => [k, chuoi((c?.trang_thai as Record<string, unknown> | undefined)?.[k])]).filter(([, v]) => v),
+          ) as TrangThai,
           may_quay: chuoi(c?.may_quay),
           noi_tiep: c?.noi_tiep !== false,
         }))

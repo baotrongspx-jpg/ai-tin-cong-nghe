@@ -664,6 +664,10 @@ function DanhSachCauLenh({ duAn, anh }: { duAn: DuAn; anh: Record<string, string
           : []
         const dungKhung = !!truoc && c.canh.noi_tiep && moi.length === 0
         const kc = truoc ? khungCuoi[truoc.so] : undefined
+        // Chưa có video Veo của cảnh trước → tạm dùng khung cuối của đoạn gốc tương ứng (đọc từ code JS)
+        const doanTruoc = truoc?.canh.doan_goc.at(-1)
+        const tam = !kc && doanTruoc ? anh[tenKhung(doanTruoc, 'cuoi')] : undefined
+        const khungDau = kc?.url ?? tam
         const anhCanh = c.anhMau.filter((m) => anh[m.anh])
         const thieuAnh = c.anhMau.filter((m) => !anh[m.anh])
         const tenAnh = (m: { ma: string; ten: string }) => `canh_${so2(c.so)}_${m.ma}_${tenTep(m.ten)}.jpg`
@@ -682,15 +686,29 @@ function DanhSachCauLenh({ duAn, anh }: { duAn: DuAn; anh: Record<string, string
             <div className="mt-3 rounded-lg bg-slate-50 p-3">
               <p className="mb-2 text-sm font-semibold text-slate-700">① Ảnh đưa vào Flow</p>
               {dungKhung ? (
-                kc ? (
+                khungDau ? (
                   <div className="flex flex-wrap items-end gap-3">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={kc.url} alt="Khung đầu" className="h-28 rounded-md" />
-                    <div className="text-xs text-slate-600">
+                    <img src={khungDau} alt="Khung đầu" className="h-28 rounded-md" />
+                    <div className="max-w-md text-xs text-slate-600">
                       <p>Đặt vào ô <b>khung đầu</b> (First frame). Chỉ cần đúng ảnh này, không thêm ảnh mẫu.</p>
-                      <button className="btn btn-fb btn-sm mt-2" onClick={() => taiVe(kc.url, `canh_${so2(c.so)}_khung_dau.png`)}>
+                      <button className="btn btn-fb btn-sm mt-2"
+                        onClick={() => taiVe(khungDau, `canh_${so2(c.so)}_khung_dau${kc ? '.png' : '_tam.jpg'}`)}>
                         ⬇ Tải khung đầu cảnh {c.so}
                       </button>
+                      {kc ? (
+                        <p className="mt-1 text-green-700">✓ Khung cuối thật của video Veo cảnh {truoc.so}.</p>
+                      ) : (
+                        <>
+                          <p className="mt-2 text-amber-700">
+                            Đây là ảnh <b>tạm</b> (cuối đoạn gốc {doanTruoc}). Đã làm xong cảnh {truoc.so} trên Veo thì chọn video đó vào đây,
+                            ảnh sẽ đổi thành khung cuối thật để 2 cảnh nối khớp hơn:
+                          </p>
+                          <input type="file" accept="video/*" onChange={(e) => chonVideoCanh(truoc.so, e.target.files?.[0])}
+                            className="mt-1 block w-full text-xs file:mr-2 file:rounded-md file:border-0 file:bg-slate-900 file:px-2 file:py-1 file:text-white" />
+                          {dangLay === truoc.so && <p className="mt-1 text-blue-700">Đang lấy khung cuối…</p>}
+                        </>
+                      )}
                     </div>
                   </div>
                 ) : (

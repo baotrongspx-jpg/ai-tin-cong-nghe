@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import MaHoaJs from './MaHoaJs'
 import { type Canh, chuanHoa, type DuAn, DU_AN_TRONG, ghepCauLenh, type Muc, type NhanDang } from './ghep'
 
 const DO_DAI = 8 // giây mỗi đoạn, đúng độ dài một lần tạo của Veo 3
@@ -81,7 +82,28 @@ function docLuu(): DuAn {
 // Dự án lưu trong localStorage của trình duyệt → chỉ vẽ trang công cụ ở phía trình duyệt
 export default function CongCu() {
   const trenTrinhDuyet = useSyncExternalStore(() => () => {}, () => true, () => false)
-  return trenTrinhDuyet ? <TrangCongCu /> : <p className="text-sm text-slate-500">Đang mở công cụ…</p>
+  const [the, setThe] = useState<'ma-hoa' | 'phuc-dung'>('phuc-dung')
+  if (!trenTrinhDuyet) return <p className="text-sm text-slate-500">Đang mở công cụ…</p>
+  const nut = (k: typeof the, ten: string) => (
+    <button onClick={() => setThe(k)} className={`btn ${the === k ? 'btn-fb' : 'btn-phu'}`}>{ten}</button>
+  )
+  return (
+    <div className="space-y-6">
+      <nav className="flex flex-wrap gap-2">
+        {nut('ma-hoa', '① Chuyển video thành code JS')}
+        {nut('phuc-dung', '② Phục dựng bằng Veo 3')}
+      </nav>
+      {/* Giữ cả hai thẻ trong trang để đổi thẻ không làm mất việc đang chạy */}
+      <div hidden={the !== 'ma-hoa'}>
+        <header className="mb-4">
+          <h1 className="text-2xl font-extrabold text-[#0f1b3d]">Chuyển video thành code JS</h1>
+          <p className="mt-1 text-sm text-slate-500">Video chỉ xử lý trên máy bạn, tệp .js ghi thẳng vào thư mục bạn chọn.</p>
+        </header>
+        <section className="the p-5"><MaHoaJs /></section>
+      </div>
+      <div hidden={the !== 'phuc-dung'}><TrangCongCu /></div>
+    </div>
+  )
 }
 
 function TrangCongCu() {

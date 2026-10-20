@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video từ code JS</title>
+<style>
+  body { margin: 0; padding: 16px; background: #111; color: #eee; font-family: system-ui, sans-serif;
+         display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  h1 { font-size: 16px; font-weight: 600; margin: 0; text-align: center; word-break: break-all; }
+  canvas { max-width: 100%; max-height: 75vh; background: #000; }
+  .dieu-khien { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: center; }
+  button, select { font-size: 15px; padding: 8px 14px; border-radius: 6px; border: 1px solid #444;
+                   background: #222; color: #eee; cursor: pointer; }
+  #tt { font-variant-numeric: tabular-nums; color: #aaa; }
+</style>
+</head>
+<body>
+<h1 id="ten">Đang tải danh_sach.js...</h1>
+<canvas id="c" width="16" height="9"></canvas>
+<div class="dieu-khien">
+  <button id="nut" disabled>▶ Phát</button>
+  <select id="chon" disabled></select>
+  <span id="tt"></span>
+</div>
+
+<script>
+// Các tệp .js gọi VIDEO_CODE.setInfo(...) và VIDEO_CODE.add(...)
+const cho = {};
+const VIDEO_CODE = {
+  info: null, doan: {}, the: {},
+  setInfo(info) { this.info = info; },
+  add(d) { this.doan[d.segment] = d; if (cho[d.segment]) { cho[d.segment](d); delete cho[d.segment]; } },
+};
+</script>
+<script src="danh_sach.js"></script>
+<script>
+const info = VIDEO_CODE.info;
+const c = document.getElementById("c"), g = c.getContext("2d");
+const nut = document.getElementById("nut"), chon = document.getElementById("chon");
+const ten = document.getElementById("ten"), tt = document.getElementById("tt");
+
+const dongHo = s => { const m = Math.floor(s / 60), x = Math.floor(s % 60); return `${m}:${String(x).padStart(2, "0")}`; };
+
+function taiDoan(n) {
+  if (VIDEO_CODE.doan[n]) return Promise.resolve(VIDEO_CODE.doan[n]);
+  return new Promise((ok, loi) => {
+    cho[n] = ok;
+    const s = document.createElement("script");
+    s.src = info.segments[n - 1].file;
+    s.onerror = () => loi(new Error("Không tải được " + s.src));
+    VIDEO_CODE.the[n] = s;
+    document.body.appendChild(s);
+  });
+}
+
+function boDoan(n) {   // giải phóng bộ nhớ đoạn đã phát xong
+  delete VIDEO_CODE.doan[n];
+  if (VIDEO_CODE.the[n]) { VIDEO_CODE.the[n].remove(); delete VIDEO_CODE.the[n]; }
+}
+
+let d = null, so = 0, am = null, dangPhat = false, batDau = 0, tamDung = 0, daVe = -1;
+const hinh = new Map();
+
+function anh(i) {
+  if (!hinh.has(i)) {
+    const img = new Image();
+    img.src = "data:image/jpeg;base64," + d.frames[i];
+    hinh.set(i, img.decode().then(() => img));
+  }
+  return hinh.get(i);
+}
+
+function thoiGian() {
+  if (am) return am.currentTime;
+  return dangPhat ? (performance.now() - batDau) / 1000 : tamDung;
+}
+
+async function moDoan(n) {
+  if (am) am.pause();
+  for (const k of Object.keys(VIDEO_CODE.doan)) if (+k !== n && +k !== n + 1) boDoan(+k);
+  tt.textContent = `Đang tải đoạn ${n}...`;
+  d = await taiDoan(n);
+  so = n; hinh.clear(); daVe = -1; tamDung = 0; batDau = performance.now();
+  am = d.audio ? new Audio("data:audio/wav;base64," + d.audio) : null;
+  chon.value = n;
+  if (n < info.segments.length) taiDoan(n + 1);
+  anh(0).then(img => { if (d.segment === n && daVe < 0) g.drawImage(img, 0, 0, c.width, c.height); });
+}
+
+async function phat() {
+  if (!d) await moDoan(1);
+  dangPhat = true;
+  nut.textContent = "⏸ Dừng";
+  if (am) await am.play(); else batDau = performance.now() - tamDung * 1000;
+  requestAnimationFrame(vong);
+}
+
+function dung() {
+  tamDung = thoiGian();
+  dangPhat = false;
+  if (am) am.pause();
+  nut.textContent = "▶ Phát";
+}
+
+async function vong() {
+  if (!dangPhat) return;
+  const i = Math.floor(thoiGian() * d.fps);
+  if (i >= d.frames.length || (am && am.ended)) {
+    if (so >= info.segments.length) {   // hết video, quay về đầu
+      dung(); boDoan(so); d = null; tt.textContent = "Hết video"; return;
+    }
+    await moDoan(so + 1);
+    if (am) await am.play();
+    requestAnimationFrame(vong);
+    return;
+  }
+  if (i !== daVe) {
+    const dang = d;
+    anh(i).then(img => { if (d === dang && i >= daVe) { g.drawImage(img, 0, 0, c.width, c.height); daVe = i; } });
+    for (let k = 1; k <= 6 && i + k < d.frames.length; k++) anh(i + k);
+    for (const k of hinh.keys()) if (k < i - 1) hinh.delete(k);
+  }
+  tt.textContent = `${dongHo(d.start_sec + thoiGian())} / ${dongHo(info.duration_sec)}  ·  đoạn ${so}/${info.segments.length}`;
+  requestAnimationFrame(vong);
+}
+
+if (!info) {
+  ten.textContent = "Không đọc được danh_sach.js — hãy để index.html cùng thư mục với các tệp .js";
+} else {
+  ten.textContent = info.video;
+  c.width = info.width; c.height = info.height;
+  for (const s of info.segments) {
+    const o = document.createElement("option");
+    o.value = s.segment;
+    o.textContent = `Đoạn ${s.segment}: ${dongHo(s.start_sec)} – ${dongHo(s.end_sec)}`;
+    chon.appendChild(o);
+  }
+  tt.textContent = `${info.segments.length} tệp .js · ${dongHo(info.duration_sec)}`;
+  nut.disabled = chon.disabled = false;
+  nut.onclick = () => (dangPhat ? dung() : phat());
+  chon.onchange = async () => {
+    const dangChay = dangPhat;
+    if (dangChay) dung();
+    await moDoan(+chon.value);
+    if (dangChay) phat();
+  };
+  moDoan(1).then(() => { tt.textContent = `${info.segments.length} tệp .js · ${dongHo(info.duration_sec)} · bấm Phát`; })
+           .catch(e => { tt.textContent = e.message; });
+}
+</script>
+</body>
+</html>

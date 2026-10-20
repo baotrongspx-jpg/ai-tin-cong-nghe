@@ -241,6 +241,16 @@ export default function MaHoaJs({ thuMuc, onDoiThuMuc, onDaGhi, onXong }: {
     }
 
     setTienDo('Đang mã hóa… giữ tab này mở (chuyển tab khác video sẽ tạm dừng).')
+    // Làm tiếp: tua thẳng tới đầu đoạn kế tiếp, không phát lại phần đã có
+    if (batDauDoan) {
+      ghiNhatKy(`Làm tiếp từ đoạn ${batDauDoan + 1} (${mmss(batDauDoan * DO_DAI)}), giữ ${batDauDoan} đoạn đã có.`)
+      setTienDo(`Đang tua tới ${mmss(batDauDoan * DO_DAI)}…`)
+      await new Promise<void>((ok) => {
+        v.addEventListener('seeked', () => ok(), { once: true })
+        v.currentTime = batDauDoan * DO_DAI
+      })
+    }
+
     // Tab bị ẩn / cửa sổ bị thu nhỏ hoặc che kín → trình duyệt ngừng đưa khung hình, nên tạm dừng và báo rõ
     const anTab = () => {
       if (document.hidden) {
@@ -276,7 +286,8 @@ export default function MaHoaJs({ thuMuc, onDoiThuMuc, onDaGhi, onXong }: {
         g.drawImage(v, 0, 0, rong, cao)
         const t = meta.mediaTime
         if (moc.length < 30) moc.push(t)
-        cho.push({ t, b64: anhB64(canvas, tuyChon.chatLuong) })
+        // Khung thuộc các đoạn đã có (làm tiếp) thì bỏ qua, không nén ảnh vô ích
+        if (t >= batDauDoan * DO_DAI) cho.push({ t, b64: anhB64(canvas, tuyChon.chatLuong) })
         const so = Math.floor(t / DO_DAI) + 1
         if (so > doan + 1 && fps) {
           // Khung đã sang đoạn mới → ghi đoạn cũ

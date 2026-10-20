@@ -613,18 +613,14 @@ function DanhSachCauLenh({ duAn, anh }: { duAn: DuAn; anh: Record<string, string
     <div className="space-y-4">
       <p className="text-sm text-slate-600">
         Mỗi cảnh: trong Flow chọn <b>Frames to Video</b>, đặt <b>ảnh đầu</b> vào ô First frame, <b>ảnh cuối</b> vào ô Last frame,
-        rồi dán câu lệnh. <b>Ảnh giữa</b> để bạn đối chiếu video Veo làm ra có đúng diễn biến không
-        (Flow không có ô cho ảnh giữa).
+        rồi dán câu lệnh. Thêm ảnh nào trước cũng được, miễn đúng ô.
       </p>
       {ds.map((c) => {
         const doanDau = c.canh.doan_goc[0]
         const doanCuoi = c.canh.doan_goc.at(-1)
-        // Ảnh giữa: khung giữa của đoạn ở giữa (cảnh 1 đoạn thì là khung giữa đoạn đó)
-        const doanGiua = c.canh.doan_goc[Math.floor((c.canh.doan_goc.length - 1) / 2)]
         const hai = [
           { nhan: 'Ảnh đầu', o: 'ô First frame', url: doanDau ? anh[tenKhung(doanDau, 'dau')] : undefined, ten: `canh_${so2(c.so)}_1_anh_dau.jpg` },
-          { nhan: 'Ảnh giữa', o: 'xem đối chiếu', url: doanGiua ? anh[tenKhung(doanGiua, 'giua')] : undefined, ten: `canh_${so2(c.so)}_2_anh_giua.jpg` },
-          { nhan: 'Ảnh cuối', o: 'ô Last frame', url: doanCuoi ? anh[tenKhung(doanCuoi, 'cuoi')] : undefined, ten: `canh_${so2(c.so)}_3_anh_cuoi.jpg` },
+          { nhan: 'Ảnh cuối', o: 'ô Last frame', url: doanCuoi ? anh[tenKhung(doanCuoi, 'cuoi')] : undefined, ten: `canh_${so2(c.so)}_2_anh_cuoi.jpg` },
         ]
         const coDu = hai.every((h) => h.url)
 
@@ -652,7 +648,7 @@ function DanhSachCauLenh({ duAn, anh }: { duAn: DuAn; anh: Record<string, string
                   </div>
                   <button className="btn btn-fb btn-sm mt-2"
                     onClick={() => hai.forEach((h, k) => setTimeout(() => taiVe(h.url!, h.ten), k * 400))}>
-                    ⬇ Tải cả 3 ảnh cảnh {c.so}
+                    ⬇ Tải cả 2 ảnh cảnh {c.so}
                   </button>
                 </>
               ) : (

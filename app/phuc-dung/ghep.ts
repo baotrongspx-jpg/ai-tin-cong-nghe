@@ -11,6 +11,9 @@ export type Canh = {
   nhan_vat: string[]
   do_vat: string[]
   hanh_dong: string
+  khung_dau?: string // AI tả đúng ảnh đầu
+  khung_cuoi?: string // AI tả đúng ảnh cuối
+  co_cat_canh?: boolean // đoạn gốc có cắt cảnh: ảnh đầu và ảnh cuối khác góc máy
   may_quay: string
   noi_tiep: boolean
 }
@@ -53,12 +56,20 @@ export function ghepCauLenh({ nhan_dang: nd, canh }: DuAn): CauLenh[] {
     )
     // Mỗi cảnh làm bằng Frames to Video (ảnh đầu + ảnh cuối của đoạn gốc) → buộc khớp đúng 2 ảnh để các cảnh nối liền
     phan.push(
-      'START AND END FRAMES (mandatory): the video must begin exactly on the provided first frame and end exactly on the ' +
-        'provided last frame. At 0 seconds every person, object and the camera are in exactly the pose, position, framing ' +
-        'and lighting of the first frame; at 8 seconds they are in exactly the pose, position, framing and lighting of the ' +
-        'last frame. The action moves smoothly and naturally from one to the other, without cuts, morphing or teleporting, ' +
-        'so this shot joins seamlessly with the previous and next shots.',
+      c.co_cat_canh
+        ? // Đoạn gốc có cắt cảnh: không bắt biến dần ảnh đầu thành ảnh cuối (sẽ bị méo), mà cho cắt cảnh thẳng
+          'START AND END FRAMES (mandatory): the video must begin exactly on the provided first frame and end exactly on the ' +
+            'provided last frame. These two frames are DIFFERENT camera shots: play the first shot from the first frame, then ' +
+            'make one clean hard cut (no morphing, no blending, no camera fly-through) to the second shot, which ends exactly on ' +
+            'the last frame with the same pose, position, framing and lighting.'
+        : 'START AND END FRAMES (mandatory): the video must begin exactly on the provided first frame and end exactly on the ' +
+            'provided last frame. At 0 seconds every person, object and the camera are in exactly the pose, position, framing ' +
+            'and lighting of the first frame; at 8 seconds they are in exactly the pose, position, framing and lighting of the ' +
+            'last frame. The action moves smoothly and naturally from one to the other, without cuts, morphing or teleporting, ' +
+            'so this shot joins seamlessly with the previous and next shots.',
     )
+    if (c.khung_dau?.trim()) phan.push(`FIRST FRAME (0 s) shows: ${c.khung_dau.trim()}`)
+    if (c.khung_cuoi?.trim()) phan.push(`LAST FRAME (8 s) shows: ${c.khung_cuoi.trim()}`)
     if (c.may_quay.trim()) phan.push(`CAMERA: ${c.may_quay.trim()}`)
     if (nd.am_thanh.trim()) phan.push(`AUDIO: ${nd.am_thanh.trim()}`)
     if (c.noi_tiep && i > 0)
@@ -136,6 +147,9 @@ export function chuanHoa(x: unknown): DuAn {
           nhan_vat: ds(c?.nhan_vat),
           do_vat: ds(c?.do_vat),
           hanh_dong: chuoi(c?.hanh_dong),
+          khung_dau: chuoi(c?.khung_dau),
+          khung_cuoi: chuoi(c?.khung_cuoi),
+          co_cat_canh: c?.co_cat_canh === true,
           may_quay: chuoi(c?.may_quay),
           noi_tiep: c?.noi_tiep !== false,
         }))

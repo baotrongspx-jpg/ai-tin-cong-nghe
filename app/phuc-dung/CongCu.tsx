@@ -528,7 +528,7 @@ function VietBangAI({ khung, duAn, onXong }: { khung: Khung[]; duAn: DuAn; onXon
   const nd = duAn.nhan_dang
   const coNhanDang = nd.nhan_vat.length + nd.boi_canh.length + nd.do_vat.length > 0
   // Cảnh "đã viết" = có hành động; cảnh tạo sẵn (chưa có chữ) vẫn được gửi cho AI
-  const daViet = new Set(duAn.canh.filter((c) => c.hanh_dong.trim()).flatMap((c) => c.doan_goc))
+  const daViet = new Set(duAn.canh.filter((c) => c.hanh_dong.trim() && c.khung_cuoi?.trim()).flatMap((c) => c.doan_goc))
   // Đã có bộ nhận dạng + cảnh đã viết → mặc định làm tiếp: giữ nguyên bộ nhận dạng, chỉ viết đoạn chưa có chữ
   const coKichBan = coNhanDang && daViet.size > 0
   const [lamTiep, setLamTiep] = useState(true)
@@ -737,6 +737,10 @@ function SuaCanh({ ds, nd, onDoi }: { ds: Canh[]; nd: NhanDang; onDoi: (c: Canh[
                   placeholder="Hành động trong 8 giây (tiếng Anh)" />
                 <textarea rows={2} className="input" value={c.may_quay} onChange={(e) => sua({ may_quay: e.target.value })}
                   placeholder="Góc máy (tiếng Anh)" />
+                <textarea rows={2} className="input" value={c.khung_dau ?? ''} onChange={(e) => sua({ khung_dau: e.target.value })}
+                  placeholder="Ảnh đầu cho thấy gì (tiếng Anh)" />
+                <textarea rows={2} className="input" value={c.khung_cuoi ?? ''} onChange={(e) => sua({ khung_cuoi: e.target.value })}
+                  placeholder="Ảnh cuối cho thấy gì (tiếng Anh)" />
               </div>
             </div>
           )
@@ -781,6 +785,12 @@ function DanhSachCauLenh({ duAn, anh }: { duAn: DuAn; anh: Record<string, string
 
             <div className="mt-3 rounded-lg bg-slate-50 p-3">
               <p className="mb-2 text-sm font-semibold text-slate-700">① Ảnh đưa vào Flow</p>
+              {c.canh.co_cat_canh && (
+                <p className="mb-2 rounded-lg bg-amber-50 p-2 text-xs text-amber-800">
+                  ✂ Đoạn gốc này có <b>cắt cảnh giữa chừng</b>: ảnh đầu và ảnh cuối khác góc máy. Câu lệnh đã dặn Veo cắt thẳng sang
+                  cảnh sau, nhưng Veo hay làm méo hình. Nếu ra không đẹp: chỉ đưa <b>ảnh đầu</b> (bỏ trống ô Last frame) rồi tạo lại.
+                </p>
+              )}
               {coDu ? (
                 <>
                   <div className="flex flex-wrap gap-3">

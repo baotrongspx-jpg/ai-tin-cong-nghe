@@ -46,15 +46,24 @@ Rules:
 - Reuse the same codes across shots; only create a new character/place/object when it really is different.
 - Output only the JSON object, no markdown.`
 
-function noiDungChu(anh: AnhDoan[], ghiChu: string) {
+function noiDungChu(anh: AnhDoan[], ghiChu: string, ndCu: string) {
   return (
     `Frames: ${anh.map((a) => `${a.ten} (${a.giay.toFixed(1)}s)`).join(', ')}.` +
+    (ndCu
+      ? '\n\nThis is a CONTINUATION: earlier shots of the same video were already generated with this nhan_dang:\n' +
+        ndCu +
+        '\nCopy it UNCHANGED into your output nhan_dang (same codes, same wording, same anh_mau, same phong_cach and am_thanh). ' +
+        'Reuse its codes whenever the same character, place or object appears. Add a new entry (with a new code) only for ' +
+        'something that is not in it. Write "canh" only for the segments in these frames.'
+      : '') +
     (ghiChu ? `\nNote from the video maker (Vietnamese): ${ghiChu}` : '')
   )
 }
 
-export async function vietKichBan(anh: AnhDoan[], ghiChu: string): Promise<unknown> {
-  const text = process.env.GEMINI_API_KEY ? await hoiGemini(anh, ghiChu) : await hoiClaude(anh, ghiChu)
+// ndCu: bộ nhận dạng (JSON) của các cảnh đã làm khi "làm tiếp" đợt sau, để AI giữ nguyên
+export async function vietKichBan(anh: AnhDoan[], ghiChu: string, ndCu = ''): Promise<unknown> {
+  const chu = noiDungChu(anh, ghiChu, ndCu)
+  const text = process.env.GEMINI_API_KEY ? await hoiGemini(anh, chu) : await hoiClaude(anh, chu)
   if (!text) return null
   const json = text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1)
   try {
@@ -64,7 +73,7 @@ export async function vietKichBan(anh: AnhDoan[], ghiChu: string): Promise<unkno
   }
 }
 
-async function hoiGemini(anh: AnhDoan[], ghiChu: string): Promise<string | null> {
+async function hoiGemini(anh: AnhDoan[], chu: string): Promise<string | null> {
   const parts = anh.flatMap((a) => [{ text: a.ten }, { inline_data: { mime_type: 'image/jpeg', data: a.jpg } }])
   for (const model of MODEL_GEMINI) {
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
@@ -72,7 +81,7 @@ async function hoiGemini(anh: AnhDoan[], ghiChu: string): Promise<string | null>
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': process.env.GEMINI_API_KEY! },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: SYSTEM }] },
-        contents: [{ role: 'user', parts: [...parts, { text: noiDungChu(anh, ghiChu) }] }],
+        contents: [{ role: 'user', parts: [...parts, { text: chu }] }],
         generationConfig: { responseMimeType: 'application/json' },
       }),
       signal: AbortSignal.timeout(50_000),
@@ -90,7 +99,7 @@ async function hoiGemini(anh: AnhDoan[], ghiChu: string): Promise<string | null>
 
 let client: Anthropic | null = null
 
-async function hoiClaude(anh: AnhDoan[], ghiChu: string): Promise<string | null> {
+async function hoiClaude(anh: AnhDoan[], chu: string): Promise<string | null> {
   client ??= new Anthropic()
   const res = await client.messages.create({
     model: MODEL_CLAUDE,
@@ -104,7 +113,7 @@ async function hoiClaude(anh: AnhDoan[], ghiChu: string): Promise<string | null>
             { type: 'text' as const, text: a.ten },
             { type: 'image' as const, source: { type: 'base64' as const, media_type: 'image/jpeg' as const, data: a.jpg } },
           ]),
-          { type: 'text' as const, text: noiDungChu(anh, ghiChu) },
+          { type: 'text' as const, text: chu },
         ],
       },
     ],

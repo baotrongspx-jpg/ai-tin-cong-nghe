@@ -8,6 +8,8 @@ export const maxDuration = 60
 
 const YeuCau = z.object({
   ghiChu: z.string().max(1000).default(''),
+  // Làm tiếp đợt sau: bộ nhận dạng đã dùng ở các cảnh trước, AI phải giữ nguyên
+  nhanDang: z.unknown().optional(),
   anh: z
     .array(
       z.object({
@@ -26,7 +28,9 @@ export async function POST(req: Request) {
   const duLieu = YeuCau.safeParse(await req.json().catch(() => null))
   if (!duLieu.success) return Response.json({ loi: 'Dữ liệu ảnh không hợp lệ.' }, { status: 400 })
 
-  const kq = await vietKichBan(duLieu.data.anh, duLieu.data.ghiChu).catch(() => null)
+  const { anh, ghiChu, nhanDang } = duLieu.data
+  const ndCu = nhanDang ? JSON.stringify(chuanHoa({ nhan_dang: nhanDang }).nhan_dang).slice(0, 30_000) : ''
+  const kq = await vietKichBan(anh, ghiChu, ndCu).catch(() => null)
   if (!kq) return Response.json({ loi: 'AI chưa viết được (quá tải hoặc hết lượt miễn phí). Đợi 1 phút rồi thử lại.' }, { status: 502 })
   return Response.json({ duAn: chuanHoa(kq) })
 }

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { docAnh, luuAnh } from './khoAnh'
 import MaHoaJs from './MaHoaJs'
 import ThuVien, { coQuyen } from './ThuVien'
-import { type Canh, chuanHoa, type DuAn, DU_AN_TRONG, ghepCauLenh, type Muc, type NhanDang } from './ghep'
+import { type Canh, chuanHoa, type DuAn, DU_AN_TRONG, ghepCauLenh, type Muc, type NhanDang, noiDot } from './ghep'
 
 const DO_DAI = 8 // giây mỗi đoạn, đúng độ dài một lần tạo của Veo 3
 const TOI_DA_DOAN = 30
@@ -291,7 +291,8 @@ function TrangCongCu({ dang, nguon, onMoLai, onChonNguon }: {
     const { n: ng, info } = nguon
     const dauTien = Math.floor(tuGiay / DO_DAI)
     const chon = info.segments.slice(dauTien, dauTien + soDoan)
-    const ds: Khung[] = []
+    // Giữ ảnh các đoạn đã lấy trước đó (ảnh mẫu của bộ nhận dạng nằm ở đó), chỉ thay ảnh các đoạn lấy lại
+    const ds: Khung[] = khung.filter((k) => !chon.some((s) => s.segment === k.doan))
     for (const [i, s] of chon.entries()) {
       setTienDo(`Đang đọc ${s.file} (${i + 1}/${chon.length})…`)
       const d = docJs<{ fps: number; frames: string[] }>(await ng.doc(s.file))
@@ -299,7 +300,7 @@ function TrangCongCu({ dang, nguon, onMoLai, onChonNguon }: {
       for (const [loai, k] of [['dau', 0], ['giua', giua], ['cuoi', d.frames.length - 1]] as const) {
         ds.push({ ten: tenKhung(s.segment, loai), doan: s.segment, giay: s.start_sec + k / d.fps, url: `data:image/jpeg;base64,${d.frames[k]}` })
       }
-      setKhung([...ds])
+      setKhung([...ds].sort((a, b) => a.doan - b.doan || a.giay - b.giay))
     }
     setTienDo('')
   }
@@ -415,6 +416,25 @@ function TrangCongCu({ dang, nguon, onMoLai, onChonNguon }: {
             <button onClick={dungCode ? layKhungTuJs : catKhung} disabled={!!tienDo} className="btn btn-fb">Lấy khung hình</button>
           </div>
         )}
+        {dungCode && khung.length > 0 && (() => {
+          const cuoi = Math.max(...khung.map((k) => k.doan))
+          const tong = nguon!.info.segments.length
+          const conLai = tong - cuoi
+          return conLai > 0 ? (
+            <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl bg-blue-50 p-3 text-sm text-blue-900">
+              <span>Đã lấy tới đoạn {cuoi}/{tong} ({mmss(cuoi * DO_DAI)}). Còn {conLai} đoạn.</span>
+              <button className="btn btn-fb btn-sm" disabled={!!tienDo} onClick={() => {
+                setTuGiay(cuoi * DO_DAI)
+                setSoDoan(Math.min(TOI_DA_DOAN, conLai))
+              }}>
+                Làm tiếp {Math.min(TOI_DA_DOAN, conLai)} đoạn sau
+              </button>
+              <span className="text-xs text-blue-700">(bấm rồi bấm &quot;Lấy khung hình&quot;; ảnh cũ vẫn giữ)</span>
+            </div>
+          ) : (
+            <p className="mt-3 text-sm text-green-700">✓ Đã lấy hết {tong} đoạn của video.</p>
+          )
+        })()}
         {tienDo && <p className="mt-3 text-sm font-medium text-blue-700">{tienDo}</p>}
         {khung.length > 0 && <LuoiKhung khung={khung} />}
       </section>
@@ -422,7 +442,7 @@ function TrangCongCu({ dang, nguon, onMoLai, onChonNguon }: {
       {/* Bước 2 */}
       <section className="the p-5">
         <TieuDe so={2} ten="Bộ nhận dạng và kịch bản từng cảnh" />
-        <VietBangAI khung={khung} onXong={setDuAn} />
+        <VietBangAI khung={khung} duAn={duAn} onXong={setDuAn} />
         <NhapXuatJson duAn={duAn} onNhap={setDuAn} />
         <SuaNhanDang nd={duAn.nhan_dang} anh={anhTheoTen} tenAnh={khung.map((k) => k.ten)}
           onDoi={(nhan_dang) => setDuAn({ ...duAn, nhan_dang })} />
@@ -496,27 +516,39 @@ function LuoiKhung({ khung }: { khung: Khung[] }) {
   )
 }
 
-function VietBangAI({ khung, onXong }: { khung: Khung[]; onXong: (d: DuAn) => void }) {
+function VietBangAI({ khung, duAn, onXong }: { khung: Khung[]; duAn: DuAn; onXong: (d: DuAn) => void }) {
   const [ghiChu, setGhiChu] = useState('')
   const [dang, setDang] = useState('')
   const [loi, setLoi] = useState('')
+  const nd = duAn.nhan_dang
+  // Đã có bộ nhận dạng + cảnh → mặc định làm tiếp: giữ nguyên bộ nhận dạng, chỉ viết cảnh cho đoạn chưa có
+  const coKichBan = duAn.canh.length > 0 && nd.nhan_vat.length + nd.boi_canh.length + nd.do_vat.length > 0
+  const [lamTiep, setLamTiep] = useState(true)
+  const noi = coKichBan && lamTiep
+  const daCo = new Set(duAn.canh.flatMap((c) => c.doan_goc))
+  const guiDi = noi ? khung.filter((k) => !daCo.has(k.doan)) : khung
+  const soDoanGui = new Set(guiDi.map((k) => k.doan)).size
 
   async function viet() {
     setLoi('')
     setDang('Đang thu nhỏ ảnh…')
     try {
+      // Mỗi lần gửi tối đa 30 đoạn (90 ảnh)
+      const doanGui = [...new Set(guiDi.map((k) => k.doan))].sort((a, b) => a - b).slice(0, TOI_DA_DOAN)
       const anh = await Promise.all(
-        khung.map(async (k) => ({ ten: k.ten, doan: k.doan, giay: k.giay, jpg: await thuNho(k.url, 384) })),
+        guiDi
+          .filter((k) => doanGui.includes(k.doan))
+          .map(async (k) => ({ ten: k.ten, doan: k.doan, giay: k.giay, jpg: await thuNho(k.url, 384) })),
       )
       setDang('AI đang xem video và viết (khoảng 20–60 giây)…')
       const res = await fetch('/phuc-dung/viet', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ anh, ghiChu }),
+        body: JSON.stringify({ anh, ghiChu, nhanDang: noi ? nd : undefined }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok || !data.duAn) throw new Error(data.loi ?? 'AI chưa viết được, thử lại.')
-      onXong(data.duAn)
+      onXong(noi ? noiDot(duAn, data.duAn) : data.duAn)
     } catch (e) {
       setLoi((e as Error).message)
     }
@@ -528,10 +560,28 @@ function VietBangAI({ khung, onXong }: { khung: Khung[]; onXong: (d: DuAn) => vo
       <label className="label">Ghi chú cho AI (không bắt buộc)</label>
       <textarea value={ghiChu} onChange={(e) => setGhiChu(e.target.value)} rows={2} className="input"
         placeholder="Ví dụ: đổi xe thành màu đỏ, nhân vật chính là cô gái tóc dài…" />
-      <button onClick={viet} disabled={!khung.length || !!dang} className="btn btn-ca-hai mt-3">
-        {dang || 'AI xem và viết'}
+      {coKichBan && (
+        <div className="mt-3 space-y-1 text-sm">
+          <label className="flex items-start gap-2">
+            <input type="radio" className="mt-1" checked={lamTiep} onChange={() => setLamTiep(true)} />
+            <span>
+              <b>Làm tiếp</b> (nên chọn): giữ nguyên bộ nhận dạng và {duAn.canh.length} cảnh đã có, AI chỉ viết thêm cảnh cho
+              các đoạn mới ({soDoanGui || 0} đoạn).
+            </span>
+          </label>
+          <label className="flex items-start gap-2">
+            <input type="radio" className="mt-1" checked={!lamTiep} onChange={() => setLamTiep(false)} />
+            <span>Viết lại từ đầu: AI viết lại cả bộ nhận dạng và toàn bộ cảnh (các cảnh cũ bị thay).</span>
+          </label>
+        </div>
+      )}
+      <button onClick={viet} disabled={!guiDi.length || !!dang} className="btn btn-ca-hai mt-3">
+        {dang || (noi ? `AI viết thêm ${Math.min(soDoanGui, TOI_DA_DOAN)} cảnh` : 'AI xem và viết')}
       </button>
-      {!khung.length && <p className="mt-2 text-xs text-slate-500">Cắt khung hình ở bước 1 trước.</p>}
+      {!khung.length && <p className="mt-2 text-xs text-slate-500">Lấy khung hình ở bước 1 trước.</p>}
+      {khung.length > 0 && noi && !guiDi.length && (
+        <p className="mt-2 text-xs text-amber-700">Các đoạn đã lấy đều có cảnh rồi. Ở bước 1 bấm &quot;Làm tiếp&quot; để lấy khung hình các đoạn sau.</p>
+      )}
       {loi && <p className="mt-2 text-sm font-medium text-red-600">{loi}</p>}
     </div>
   )

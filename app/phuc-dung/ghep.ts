@@ -77,6 +77,26 @@ export function ghepCauLenh({ nhan_dang: nd, canh }: DuAn): CauLenh[] {
   })
 }
 
+// Làm tiếp đợt sau: bộ nhận dạng cũ giữ NGUYÊN (mã nào đã có thì giữ mô tả cũ), chỉ thêm mục mới;
+// cảnh mới nối vào sau, cảnh trùng đoạn gốc thì thay bằng bản mới, xếp theo thứ tự đoạn gốc.
+export function noiDot(cu: DuAn, moi: DuAn): DuAn {
+  const gop = (a: Muc[], b: Muc[]) => [...a, ...b.filter((m) => !a.some((x) => x.ma === m.ma))]
+  const doanMoi = new Set(moi.canh.flatMap((c) => c.doan_goc))
+  const canh = [...cu.canh.filter((c) => !c.doan_goc.some((d) => doanMoi.has(d))), ...moi.canh].sort(
+    (a, b) => (a.doan_goc[0] ?? 0) - (b.doan_goc[0] ?? 0),
+  )
+  return {
+    nhan_dang: {
+      phong_cach: cu.nhan_dang.phong_cach || moi.nhan_dang.phong_cach,
+      am_thanh: cu.nhan_dang.am_thanh || moi.nhan_dang.am_thanh,
+      nhan_vat: gop(cu.nhan_dang.nhan_vat, moi.nhan_dang.nhan_vat),
+      boi_canh: gop(cu.nhan_dang.boi_canh, moi.nhan_dang.boi_canh),
+      do_vat: gop(cu.nhan_dang.do_vat, moi.nhan_dang.do_vat),
+    },
+    canh,
+  }
+}
+
 // Dữ liệu dán vào / AI trả về có thể thiếu trường → điền mặc định cho đủ
 export function chuanHoa(x: unknown): DuAn {
   const o = (x ?? {}) as Record<string, unknown>

@@ -85,7 +85,8 @@ async function ghiTep(thuMuc: FileSystemDirectoryHandle, ten: string, phan: stri
 
 const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`
 
-export default function MaHoaJs() {
+export default function MaHoaJs({ onXong }: { onXong?: (thuMuc: FileSystemDirectoryHandle) => void }) {
+  const [ketQua, setKetQua] = useState<FileSystemDirectoryHandle | null>(null)
   const [tep, setTep] = useState<File | null>(null)
   const [tuyChon, setTuyChon] = useState<TuyChon>({ rong: 0, chatLuong: 0.85 })
   const [chay, setChay] = useState(false)
@@ -102,6 +103,7 @@ export default function MaHoaJs() {
     if (!tep || !window.showDirectoryPicker) return
     setLoi('')
     setNhatKy([])
+    setKetQua(null)
     let goc: FileSystemDirectoryHandle
     try {
       goc = await window.showDirectoryPicker({ mode: 'readwrite', id: 'video-js' })
@@ -247,6 +249,7 @@ export default function MaHoaJs() {
     }
     await ghiTep(thuMuc, 'danh_sach.js', [`VIDEO_CODE.setInfo(${JSON.stringify(info)});\n`])
     await ghiTep(thuMuc, 'index.html', [await (await fetch('/video-js/player.html')).text()])
+    setKetQua(thuMuc)
     setTienDo(
       `${dung.current ? 'Đã dừng giữa chừng' : 'Xong'}: ${daGhi.length} tệp .js, ${khungDau} khung hình, tổng ${tongMB.toFixed(0)} MB → thư mục "${ten}". ` +
         'Mở index.html trong thư mục đó để xem video phát lại từ code.',
@@ -300,6 +303,9 @@ export default function MaHoaJs() {
       </div>
       <div ref={xem} />
       {tienDo && <p className="text-sm font-medium text-blue-700">{tienDo}</p>}
+      {ketQua && !chay && onXong && (
+        <button className="btn btn-ca-hai" onClick={() => onXong(ketQua)}>→ Dùng code này để phục dựng bằng Veo 3</button>
+      )}
       {loi && <p className="text-sm font-medium text-red-600">{loi}</p>}
       {nhatKy.length > 0 && (
         <pre className="max-h-64 overflow-auto rounded-lg bg-slate-900 p-3 text-xs text-slate-100">{nhatKy.join('\n')}</pre>

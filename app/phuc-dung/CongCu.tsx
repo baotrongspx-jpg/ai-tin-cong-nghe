@@ -79,10 +79,40 @@ function docLuu(): DuAn {
   return DU_AN_TRONG
 }
 
+// ——— Đọc code JS đã mã hóa ở thẻ ① (hoặc bằng VIDEO_JS_TOOL trên máy) ———
+
+type DoanInfo = { file: string; segment: number; start_sec: number; end_sec: number }
+type ThongTinJs = { video: string; duration_sec: number; segments: DoanInfo[] }
+export type NguonJs = { ten: string; doc: (tep: string) => Promise<string> }
+
+const docJs = <T,>(text: string): T => JSON.parse(text.slice(text.indexOf('(') + 1, text.lastIndexOf(')')))
+
+export function nguonTuThuMuc(h: FileSystemDirectoryHandle): NguonJs {
+  return { ten: h.name, doc: async (t) => (await (await h.getFileHandle(t)).getFile()).text() }
+}
+
+function nguonTuDanhSachTep(ds: FileList): NguonJs | null {
+  const tep = [...ds]
+  const muc = tep.find((f) => f.name === 'danh_sach.js')
+  if (!muc) return null
+  // Chọn cả thư mục: đường dẫn dạng "ten_video/doan_001.js"
+  const goc = muc.webkitRelativePath.slice(0, -'danh_sach.js'.length)
+  const theoTen = new Map(tep.filter((f) => f.webkitRelativePath.startsWith(goc)).map((f) => [f.name, f]))
+  return {
+    ten: goc.replace(/\/$/, '').split('/').pop() || 'video',
+    doc: async (t) => {
+      const f = theoTen.get(t)
+      if (!f) throw new Error(`Thiếu tệp ${t} trong thư mục`)
+      return f.text()
+    },
+  }
+}
+
 // Dự án lưu trong localStorage của trình duyệt → chỉ vẽ trang công cụ ở phía trình duyệt
 export default function CongCu() {
   const trenTrinhDuyet = useSyncExternalStore(() => () => {}, () => true, () => false)
-  const [the, setThe] = useState<'ma-hoa' | 'phuc-dung'>('phuc-dung')
+  const [the, setThe] = useState<'ma-hoa' | 'phuc-dung'>('ma-hoa')
+  const [nguonMaHoa, setNguonMaHoa] = useState<NguonJs | null>(null)
   if (!trenTrinhDuyet) return <p className="text-sm text-slate-500">Đang mở công cụ…</p>
   const nut = (k: typeof the, ten: string) => (
     <button onClick={() => setThe(k)} className={`btn ${the === k ? 'btn-fb' : 'btn-phu'}`}>{ten}</button>
@@ -99,14 +129,22 @@ export default function CongCu() {
           <h1 className="text-2xl font-extrabold text-[#0f1b3d]">Chuyển video thành code JS</h1>
           <p className="mt-1 text-sm text-slate-500">Video chỉ xử lý trên máy bạn, tệp .js ghi thẳng vào thư mục bạn chọn.</p>
         </header>
-        <section className="the p-5"><MaHoaJs /></section>
+        <section className="the p-5">
+          <MaHoaJs onXong={(h) => {
+            setNguonMaHoa(nguonTuThuMuc(h))
+            setThe('phuc-dung')
+          }} />
+        </section>
       </div>
-      <div hidden={the !== 'phuc-dung'}><TrangCongCu /></div>
+      <div hidden={the !== 'phuc-dung'}><TrangCongCu nguonMaHoa={nguonMaHoa} /></div>
     </div>
   )
 }
 
-function TrangCongCu() {
+function TrangCongCu({ nguonMaHoa }: { nguonMaHoa: NguonJs | null }) {
+  const [nguonChon, setNguonChon] = useState<NguonJs | null>(null)
+  const [boMaHoa, setBoMaHoa] = useState<NguonJs | null>(null)
+  const [thongTin, setThongTin] = useState<{ nguon: NguonJs; info: ThongTinJs } | null>(null)
   const [tep, setTep] = useState<File | null>(null)
   const [thoiLuong, setThoiLuong] = useState(0)
   const [tuGiay, setTuGiay] = useState(0)
@@ -123,8 +161,60 @@ function TrangCongCu() {
 
   const anhTheoTen = useMemo(() => Object.fromEntries(khung.map((k) => [k.ten, k.url])), [khung])
 
+  // Code JS mới mã hóa ở thẻ ① được dùng luôn, trừ khi người dùng tự mở thư mục khác
+  const nguon = nguonChon ?? (nguonMaHoa !== boMaHoa ? nguonMaHoa : null)
+  useEffect(() => {
+    if (!nguon || thongTin?.nguon === nguon) return
+    let huy = false
+    nguon
+      .doc('danh_sach.js')
+      .then((t) => {
+        if (huy) return
+        const info = docJs<ThongTinJs>(t)
+        setThongTin({ nguon, info })
+        setTep(null)
+        setKhung([])
+        setThoiLuong(info.duration_sec)
+        setTuGiay(0)
+        setSoDoan(Math.min(TOI_DA_DOAN, info.segments.length))
+      })
+      .catch((e) => !huy && setTienDo(`Không đọc được danh_sach.js: ${(e as Error).message}`))
+    return () => {
+      huy = true
+    }
+  }, [nguon, thongTin])
+
+  function moThuMucJs(ds: FileList | null) {
+    if (!ds?.length) return
+    const n = nguonTuDanhSachTep(ds)
+    if (!n) return setTienDo('Thư mục này không có danh_sach.js. Hãy chọn thư mục do bước ① tạo ra.')
+    setTienDo('')
+    setNguonChon(n)
+  }
+
+  async function layKhungTuJs() {
+    if (!thongTin) return
+    const { nguon: ng, info } = thongTin
+    const dauTien = Math.floor(tuGiay / DO_DAI)
+    const chon = info.segments.slice(dauTien, dauTien + soDoan)
+    const ds: Khung[] = []
+    for (const [i, s] of chon.entries()) {
+      setTienDo(`Đang đọc ${s.file} (${i + 1}/${chon.length})…`)
+      const d = docJs<{ fps: number; frames: string[] }>(await ng.doc(s.file))
+      const giua = Math.floor(d.frames.length / 2)
+      for (const [loai, k] of [['dau', 0], ['giua', giua], ['cuoi', d.frames.length - 1]] as const) {
+        ds.push({ ten: tenKhung(s.segment, loai), doan: s.segment, giay: s.start_sec + k / d.fps, url: `data:image/jpeg;base64,${d.frames[k]}` })
+      }
+      setKhung([...ds])
+    }
+    setTienDo('')
+  }
+
   async function chonVideo(f: File | undefined) {
     if (!f) return
+    setThongTin(null)
+    setNguonChon(null)
+    setBoMaHoa(nguonMaHoa)
     setTep(f)
     setKhung([])
     setTienDo('Đang đọc video…')
@@ -173,13 +263,27 @@ function TrangCongCu() {
 
       {/* Bước 1 */}
       <section className="the p-5">
-        <TieuDe so={1} ten="Chọn video gốc và cắt khung hình" />
-        <input
-          type="file"
-          accept="video/*"
-          onChange={(e) => chonVideo(e.target.files?.[0])}
-          className="block w-full text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-blue-600 file:px-4 file:py-2 file:font-semibold file:text-white"
-        />
+        <TieuDe so={1} ten="Lấy khung hình từ code JS" />
+        {thongTin ? (
+          <p className="mb-3 rounded-xl bg-green-50 p-3 text-sm text-green-800">
+            Đang dùng code JS: <b>{thongTin.nguon.ten}</b> ({thongTin.info.video}, {thongTin.info.segments.length} tệp .js)
+          </p>
+        ) : (
+          <p className="mb-3 text-sm text-slate-600">
+            Mã hóa video ở thẻ <b>①</b> xong thì trang tự chuyển sang đây và dùng luôn code đó. Đã có thư mục code JS từ trước thì mở nó ở dưới.
+          </p>
+        )}
+        <label className="btn btn-phu cursor-pointer">
+          📂 Mở thư mục code JS
+          <input type="file" className="hidden" multiple
+            ref={(el) => el?.setAttribute('webkitdirectory', '')}
+            onChange={(e) => moThuMucJs(e.target.files)} />
+        </label>
+        <details className="mt-3 text-sm text-slate-600">
+          <summary className="cursor-pointer">Chưa mã hóa? Lấy khung hình thẳng từ video gốc</summary>
+          <input type="file" accept="video/*" onChange={(e) => chonVideo(e.target.files?.[0])}
+            className="mt-2 block w-full text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-slate-700 file:px-4 file:py-2 file:font-semibold file:text-white" />
+        </details>
         {thoiLuong > 0 && (
           <div className="mt-4 flex flex-wrap items-end gap-3">
             <p className="w-full text-sm text-slate-600">
@@ -195,7 +299,7 @@ function TrangCongCu() {
               <input type="number" min={1} max={TOI_DA_DOAN} value={soDoan}
                 onChange={(e) => setSoDoan(Math.min(TOI_DA_DOAN, Math.max(1, Number(e.target.value))))} className="input w-32" />
             </label>
-            <button onClick={catKhung} disabled={!!tienDo} className="btn btn-fb">Cắt khung hình</button>
+            <button onClick={thongTin ? layKhungTuJs : catKhung} disabled={!!tienDo} className="btn btn-fb">Lấy khung hình</button>
           </div>
         )}
         {tienDo && <p className="mt-3 text-sm font-medium text-blue-700">{tienDo}</p>}
@@ -238,7 +342,8 @@ function TieuDe({ so, ten }: { so: number; ten: string }) {
 
 function QuyTrinh() {
   const buoc = [
-    ['Chọn video gốc', 'Chọn khúc muốn làm, bấm "Cắt khung hình". Trang lấy ảnh đầu, giữa và cuối của từng đoạn 8 giây.'],
+    ['Mã hóa video thành code JS', 'Ở thẻ ①. Xong bấm "Dùng code này để phục dựng", trang chuyển sang đây.'],
+    ['Lấy khung hình từ code', 'Chọn khúc muốn làm, bấm "Lấy khung hình". Trang đọc ảnh đầu, giữa và cuối của từng tệp doan_XXX.js.'],
     ['Viết bộ nhận dạng', 'Bấm "AI xem và viết". AI mô tả CỐ ĐỊNH nhân vật, đồ vật, bối cảnh và viết hành động từng cảnh. Bạn sửa lại nếu cần.'],
     ['Dán vào Veo 3', 'Làm lần lượt từ cảnh 1: chép câu lệnh, dán vào Flow/Gemini (Veo 3), đính kèm ảnh mẫu ghi trong cảnh.'],
     ['Nối cảnh', 'Làm xong cảnh nào thì tải video đó về, đưa vào bước 4 lấy khung cuối, dùng làm ảnh bắt đầu cho cảnh kế tiếp.'],

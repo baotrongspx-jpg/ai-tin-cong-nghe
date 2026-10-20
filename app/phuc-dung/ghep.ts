@@ -48,6 +48,14 @@ export function ghepCauLenh({ nhan_dang: nd, canh }: DuAn): CauLenh[] {
     if (boiCanh.length)
       phan.push('SETTING (same location, weather and light as the other shots):\n' + khoi(nd.boi_canh, boiCanh, loi, 'bối cảnh'))
     phan.push(`SHOT (8 seconds): ${c.hanh_dong.trim()}`)
+    // Mỗi cảnh làm bằng Frames to Video (ảnh đầu + ảnh cuối của đoạn gốc) → buộc khớp đúng 2 ảnh để các cảnh nối liền
+    phan.push(
+      'START AND END FRAMES (mandatory): the video must begin exactly on the provided first frame and end exactly on the ' +
+        'provided last frame. At 0 seconds every person, object and the camera are in exactly the pose, position, framing ' +
+        'and lighting of the first frame; at 8 seconds they are in exactly the pose, position, framing and lighting of the ' +
+        'last frame. The action moves smoothly and naturally from one to the other, without cuts, morphing or teleporting, ' +
+        'so this shot joins seamlessly with the previous and next shots.',
+    )
     if (c.may_quay.trim()) phan.push(`CAMERA: ${c.may_quay.trim()}`)
     if (nd.am_thanh.trim()) phan.push(`AUDIO: ${nd.am_thanh.trim()}`)
     if (c.noi_tiep && i > 0)

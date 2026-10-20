@@ -26,7 +26,7 @@ Write a JSON object with exactly this shape:
   },
   "canh": [
     { "ten": "short Vietnamese title", "doan_goc": [3], "boi_canh": "B1", "nhan_vat": ["A"], "do_vat": ["X1"],
-      "hanh_dong": "English: what happens during these 8 seconds, concrete and visual",
+      "hanh_dong": "English: starts as in the segment's first frame (dau), says what happens, ends as in its last frame (cuoi)",
       "may_quay": "English: shot size, angle and camera movement", "noi_tiep": true }
   ]
 }
@@ -38,6 +38,9 @@ Rules:
 - Describe people only by appearance and clothing. Never name or identify real people, never ask to copy a real face.
 - Never mention brand names, logos, licence plates or written text; describe products by shape and colour instead.
 - One entry in "canh" per segment you were given, in time order. "doan_goc" is that segment number.
+- Each shot is generated from that segment's first frame (dau) and last frame (cuoi). Write "hanh_dong" as:
+  "Starts with <who is where, doing what, as in the first frame>. <what happens>. Ends with <who is where, in what pose,
+  as in the last frame>." so the motion clearly goes from the first frame to the last frame.
 - "noi_tiep": true when the shot directly continues the previous one (same moment), false after a cut to a new moment/place.
 - "anh_mau": the label of the frame that shows that character / place / object most clearly, or "" if none.
 - Reuse the same codes across shots; only create a new character/place/object when it really is different.

@@ -14,12 +14,29 @@ export async function coQuyen(h: FileSystemDirectoryHandle, xin: boolean) {
 }
 
 // laGoc: người dùng chọn thẳng thư mục của một video làm "thư mục lưu"
-type MucVideo = { ten: string; h: FileSystemDirectoryHandle; video: string; giay: number; soDoan: number; mb: number; laGoc?: boolean }
+// dangDo: mã hóa dừng giữa chừng (chưa có danh_sach.js hoặc có nhưng chua_xong)
+type MucVideo = { ten: string; h: FileSystemDirectoryHandle; video: string; giay: number; soDoan: number; mb: number; laGoc?: boolean; dangDo?: boolean }
 
 async function docMuc(thu: FileSystemDirectoryHandle): Promise<MucVideo> {
-  const t = await (await (await thu.getFileHandle('danh_sach.js')).getFile()).text()
+  const t = await thu
+    .getFileHandle('danh_sach.js')
+    .then((h) => h.getFile())
+    .then((f) => f.text(), () => '')
+  if (!t) {
+    // Chưa có mục lục → làm dở: đếm các tệp doan_XXX.js đã ghi
+    let soDoan = 0
+    let byte = 0
+    for await (const h of (thu as unknown as { values(): AsyncIterable<FileSystemHandle> }).values())
+      if (h.kind === 'file' && /^doan_\d+\.js$/.test(h.name)) {
+        soDoan++
+        byte += (await (h as FileSystemFileHandle).getFile()).size
+      }
+    if (!soDoan) throw new Error('không phải thư mục code JS')
+    return { ten: thu.name, h: thu, video: thu.name, giay: soDoan * 8, soDoan, mb: byte / 1_048_576, dangDo: true }
+  }
   const info = JSON.parse(t.slice(t.indexOf('(') + 1, t.lastIndexOf(')')))
   return {
+    dangDo: !!info.chua_xong,
     ten: thu.name,
     h: thu,
     video: info.video,
@@ -170,12 +187,14 @@ function DongVideo({ m, tenDang, dangXoa, onPhucDung, onXoa }: {
         <p className="truncate text-sm font-semibold text-slate-800" title={m.video}>
           {m.video}
           {m.ten === tenDang && <span className="chip ml-2 bg-violet-100 text-violet-800">🎬 Đang phục dựng</span>}
+          {m.dangDo && <span className="chip ml-2 bg-amber-100 text-amber-800">⏸ Mã hóa dở</span>}
         </p>
         <p className="text-xs text-slate-500">
-          {mmss(m.giay)} · {m.soDoan} tệp .js · {m.mb >= 1024 ? `${(m.mb / 1024).toFixed(1)} GB` : `${m.mb.toFixed(0)} MB`}
+          {m.dangDo ? `đã làm tới ${mmss(m.giay)}` : mmss(m.giay)} · {m.soDoan} tệp .js · {m.mb >= 1024 ? `${(m.mb / 1024).toFixed(1)} GB` : `${m.mb.toFixed(0)} MB`}
+          {m.dangDo && ' · chọn lại đúng video ở phần dưới rồi bấm Bắt đầu để làm tiếp'}
         </p>
       </div>
-      <button className="btn btn-phu btn-sm" onClick={() => onPhucDung(m.h)}>② Phục dựng video này</button>
+      {!m.dangDo && <button className="btn btn-phu btn-sm" onClick={() => onPhucDung(m.h)}>② Phục dựng video này</button>}
       <button className="btn btn-sm bg-red-50 text-red-700 ring-1 ring-red-200 hover:bg-red-100" disabled={!!dangXoa} onClick={() => onXoa(m)}>
         {dangXoa === m.ten ? 'Đang xóa…' : '🗑 Xóa'}
       </button>

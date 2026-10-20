@@ -137,7 +137,8 @@ export default function MaHoaJs({ thuMuc, onDoiThuMuc, onDaGhi, onXong }: {
   async function chayMaHoa(goc: FileSystemDirectoryHandle, v: HTMLVideoElement) {
     const f = tep!
     const ten = slug(f.name)
-    const thuMuc = await goc.getDirectoryHandle(ten, { create: true })
+    // Thư mục lưu đang là chính thư mục của video này (chọn nhầm vào trong) → ghi thẳng vào đó, không lồng thêm cấp
+    const thuMuc = goc.name === ten ? goc : await goc.getDirectoryHandle(ten, { create: true })
     // Kiểu TypeScript chưa có keys() của thư mục
     const tenCu: string[] = []
     for await (const t of (thuMuc as unknown as { keys(): AsyncIterable<string> }).keys()) tenCu.push(t)

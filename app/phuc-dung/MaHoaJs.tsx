@@ -241,7 +241,14 @@ export default function MaHoaJs({ thuMuc, onDoiThuMuc, onDaGhi, onXong }: {
     }
 
     setTienDo('Đang mã hóa… giữ tab này mở (chuyển tab khác video sẽ tạm dừng).')
-    const anTab = () => (document.hidden ? v.pause() : !dung.current && v.play())
+    // Tab bị ẩn / cửa sổ bị thu nhỏ hoặc che kín → trình duyệt ngừng đưa khung hình, nên tạm dừng và báo rõ
+    const anTab = () => {
+      if (document.hidden) {
+        v.pause()
+        setTienDo(`⏸ Tạm dừng ở ${mmss(v.currentTime)} vì cửa sổ trình duyệt bị ẩn / thu nhỏ / bị che. Mở lại cửa sổ này là chạy tiếp.`)
+        ghiNhatKy(`⏸ Tạm dừng ở ${mmss(v.currentTime)} (cửa sổ bị ẩn)`)
+      } else if (!dung.current) v.play()
+    }
     document.addEventListener('visibilitychange', anTab)
 
     // Canh chừng: tab đang hiện mà quá 6 giây không có khung mới → đẩy video chạy tiếp; quá 60 giây → báo lỗi

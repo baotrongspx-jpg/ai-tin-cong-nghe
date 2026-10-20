@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
+import { coQuyen } from './ThuVien'
 
 // Chuyển video thành code JS ngay trên trình duyệt, cùng định dạng với VIDEO_JS_TOOL trên máy:
 // mỗi 8 giây = doan_XXX.js gọi VIDEO_CODE.add({ fps, audio: WAV base64, frames: [JPG base64] }),
@@ -85,7 +86,12 @@ async function ghiTep(thuMuc: FileSystemDirectoryHandle, ten: string, phan: stri
 
 const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`
 
-export default function MaHoaJs({ onXong }: { onXong?: (thuMuc: FileSystemDirectoryHandle) => void }) {
+export default function MaHoaJs({ thuMuc, onDoiThuMuc, onDaGhi, onXong }: {
+  thuMuc: FileSystemDirectoryHandle | null
+  onDoiThuMuc: (h: FileSystemDirectoryHandle) => void
+  onDaGhi?: () => void
+  onXong?: (thuMuc: FileSystemDirectoryHandle) => void
+}) {
   const [ketQua, setKetQua] = useState<FileSystemDirectoryHandle | null>(null)
   const [tep, setTep] = useState<File | null>(null)
   const [tuyChon, setTuyChon] = useState<TuyChon>({ rong: 0, chatLuong: 0.85 })
@@ -104,11 +110,15 @@ export default function MaHoaJs({ onXong }: { onXong?: (thuMuc: FileSystemDirect
     setLoi('')
     setNhatKy([])
     setKetQua(null)
-    let goc: FileSystemDirectoryHandle
-    try {
-      goc = await window.showDirectoryPicker({ mode: 'readwrite', id: 'video-js' })
-    } catch {
-      return // người dùng bấm hủy
+    // Đã có thư mục lưu thì ghi luôn vào đó, chưa có (hoặc chưa được phép) thì hỏi
+    let goc = thuMuc && (await coQuyen(thuMuc, true).catch(() => false)) ? thuMuc : null
+    if (!goc) {
+      try {
+        goc = await window.showDirectoryPicker({ mode: 'readwrite', id: 'video-js' })
+      } catch {
+        return // người dùng bấm hủy
+      }
+      onDoiThuMuc(goc)
     }
     setChay(true)
     dung.current = false
@@ -250,6 +260,7 @@ export default function MaHoaJs({ onXong }: { onXong?: (thuMuc: FileSystemDirect
     await ghiTep(thuMuc, 'danh_sach.js', [`VIDEO_CODE.setInfo(${JSON.stringify(info)});\n`])
     await ghiTep(thuMuc, 'index.html', [await (await fetch('/video-js/player.html')).text()])
     setKetQua(thuMuc)
+    onDaGhi?.()
     setTienDo(
       `${dung.current ? 'Đã dừng giữa chừng' : 'Xong'}: ${daGhi.length} tệp .js, ${khungDau} khung hình, tổng ${tongMB.toFixed(0)} MB → thư mục "${ten}". ` +
         'Mở index.html trong thư mục đó để xem video phát lại từ code.',
@@ -267,7 +278,9 @@ export default function MaHoaJs({ onXong }: { onXong?: (thuMuc: FileSystemDirect
     <div className="space-y-4">
       <ol className="list-decimal space-y-1 pl-5 text-sm text-slate-700">
         <li>Chọn video, chọn độ nét.</li>
-        <li>Bấm <b>Bắt đầu</b>, chọn thư mục lưu (nên chọn ổ còn trống nhiều, ví dụ ổ E), bấm <b>Cho phép</b>.</li>
+        <li>
+          Bấm <b>Bắt đầu</b>. {thuMuc ? <>Code lưu vào thư mục <b>📁 {thuMuc.name}</b> (đổi ở danh sách phía trên).</> : <>Lần đầu trang hỏi thư mục lưu: nên chọn ổ còn trống nhiều (vd thư mục VIDEO_JS ở ổ E), bấm <b>Cho phép</b>.</>}
+        </li>
         <li>Giữ tab mở tới khi xong. Video chạy đúng tốc độ thật: video 5 phút mất khoảng 5 phút.</li>
         <li>Mở <b>index.html</b> trong thư mục kết quả để xem video phát lại từ code.</li>
       </ol>

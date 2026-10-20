@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { docAnh, luuAnh } from './khoAnh'
 import MaHoaJs from './MaHoaJs'
+import ThuVien, { coQuyen } from './ThuVien'
 import { type Canh, chuanHoa, type DuAn, DU_AN_TRONG, ghepCauLenh, type Muc, type NhanDang } from './ghep'
 
 const DO_DAI = 8 // giây mỗi đoạn, đúng độ dài một lần tạo của Veo 3
@@ -72,9 +73,10 @@ function taiVe(url: string, ten: string) {
 
 // ——— Trang ———
 
-function docLuu(): DuAn {
+// Kịch bản lưu riêng theo từng video; bản lưu kiểu cũ (chưa theo video) được chuyển sang video mở đầu tiên
+function docLuu(ten: string | null): DuAn {
   try {
-    const luu = localStorage.getItem(KHOA_LUU)
+    const luu = (ten && localStorage.getItem(`${KHOA_LUU}:${ten}`)) || localStorage.getItem(KHOA_LUU)
     if (luu) return chuanHoa(JSON.parse(luu))
   } catch {}
   return DU_AN_TRONG
@@ -109,92 +111,157 @@ function nguonTuDanhSachTep(ds: FileList): NguonJs | null {
   }
 }
 
+type DangPhucDung = { ten: string; video: string }
+type NguonDoc = { n: NguonJs; info: ThongTinJs }
+
+async function docNguon(n: NguonJs): Promise<NguonDoc> {
+  return { n, info: docJs<ThongTinJs>(await n.doc('danh_sach.js')) }
+}
+
 // Dự án lưu trong localStorage của trình duyệt → chỉ vẽ trang công cụ ở phía trình duyệt
 export default function CongCu() {
   const trenTrinhDuyet = useSyncExternalStore(() => () => {}, () => true, () => false)
   const [the, setThe] = useState<'ma-hoa' | 'phuc-dung'>('ma-hoa')
-  const [nguonMaHoa, setNguonMaHoa] = useState<NguonJs | null>(null)
+  // Thư mục lưu code (vd E:\VIDEO_JS) và video đang phục dựng: nhớ trong IndexedDB
+  const [thuMuc, setThuMuc] = useState<FileSystemDirectoryHandle | null>(null)
+  const [dang, setDang] = useState<DangPhucDung | null>(null)
+  const [nguon, setNguon] = useState<NguonDoc | null>(null)
+  const [daNap, setDaNap] = useState(false)
+  const [lamMoi, setLamMoi] = useState(0)
+  const [phien, setPhien] = useState(0)
+
+  useEffect(() => {
+    Promise.all([docAnh<FileSystemDirectoryHandle>('thu_muc_goc'), docAnh<DangPhucDung | null>('dang_phuc_dung')]).then(async ([h, d]) => {
+      if (h) setThuMuc(h)
+      if (d) setDang(d)
+      setDaNap(true)
+      // Đã được phép từ trước → mở lại luôn code của video đang phục dựng
+      if (h && d && (await coQuyen(h, false).catch(() => false)))
+        docNguon(nguonTuThuMuc(await h.getDirectoryHandle(d.ten)))
+          .then(setNguon)
+          .catch(() => {})
+    })
+  }, [])
+
+  async function dungNguon(n: NguonJs, chuyenThe = true) {
+    try {
+      const x = await docNguon(n)
+      const d = { ten: n.ten, video: x.info.video }
+      setNguon(x)
+      setDang(d)
+      luuAnh('dang_phuc_dung', d)
+      if (chuyenThe) setThe('phuc-dung')
+    } catch (e) {
+      alert(`Không đọc được danh_sach.js trong thư mục "${n.ten}": ${(e as Error).message}`)
+    }
+  }
+
+  async function moLaiDang() {
+    if (!thuMuc || !dang) return
+    try {
+      if (await coQuyen(thuMuc, true)) dungNguon(nguonTuThuMuc(await thuMuc.getDirectoryHandle(dang.ten)), false)
+    } catch {
+      alert(`Không tìm thấy thư mục "${dang.ten}" trong ${thuMuc.name} (có thể đã bị xóa).`)
+    }
+  }
+
+  function doiThuMuc(h: FileSystemDirectoryHandle) {
+    setThuMuc(h)
+    luuAnh('thu_muc_goc', h)
+  }
+
+  async function daXoa(ten: string) {
+    try {
+      localStorage.removeItem(`${KHOA_LUU}:${ten}`)
+    } catch {}
+    await luuAnh(`khung:${ten}`, [])
+    if (dang?.ten === ten) {
+      setDang(null)
+      setNguon(null)
+      await luuAnh('dang_phuc_dung', null)
+      setPhien((p) => p + 1)
+    }
+  }
+
   if (!trenTrinhDuyet) return <p className="text-sm text-slate-500">Đang mở công cụ…</p>
   const nut = (k: typeof the, ten: string) => (
     <button onClick={() => setThe(k)} className={`btn ${the === k ? 'btn-fb' : 'btn-phu'}`}>{ten}</button>
   )
   return (
     <div className="space-y-6">
-      <nav className="flex flex-wrap gap-2">
+      <nav className="flex flex-wrap items-center gap-2">
         {nut('ma-hoa', '① Chuyển video thành code JS')}
         {nut('phuc-dung', '② Phục dựng bằng Veo 3')}
+        {dang && (
+          <span className="chip max-w-full truncate bg-violet-100 text-violet-800" title={dang.video}>🎬 Đang phục dựng: {dang.video}</span>
+        )}
       </nav>
       {/* Giữ cả hai thẻ trong trang để đổi thẻ không làm mất việc đang chạy */}
-      <div hidden={the !== 'ma-hoa'}>
-        <header className="mb-4">
+      <div hidden={the !== 'ma-hoa'} className="space-y-4">
+        <header>
           <h1 className="text-2xl font-extrabold text-[#0f1b3d]">Chuyển video thành code JS</h1>
           <p className="mt-1 text-sm text-slate-500">Video chỉ xử lý trên máy bạn, tệp .js ghi thẳng vào thư mục bạn chọn.</p>
         </header>
         <section className="the p-5">
-          <MaHoaJs onXong={(h) => {
-            setNguonMaHoa(nguonTuThuMuc(h))
-            setThe('phuc-dung')
-          }} />
+          <ThuVien thuMuc={thuMuc} onDoiThuMuc={doiThuMuc} tenDang={dang?.ten ?? null} lamMoi={lamMoi}
+            onPhucDung={(h) => dungNguon(nguonTuThuMuc(h))} onDaXoa={daXoa} />
+        </section>
+        <section className="the p-5">
+          <h2 className="mb-3 text-lg font-bold text-[#0f1b3d]">Chuyển video mới thành code</h2>
+          <MaHoaJs thuMuc={thuMuc} onDoiThuMuc={doiThuMuc} onDaGhi={() => setLamMoi((x) => x + 1)}
+            onXong={(h) => dungNguon(nguonTuThuMuc(h))} />
         </section>
       </div>
-      <div hidden={the !== 'phuc-dung'}><TrangCongCu nguonMaHoa={nguonMaHoa} /></div>
+      <div hidden={the !== 'phuc-dung'}>
+        {daNap && (
+          <TrangCongCu key={`${phien}:${dang?.ten ?? ''}`} dang={dang} nguon={nguon}
+            onMoLai={thuMuc && dang && !nguon ? moLaiDang : undefined} onChonNguon={(n) => dungNguon(n, false)} />
+        )}
+      </div>
     </div>
   )
 }
 
-function TrangCongCu({ nguonMaHoa }: { nguonMaHoa: NguonJs | null }) {
-  const [nguonChon, setNguonChon] = useState<NguonJs | null>(null)
-  const [boMaHoa, setBoMaHoa] = useState<NguonJs | null>(null)
-  const [thongTin, setThongTin] = useState<{ nguon: NguonJs; info: ThongTinJs } | null>(null)
+function TrangCongCu({ dang, nguon, onMoLai, onChonNguon }: {
+  dang: DangPhucDung | null
+  nguon: NguonDoc | null
+  onMoLai?: () => void
+  onChonNguon: (n: NguonJs) => void
+}) {
+  const tenVideo = dang?.ten ?? null
   const [tep, setTep] = useState<File | null>(null)
-  const [thoiLuong, setThoiLuong] = useState(0)
+  const [thoiLuongVideo, setThoiLuongVideo] = useState(0)
+  const dungCode = !!nguon && !tep
+  const thoiLuong = dungCode ? nguon!.info.duration_sec : thoiLuongVideo
   const [tuGiay, setTuGiay] = useState(0)
   const [soDoan, setSoDoan] = useState(8)
   const [khung, setKhung] = useState<Khung[]>([])
-  // Ảnh khung hình lưu trong IndexedDB → tải lại trang vẫn còn ảnh
+  // Ảnh khung hình lưu trong IndexedDB theo từng video → tải lại trang vẫn còn ảnh
+  const khoaKhung = tenVideo ? `khung:${tenVideo}` : 'khung'
   const [daNapAnh, setDaNapAnh] = useState(false)
   useEffect(() => {
-    docAnh<Khung[]>('khung').then((ds) => {
+    Promise.all([docAnh<Khung[]>(khoaKhung), docAnh<Khung[]>('khung')]).then(([rieng, cu]) => {
+      const ds = rieng?.length ? rieng : cu // ảnh lưu kiểu cũ (chưa theo video) → chuyển sang video này
       if (ds?.length) setKhung((hien) => (hien.length ? hien : ds))
       setDaNapAnh(true)
     })
-  }, [])
+  }, [khoaKhung])
   useEffect(() => {
-    if (daNapAnh) luuAnh('khung', khung)
-  }, [khung, daNapAnh])
+    if (!daNapAnh) return
+    luuAnh(khoaKhung, khung)
+    if (khoaKhung !== 'khung') luuAnh('khung', [])
+  }, [khung, daNapAnh, khoaKhung])
   const [tienDo, setTienDo] = useState('')
-  const [duAn, setDuAn] = useState<DuAn>(docLuu)
+  const [duAn, setDuAn] = useState<DuAn>(() => docLuu(tenVideo))
 
   useEffect(() => {
     try {
-      localStorage.setItem(KHOA_LUU, JSON.stringify(duAn))
+      localStorage.setItem(tenVideo ? `${KHOA_LUU}:${tenVideo}` : KHOA_LUU, JSON.stringify(duAn))
+      if (tenVideo) localStorage.removeItem(KHOA_LUU)
     } catch {}
-  }, [duAn])
+  }, [duAn, tenVideo])
 
   const anhTheoTen = useMemo(() => Object.fromEntries(khung.map((k) => [k.ten, k.url])), [khung])
-
-  // Code JS mới mã hóa ở thẻ ① được dùng luôn, trừ khi người dùng tự mở thư mục khác
-  const nguon = nguonChon ?? (nguonMaHoa !== boMaHoa ? nguonMaHoa : null)
-  useEffect(() => {
-    if (!nguon || thongTin?.nguon === nguon) return
-    let huy = false
-    nguon
-      .doc('danh_sach.js')
-      .then((t) => {
-        if (huy) return
-        const info = docJs<ThongTinJs>(t)
-        setThongTin({ nguon, info })
-        setTep(null)
-        setKhung([])
-        setThoiLuong(info.duration_sec)
-        setTuGiay(0)
-        setSoDoan(Math.min(TOI_DA_DOAN, info.segments.length))
-      })
-      .catch((e) => !huy && setTienDo(`Không đọc được danh_sach.js: ${(e as Error).message}`))
-    return () => {
-      huy = true
-    }
-  }, [nguon, thongTin])
 
   async function moBangQuyen(e: React.MouseEvent) {
     if (!window.showDirectoryPicker) return // để input chọn thư mục kiểu cũ tự mở
@@ -205,7 +272,7 @@ function TrangCongCu({ nguonMaHoa }: { nguonMaHoa: NguonJs | null }) {
         throw new Error('Thư mục này không có danh_sach.js. Hãy chọn thư mục mang tên video do bước ① tạo ra.')
       })
       setTienDo('')
-      setNguonChon(nguonTuThuMuc(h))
+      onChonNguon(nguonTuThuMuc(h))
     } catch (e) {
       if ((e as Error).name !== 'AbortError') setTienDo((e as Error).message)
     }
@@ -216,12 +283,12 @@ function TrangCongCu({ nguonMaHoa }: { nguonMaHoa: NguonJs | null }) {
     const n = nguonTuDanhSachTep(ds)
     if (!n) return setTienDo('Thư mục này không có danh_sach.js. Hãy chọn thư mục do bước ① tạo ra.')
     setTienDo('')
-    setNguonChon(n)
+    onChonNguon(n)
   }
 
   async function layKhungTuJs() {
-    if (!thongTin) return
-    const { nguon: ng, info } = thongTin
+    if (!nguon) return
+    const { n: ng, info } = nguon
     const dauTien = Math.floor(tuGiay / DO_DAI)
     const chon = info.segments.slice(dauTien, dauTien + soDoan)
     const ds: Khung[] = []
@@ -239,15 +306,12 @@ function TrangCongCu({ nguonMaHoa }: { nguonMaHoa: NguonJs | null }) {
 
   async function chonVideo(f: File | undefined) {
     if (!f) return
-    setThongTin(null)
-    setNguonChon(null)
-    setBoMaHoa(nguonMaHoa)
     setTep(f)
     setKhung([])
     setTienDo('Đang đọc video…')
     try {
       const v = await moVideo(f)
-      setThoiLuong(v.duration)
+      setThoiLuongVideo(v.duration)
       setTuGiay(0)
       setSoDoan(Math.min(TOI_DA_DOAN, Math.ceil(v.duration / DO_DAI)))
       URL.revokeObjectURL(v.src)
@@ -286,31 +350,48 @@ function TrangCongCu({ nguonMaHoa }: { nguonMaHoa: NguonJs | null }) {
         </p>
       </header>
 
+      {/* Video đang phục dựng */}
+      {dang ? (
+        <div className="the flex flex-wrap items-center gap-3 p-4 ring-2 ring-violet-200">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          {khung[0] && <img src={khung[0].url} alt="" className="h-16 rounded-md" />}
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold text-violet-700">🎬 Đang phục dựng</p>
+            <p className="truncate font-bold text-slate-800" title={dang.video}>{dang.video}</p>
+            <p className="text-xs text-slate-500">
+              {nguon ? `${mmss(nguon.info.duration_sec)} · ${nguon.info.segments.length} tệp .js · thư mục ${dang.ten}` : `thư mục ${dang.ten}`}
+              {duAn.canh.length > 0 && ` · ${duAn.canh.length} cảnh đã viết`}
+            </p>
+          </div>
+          {onMoLai && <button className="btn btn-fb btn-sm" onClick={onMoLai}>Mở lại code của video này</button>}
+        </div>
+      ) : (
+        <p className="the p-4 text-sm text-slate-600">
+          Chưa chọn video. Ở thẻ <b>①</b>, bấm <b>② Phục dựng video này</b> cạnh video muốn làm, hoặc mở thư mục code JS ở bước 1.
+        </p>
+      )}
+
       <QuyTrinh />
 
       {/* Bước 1 */}
       <section className="the p-5">
         <TieuDe so={1} ten="Lấy khung hình từ code JS" />
-        {thongTin ? (
+        {dungCode ? (
           <p className="mb-3 rounded-xl bg-green-50 p-3 text-sm text-green-800">
-            Đang dùng code JS: <b>{thongTin.nguon.ten}</b> ({thongTin.info.video}, {thongTin.info.segments.length} tệp .js)
+            Đang dùng code JS: <b>{nguon!.n.ten}</b> ({nguon!.info.segments.length} tệp .js)
           </p>
         ) : (
           <p className="mb-3 text-sm text-slate-600">
-            Mã hóa video ở thẻ <b>①</b> xong thì trang tự chuyển sang đây và dùng luôn code đó. Đã có thư mục code JS từ trước thì mở nó ở dưới.
+            Chọn video ở thẻ <b>①</b> (nút &quot;Phục dựng video này&quot;), hoặc mở thẳng một thư mục code JS ở dưới.
           </p>
         )}
         {/* Chrome/Edge: hỏi quyền "xem tệp" (không có chữ "tải lên" gây hiểu nhầm); trình duyệt khác: chọn thư mục kiểu cũ */}
         <label className="btn btn-phu cursor-pointer" onClick={moBangQuyen}>
-          📂 Mở thư mục code JS
+          📂 Mở thư mục code JS khác
           <input type="file" className="hidden" multiple
             ref={(el) => el?.setAttribute('webkitdirectory', '')}
             onChange={(e) => moThuMucJs(e.target.files)} />
         </label>
-        <p className="mt-1 text-xs text-slate-500">
-          Chọn thư mục mang tên video (bên trong có danh_sach.js). Bảng chọn chỉ hiện thư mục, không hiện tệp: cứ bấm nút chọn.
-          Tệp chỉ được đọc trên máy, không gửi lên mạng.
-        </p>
         <details className="mt-3 text-sm text-slate-600">
           <summary className="cursor-pointer">Chưa mã hóa? Lấy khung hình thẳng từ video gốc</summary>
           <input type="file" accept="video/*" onChange={(e) => chonVideo(e.target.files?.[0])}
@@ -331,7 +412,7 @@ function TrangCongCu({ nguonMaHoa }: { nguonMaHoa: NguonJs | null }) {
               <input type="number" min={1} max={TOI_DA_DOAN} value={soDoan}
                 onChange={(e) => setSoDoan(Math.min(TOI_DA_DOAN, Math.max(1, Number(e.target.value))))} className="input w-32" />
             </label>
-            <button onClick={thongTin ? layKhungTuJs : catKhung} disabled={!!tienDo} className="btn btn-fb">Lấy khung hình</button>
+            <button onClick={dungCode ? layKhungTuJs : catKhung} disabled={!!tienDo} className="btn btn-fb">Lấy khung hình</button>
           </div>
         )}
         {tienDo && <p className="mt-3 text-sm font-medium text-blue-700">{tienDo}</p>}

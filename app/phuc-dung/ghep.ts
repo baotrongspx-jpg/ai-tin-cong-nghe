@@ -16,6 +16,7 @@ export type Canh = {
   co_cat_canh?: boolean // đoạn gốc có cắt cảnh: ảnh đầu và ảnh cuối khác góc máy
   trang_thai?: TrangThai // CONTINUITY STATE lúc cuối đoạn → điểm xuất phát của cảnh sau
   dien_bien?: MocDienBien[] // diễn biến từng 2 giây giữa ảnh đầu và ảnh cuối
+  am_thanh_canh?: string // AI nghe âm thanh của đoạn: tiếng động, lời nói nghe rõ
   may_quay: string
   noi_tiep: boolean
 }
@@ -112,7 +113,9 @@ export function ghepCauLenh({ nhan_dang: nd, canh }: DuAn): CauLenh[] {
       'PHYSICS: real gravity, inertia, collisions and weight shifts; clothing and hair react to movement; correct shadows; ' +
         'props react when touched; no clipping, hands never pass through objects, feet never slide, bodies never deform.',
     )
-    if (nd.am_thanh.trim()) phan.push(`AUDIO: ${nd.am_thanh.trim()}`)
+    const amRieng = c.am_thanh_canh?.trim()
+    if (nd.am_thanh.trim() || amRieng)
+      phan.push(`AUDIO: ${[nd.am_thanh.trim(), amRieng && `In this shot: ${amRieng}`].filter(Boolean).join(' ')}`)
     // Chưa có trạng thái của cảnh trước thì nhắc nối tiếp ngắn gọn (các khóa phía trên đã giữ nhân vật / bối cảnh)
     if (c.noi_tiep && i > 0 && !dongTt.length) phan.push('CONTINUITY: this shot continues directly from the previous shot.')
     phan.push(
@@ -192,6 +195,7 @@ export function chuanHoa(x: unknown): DuAn {
           khung_dau: chuoi(c?.khung_dau),
           khung_cuoi: chuoi(c?.khung_cuoi),
           co_cat_canh: c?.co_cat_canh === true,
+          am_thanh_canh: chuoi(c?.am_thanh_canh),
           dien_bien: Array.isArray(c?.dien_bien)
             ? c.dien_bien
                 .map((m: Record<string, unknown>) => ({ tu: Number(m?.tu) || 0, den: Number(m?.den) || 0, mo_ta: chuoi(m?.mo_ta) }))

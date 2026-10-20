@@ -13,7 +13,9 @@ export type AnhDoan = { ten: string; doan: number; giay: number; jpg: string }
 
 const SYSTEM = `You help a Vietnamese video maker rebuild a video with Google Veo 3, one 8-second shot at a time.
 You receive frames from the original video. Each frame is labelled like "doan_003_giua" (segment 3, middle frame) with its time.
-Segments are 8 seconds long; for each segment you get 5 frames: at 0 s (dau), 2 s (g2), 4 s (giua), 6 s (g6) and 8 s (cuoi).
+Segments are 8 seconds long. For each segment you get its frames in time order: at 0 s (…_dau), 2 s (…_g2), 4 s (…_giua),
+6 s (…_g6) and 8 s (…_cuoi), and often also every 0.5 s in between (…_tNN = NN/10 seconds, e.g. _t15 = 1.5 s), plus
+often the segment's 8-second audio track. Look at EVERY frame and listen to the audio of a segment before writing its scene.
 
 Write a JSON object with exactly this shape:
 {
@@ -32,6 +34,7 @@ Write a JSON object with exactly this shape:
       "dien_bien": [ { "tu": 0, "den": 2, "mo_ta": "English: what happens in this 2-second window" },
                      { "tu": 2, "den": 4, "mo_ta": "..." }, { "tu": 4, "den": 6, "mo_ta": "..." }, { "tu": 6, "den": 8, "mo_ta": "..." } ],
       "may_quay": "English: shot size, angle and camera movement", "noi_tiep": true, "co_cat_canh": false,
+      "am_thanh_canh": "English: sounds and audible speech in this segment",
       "trang_thai": { "character": "...", "scene": "...", "props": "...", "action": "...", "camera": "...", "lighting": "..." } }
   ]
 }
@@ -89,7 +92,11 @@ This is a RECONSTRUCTION LOCK. Rules:
   different framing, angle or place), false when it is one continuous shot.
 - Write each scene from its own frames only; never copy the description of a neighbouring segment.
 - "noi_tiep": true when the shot directly continues the previous one (same moment), false after a cut to a new moment/place.
-- "anh_mau": the label of the frame that shows that character / place / object most clearly, or "" if none.
+- "anh_mau": the label of the frame that shows that character / place / object most clearly, or "" if none. Use only
+  labels ending in _dau, _g2, _giua, _g6 or _cuoi (the _tNN frames are not saved).
+- "am_thanh_canh" per scene: from the segment's audio, the sounds of this shot in English (actions like sawing or
+  chopping, footsteps, fire crackling, water, wind, animals) and any clearly audible spoken words in quotes with who
+  says them; "" when there is no audio. Never invent speech you cannot hear.
 - Reuse the same codes across shots; only create a new character/place/object when it really is different.
 - Output only the JSON object, no markdown.`
 
@@ -101,11 +108,15 @@ const LOAI: Record<string, string> = {
   g6: 'frame at 6 s',
   cuoi: 'LAST frame (8 s)',
 }
-const nhan = (a: AnhDoan) => `${a.ten} = ${LOAI[a.ten.split('_')[2]] ?? 'frame'} of segment ${a.doan} (t=${a.giay.toFixed(1)}s):`
+const nhan = (a: AnhDoan) => {
+  const loai = a.ten.split('_')[2]
+  const moTa = LOAI[loai] ?? (/^t\d\d$/.test(loai) ? `frame at ${Number(loai.slice(1)) / 10} s` : 'frame')
+  return `${a.ten} = ${moTa} of segment ${a.doan} (t=${a.giay.toFixed(1)}s):`
+}
 
 function noiDungChu(anh: AnhDoan[], ghiChu: string, ndCu: string) {
   return (
-    `Frames: ${anh.map((a) => `${a.ten} (${a.giay.toFixed(1)}s)`).join(', ')}.` +
+    `Segments in this request: ${[...new Set(anh.map((a) => a.doan))].join(', ')} (${anh.length} frames).` +
     (ndCu
       ? '\n\nThis is a CONTINUATION: earlier shots of the same video were already generated with this nhan_dang:\n' +
         ndCu +
@@ -117,10 +128,13 @@ function noiDungChu(anh: AnhDoan[], ghiChu: string, ndCu: string) {
   )
 }
 
+export type AmDoan = { doan: number; wav: string }
+
 // ndCu: bộ nhận dạng (JSON) của các cảnh đã làm khi "làm tiếp" đợt sau, để AI giữ nguyên
-export async function vietKichBan(anh: AnhDoan[], ghiChu: string, ndCu = ''): Promise<unknown> {
+// am: âm thanh từng đoạn (chỉ Gemini nghe được; Claude chỉ xem ảnh)
+export async function vietKichBan(anh: AnhDoan[], ghiChu: string, ndCu = '', am: AmDoan[] = []): Promise<unknown> {
   const chu = noiDungChu(anh, ghiChu, ndCu)
-  const text = process.env.GEMINI_API_KEY ? await hoiGemini(anh, chu) : await hoiClaude(anh, chu)
+  const text = process.env.GEMINI_API_KEY ? await hoiGemini(anh, chu, am) : await hoiClaude(anh, chu)
   if (!text) return null
   const json = text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1)
   try {
@@ -130,8 +144,16 @@ export async function vietKichBan(anh: AnhDoan[], ghiChu: string, ndCu = ''): Pr
   }
 }
 
-async function hoiGemini(anh: AnhDoan[], chu: string): Promise<string | null> {
-  const parts = anh.flatMap((a) => [{ text: nhan(a) }, { inline_data: { mime_type: 'image/jpeg', data: a.jpg } }])
+async function hoiGemini(anh: AnhDoan[], chu: string, am: AmDoan[]): Promise<string | null> {
+  // Gom theo từng đoạn: tiêu đề đoạn → các ảnh theo thời gian → âm thanh 8 giây của đoạn
+  const parts = [...new Set(anh.map((a) => a.doan))].flatMap((so) => {
+    const tieng = am.find((x) => x.doan === so)
+    return [
+      { text: `=== Segment ${so} ===` },
+      ...anh.filter((a) => a.doan === so).flatMap((a) => [{ text: nhan(a) }, { inline_data: { mime_type: 'image/jpeg', data: a.jpg } }]),
+      ...(tieng ? [{ text: `Audio of segment ${so} (8 s):` }, { inline_data: { mime_type: 'audio/wav', data: tieng.wav } }] : []),
+    ]
+  })
   for (const model of MODEL_GEMINI) {
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
       method: 'POST',

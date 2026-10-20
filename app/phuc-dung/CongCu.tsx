@@ -451,7 +451,7 @@ function TrangCongCu({ dang, nguon, onMoLai, onChonNguon }: {
       {/* Bước 2 */}
       <section className="the p-5">
         <TieuDe so={2} ten="Bộ nhận dạng và kịch bản từng cảnh" />
-        <VietBangAI khung={khung} duAn={duAn} onXong={setDuAn} />
+        <VietBangAI khung={khung} duAn={duAn} nguon={dungCode ? nguon : null} onXong={setDuAn} />
         <NhapXuatJson duAn={duAn} onNhap={setDuAn} />
         <SuaNhanDang nd={duAn.nhan_dang} anh={anhTheoTen} tenAnh={khung.map((k) => k.ten)}
           onDoi={(nhan_dang) => setDuAn({ ...duAn, nhan_dang })} />
@@ -525,8 +525,53 @@ function LuoiKhung({ khung }: { khung: Khung[] }) {
   )
 }
 
-function VietBangAI({ khung, duAn, onXong }: { khung: Khung[]; duAn: DuAn; onXong: (d: DuAn) => void }) {
+type AnhGui = { ten: string; doan: number; giay: number; jpg: string }
+
+// Âm thanh WAV của đoạn (44,1 kHz stereo) → WAV 16 kHz mono cho nhẹ (~250 KB / 8 giây) để gửi AI nghe
+async function giamAmThanh(b64: string): Promise<string> {
+  const goc = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)).buffer
+  const oc = new OfflineAudioContext(1, 16000 * 10, 16000)
+  const am = await oc.decodeAudioData(goc) // tự đổi về 16 kHz
+  const n = am.length
+  const kenh = Array.from({ length: am.numberOfChannels }, (_, k) => am.getChannelData(k))
+  const buf = new ArrayBuffer(44 + n * 2)
+  const dv = new DataView(buf)
+  const ghi = (o: number, s: string) => [...s].forEach((ch, i) => dv.setUint8(o + i, ch.charCodeAt(0)))
+  ghi(0, 'RIFF'); dv.setUint32(4, 36 + n * 2, true); ghi(8, 'WAVE'); ghi(12, 'fmt ')
+  dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 1, true); dv.setUint32(24, 16000, true)
+  dv.setUint32(28, 32000, true); dv.setUint16(32, 2, true); dv.setUint16(34, 16, true); ghi(36, 'data'); dv.setUint32(40, n * 2, true)
+  for (let i = 0; i < n; i++) {
+    const s = Math.max(-1, Math.min(1, kenh.reduce((t, k) => t + k[i], 0) / kenh.length))
+    dv.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7fff, true)
+  }
+  const bytes = new Uint8Array(buf)
+  let nhiPhan = ''
+  for (let i = 0; i < bytes.length; i += 0x8000) nhiPhan += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
+  return btoa(nhiPhan)
+}
+
+// Đọc kỹ cả đoạn từ tệp JS: ảnh mỗi 0,5 giây (17 ảnh) + âm thanh của đoạn
+async function docKyDoan(ng: NguonDoc, so: number): Promise<{ anh: AnhGui[]; wav: string | null }> {
+  const s = ng.info.segments.find((x) => x.segment === so)
+  if (!s) return { anh: [], wav: null }
+  const d = docJs<{ fps: number; frames: string[]; audio?: string | null }>(await ng.n.doc(s.file))
+  const cuoi = d.frames.length - 1
+  const ten = (j: number) => ({ 0: 'dau', 4: 'g2', 8: 'giua', 12: 'g6', 16: 'cuoi' })[j] ?? `t${String(j * 5).padStart(2, '0')}`
+  const anh: AnhGui[] = []
+  for (let j = 0; j <= 16; j++) {
+    const k = j === 16 ? cuoi : Math.min(Math.round(j * 0.5 * d.fps), cuoi)
+    if (j < 16 && k === cuoi) continue // đoạn ngắn (cuối video)
+    anh.push({ ten: tenKhung(so, ten(j)), doan: so, giay: s.start_sec + k / d.fps, jpg: await thuNho(`data:image/jpeg;base64,${d.frames[k]}`, 320) })
+  }
+  const wav = d.audio ? await giamAmThanh(d.audio).catch(() => null) : null
+  return { anh, wav }
+}
+
+function VietBangAI({ khung, duAn, nguon, onXong }: { khung: Khung[]; duAn: DuAn; nguon: NguonDoc | null; onXong: (d: DuAn) => void }) {
   const [ghiChu, setGhiChu] = useState('')
+  // Đọc kỹ: AI xem ảnh mỗi 0,5 giây + nghe âm thanh của từng đoạn (cần đang dùng code JS)
+  const [docKy, setDocKy] = useState(true)
+  const kyDung = docKy && !!nguon
   const [dang, setDang] = useState('')
   const [loi, setLoi] = useState('')
   const nd = duAn.nhan_dang
@@ -545,20 +590,32 @@ function VietBangAI({ khung, duAn, onXong }: { khung: Khung[]; duAn: DuAn; onXon
     // Chia mỗi đợt 4 đoạn (20 ảnh) cho AI kịp viết trong giới hạn thời gian; đợt sau giữ nguyên bộ nhận dạng của đợt trước
     const doanGui = [...new Set(guiDi.map((k) => k.doan))].sort((a, b) => a - b).slice(0, TOI_DA_DOAN)
     const dot: number[][] = []
-    for (let i = 0; i < doanGui.length; i += 4) dot.push(doanGui.slice(i, i + 4))
+    // Đọc kỹ (17 ảnh + âm thanh mỗi đoạn) thì mỗi đợt 3 đoạn cho nhẹ
+    const coDot = kyDung ? 3 : 4
+    for (let i = 0; i < doanGui.length; i += coDot) dot.push(doanGui.slice(i, i + coDot))
     let hien: DuAn = noi ? duAn : { nhan_dang: DU_AN_TRONG.nhan_dang, canh: duAn.canh }
     try {
       for (const [i, cac] of dot.entries()) {
-        setDang(`AI đang viết đoạn ${cac[0]}–${cac.at(-1)} (đợt ${i + 1}/${dot.length}, mỗi đợt khoảng 30–60 giây)…`)
-        const anh = await Promise.all(
-          guiDi.filter((k) => cac.includes(k.doan)).map(async (k) => ({ ten: k.ten, doan: k.doan, giay: k.giay, jpg: await thuNho(k.url, 384) })),
-        )
+        const anh: AnhGui[] = []
+        const am: { doan: number; wav: string }[] = []
+        if (kyDung) {
+          for (const so of cac) {
+            setDang(`Đang đọc kỹ code JS đoạn ${so} (đợt ${i + 1}/${dot.length})…`)
+            const x = await docKyDoan(nguon!, so)
+            anh.push(...x.anh)
+            if (x.wav) am.push({ doan: so, wav: x.wav })
+          }
+        } else {
+          for (const k of guiDi.filter((k) => cac.includes(k.doan)))
+            anh.push({ ten: k.ten, doan: k.doan, giay: k.giay, jpg: await thuNho(k.url, 384) })
+        }
+        setDang(`AI đang viết đoạn ${cac[0]}–${cac.at(-1)} (đợt ${i + 1}/${dot.length}, mỗi đợt khoảng 30–90 giây)…`)
         const hd = hien.nhan_dang
         const coNd = hd.nhan_vat.length + hd.boi_canh.length + hd.do_vat.length > 0
         const res = await fetch('/phuc-dung/viet', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ anh, ghiChu, nhanDang: coNd ? hd : undefined }),
+          body: JSON.stringify({ anh, am, ghiChu, nhanDang: coNd ? hd : undefined }),
         })
         const data = await res.json().catch(() => ({}))
         if (!res.ok || !data.duAn)
@@ -579,6 +636,14 @@ function VietBangAI({ khung, duAn, onXong }: { khung: Khung[]; duAn: DuAn; onXon
       <label className="label">Ghi chú cho AI (không bắt buộc)</label>
       <textarea value={ghiChu} onChange={(e) => setGhiChu(e.target.value)} rows={2} className="input"
         placeholder="Ví dụ: đổi xe thành màu đỏ, nhân vật chính là cô gái tóc dài…" />
+      <label className="mt-3 flex items-start gap-2 text-sm">
+        <input type="checkbox" className="mt-1" checked={docKy} disabled={!nguon} onChange={(e) => setDocKy(e.target.checked)} />
+        <span>
+          <b>Đọc kỹ cả đoạn</b> (nên bật): AI đọc code JS của từng đoạn, xem ảnh mỗi 0,5 giây (17 ảnh) và nghe âm thanh 8 giây
+          trước khi viết. Chậm hơn nhưng chuẩn hơn.
+          {!nguon && <span className="text-slate-500"> Chỉ dùng được khi đang dùng code JS (bước 1).</span>}
+        </span>
+      </label>
       {coKichBan && (
         <div className="mt-3 space-y-1 text-sm">
           <label className="flex items-start gap-2">

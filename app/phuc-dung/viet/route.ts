@@ -13,7 +13,7 @@ const YeuCau = z.object({
   anh: z
     .array(
       z.object({
-        ten: z.string().regex(/^doan_\d{3}_(dau|g2|giua|g6|cuoi)$/),
+        ten: z.string().regex(/^doan_\d{3}_(dau|g2|giua|g6|cuoi|t\d{2})$/),
         doan: z.number().int().positive(),
         giay: z.number().nonnegative(),
         jpg: z.string().max(200_000),
@@ -21,6 +21,11 @@ const YeuCau = z.object({
     )
     .min(1)
     .max(90),
+  // Đọc kỹ: âm thanh 8 giây của từng đoạn (WAV 16 kHz mono, base64)
+  am: z
+    .array(z.object({ doan: z.number().int().positive(), wav: z.string().max(700_000) }))
+    .max(6)
+    .default([]),
 })
 
 export async function POST(req: Request) {
@@ -28,9 +33,9 @@ export async function POST(req: Request) {
   const duLieu = YeuCau.safeParse(await req.json().catch(() => null))
   if (!duLieu.success) return Response.json({ loi: 'Dữ liệu ảnh không hợp lệ.' }, { status: 400 })
 
-  const { anh, ghiChu, nhanDang } = duLieu.data
+  const { anh, am, ghiChu, nhanDang } = duLieu.data
   const ndCu = nhanDang ? JSON.stringify(chuanHoa({ nhan_dang: nhanDang }).nhan_dang).slice(0, 30_000) : ''
-  const kq = await vietKichBan(anh, ghiChu, ndCu).catch(() => null)
+  const kq = await vietKichBan(anh, ghiChu, ndCu, am).catch(() => null)
   if (!kq) return Response.json({ loi: 'AI chưa viết được (quá tải hoặc hết lượt miễn phí). Đợi 1 phút rồi thử lại.' }, { status: 502 })
   return Response.json({ duAn: chuanHoa(kq) })
 }

@@ -57,6 +57,11 @@ This is a RECONSTRUCTION LOCK. Rules:
   the camera moves (static, pan, tilt, push-in, handheld). Concrete and visual, 1–2 sentences per window. If nothing
   visible changes in a window, say what small natural movements continue (breathing, flames flickering…). If there is
   a cut inside the segment, say in which window it happens.
+  Treat the first frame as state A and the last frame as state B: the timeline must be the most physically plausible
+  chain that turns A into B (start moving → main action → interaction with props / environment → completion → B),
+  never a jump, with intermediate body positions spelled out (e.g. the hand lifts, the elbow bends, the arm reaches
+  forward, the fingers touch). Only mention camera movement that is really visible between the frames. If the action
+  cannot be read from the frames, prefer minimal plausible motion over inventing a big action.
 - CONTINUITY STATE per scene ("trang_thai"): the state at the END of this segment (its last frame), short English
   phrases, used as the starting basis of the next shot: character (pose, position, gaze, what is held, visible dirt or
   changes), scene (what changed in the place), props (where each prop is and in what state), action (what was just

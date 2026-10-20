@@ -75,19 +75,34 @@ export function ghepCauLenh({ nhan_dang: nd, canh }: DuAn): CauLenh[] {
       c.khung_cuoi?.trim() && `- END (last frame, 8 s): ${c.khung_cuoi.trim()}`,
     ].filter(Boolean)
     phan.push('ACTION LOCK (8 seconds, in this exact order):\n' + hanhDong.join('\n'))
-    // Mỗi cảnh làm bằng Frames to Video (ảnh đầu + ảnh cuối của đoạn gốc) → buộc khớp đúng 2 ảnh để các cảnh nối liền
+    // Mỗi cảnh làm bằng Frames to Video (ảnh đầu + ảnh cuối của đoạn gốc). Nguyên tắc A → B theo yêu cầu chủ trang:
+    // 2 ảnh là trạng thái bắt buộc, có chuyển động trung gian, chia thời gian 20/70/90/100%, khóa máy quay, vật lý.
+    if (c.co_cat_canh)
+      // Đoạn gốc có cắt cảnh: không bắt biến dần ảnh đầu thành ảnh cuối (sẽ bị méo), mà cho cắt cảnh thẳng
+      phan.push(
+        'FRAME A → FRAME B (mandatory): FRAME A = the provided first frame, FRAME B = the provided last frame. They are two ' +
+          'DIFFERENT camera shots of the same moment and place: start exactly on FRAME A, play shot 1 with natural continuous ' +
+          'motion, then make one clean hard cut (no morphing, no blending, no camera fly-through) to shot 2, whose action ' +
+          'leads continuously into FRAME B and ends exactly on it (same pose, position, hands, props, gaze, composition, camera).',
+      )
+    else
+      phan.push(
+        'FRAME A → FRAME B (mandatory): one continuous shot. FRAME A = the provided first frame, FRAME B = the provided last ' +
+          'frame; both states must be respected exactly. Find the most physically plausible chain of actions that turns A ' +
+          'into B and never jump directly: A → start moving → main action → interaction with props / environment → action ' +
+          'completed → B, with continuous position, direction, speed, weight, inertia, posture, contact, light, shadows and ' +
+          '3D space. Example: a hand that must reach an object first lifts, the elbow bends, the arm moves forward, the hand ' +
+          'approaches, the fingers touch, then it settles into the exact final pose.',
+        'TIMING: 0–1.6 s start exactly as FRAME A and begin to move; 1.6–5.6 s the main action, continuous and clear; ' +
+          '5.6–7.2 s complete the action and approach FRAME B; 7.2–8 s settle and match FRAME B exactly (pose, position, ' +
+          'hands, feet, props, gaze, composition, camera). Do not end before reaching FRAME B; FRAME B must look like the ' +
+          'direct result of the action, not an image pasted on at the end.',
+        'CAMERA LOCK: same lens, focal length, angle and camera position as the two frames; no arbitrary zoom, no rotation, ' +
+          'no switch to another shot, unless a camera move is clearly visible between the two frames or written in CAMERA.',
+      )
     phan.push(
-      c.co_cat_canh
-        ? // Đoạn gốc có cắt cảnh: không bắt biến dần ảnh đầu thành ảnh cuối (sẽ bị méo), mà cho cắt cảnh thẳng
-          'START AND END FRAMES (mandatory): the video must begin exactly on the provided first frame and end exactly on the ' +
-            'provided last frame. These two frames are DIFFERENT camera shots: play the first shot from the first frame, then ' +
-            'make one clean hard cut (no morphing, no blending, no camera fly-through) to the second shot, which ends exactly on ' +
-            'the last frame with the same pose, position, framing and lighting.'
-        : 'START AND END FRAMES (mandatory): the video must begin exactly on the provided first frame and end exactly on the ' +
-            'provided last frame. At 0 seconds every person, object and the camera are in exactly the pose, position, framing ' +
-            'and lighting of the first frame; at 8 seconds they are in exactly the pose, position, framing and lighting of the ' +
-            'last frame. The action moves smoothly and naturally from one to the other, without cuts, morphing or teleporting, ' +
-            'so this shot joins seamlessly with the previous and next shots.',
+      'PHYSICS: real gravity, inertia, collisions and weight shifts; clothing and hair react to movement; correct shadows; ' +
+        'props react when touched; no clipping, hands never pass through objects, feet never slide, bodies never deform.',
     )
     if (c.may_quay.trim()) phan.push(`CAMERA: ${c.may_quay.trim()}`)
     if (nd.am_thanh.trim()) phan.push(`AUDIO: ${nd.am_thanh.trim()}`)
@@ -97,8 +112,12 @@ export function ghepCauLenh({ nhan_dang: nd, canh }: DuAn): CauLenh[] {
           'same objects, same weather, same time of day, same colour grading.',
       )
     phan.push(
-      'LOCK RULES: do not redesign the character; do not change face, hair, clothing or build; do not change the setting; ' +
-        'do not add or remove props; do not change time of day, lighting or visual style; do not change the action defined above.',
+      'LOCK RULES: one single, identical character throughout (same face, proportions, height, build, hair, clothes, ' +
+        'colours, accessories, age); no face morphing; no extra people beyond the reference. The setting is a fixed space ' +
+        '(architecture, walls, floor, doors, windows, furniture, trees, props, object positions, textures, colours, light) ' +
+        'and is never rebuilt; add or remove nothing; keep the visual style, lighting and time of day; do not invent a ' +
+        'different scene or change the action defined above. If the exact action is unclear, keep character and setting ' +
+        'unchanged and use minimal but plausible motion instead of inventing a big action.',
     )
     phan.push('No text, no subtitles, no logos, no brand names, no watermarks on screen.')
 
